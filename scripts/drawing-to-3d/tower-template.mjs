@@ -31,6 +31,14 @@ export function buildTowerIR(p = {}) {
   const floorH = p.floorH ?? 3400, colW = p.colW ?? 500;
   const beamW = p.beamW ?? 400, beamD = p.beamD ?? 600, slabT = p.slabT ?? 200;
   const withUnits = p.withUnits !== false;
+  /**
+   * B-L4(260808) — MEP: 수직 라이저 샤프트(전층 정렬) + 층별 천장 플레넘 존의
+   * 수평 덕트 트렁크(복도측) + 샤프트-트렁크 층별 접속. 간섭 0 기하 계약:
+   * 트렁크는 보 하부 플레넘 밴드(z: colH−plenumH..colH)만 쓰고, 샤프트는
+   * 베이 내부(기둥·보 풋프린트 밖) 고정 평면 위치에 전층 연속.
+   */
+  const withMep = p.withMep === true;
+  const plenumH = 350, ductW = 600, ductH = 300, shaftW = 900, shaftD = 700;
   if (!(floors >= 1 && floors <= 100)) throw new Error('tower: floors 1..100');
   if (!(nx >= 1 && ny >= 1 && nx * ny <= 400)) throw new Error('tower: bays invalid');
   const colH = floorH - beamD - slabT;
@@ -68,6 +76,22 @@ export function buildTowerIR(p = {}) {
       ].map(f => ({ ...f, material: 'wood', role: 'furniture' })),
     },
     {
+      defId: 'mep_shaft', system: 'mep',
+      // 코어 옆 베이 내부 고정 위치 — 슬래브 '하면'까지(관통부=개구, 미모델 정직 표기).
+      // 위층 샤프트가 슬래브 상면에서 이어져 면접촉 스택으로 수직 연속이 성립한다.
+      parts: [box('shaft', shaftW, shaftD, floorH - slabT, {}, { material: 'steel', role: 'mep_shaft' })],
+    },
+    {
+      defId: 'mep_trunk', system: 'mep',
+      // 복도측 수평 트렁크 덕트: 보 하부 플레넘 밴드, 기둥 열 사이 순길이
+      parts: [box('duct', bayX - colW - 100, ductW, ductH, {}, { material: 'steel', role: 'duct' })],
+    },
+    {
+      defId: 'mep_connect', system: 'mep',
+      // 샤프트→트렁크 층별 접속 스터브
+      parts: [box('stub', 400, ductW, ductH, {}, { material: 'steel', role: 'duct' })],
+    },
+    {
       defId: 'typical_floor', system: 'structure',
       parts: [
         { ...box('slab', W, D, slabT, { tx: -colW / 2, ty: -colW / 2, tz: colH + beamD }), material: 'concrete', role: 'slab' },
@@ -83,6 +107,14 @@ export function buildTowerIR(p = {}) {
           at: { tx: bayX + 600, ty: 600, tz: colH + beamD + slabT },
           pattern: { kind: 'grid', nx: Math.max(1, nx - 1), ny, dx: bayX, dy: bayY },
         }] : []),
+        ...(withMep ? [
+          // 샤프트: 코어 베이 동측 여백(코어 x≤4000+2300 뒤) — 전층 같은 평면 위치
+          { ref: 'mep_shaft', id: 'shaft', at: { tx: 6800, ty: 600 } },
+          // 트렁크: 각 베이 X열을 따라 플레넘 밴드(보 하부), 베이 y 중앙선 위쪽
+          { ref: 'mep_trunk', id: 'trunk', at: { tx: colW / 2 + 50, ty: bayY / 2, tz: colH - plenumH }, pattern: { kind: 'grid', nx, ny, dx: bayX, dy: bayY } },
+          // 접속 스터브: 샤프트 동측면 → 첫 트렁크 방향
+          { ref: 'mep_connect', id: 'stub', at: { tx: 6800 + shaftW, ty: bayY / 2, tz: colH - plenumH } },
+        ] : []),
       ],
     },
   ];
@@ -140,7 +172,7 @@ export function buildTowerIR(p = {}) {
   return {
     schema: 'nexyfab.assembly-hierarchy.v1',
     name: `tower_${floors}f_${nx}x${ny}`, domain: 'building', kind: 'tower',
-    meta: { floors, nx, ny, bayX, bayY, floorH, colW, beamW, beamD, slabT, footprint: [W, D], withLobby, lobbyH, typicalCount },
+    meta: { floors, nx, ny, bayX, bayY, floorH, colW, beamW, beamD, slabT, footprint: [W, D], withLobby, lobbyH, typicalCount, withMep, plenumH },
     definitions,
     root,
   };
@@ -176,6 +208,25 @@ export function gateTower(ir, expanded) {
   }
   if (coreXY.size > 0) {
     for (const [key, n] of coreXY) if (n !== levels) errs.push(`core_continuity: 코어벽 (${key}) 발생 ${n} ≠ 레벨 수 ${levels} — 수직 동선 단절`);
+  }
+
+  // ①c B-L4: MEP 샤프트 수직 정렬 — 전 레벨 동일 (tx,ty)
+  if (ir.meta.withMep) {
+    const shaftXY = new Map();
+    for (const part of parts) {
+      if (part.role !== 'mep_shaft') continue;
+      const key = `${part.at.tx.toFixed(1)},${part.at.ty.toFixed(1)}`;
+      shaftXY.set(key, (shaftXY.get(key) ?? 0) + 1);
+    }
+    if (shaftXY.size !== 1) errs.push(`shaft_alignment: 샤프트 평면 위치 ${shaftXY.size}종 — 수직 정렬 단절`);
+    for (const [key, n] of shaftXY) if (n !== (ir.meta.typicalCount ?? floors)) errs.push(`shaft_continuity: (${key}) 발생 ${n} ≠ 기준층 수`);
+    // 트렁크가 플레넘 밴드를 벗어나지 않는다(보 하부 z 검증)
+    const colH2 = ir.meta.floorH - ir.meta.beamD - ir.meta.slabT;
+    for (const part of parts) {
+      if (part.role !== 'duct') continue;
+      const zTop = part.at.tz - Math.floor(part.at.tz / ir.meta.floorH) * ir.meta.floorH; // 층 내 상대 z
+      if (zTop > colH2 - 1e-6) { errs.push(`plenum_band: 덕트 ${part.id} 층내 z ${zTop.toFixed(0)} — 보 밴드 침범`); break; }
+    }
   }
 
   // ①c 스택 표고 닫힌형: 슬래브 z 집합 = 각 레벨의 (레벨базa + colH + beamD)

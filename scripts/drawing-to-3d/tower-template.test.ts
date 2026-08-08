@@ -60,6 +60,19 @@ describe('tower template (N2)', () => {
     expect((built.interferences ?? []).length).toBe(0);
   });
 
+  it('B-L4: MEP shafts align vertically, trunks stay in the plenum band, zero interference', () => {
+    const r = buildTower({ floors: 8, nx: 3, ny: 2, withMep: true });
+    expect(r.gateErrors).toEqual([]);
+    const shafts = r.expanded!.parts!.filter((p: { role?: string }) => p.role === 'mep_shaft');
+    expect(shafts).toHaveLength(8);
+    expect(new Set(shafts.map((p: { at: { tx: number; ty: number } }) => `${p.at.tx},${p.at.ty}`)).size).toBe(1);
+    const built = buildAssembly({ name: 'mep', domain: 'building', parts: r.expanded!.parts });
+    expect((built.interferences ?? []).length).toBe(0);
+    // 변이: 한 층 샤프트를 밀면 수직 정렬 게이트가 잡는다
+    (shafts[3] as { at: { tx: number } }).at.tx += 200;
+    expect(gateTower(r.ir, r.expanded!).some((e: string) => e.includes('shaft_alignment'))).toBe(true);
+  });
+
   it('refuses invalid configs honestly', () => {
     expect(() => buildTowerIR({ floors: 0 })).toThrow();
     expect(() => buildTowerIR({ floors: 10, floorH: 900 })).toThrow();
