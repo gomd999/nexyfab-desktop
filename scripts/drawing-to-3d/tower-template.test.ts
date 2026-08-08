@@ -78,3 +78,43 @@ describe('tower template (N2)', () => {
     expect(() => buildTowerIR({ floors: 10, floorH: 900 })).toThrow();
   });
 });
+
+describe('B-2 — curtain wall (B-L4 잔여)', () => {
+  it('module arithmetic: mullion/panel counts match the fit-to-length formula, gates clean', () => {
+    const r = (buildTower as any)({ floors: 5, withCurtainWall: true });
+    expect(r.ok).toBe(true);
+    const parts = r.parts ?? r.expanded.parts;
+    const mullions = parts.filter((pp: any) => pp.role === 'cw_mullion');
+    const panels = parts.filter((pp: any) => pp.role === 'cw_panel');
+    // L_x=24500→nModX 16, L_y(코너 인셋 후)=16000→nModY 11
+    expect(mullions.length).toBe(5 * (2 * 17 + 2 * 12));
+    expect(panels.length).toBe(5 * (2 * 16 + 2 * 11));
+  });
+
+  it('default stays curtain-wall-free (no corpus drift)', () => {
+    const r = (buildTower as any)({ floors: 3 });
+    const parts = r.parts ?? r.expanded.parts;
+    expect(parts.some((pp: any) => /^cw_/.test(pp.role ?? ''))).toBe(false);
+  });
+
+  it('mutation: a shifted floor of mullions breaks vertical-grid continuity (gate fires)', () => {
+    const r = (buildTower as any)({ floors: 4, withCurtainWall: true });
+    const parts = (r.parts ?? r.expanded.parts).map((pp: any) => {
+      if (pp.role !== 'cw_mullion') return pp;
+      // 두 번째 층 밴드(z∈[floorH,2floorH))의 멀리언만 15mm 옆으로
+      if (pp.at.tz >= 3400 && pp.at.tz < 6800) return { ...pp, at: { ...pp.at, tx: pp.at.tx + 15 } };
+      return pp;
+    });
+    const errs = (gateTower as any)(r.ir, { parts });
+    expect(errs.some((e: string) => e.includes('cw_mullion_continuity'))).toBe(true);
+  });
+
+  it('mutation: dropping one panel breaks the coverage identity (gate fires)', () => {
+    const r = (buildTower as any)({ floors: 4, withCurtainWall: true });
+    const parts = (r.parts ?? r.expanded.parts);
+    const idx = parts.findIndex((pp: any) => pp.role === 'cw_panel');
+    const mutated = [...parts.slice(0, idx), ...parts.slice(idx + 1)];
+    const errs = (gateTower as any)(r.ir, { parts: mutated });
+    expect(errs.some((e: string) => e.includes('cw_coverage'))).toBe(true);
+  });
+});

@@ -39,6 +39,19 @@ export function buildTowerIR(p = {}) {
    */
   const withMep = p.withMep === true;
   const plenumH = 350, ductW = 600, ductH = 300, shaftW = 900, shaftD = 700;
+  /**
+   * B-2/B-L4 잔여(260808d) — 외피 커튼월: 4개 파사드에 멀리언 그리드+패널을
+   * IR grid 패턴으로 인스턴싱. 규약:
+   *  - 모듈폭 = 파사드 길이/모듈수(fit-to-length) → 커버리지 항등이 구성적으로
+   *    성립하고 게이트가 이를 재검증한다(전개 실측 기준).
+   *  - x-런(남/북)이 코너까지 전장, y-런(동/서)은 코너 밴드만큼 인셋 —
+   *    코너 수직 클로저 조인트는 미모델(정직 표기, 물량은 런 기준).
+   *  - 패널 밴드 = 층 전고(스팬드럴/비전 분할 미모델 — 정직 표기).
+   */
+  const withCurtainWall = p.withCurtainWall === true;
+  const cwModule = p.cwModule ?? 1500;
+  const cwMullionW = 60, cwMullionD = 150, cwPanelT = 30, cwStandoff = 100;
+  const cwBand = cwStandoff + cwMullionD; // 슬래브 엣지 밖 점유 밴드
   if (!(floors >= 1 && floors <= 100)) throw new Error('tower: floors 1..100');
   if (!(nx >= 1 && ny >= 1 && nx * ny <= 400)) throw new Error('tower: bays invalid');
   const colH = floorH - beamD - slabT;
@@ -91,6 +104,19 @@ export function buildTowerIR(p = {}) {
       // 샤프트→트렁크 층별 접속 스터브
       parts: [box('stub', 400, ductW, ductH, {}, { material: 'steel', role: 'duct' })],
     },
+    ...(withCurtainWall ? (() => {
+      const defs = [];
+      const L_x = nx * bayX + colW;            // 남/북 파사드 전장(슬래브 폭)
+      const L_y = ny * bayY + colW - 2 * cwBand; // 동/서 파사드(코너 밴드 인셋)
+      const nModX = Math.max(1, Math.round(L_x / cwModule));
+      const nModY = Math.max(1, Math.round(L_y / cwModule));
+      const modX = L_x / nModX, modY = L_y / nModY;
+      defs.push({ defId: 'cw_mullion_x', system: 'facade', parts: [box('cwm', cwMullionW, cwMullionD, floorH, {}, { material: 'aluminum', role: 'cw_mullion' })] });
+      defs.push({ defId: 'cw_panel_x', system: 'facade', parts: [box('cwp', modX - cwMullionW, cwPanelT, floorH, {}, { material: 'glass', role: 'cw_panel' })] });
+      defs.push({ defId: 'cw_mullion_y', system: 'facade', parts: [box('cwm', cwMullionD, cwMullionW, floorH, {}, { material: 'aluminum', role: 'cw_mullion' })] });
+      defs.push({ defId: 'cw_panel_y', system: 'facade', parts: [box('cwp', cwPanelT, modY - cwMullionW, floorH, {}, { material: 'glass', role: 'cw_panel' })] });
+      return defs;
+    })() : []),
     {
       defId: 'typical_floor', system: 'structure',
       parts: [
@@ -107,6 +133,32 @@ export function buildTowerIR(p = {}) {
           at: { tx: bayX + 600, ty: 600, tz: colH + beamD + slabT },
           pattern: { kind: 'grid', nx: Math.max(1, nx - 1), ny, dx: bayX, dy: bayY },
         }] : []),
+        ...(withCurtainWall ? (() => {
+          const L_x = nx * bayX + colW;
+          const L_y = ny * bayY + colW - 2 * cwBand;
+          const nModX = Math.max(1, Math.round(L_x / cwModule));
+          const nModY = Math.max(1, Math.round(L_y / cwModule));
+          const modX = L_x / nModX, modY = L_y / nModY;
+          const x0 = -colW / 2, y0 = -colW / 2;
+          const yS = y0 - cwStandoff - cwMullionD;              // 남측 멀리언 외면 기준 배치
+          const yN = ny * bayY + colW / 2 + cwStandoff;         // 북측
+          const xW = x0 - cwStandoff - cwMullionD;              // 서측
+          const xE = nx * bayX + colW / 2 + cwStandoff;         // 동측
+          const yRun0 = y0 + cwBand;                            // 동/서 런 시작(코너 인셋)
+          const panelInset = (cwMullionD - cwPanelT) / 2;
+          return [
+            // 남/북: 멀리언 nMod+1(경계 중심), 패널 nMod(경계 사이)
+            { ref: 'cw_mullion_x', id: 'cwmS', at: { tx: x0 - cwMullionW / 2, ty: yS }, pattern: { kind: 'grid', nx: nModX + 1, ny: 1, dx: modX, dy: 0 } },
+            { ref: 'cw_panel_x', id: 'cwpS', at: { tx: x0 + cwMullionW / 2, ty: yS + panelInset }, pattern: { kind: 'grid', nx: nModX, ny: 1, dx: modX, dy: 0 } },
+            { ref: 'cw_mullion_x', id: 'cwmN', at: { tx: x0 - cwMullionW / 2, ty: yN }, pattern: { kind: 'grid', nx: nModX + 1, ny: 1, dx: modX, dy: 0 } },
+            { ref: 'cw_panel_x', id: 'cwpN', at: { tx: x0 + cwMullionW / 2, ty: yN + panelInset }, pattern: { kind: 'grid', nx: nModX, ny: 1, dx: modX, dy: 0 } },
+            // 동/서: 코너 인셋 런
+            { ref: 'cw_mullion_y', id: 'cwmW', at: { tx: xW, ty: yRun0 - cwMullionW / 2 }, pattern: { kind: 'grid', nx: 1, ny: nModY + 1, dx: 0, dy: modY } },
+            { ref: 'cw_panel_y', id: 'cwpW', at: { tx: xW + panelInset, ty: yRun0 + cwMullionW / 2 }, pattern: { kind: 'grid', nx: 1, ny: nModY, dx: 0, dy: modY } },
+            { ref: 'cw_mullion_y', id: 'cwmE', at: { tx: xE, ty: yRun0 - cwMullionW / 2 }, pattern: { kind: 'grid', nx: 1, ny: nModY + 1, dx: 0, dy: modY } },
+            { ref: 'cw_panel_y', id: 'cwpE', at: { tx: xE + panelInset, ty: yRun0 + cwMullionW / 2 }, pattern: { kind: 'grid', nx: 1, ny: nModY, dx: 0, dy: modY } },
+          ];
+        })() : []),
         ...(withMep ? [
           // 샤프트: 코어 베이 동측 여백(코어 x≤4000+2300 뒤) — 전층 같은 평면 위치
           { ref: 'mep_shaft', id: 'shaft', at: { tx: 6800, ty: 600 } },
@@ -172,7 +224,7 @@ export function buildTowerIR(p = {}) {
   return {
     schema: 'nexyfab.assembly-hierarchy.v1',
     name: `tower_${floors}f_${nx}x${ny}`, domain: 'building', kind: 'tower',
-    meta: { floors, nx, ny, bayX, bayY, floorH, colW, beamW, beamD, slabT, footprint: [W, D], withLobby, lobbyH, typicalCount, withMep, plenumH },
+    meta: { floors, nx, ny, bayX, bayY, floorH, colW, beamW, beamD, slabT, footprint: [W, D], withLobby, lobbyH, typicalCount, withMep, plenumH, withCurtainWall, cwModule, cwBand, cwMullionW },
     definitions,
     root,
   };
@@ -241,13 +293,45 @@ export function gateTower(ir, expanded) {
   const colExpected = (counts.get('column') ?? 0) + (counts.get('lobby_column') ?? 0);
   if (colTotal !== colExpected) errs.push(`boq_column: 전개 ${colTotal} ≠ 패턴곱 ${colExpected}`);
 
-  // ③ 풋프린트 포함: 모든 부품 AABB 시작점이 풋프린트+여유 안
+  // ③ 풋프린트 포함: 모든 부품 AABB 시작점이 풋프린트+여유 안.
+  //    facade 시스템은 설계상 슬래브 엣지 밖 밴드(cwBand)를 점유 — 그만큼 확장.
   const [W, D] = ir.meta.footprint;
+  const cwMargin = ir.meta.withCurtainWall ? (ir.meta.cwBand ?? 0) + (ir.meta.cwMullionW ?? 0) : 0;
   for (const part of parts) {
     const { tx = 0, ty = 0 } = part.at;
-    if (tx < -ir.meta.colW || ty < -ir.meta.colW || tx > W || ty > D) {
+    const margin = part.system === 'facade' ? ir.meta.colW + cwMargin : ir.meta.colW;
+    if (tx < -margin || ty < -margin || tx > W + cwMargin || ty > D + cwMargin) {
       errs.push(`footprint: ${part.id} (${tx.toFixed(0)},${ty.toFixed(0)}) 풋프린트 밖`);
       break;
+    }
+  }
+
+  // ④ B-2 커튼월 게이트: (a) 멀리언 수직 연속 — 평면 위치별 발생 = 기준층 수
+  //    (b) 파사드 커버리지 — 층·파사드별 패널/멀리언 개수 = 모듈 산식(전개 실측)
+  if (ir.meta.withCurtainWall) {
+    const typical = ir.meta.typicalCount ?? floors;
+    const mullXY = new Map();
+    for (const part of parts) {
+      if (part.role !== 'cw_mullion') continue;
+      const key = `${part.at.tx.toFixed(1)},${part.at.ty.toFixed(1)}`;
+      mullXY.set(key, (mullXY.get(key) ?? 0) + 1);
+    }
+    for (const [key, n] of mullXY) {
+      if (n !== typical) { errs.push(`cw_mullion_continuity: (${key}) 발생 ${n} ≠ 기준층 ${typical} — 수직 그리드 단절`); break; }
+    }
+    const L_x = nx * ir.meta.bayX + ir.meta.colW;
+    const nModX = Math.max(1, Math.round(L_x / (ir.meta.cwModule ?? 1500)));
+    const panelsPerFloor = parts.filter(pp => pp.role === 'cw_panel').length / typical;
+    const L_y = ny * ir.meta.bayY + ir.meta.colW - 2 * (ir.meta.cwBand ?? 0);
+    const nModY = Math.max(1, Math.round(L_y / (ir.meta.cwModule ?? 1500)));
+    const expectedPanels = 2 * nModX + 2 * nModY;
+    if (Math.abs(panelsPerFloor - expectedPanels) > 1e-9) {
+      errs.push(`cw_coverage: 층당 패널 ${panelsPerFloor} ≠ 모듈 산식 ${expectedPanels}`);
+    }
+    const mullionsPerFloor = parts.filter(pp => pp.role === 'cw_mullion').length / typical;
+    const expectedMullions = 2 * (nModX + 1) + 2 * (nModY + 1);
+    if (Math.abs(mullionsPerFloor - expectedMullions) > 1e-9) {
+      errs.push(`cw_coverage: 층당 멀리언 ${mullionsPerFloor} ≠ 산식 ${expectedMullions}`);
     }
   }
   return errs;
