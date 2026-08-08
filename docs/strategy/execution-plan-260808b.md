@@ -111,14 +111,14 @@ E-트랙 승인으로 제품은 두 카테고리에 동시에 서게 됐다. 각
 
 | 순서 | 항목 | 축 | 상태 |
 |---|---|---|---|
-| 1 | P-1a 원통 몸체 핸드오프(+동심 구멍, 몸체별 (0,0) 규약 분기) | AI+정밀CAD | |
-| 2 | W1-1 인증 실행기 AI 생성 주체 배선 | AI 정확도 | |
-| 3 | P-1b polyline 프로파일(sketchData 분기) | AI+정밀CAD | |
-| 4 | W1-2 step_roundtrip 축 실측정 | AI 정확도 | |
-| 5 | P-2 모델→AI 역루프(피처트리→프로그램 역직렬화→챗 컨텍스트) | AI+정밀CAD | |
-| 6 | W1-3 features/hierarchy/transforms 축 실측정 | AI 정확도 | |
-| 7 | W1-4 repair 축(결함 주입→falseClear 실동작) | AI 정확도 | |
-| 8 | P-1c 보스/포켓 + W1-5 후보 40+/도메인 | 양축 | |
+| 1 | P-1a 원통 몸체 핸드오프(+동심 구멍, 몸체별 (0,0) 규약 분기) | AI+정밀CAD | ✅ fd592c9f |
+| 2 | W1-1 인증 실행기 AI 생성 주체 배선 | AI 정확도 | ✅ cf12d479 |
+| 3 | P-1b polyline 프로파일(sketchData 분기) | AI+정밀CAD | ✅ 126ccee2 |
+| 4 | W1-2 step_roundtrip 축 실측정 | AI 정확도 | ✅ 57c075d9+b19d2b42(stdout 프로토콜 사고 정정) |
+| 5 | P-2 모델→AI 역루프(피처트리→프로그램 역직렬화→챗 컨텍스트) | AI+정밀CAD | ✅ 9ad7e253 |
+| 6 | W1-3 features/hierarchy/transforms 축 실측정 | AI 정확도 | ✅ 245150ec |
+| 7 | W1-4 repair 축(결함 주입→falseClear 실동작) | AI 정확도 | ✅ 541a50f7(at.tx/ty/tz 규약 정정 포함) |
+| 8 | P-1c 보스/포켓 + W1-5 후보 40+/도메인 | 양축 | W1-5 ✅(5도메인×40 상이 산출물 핀 테스트). P-1c=보류: 모델러에 boss 피처 없음(=sketchExtrude add), 스케치 평면↔월드 좌표 사상 실측(브라우저 E2E) 선행 조건 — 추측 배선 금지 |
 | 9 | T-1 STEP 편집가능 임포트(#3) | AI+정밀CAD | |
 | 10 | W2-1~4 도메인 어휘 4종(토목 왕복·조경 grading·인테리어 스윙+BOQ·건축 load_path) | AI 정확도 | |
 | 11 | T-2 도면 연관성(#4, HLR 재투영) | AI+정밀CAD | |

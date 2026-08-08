@@ -21,3 +21,15 @@ test('candidate CLI requires an explicit domain', () => {
   assert.throws(() => parseArgs([]), /--domain/);
   assert.deepEqual(parseArgs(['--domain', 'civil', '--count', '25']), { domain: 'civil', count: 25 });
 });
+
+// W1-5(260808b) — G7 재캠페인 규정(같은 케이스 재사용 금지) 대비: 도메인당
+// 40개 후보가 전부 **상이한 산출물**(artifactHash 중복 0)이어야 한다. 파라미터
+// 스윕이 클램프로 뭉개져 중복이 생기면 여기서 잡힌다.
+test('W1-5: 40 candidates per domain, all artifacts distinct', () => {
+  for (const domain of ['mechanical', 'civil', 'building', 'landscape', 'interior']) {
+    const candidates = buildDomainCandidates(domain, 40);
+    assert.equal(candidates.length, 40, domain);
+    assert.equal(new Set(candidates.map(c => c.artifactHash)).size, 40, `${domain}: duplicate artifacts`);
+    assert.equal(new Set(candidates.map(c => c.caseId)).size, 40, `${domain}: duplicate caseIds`);
+  }
+});
