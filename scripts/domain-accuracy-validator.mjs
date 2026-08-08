@@ -49,6 +49,9 @@ const MEASURED_AXES = new Set(['requirements', 'dimensions', 'part_definitions',
  * opts.subject: 'rebuild'(기본 — 템플릿 재빌드 결정론) | 'ai'(AI 생성 주체).
  * opts.generate: AI 주체의 생성 함수 주입점(async spec => textToAssembly 결과
  * 형태) — 테스트는 가짜를, CLI는 실 파이프라인을 꽂는다.
+ * opts.roundtrip: true 면 step_roundtrip 축을 실측정한다(W1-2) — 재빌드 산출물을
+ * STEP 방출(intentToStep)→재임포트(replicad WASM)→체적 유한/양수 검증. 케이스당
+ * 수 초의 실연산이라 캠페인/드릴이 명시적으로 켠다(기본 off=not_run).
  */
 export async function validateCase(corpusEntry, input, opts = {}) {
   const { caseValue, campaign, repeat } = input;
@@ -101,10 +104,49 @@ export async function validateCase(corpusEntry, input, opts = {}) {
       alignmentErrors.length === 0 && unverified === 0
         ? 'alignment_gate_clean_on_rebuild'
         : `alignment_gate:${alignmentErrors.length}err_${unverified}unverified`);
+
+    if (opts.roundtrip) {
+      // W1-2 — STEP 왕복 실측: 방출(드롭 0)→재임포트→메시 체적 유한/양수.
+      // 실패는 사유와 함께 fail — 왕복이 안 되는 산출물을 통과시키지 않는다.
+      try {
+        const { buildAssembly } = await import('./drawing-to-3d/assembly.mjs');
+        const { intentToStep, ensureReplicad } = await import('./drawing-to-3d/to-step.mjs');
+        const built = buildAssembly(rebuilt);
+        if (!built.ok) {
+          judged('step_roundtrip', false, `assembly_gate_failed:${(built.gateErrors ?? []).join(',').slice(0, 80)}`);
+        } else {
+          const st = await intentToStep(built.composeIntent);
+          const dropped = st.fuseReport?.dropped ?? [];
+          if (!st.step || dropped.length > 0) {
+            judged('step_roundtrip', false, `step_emit_incomplete:${dropped.length}dropped`);
+          } else {
+            const rc = await ensureReplicad();
+            const shape = await rc.importSTEP(new Blob([st.step]));
+            const mesh = shape.mesh({ tolerance: 0.5, angularTolerance: 15 });
+            let vol6 = 0;
+            const v = mesh.vertices, tri = mesh.triangles;
+            for (let t = 0; t < tri.length; t += 3) {
+              const a = tri[t] * 3, b = tri[t + 1] * 3, c = tri[t + 2] * 3;
+              vol6 += v[a] * (v[b + 1] * v[c + 2] - v[b + 2] * v[c + 1])
+                + v[a + 1] * (v[b + 2] * v[c] - v[b] * v[c + 2])
+                + v[a + 2] * (v[b] * v[c + 1] - v[b + 1] * v[c]);
+            }
+            const volume = Math.abs(vol6 / 6);
+            judged('step_roundtrip', Number.isFinite(volume) && volume > 0,
+              Number.isFinite(volume) && volume > 0
+                ? `reimport_ok_volume_${volume.toFixed(0)}mm3`
+                : 'reimport_volume_invalid');
+          }
+        }
+      } catch (error) {
+        judged('step_roundtrip', false, `roundtrip_failed:${(error instanceof Error ? error.message : String(error)).slice(0, 80)}`);
+      }
+    }
   } else {
     judged('dimensions', false, `rebuild_unavailable:${rebuildError}`);
     judged('part_definitions', false, `rebuild_unavailable:${rebuildError}`);
     judged('collision_clearance', false, `rebuild_unavailable:${rebuildError}`);
+    if (opts.roundtrip) judged('step_roundtrip', false, `rebuild_unavailable:${rebuildError}`);
   }
 
   for (const axis of axes) {
@@ -209,11 +251,12 @@ if (isMain) {
     const corpus = loadCorpus(corpusFile);
     const subjectIndex = args.indexOf('--subject');
     const subject = subjectIndex >= 0 ? args[subjectIndex + 1] : 'rebuild';
+    const roundtrip = args.includes('--roundtrip');
     const generate = subject === 'ai'
       ? async spec => (await import('./drawing-to-3d/from-text.mjs')).textToAssembly(spec)
       : undefined;
     const input = JSON.parse(await readStdin());
-    const run = await validateCase(corpus.get(input.caseValue.caseId), input, { subject, generate });
+    const run = await validateCase(corpus.get(input.caseValue.caseId), input, { subject, generate, roundtrip });
     process.stdout.write(`${JSON.stringify(run)}\n`);
   })().catch(error => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);

@@ -123,3 +123,21 @@ describe('W1-1: AI-subject mode', () => {
     expect(byAxis(run).get('requirements')).toMatchObject({ status: 'fail' });
   });
 });
+
+describe('W1-2: step_roundtrip axis', () => {
+  const candidate = buildDomainCandidates('civil', 1)[0]!;
+  const axisOf = (run: { assertions: Array<{ axis: string; status: string; reason: string }> }, axis: string) =>
+    run.assertions.find(item => item.axis === axis)!;
+
+  it('opt-in roundtrip measures the axis with a real STEP emit+reimport', async () => {
+    const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 }, { roundtrip: true });
+    const rt = axisOf(run, 'step_roundtrip');
+    expect(rt.status).toBe('pass');
+    expect(rt.reason).toContain('reimport_ok_volume_');
+  }, 120_000);
+
+  it('default (no flag) keeps the axis honestly not_run', async () => {
+    const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
+    expect(axisOf(run, 'step_roundtrip')).toMatchObject({ status: 'not_run' });
+  });
+});

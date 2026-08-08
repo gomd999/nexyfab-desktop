@@ -127,6 +127,7 @@ export async function main(args = process.argv.slice(2)) {
     '--executor-arg', 'scripts/domain-accuracy-validator.mjs',
     '--executor-arg', '--corpus',
     '--executor-arg', file('dryrun-corpus.json'),
+    '--executor-arg', '--roundtrip',
     '--timeout-ms', '120000',
   ]);
   writeFileSync(file('campaign-summary.json'), campaign.out, 'utf8');
@@ -157,8 +158,8 @@ export async function main(args = process.argv.slice(2)) {
   const axes = reportValue.assessment.axes;
   const measured = axes.filter(axis => axis.measured > 0);
   const unmeasured = axes.filter(axis => axis.measured === 0);
-  assert(measured.length === 4 && measured.every(axis => axis.accuracy === 1 && axis.coverage === 1),
-    `measured axes clean (${measured.map(axis => axis.axis).join(',')})`);
+  assert(measured.length === 5 && measured.every(axis => axis.accuracy === 1 && axis.coverage === 1),
+    `measured axes clean incl. step_roundtrip (${measured.map(axis => axis.axis).join(',')})`);
   assert(unmeasured.every(axis => reportValue.assessment.blockers.includes(`coverage:${axis.axis}`)),
     'unmeasured axes surface as coverage blockers');
   assert(reportValue.evidence.requiredGatePasses === reportValue.evidence.requiredGateRuns,
