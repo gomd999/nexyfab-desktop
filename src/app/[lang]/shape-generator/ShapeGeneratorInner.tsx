@@ -7070,6 +7070,10 @@ export function ShapeGeneratorInner() {
         baseNull: !baseShapeResult,
         baseGenError: baseGenErrorRef.current,
         pipelineErrors,
+        // F-6(260808g) — 어셈블리 시드 실증용: 배치 파트의 사상 결과 실측.
+        placedParts: placedParts.map(p => ({
+          name: p.name, shapeId: p.shapeId, params: p.params, position: p.position, rotation: p.rotation,
+        })),
         ok: true,
         bbox: bb ? { min: [bb.min.x, bb.min.y, bb.min.z], max: [bb.max.x, bb.max.y, bb.max.z] } : null,
         scene: project?.scene ? { selectedId: project.scene.selectedId, params: project.scene.params } : null,
@@ -7079,7 +7083,7 @@ export function ShapeGeneratorInner() {
       };
     };
     return () => { delete (window as unknown as { __nfabProbe?: unknown }).__nfabProbe; };
-  }, [effectiveResult, getCloudSceneObject, result, baseShapeResult, pipelineErrors]);
+  }, [effectiveResult, getCloudSceneObject, result, baseShapeResult, pipelineErrors, placedParts]);
 
   // ─── Multi-body import → assembly parts ──────────────────────────────────
   // When an imported mesh (STL/STEP) is actually several disconnected shells,
@@ -7235,6 +7239,21 @@ export function ShapeGeneratorInner() {
             // modeler's default 50×30×20 box) and clear any prior features.
             setBaseShape: (id, p) => { setSelectedId(id); setParams(p); },
             clearFeatures: clearAll,
+            // F-6(260808g) — 멀티바디 프로그램: 배치 파트로 어셈블리 시드
+            // (AI 코파일럿 store.setAssemblyParts 와 동일 배선).
+            setAssemblyParts: (parts) => {
+              const stamp = Date.now();
+              setPlacedParts(parts.map((p, i) => ({
+                id: `hp_${stamp}_${i}`,
+                name: p.name || `${p.shapeId} ${i + 1}`,
+                shapeId: p.shapeId,
+                params: p.params,
+                qty: 1,
+                position: p.position ?? [0, 0, 0],
+                rotation: p.rotation ?? [0, 0, 0],
+              })));
+              setShowAssemblyPanel(true);
+            },
           });
           if (out.ok) {
             addToast('success', out.skipped.length

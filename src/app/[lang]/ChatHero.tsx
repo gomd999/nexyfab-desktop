@@ -138,7 +138,7 @@ function summarizeFeatures(intent: ComposeIntent | undefined, lang: Lang): strin
   });
 }
 
-import { composeIntentToFeatureProgram, openInPrecisionCad } from './chatCadHandoff';
+import { assemblyToPartsProgram, composeIntentToFeatureProgram, openInPrecisionCad } from './chatCadHandoff';
 import { chatContextPreamble, type ReverseProgramResult } from './shape-generator/ai/programFromNfab';
 // compose intent 의 주(main) box 치수 [w,d,h] 추출 (정투상 도면용).
 function mainBoxDims(intent: ComposeIntent | undefined): [number, number, number] | null {
@@ -1095,7 +1095,11 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
   );
   const drawingSvg = !cad.isAssembly ? buildDrawingSvg(cad.composeIntent) : null;
   // E1(260808b) — 단일 사각판+위치구멍만 피처트리로 변환 가능(그 외 null=버튼 숨김).
-  const expertProgram = !cad.isAssembly ? composeIntentToFeatureProgram(cad.composeIntent) : null;
+  // F-6(260808g) — 어셈블리도 정직 범위(box/cylinder/tube·무회전·전 파트 사상
+  // 가능)면 전문가 모드로 핸드오프. 범위 밖이면 null → 버튼 숨김(부분 약속 금지).
+  const expertProgram = cad.isAssembly
+    ? assemblyToPartsProgram(cad.assembly as { name?: string; parts?: unknown } | undefined)
+    : composeIntentToFeatureProgram(cad.composeIntent);
   const openExpert = () => { if (expertProgram) openInPrecisionCad(expertProgram, lang); };
   const tolStr = toleranceRange(cad.isAssembly ? cad.assembly : cad.composeIntent);
   const tolBadge = tolStr && (
@@ -1156,6 +1160,12 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
           )}
           {tolBadge}
         </div>
+        {/* F-6(260808g) — 정직 범위 어셈블리는 편집 가능한 배치 파트로 핸드오프 */}
+        {expertProgram && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            <button onClick={openExpert} style={btnGhost}>🛠 {t.cadOpenExpert}</button>
+          </div>
+        )}
         {cad.welds && cad.welds.length > 0 && (
           <div style={{ marginBottom: 12, fontSize: 12, color: '#cbd5e1', background: '#0b1020', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: '9px 12px' }}>
             <div style={{ fontWeight: 700, marginBottom: 5 }}>🔩 {t.cadWeld} · {t.cadWeldTotal} ≈ {(cad.weldTotalMm ?? 0).toLocaleString()} mm</div>

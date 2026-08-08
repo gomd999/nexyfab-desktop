@@ -172,6 +172,87 @@ export function composeIntentToFeatureProgram(
   return null;
 }
 
+// ─── F-6(260808g) — 멀티바디 어셈블리 핸드오프 ──────────────────────────────
+
+/** 모델러 setAssemblyParts 로 시드되는 파트(모델러 좌표계 — Y-up·중심 배치). */
+export interface AssemblyPartSeed {
+  shapeId: string;
+  params: Record<string, number>;
+  name?: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+}
+
+interface AssemblyPartLike {
+  id?: string;
+  type?: string;
+  role?: string;
+  params?: Record<string, unknown>;
+  at?: { tx?: unknown; ty?: unknown; tz?: unknown; rx?: unknown; ry?: unknown; rz?: unknown };
+}
+
+/**
+ * drawing-to-3d 어셈블리 JSON → 모델러 PlacedPart 시드 프로그램.
+ *
+ * 실측 규약(양쪽 모두):
+ *  - 어셈블리(Z-up): box=모서리 원점 [0,0,0]..[w,d,h] · cylinder/tube=축 +z,
+ *    밑면 z=0, x/y 중심 (reconstruct.partAabb) · at.tx/ty/tz=배치 이동
+ *  - 모델러 PlacedPart(Y-up): position=파트 **중심**(셰이프 지오메트리가 원점
+ *    중심 — bomPartWorldMatrix), 사상 (x,y,z)→(x,z,y)
+ *
+ * 정직 범위 v1: 전 파트가 box/cylinder/tube ∧ 회전 없음 ∧ 파트 ≥2 ∧ 치수가
+ * 모델러 셰이프 슬라이더 상한 이내(초과 시 normalizeShapeParams 가 **조용히
+ * 클램프**해 오답이 되므로 거부). 하나라도 벗어나면 null — 부분 어셈블리를
+ * 약속하지 않는다(버튼 숨김).
+ */
+export function assemblyToPartsProgram(
+  assembly: { name?: string; parts?: unknown } | undefined,
+): FeatureProgram | null {
+  const rawParts = assembly?.parts;
+  if (!Array.isArray(rawParts) || rawParts.length < 2) return null;
+
+  const seeds: AssemblyPartSeed[] = [];
+  for (const raw of rawParts as AssemblyPartLike[]) {
+    const at = raw.at ?? {};
+    const [tx, ty, tz] = [num(at.tx) ?? 0, num(at.ty) ?? 0, num(at.tz) ?? 0];
+    // 회전은 축 사상(Z-up→Y-up)이 미실측 — v1 거부.
+    if ([at.rx, at.ry, at.rz].some(v => (num(v) ?? 0) !== 0)) return null;
+    const p = raw.params ?? {};
+    const name = raw.id ?? raw.role ?? undefined;
+
+    if (raw.type === 'box') {
+      const w = num(p.width), d = num(p.depth), h = num(p.height);
+      if (w === null || d === null || h === null || w <= 0 || d <= 0 || h <= 0) return null;
+      // 모델러 box 슬라이더 상한 500(shapes/box.ts) — 초과=조용한 클램프라 거부.
+      if (w > 500 || d > 500 || h > 500) return null;
+      seeds.push({
+        shapeId: 'box', params: { width: w, height: h, depth: d }, name,
+        position: [tx + w / 2, tz + h / 2, ty + d / 2], rotation: [0, 0, 0],
+      });
+    } else if (raw.type === 'cylinder') {
+      const dia = num(p.diameter), len = num(p.length);
+      if (dia === null || len === null || dia <= 0 || len <= 0) return null;
+      if (dia > 500 || len > 500) return null; // shapes/cylinder.ts 상한
+      seeds.push({
+        shapeId: 'cylinder', params: { diameter: dia, height: len }, name,
+        position: [tx, tz + len / 2, ty], rotation: [0, 0, 0],
+      });
+    } else if (raw.type === 'tube') {
+      const oD = num(p.outerDia), iD = num(p.innerDia), len = num(p.length);
+      if (oD === null || iD === null || len === null || oD <= 0 || len <= 0 || iD >= oD) return null;
+      if (oD > 500 || len > 1000) return null; // shapes/pipe.ts 상한
+      seeds.push({
+        shapeId: 'pipe', params: { outerDiameter: oD, innerDiameter: iD, length: len }, name,
+        position: [tx, tz + len / 2, ty], rotation: [0, 0, 0],
+      });
+    } else {
+      return null; // v1 어휘 밖 파트 — 전체 거부(부분 약속 금지)
+    }
+  }
+
+  return { part: assembly?.name ?? 'chat-assembly', features: [], assemblyParts: seeds };
+}
+
 /** 핸드오프 실행: 프로그램 기록 + 같은 탭에서 전문가 모드로 이동. */
 export function openInPrecisionCad(program: FeatureProgram, lang: string): void {
   sessionStorage.setItem(STUDIO_HANDOFF_PROGRAM_KEY, JSON.stringify(program));

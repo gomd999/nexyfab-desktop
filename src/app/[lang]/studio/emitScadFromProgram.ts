@@ -29,6 +29,16 @@ export interface FeatureProgram {
   part?: string;
   features: ProgramFeature[];
   verificationContext?: ManufacturingVerificationContext;
+  /** F-6(260808g) — 멀티바디 핸드오프 전용(모델러 setAssemblyParts 시드,
+   *  모델러 좌표계). SCAD 방출기는 무시한다 — 어셈블리는 SCAD 단일 바디
+   *  프로그램이 아니라 배치 파트 목록으로 전달된다. */
+  assemblyParts?: Array<{
+    shapeId: string;
+    params: Record<string, number>;
+    name?: string;
+    position: [number, number, number];
+    rotation: [number, number, number];
+  }>;
 }
 
 const n = (v: unknown, d = 0): number => (typeof v === 'number' && isFinite(v) ? v : d);

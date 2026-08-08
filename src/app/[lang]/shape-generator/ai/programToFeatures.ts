@@ -41,11 +41,28 @@ export interface ModelerFeatureApi {
   setBaseShape?: (shapeId: string, params: Record<string, number>) => void;
   /** Clear the existing feature stack before replaying (idempotent handoff). */
   clearFeatures?: () => void;
+  /** F-6(260808g) — 멀티바디: 배치 파트 목록으로 어셈블리 시드(모델러 좌표계,
+   *  position=파트 중심). 단일 바디 피처트리 경로와 상호 배타. */
+  setAssemblyParts?: (parts: Array<{
+    shapeId: string;
+    params: Record<string, number>;
+    name?: string;
+    position?: [number, number, number];
+    rotation?: [number, number, number];
+  }>) => void;
 }
 
 /** Replay a feature program into the modeler. Returns whether the base was built
  *  and which feature types were skipped (deferred). */
 export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeatureApi): { ok: boolean; skipped: string[] } {
+  // F-6(260808g) — 멀티바디 프로그램: 배치 파트 목록을 그대로 어셈블리로 시드
+  // (좌표 사상은 프로듀서 chatCadHandoff.assemblyToPartsProgram 이 실측 규약으로
+  // 완료). 단일 바디 피처트리 경로와 상호 배타.
+  if (program?.assemblyParts?.length) {
+    if (!api.setAssemblyParts) return { ok: false, skipped: ['assembly'] };
+    api.setAssemblyParts(program.assemblyParts);
+    return { ok: true, skipped: [] };
+  }
   const feats: ProgramFeature[] = program?.features ?? [];
   const base = feats.find(f => f.type === 'sketchExtrude');
   if (!base) return { ok: false, skipped: [] };

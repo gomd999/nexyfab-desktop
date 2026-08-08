@@ -79,6 +79,28 @@ describe('reconstructFeatureTree — G-0 vocabulary sweep', () => {
     expect(call[7]).toMatchObject({ origin: [0, 5, 0], normal: [0, 1, 0] });
   });
 
+  it('assemblyParts program seeds the assembly and bypasses the feature-tree path', () => {
+    const api = { ...fakeApi(), setAssemblyParts: vi.fn() };
+    const parts: Array<{ shapeId: string; params: Record<string, number>; position: [number, number, number]; rotation: [number, number, number] }> = [
+      { shapeId: 'box', params: { width: 10, height: 10, depth: 10 }, position: [0, 5, 0], rotation: [0, 0, 0] },
+      { shapeId: 'cylinder', params: { diameter: 5, height: 20 }, position: [0, 20, 0], rotation: [0, 0, 0] },
+    ];
+    const r = reconstructFeatureTree({ features: [], assemblyParts: parts }, api as never);
+    expect(r).toEqual({ ok: true, skipped: [] });
+    expect(api.setAssemblyParts).toHaveBeenCalledWith(parts);
+    expect(api.setBaseShape).not.toHaveBeenCalled();
+    expect(api.addSketchFeature).not.toHaveBeenCalled();
+  });
+
+  it('assemblyParts without a wired setAssemblyParts fails honestly (no silent drop)', () => {
+    const api = fakeApi();
+    const r = reconstructFeatureTree(
+      { features: [], assemblyParts: [{ shapeId: 'box', params: {}, position: [0, 0, 0], rotation: [0, 0, 0] }] },
+      api as never,
+    );
+    expect(r).toEqual({ ok: false, skipped: ['assembly'] });
+  });
+
   it('boss on a polyline base stays honestly skipped (top face is not y=h/2)', () => {
     const api = fakeApi();
     const r = reconstructFeatureTree(
