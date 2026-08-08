@@ -33,6 +33,7 @@ import type { EdgeSelectionInfo } from '../editing/selectionInfo';
 import type { ReplicadEdgeFinder } from './occtEngine';
 import { occtEdgeSignatures, occtTopoNames, occtTopoAnchor } from './occtEngine';
 import { bestEdgeMatch, matchFaceBySignature, type EdgeMatchRejection, type EdgeSig, type FaceSig } from './edgeCorrespondence';
+import { reportWarning } from '../lib/telemetry';
 import type { MeshDowngradeNotice } from './downgradeNotice';
 import { AXIS_EPS } from './tolerancePolicy';
 
@@ -268,13 +269,15 @@ export async function resolveEdgeRefDual(
       const resA = await resolveEdgeFinderBySignature(exact, sigs, undefined);
       if (resA.status === 'matched') {
         const resB = await resolveEdgeFinderBySignature(selection, sigs, currentBbox);
+        // 불일치는 콘솔이 아니라 **내구 텔레메트리**로 — S5(B안 강등) 판단의
+        // 유일한 증거 채널이다. 콘솔 로그는 프로덕션에서 아무도 못 본다.
         if (resB.status === 'matched' && resB.index !== undefined && resB.index !== aIndex) {
-          console.warn(`[${op}] K7 A/B mismatch — name picked a different edge than the click signature`, {
-            topoName: selection.topoName, aIndex, bIndex: resB.index,
+          reportWarning('feature_pipeline', new Error('k7_ab_mismatch_different_edge'), {
+            op, topoName: selection.topoName, aIndex, bIndex: resB.index,
           });
         } else if (resB.status === 'lost') {
-          console.warn(`[${op}] K7 A/B mismatch — name resolved but signature reported lost`, {
-            topoName: selection.topoName, aIndex, bReason: resB.reason,
+          reportWarning('feature_pipeline', new Error('k7_ab_mismatch_signature_lost'), {
+            op, topoName: selection.topoName, aIndex, bReason: resB.reason,
           });
         }
         return resA;
