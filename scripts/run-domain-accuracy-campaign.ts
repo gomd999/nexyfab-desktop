@@ -79,8 +79,14 @@ export function processExecutor(command: string, commandArgs: readonly string[],
     child.on('error', error => finish(() => reject(error)));
     child.on('close', code => finish(() => {
       if (code !== 0) return reject(new Error(`validator_exit_${code}:${Buffer.concat(stderr).toString('utf8').trim()}`));
-      try { resolveResult(JSON.parse(Buffer.concat(stdout).toString('utf8')) as DomainAccuracyRun); }
-      catch (error) { reject(new Error(`validator_output_invalid_json:${error instanceof Error ? error.message : String(error)}`)); }
+      // 프로토콜(260808b 견고화): stdout 의 **마지막 비어있지 않은 줄**이 run
+      // JSON 이다. 네이티브/wasm 라이브러리(OCC STEP 라이터 등)가 fd 레벨로
+      // stdout 에 배너를 찍는 것은 JS 에서 막을 수 없음을 실측했다(0/300 사고)
+      // — 전량 파싱 대신 마지막 줄 계약으로 배너 내성을 갖는다.
+      const lines = Buffer.concat(stdout).toString('utf8').trim().split(/\r?\n/);
+      const last = lines[lines.length - 1] ?? '';
+      try { resolveResult(JSON.parse(last) as DomainAccuracyRun); }
+      catch (error) { reject(new Error(`validator_output_invalid_json:${error instanceof Error ? error.message : String(error)}:${last.slice(0, 80)}`)); }
     }));
     child.stdin.end(JSON.stringify(input));
   });
