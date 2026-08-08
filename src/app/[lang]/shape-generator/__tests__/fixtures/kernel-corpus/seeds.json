@@ -163,14 +163,14 @@
     },
     {
       "id": "shell-after-through-hole",
-      "title": "Shell t=2 (open top) on a 30x30x10 box with a d10 through-hole — MEASURED 260808: K3 bbox-extreme FaceFinder path does NOT engage on a multi-boundary top face; falls to the closed-shell binding which throws SHELL_CLOSED_UNSUPPORTED. Clean refusal, no crash — holed-solid shell is a real K3 follow-up",
-      "expectation": "fail-clean",
+      "title": "Shell t=2 (open top, openFace 1) on a 30x30x10 box with a d10 through-hole — MEASURED 260808(정정): the K3 bbox-extreme FaceFinder DOES accept the annular multi-boundary top face and shells cleanly. The earlier fail-clean was a seed omission (openFace defaulted to 0 = the unconditionally-unsupported closed path), not a kernel limit",
+      "expectation": "ok",
       "steps": [
         { "op": "extrude", "out": "base", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10 },
         { "op": "extrudeCircle", "out": "drill", "r": 5, "cx": 0, "cy": 0, "depth": 14, "offset": -2 },
         { "op": "boolean", "out": "holed", "host": "base", "tool": "drill", "type": "subtract" }
       ],
-      "final": { "op": "shell", "host": "holed", "thickness": 2 }
+      "final": { "op": "shell", "host": "holed", "thickness": 2, "openFace": 1 }
     }
   ]
 }
