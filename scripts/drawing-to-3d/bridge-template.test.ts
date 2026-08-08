@@ -45,8 +45,23 @@ describe('bridge template (N3)', () => {
     expect(gateBridge(r.ir, r.expanded!).some((e: string) => e.includes('deck_gap'))).toBe(true);
   });
 
-  it('refuses invalid configs honestly', () => {
+  it('C-L3: constant grade — deck follows the grade line, zero interference across ±3%', () => {
+    for (const gradePct of [1.5, 3, -2, -3]) {
+      const r = buildBridge({ spans: 4, girders: 4, gradePct });
+      expect(r.gateErrors, `grade ${gradePct}`).toEqual([]);
+      const built = buildAssembly({ name: 'g', domain: 'bridge', parts: r.expanded!.parts });
+      expect((built.interferences ?? []).length, `grade ${gradePct} interference`).toBe(0);
+      // 경간별 deck 표고가 구배선을 따른다 (게이트 자체 검증 + 직접 확인)
+      const decks = r.expanded!.parts!.filter((p: { _occ: { leaf: string } }) => p._occ.leaf === 'deck');
+      const z0 = (decks[0] as { at: { tz: number } }).at.tz;
+      const z1 = (decks[1] as { at: { tz: number } }).at.tz;
+      expect(z1 - z0).toBeCloseTo(30000 * gradePct / 100, 3);
+    }
+  });
+
+  it('refuses invalid configs honestly (incl. unverified grades)', () => {
     expect(() => buildBridgeIR({ spans: 0 })).toThrow();
     expect(() => buildBridgeIR({ girders: 1 })).toThrow();
+    expect(() => buildBridgeIR({ gradePct: 5 })).toThrow();
   });
 });

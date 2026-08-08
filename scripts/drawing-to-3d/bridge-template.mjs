@@ -27,6 +27,10 @@ export function buildBridgeIR(p = {}) {
   const spacing = p.spacing ?? 2800;        // 거더 중심 간격
   const pierH = p.pierH ?? 7000;
   const gap = p.gap ?? 100;                 // 지점부 거더 이격(신축 자리)
+  const gradePct = p.gradePct ?? 0;         // C-L3: 종단 경사(%) — 상수 구배(직선 종단)
+  // ±3% = 간섭 0 실측 검증 범위(간선 일반 구배). 그 이상은 데크 경사 단부면
+  // 어휘(스큐 컷) 없이는 박스 코너 잔차가 남는다 — 정직 상한, 확장은 후속.
+  if (!(Math.abs(gradePct) <= 3)) throw new Error('bridge: |gradePct| ≤ 3 (검증 범위 — 단부면 스큐 어휘 후속)');
   if (!(spans >= 1 && spans <= 30)) throw new Error('bridge: spans 1..30');
   if (!(girders >= 2 && girders <= 12)) throw new Error('bridge: girders 2..12');
 
@@ -43,11 +47,32 @@ export function buildBridgeIR(p = {}) {
   const zCoping = pierH + copingH;
   const zGirder = zCoping + bearingH;
   const zDeck = zGirder + girderH;
+  /**
+   * C-L3(260808) — 상수 종단 구배: 경간·지점 인스턴스가 선형 패턴의 dz 로
+   * spanRise 씩 상승하고, 경간 내 장부재(거더·바닥판·방호벽)는 부품 로컬
+   * ry 피치로 눕는다(인스턴스 회전은 yaw 전용 계약이므로 피치는 부품 레벨).
+   * 회전 부재의 간섭은 3D OBB SAT 내로우페이즈가 과탐 없이 판정한다.
+   */
+  const slope = gradePct / 100;
+  /**
+   * 좌면 여유(SEAT): 구배에서 피치 거더 하면과 수평 교좌 상면의 정합은 실무상
+   * 테이퍼 솔플레이트가 맡는다(미모델 — 정직 표기). 교좌 본체 높이를 여유만큼
+   * 줄여 상면을 구배선 아래에 두면(±6% 상한에서 최대 어긋남 < 12mm) 기하
+   * 간섭 없이 좌면 간극(솔플레이트 두께)으로 남는다.
+   */
+  const SEAT_ALLOWANCE = gradePct === 0 ? 0 : 12; // ±3% 상한 어긋남 실측 < 12mm
+  // 피치 데크의 단부면은 구배에 수직으로 기울어 하단 모서리가 조인트 갭을
+  // deckT·|slope| 만큼 침범한다(실무=수직 절단면, 박스 어휘 한계) — 길이 후퇴로 정합.
+  const deckEndSetback = Math.abs(slope) * 250; // deckT 최대 기준
+  const deckLen = girderLen - 2 * deckEndSetback;
+  const pitchDeg = -Math.atan(slope) * 180 / Math.PI; // OpenSCAD Ry: -각 = +x 진행시 +z 상승
+  const spanRise = spanL * slope;
+  const riseAtSetback = (gap / 2) * slope; // 거더 시점(지점+gap/2)의 구배선 높이
 
   const definitions = [
     {
       defId: 'girder', system: 'structure',
-      parts: [{ id: 'g', type: 'i_girder', params: { length: girderLen, topW, botW, topT, botT, webH, webT: 20 }, at: {}, material: 'steel', role: 'girder' }],
+      parts: [{ id: 'g', type: 'i_girder', params: { length: girderLen, topW, botW, topT, botT, webH, webT: 20 }, at: { ry: pitchDeg, tz: riseAtSetback }, material: 'steel', role: 'girder' }],
     },
     {
       defId: 'cross_frame', system: 'structure',
@@ -57,27 +82,30 @@ export function buildBridgeIR(p = {}) {
     {
       defId: 'span_deck', system: 'structure',
       parts: [
-        { ...box('deck', girderLen, deckW, deckT), material: 'concrete', role: 'deck' },
-        { ...box('barrier_l', girderLen, 400, 900, { ty: 0, tz: deckT }), material: 'concrete', role: 'barrier' },
-        { ...box('barrier_r', girderLen, 400, 900, { ty: deckW - 400, tz: deckT }), material: 'concrete', role: 'barrier' },
+        { ...box('deck', deckLen, deckW, deckT, { tx: deckEndSetback, ry: pitchDeg, tz: riseAtSetback + deckEndSetback * slope }), material: 'concrete', role: 'deck' },
+        { ...box('barrier_l', deckLen, 400, 900, { tx: deckEndSetback, ty: 0, tz: deckT + riseAtSetback + deckEndSetback * slope, ry: pitchDeg }), material: 'concrete', role: 'barrier' },
+        { ...box('barrier_r', deckLen, 400, 900, { tx: deckEndSetback, ty: deckW - 400, tz: deckT + riseAtSetback + deckEndSetback * slope, ry: pitchDeg }), material: 'concrete', role: 'barrier' },
       ],
     },
     {
       defId: 'span', system: 'structure',
       children: [
         { ref: 'girder', id: 'g', at: { tx: gap / 2, ty: -botW / 2, tz: zGirder }, pattern: { kind: 'linear', count: girders, dy: spacing } },
-        // 가로보 3열(1/4·1/2·3/4 지점), 거더 사이(girders−1)개씩, 거더 상부 근처
-        {
-          ref: 'cross_frame', id: 'cf',
-          at: { tx: gap / 2 + girderLen / 4 - 150, ty: botW / 2, tz: zGirder + girderH - 600 },
-          pattern: { kind: 'grid', nx: 3, ny: girders - 1, dx: girderLen / 4, dy: spacing },
-        },
+        // 가로보 3열(1/4·1/2·3/4 지점) — 스테이션별 linear: 각 열의 z 가 구배선을 따른다
+        ...[1, 2, 3].map((q) => ({
+          ref: 'cross_frame', id: `cf${q}`,
+          at: {
+            tx: gap / 2 + (girderLen * q) / 4 - 150, ty: botW / 2,
+            tz: zGirder + girderH - 600 + riseAtSetback + ((girderLen * q) / 4) * slope,
+          },
+          pattern: { kind: 'linear', count: girders - 1, dy: spacing },
+        })),
         { ref: 'span_deck', id: 'deck', at: { tx: gap / 2, ty: -botW / 2 - 250, tz: zDeck } },
       ],
     },
     {
       defId: 'bearing', system: 'structure',
-      parts: [box('brg', 500, 500, bearingH, {}, { material: 'steel', role: 'bearing' })],
+      parts: [box('brg', 500, 500, bearingH - SEAT_ALLOWANCE, {}, { material: 'steel', role: 'bearing' })],
     },
     {
       defId: 'pier', system: 'structure',
@@ -109,14 +137,15 @@ export function buildBridgeIR(p = {}) {
   return {
     schema: 'nexyfab.assembly-hierarchy.v1',
     name: `bridge_${spans}span_${girders}g`, domain: 'civil', kind: 'bridge',
-    meta: { spans, spanL, girders, spacing, pierH, gap, girderH, girderLen, zDeck, deckT, width },
+    meta: { spans, spanL, girders, spacing, pierH, gap, girderH, girderLen, zDeck, deckT, width, gradePct, spanRise, pitchDeg },
     definitions,
     root: [
       // 경간: x = k·spanL 에서 시작. 거더 열 y 중심 = 0..(girders−1)·spacing
-      { ref: 'span', id: 'sp', pattern: { kind: 'linear', count: spans, dx: spanL } },
+      { ref: 'span', id: 'sp', pattern: { kind: 'linear', count: spans, dx: spanL, dz: spanRise } },
       // 지점: x = 0..spans·spanL, 코핑 중심이 지점선
-      { ref: 'pier', id: 'pier', at: { ty: ((girders - 1) * spacing) / 2 }, pattern: { kind: 'linear', count: spans + 1, dx: spanL } },
-      ...(spans > 1 ? [{ ref: 'expansion_joint', id: 'ej', at: { tx: spanL, ty: -botW / 2 - 250, tz: zDeck + deckT }, pattern: { kind: 'linear', count: spans - 1, dx: spanL } }] : []),
+      // 지점 구배 추종: 기둥 길이는 동일하고 기초 표고가 함께 오른다(성토 가정 — 지반선 미모델 정직 표기)
+      { ref: 'pier', id: 'pier', at: { ty: ((girders - 1) * spacing) / 2 }, pattern: { kind: 'linear', count: spans + 1, dx: spanL, dz: spanRise } },
+      ...(spans > 1 ? [{ ref: 'expansion_joint', id: 'ej', at: { tx: spanL, ty: -botW / 2 - 250, tz: zDeck + deckT + spanRise }, pattern: { kind: 'linear', count: spans - 1, dx: spanL, dz: spanRise } }] : []),
     ],
   };
 }
@@ -142,10 +171,16 @@ export function gateBridge(ir, expanded) {
   if (gY.size !== girders) errs.push(`girder_lines: 평면 열 ${gY.size} ≠ ${girders}`);
   for (const [key, n] of gY) if (n !== spans) errs.push(`girder_continuity: y=${key} 경간 발생 ${n} ≠ ${spans}`);
 
-  // ③ 바닥판 표고 연속: 모든 deck 의 tz 동일
-  const deckZ = new Set(parts.filter(pp => pp._occ.leaf === 'deck').map(pp => pp.at.tz.toFixed(1)));
-  if (deckZ.size !== 1) errs.push(`deck_elevation: 표고 ${[...deckZ].join(',')} — 불연속`);
-  else if (Math.abs([...deckZ][0] - zDeck) > 0.1) errs.push(`deck_elevation_value: ${[...deckZ][0]} ≠ ${zDeck}`);
+  // ③ 바닥판 표고: 경간 k 의 tz = zDeck + k·spanRise (구배 0 이면 종전 동일 표고와 일치)
+  const spanRise = ir.meta.spanRise ?? 0;
+  const decks = parts.filter(pp => pp._occ.leaf === 'deck')
+    .map(pp => ({ k: Number((pp._occ.path.match(/sp\[(\d+)\]/) ?? [])[1]), tz: pp.at.tz }))
+    .sort((a, b) => a.k - b.k);
+  for (const item of decks) {
+    const sl = (ir.meta.gradePct ?? 0) / 100;
+    const want = zDeck + item.k * spanRise + (ir.meta.gap / 2) * sl + Math.abs(sl) * 250 * sl;
+    if (Math.abs(item.tz - want) > 0.1) { errs.push(`deck_elevation: 경간 ${item.k} 표고 ${item.tz.toFixed(1)} ≠ 구배선 ${want.toFixed(1)}`); break; }
+  }
 
   // ④ 교좌: 지점×거더열 격자 전부 존재
   const brg = parts.filter(pp => pp._occ.leaf === 'brg');

@@ -18,6 +18,7 @@
 import { readFileSync } from 'node:fs';
 import { gate, scadBody, partAabb, gearPoly, sheetPoly, hexPts, boltDims, holeFeature, extrudePoly, compositeSubs } from './reconstruct.mjs';
 import { aabbCandidatePairs } from './broadphase.mjs';
+import { obbFromPart, obbOverlap as obbOverlap3d } from './obb.mjs';
 import { structuralCheck } from './structural.mjs';
 import { supportCheck } from './support-check.mjs';
 import { autoRoutePipes, pipeObstacleCheck, pipeCrossCheck } from './pipe-route.mjs';
@@ -1435,11 +1436,30 @@ export function buildAssembly(asm, opts = {}) {
         let note = rotated ? '회전 AABB 겹침(보수적 — 실솔리드는 더 작을 수 있음)' : 'AABB 겹침';
         // 회전 쌍은 OBB-SAT 2차 정밀(§0.2) — AABB 과탐 제거(box 쌍만, 그 외 AABB 보수 유지)
         if (rotated) {
-          const fine = boxPartsInterference(asm.parts[i], asm.parts[j]);
+          let fine = boxPartsInterference(asm.parts[i], asm.parts[j]);
+          /**
+           * 260808(C-L3 선행) — boxPartsInterference 는 box 단일축 회전 쌍만
+           * 정밀 판정한다(비박스·다축·상이축=null → 종전 AABB 보수). 그 null
+           * 자리에 **3D OBB SAT**(로컬 partAabb 상자를 회전 그대로 세움)를
+           * 폴백으로 끼운다 — 피치(ry) i_girder 30m급의 쐐기 AABB 과탐이
+           * 여기서 해소된다. 보수성: OBB(로컬 AABB) ⊇ 실형상이라 분리 판정은
+           * 실형상에서도 분리(누락 불가); 겹침 판정은 비박스 단면에서 여전히
+           * 과탐일 수 있다(안전 측).
+           */
+          if (!fine) {
+            const pi3 = asm.parts[i], pj3 = asm.parts[j];
+            const sat = obbOverlap3d(
+              obbFromPart(partAabb({ type: pi3.type, ...pi3.params }), pi3.at ?? {}),
+              obbFromPart(partAabb({ type: pj3.type, ...pj3.params }), pj3.at ?? {}),
+            );
+            fine = sat.overlap ? { overlap: true, depthMm: sat.depth } : { overlap: false };
+            if (fine.overlap) note = '회전 3D OBB-SAT 겹침(로컬 AABB 기준 — 비박스 단면은 보수)';
+          } else if (fine.overlap) {
+            note = '회전 OBB-SAT 정밀 겹침';
+          }
           if (fine) {
             if (!fine.overlap) continue; // 실풋프린트 분리 — 과탐 제거
-            useDepth = fine.depthMm;
-            note = '회전 OBB-SAT 정밀 겹침';
+            if (fine.overlap) useDepth = fine.depthMm;
           }
         }
         const rec = { a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v), depthMm: +useDepth.toFixed(2), note };
