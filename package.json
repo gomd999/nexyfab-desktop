@@ -57,6 +57,7 @@
     "complex:scope:generate": "node scripts/build-complex-product-scope-assessment.mjs --write",
     "complex:scope:check": "node scripts/build-complex-product-scope-assessment.mjs --check",
     "commercial:preflight": "tsx scripts/preflight-check.ts",
+    "staging:isolation:check": "node scripts/audit-railway-environment-isolation.mjs",
     "browser:preflight": "node scripts/check-playwright-browsers.mjs",
     "e2e:staging:lifecycle": "cross-env E2E_STAGING_LIFECYCLE=1 playwright test e2e/staging-commercial-lifecycle.spec.ts --project=chromium",
     "backup:restore-drill": "node scripts/verify-backup-restore.mjs",

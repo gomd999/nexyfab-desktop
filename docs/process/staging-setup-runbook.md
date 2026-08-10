@@ -34,16 +34,24 @@ external testers join.
 
 ### D3 — Env vars
 
-Most env vars can be copied from prod. Three must differ:
+Most env vars can be copied from prod. The protected-state variables below
+must differ:
 
 | Var | Prod value | Staging value |
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | `https://nexyfab.com` | `https://nexyfab-staging.up.railway.app` |
 | `DB_URL` / `DATABASE_URL` | prod | per D1 above |
+| `REDIS_URL` | prod | separate staging Redis |
 | `JWT_SECRET` | prod secret | **different** secret (so prod tokens are invalid in staging) |
+| `S3_BUCKET` | prod bucket | separate staging bucket |
 
-Optional differences (skip in Wave 0, address as needed):
-- `STRIPE_*` — use Stripe test keys
+Required runtime differences when the provider is configured:
+- `DODO_*` — separate credentials/product IDs and `DODO_MODE=test`
+- `TOSS_*` — separate `test_` credentials
+- `STRIPE_*` — separate `sk_test_` credentials
+- `NEXYFAB_CAD_INDEPENDENT_MODE=1` — fail closed if distributed quota is unavailable
+
+Optional differences:
 - `AIRWALLEX_*` — sandbox
 - `RESEND_API_KEY` — separate sender domain or send to `/dev/null` via test API key
 - `SENTRY_DSN` — separate project so staging noise doesn't pollute prod issues
@@ -62,10 +70,13 @@ railway variables --set NEXT_PUBLIC_SITE_URL=https://nexyfab-staging.up.railway.
 railway variables --set JWT_SECRET=$(openssl rand -hex 32)
 # DB_URL handled per D1 (new Postgres service or restore from snapshot)
 
-# 4. Deploy the current branch
+# 4. Fail closed if staging still shares protected production state or live payment keys
+npm run staging:isolation:check
+
+# 5. Deploy the current branch
 railway up --service nexyfab.com --detach
 
-# 5. After deploy succeeds, verify URL
+# 6. After deploy succeeds, verify URL
 railway domain --service nexyfab.com
 ```
 
