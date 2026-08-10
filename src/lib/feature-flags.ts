@@ -21,6 +21,17 @@ export interface BetaFeature {
 }
 
 export const BETA_FEATURES: Record<string, BetaFeature> = {
+  complex_product_design: {
+    feature: 'Complex Product AI Design',
+    reason: 'Expert-assisted closed beta while exact CAD, drawing release, and broad-product evidence are completed',
+    limitations: [
+      'Gate-passed output is an engineering review package, not a manufacturing release certificate',
+      'Generated geometry is not yet applied to an editable workspace revision automatically',
+      'Exact CAD, full assembly motion/collision, manufacturing drawings, and independent approval remain mandatory for release',
+      'Only approved product families and reference fixtures may be used for governed pilots',
+    ],
+    workaround: 'Use the reference fixtures for evaluation and route real products through the expert review and precision-CAD handoff workflow',
+  },
   scad_agent: {
     feature: 'AI SCAD Agent',
     reason: 'Constraint solver runs JS fallback — WASM (Solvespace) port pending',

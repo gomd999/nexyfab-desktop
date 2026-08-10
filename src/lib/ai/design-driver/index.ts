@@ -44,6 +44,14 @@ export { buildPatternArtifact, patternGate, type PatternArtifact } from './patte
 export { buildCurvedArtifact, curvedGate, type CurvedArtifact } from './curvedGate';
 export { buildGdtArtifact, gdtGate, type GdtArtifact } from './gdtGate';
 export { buildDrawingArtifact, drawingGate, type DrawingArtifact, type PlannedMeasurement } from './drawingGate';
+export { buildExactDrawingArtifact, exactDrawingGate, type ExactDrawingArtifact, type ExactDrawingViewArtifact } from './exactDrawingGate';
+export {
+  buildManufacturingDrawingArtifact,
+  manufacturingDrawingGate,
+  type ManufacturingDrawingArtifact,
+  type ManufacturingDrawingDimensionRow,
+  type ManufacturingDrawingSheetArtifact,
+} from './manufacturingDrawingGate';
 export { buildDesignPackage, buildVerificationReport, planBomRows, REPORT_LIMITATIONS } from './packager';
 export {
   planWithConfidence,

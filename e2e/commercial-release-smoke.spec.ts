@@ -23,13 +23,14 @@ test.describe('Commercial release smoke', () => {
   test('shape generator workspace and ribbon load', async ({ page }) => {
     test.setTimeout(90_000);
     await seedShapeGeneratorForE2e(page);
-    const res = await page.goto('/en/shape-generator/', { waitUntil: 'domcontentloaded' });
+    const res = await page.goto('/en/shape-generator/?expert=1', { waitUntil: 'domcontentloaded' });
     expect(res?.ok() ?? false).toBeTruthy();
     await expect(page).toHaveURL(/\/en\/shape-generator/);
     await dismissShapeGeneratorOverlays(page);
     await expect(page.getByTestId('shape-generator-workspace')).toBeVisible({ timeout: 60000 });
     await exitSketchIfNeeded(page);
-    await expect(page.getByRole('button', { name: 'Evaluate' })).toBeVisible({ timeout: 30000 });
+    await expect(page.getByRole('button', { name: 'Solid', exact: true }).first()).toBeVisible({ timeout: 30000 });
+    await expect(page.getByRole('button', { name: 'Inspect', exact: true }).first()).toBeVisible({ timeout: 30000 });
     await expect(page).toHaveTitle(/NexyFab|Shape/i);
   });
 });

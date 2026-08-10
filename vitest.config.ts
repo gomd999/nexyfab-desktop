@@ -32,6 +32,13 @@ export default defineConfig({
     teardownTimeout: 30_000,
     /** Whole-suite 15min hard cap. If we ever blow past this it's almost certainly a hang, not real work. */
     bail: 0,
+    /**
+     * The full 2.3k-file suite exhausts memory and leaks jsdom work when Vitest
+     * derives its worker count from this high-core workstation. Four workers
+     * completed all 27k tests deterministically; keep the release command on
+     * that measured ceiling instead of depending on host CPU count.
+     */
+    maxWorkers: 4,
     /** Print slow tests so we can shrink them before they become hang candidates. */
     slowTestThreshold: 5_000,
     reporters: process.env.CI ? ['default'] : ['verbose'],

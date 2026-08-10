@@ -32,6 +32,7 @@ import {
   type ProjectedViewData,
 } from './projectViewsRpc';
 import { handleExportStepRequest } from './exportStepRpc';
+import { getOcctInitError, isOcctGlobalMode, isOcctReady } from '../features/occtEngine';
 
 // ─── Message types ───────────────────────────────────────────────────────────
 
@@ -81,6 +82,8 @@ export interface PipelineWorkerOutput {
   /** 파이프라인 결과의 B-rep 핸들(워커 레지스트리 소속 — PROJECT_VIEWS 로만
    *  사용 가능, 메인 스레드 레지스트리에선 조회 불가). */
   occtHandle?: string | null;
+  /** Serializable topology identity measured from the registry-owned OCCT shape. */
+  occtShapeEvidence?: { kind: string; singleSolid: boolean; nativeShapeType: number | null; solidCount: number | null; volumeMm3: number | null } | null;
   /** Progress percentage */
   progress?: number;
   /** Progress label */
@@ -99,6 +102,16 @@ export interface PipelineWorkerOutput {
    *  re-attach on the main thread (else the downgrade banner is blind to the
    *  worker path, the primary production eval). */
   meshDowngrades?: MeshDowngradeNotice[];
+  /** Non-sensitive worker execution state for support diagnostics. */
+  workerDiagnostic?: {
+    occtRequested: boolean;
+    occtReady: boolean;
+    occtInitError: string | null;
+    occtGlobalMode: boolean;
+    finalHandle: string | null;
+    userDataKeys: string[];
+    featureEngines: Array<{ type: string; engine: number | null }>;
+  };
   /** Face provenance (per-vertex `nfabFaceFeatureId` attribute + topology
    *  userData maps) — same boundary problem as topoEdgeSignatures: without
    *  this explicit ferry, persistent face selection silently degrades to
@@ -186,9 +199,22 @@ ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput |
       errors: result.errors,
       topoEdgeSignatures: outGeo.userData?.topoEdgeSignatures as PipelineWorkerOutput['topoEdgeSignatures'],
       meshDowngrades: collectDowngrades(outGeo),
+      workerDiagnostic: {
+        occtRequested: Boolean(occtMode),
+        occtReady: isOcctReady(),
+        occtInitError: getOcctInitError(),
+        occtGlobalMode: isOcctGlobalMode(),
+        finalHandle: (outGeo.userData?.occtHandle as string | undefined) ?? null,
+        userDataKeys: Object.keys(outGeo.userData ?? {}).sort(),
+        featureEngines: features.map(feature => ({
+          type: feature.type,
+          engine: Number.isFinite(feature.params.engine) ? feature.params.engine : null,
+        })),
+      },
       faceProvenance: outFaceProvenance,
       // F-4 후속 — 핸들 페리(워커 레지스트리 소속임을 소비자가 알도록 명시).
       occtHandle: (outGeo.userData?.occtHandle as string | undefined) ?? null,
+      occtShapeEvidence: (outGeo.userData?.occtShapeEvidence as PipelineWorkerOutput['occtShapeEvidence']) ?? null,
     };
 
     const transferables: ArrayBuffer[] = [outPositions.buffer as ArrayBuffer];

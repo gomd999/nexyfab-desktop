@@ -13,7 +13,7 @@ test.describe('Responsive design', () => {
 
   test('shape generator loads on tablet', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
-    await page.goto('/en/shape-generator');
+    await page.goto('/en/shape-generator?expert=1');
     await page.waitForTimeout(2000);
     await expect(page).toHaveURL(/shape-generator/);
   });

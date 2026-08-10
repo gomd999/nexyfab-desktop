@@ -18,6 +18,10 @@
 import { runDesignDriver } from '@/lib/ai/design-driver/designDriver';
 import { fixturePlanner } from '@/lib/ai/design-driver/fixturePlanner';
 import { chatCompletionPlanner } from '@/lib/ai/design-driver/llmPlanner';
+import {
+  buildEditableWorkspaceCandidate,
+  type EditableWorkspaceCandidate,
+} from '@/lib/ai/design-driver/workspaceCandidate';
 import type { DesignPlanner } from '@/lib/ai/design-driver/planner';
 import type {
   DesignBrief,
@@ -46,12 +50,44 @@ export const DEFAULT_PLANNER: DesignPlanner = {
   },
 };
 
+export interface BriefExecutionDisclosure {
+  /** Distinguishes reproducible catalog demos from an actual model-produced plan. */
+  mode: 'reference-fixture' | 'ai-generated';
+  /** Engineering gates are not a manufacturing release certificate. */
+  assuranceLevel: 'deterministic-reference' | 'engineering-screening';
+  manufacturingReleaseReady: false;
+  workspaceApplied: false;
+  humanReviewRequired: true;
+  exactCadRequiredForRelease: true;
+  releaseBlockers: string[];
+}
+
+export function buildBriefExecutionDisclosure(brief: DesignBrief): BriefExecutionDisclosure {
+  const fixture = typeof brief.params?.fixture === 'string' && brief.params.fixture.length > 0;
+  return {
+    mode: fixture ? 'reference-fixture' : 'ai-generated',
+    assuranceLevel: fixture ? 'deterministic-reference' : 'engineering-screening',
+    manufacturingReleaseReady: false,
+    workspaceApplied: false,
+    humanReviewRequired: true,
+    exactCadRequiredForRelease: true,
+    releaseBlockers: [
+      'editable_workspace_revision_not_applied',
+      'exact_cad_release_verification_required',
+      'manufacturing_drawing_release_review_required',
+      'independent_human_approval_required',
+    ],
+  };
+}
+
 export interface BriefPayloadOk {
   ok: true;
   planId: string;
   /** Verified package: per-part sheet IR + DXF + measured dims, BOM, assembly,
    *  verification report (gates + 근사/한계). */
   package: DesignPackage;
+  execution: BriefExecutionDisclosure;
+  workspaceCandidate: EditableWorkspaceCandidate;
 }
 
 export interface BriefPayloadRefused {
@@ -61,16 +97,24 @@ export interface BriefPayloadRefused {
   refusal: { stage: 'plan' | 'verify'; reason: string; failedGateIds: string[] };
   /** All gate results (empty when refused at plan stage). */
   gates: GateResult[];
+  execution: BriefExecutionDisclosure;
 }
 
 export type BriefPayload = BriefPayloadOk | BriefPayloadRefused;
 
 /** Map the driver's `DriverResult` to the surface-shared payload IR. */
-export function briefResultToPayload(result: DriverResult): BriefPayload {
+export function briefResultToPayload(result: DriverResult, brief: DesignBrief): BriefPayload {
+  const execution = buildBriefExecutionDisclosure(brief);
   if (result.ok) {
-    return { ok: true, planId: result.plan.planId, package: result.package };
+    return {
+      ok: true,
+      planId: result.plan.planId,
+      package: result.package,
+      execution,
+      workspaceCandidate: buildEditableWorkspaceCandidate(result.plan, result.package),
+    };
   }
-  return { ok: false, refusal: result.refusal, gates: result.gates };
+  return { ok: false, refusal: result.refusal, gates: result.gates, execution };
 }
 
 /**
@@ -116,7 +160,7 @@ export function parseBrief(body: unknown): { brief: DesignBrief } | { error: str
 
 /**
  * Run a brief through the design driver with the injected planner (default:
- * deterministic `fixturePlanner`). Returns the surface-shared payload IR —
+ * fixtures are deterministic; all other briefs use the real LLM). Returns the surface-shared payload IR —
  * a verified package or an explicit refusal.
  */
 export async function runDesignBrief(
@@ -124,5 +168,5 @@ export async function runDesignBrief(
   planner: DesignPlanner = DEFAULT_PLANNER,
 ): Promise<BriefPayload> {
   const result = await runDesignDriver(brief, { planner });
-  return briefResultToPayload(result);
+  return briefResultToPayload(result, brief);
 }

@@ -101,6 +101,7 @@ import { ASSEMBLY_FOCUS_PARTS_EVENT, ASSEMBLY_FOCUS_RESULT_EVENT, resolveAssembl
 import { advanceGenerationSession } from '../ai/generationSessionClient';
 import { buildEditedAiAssemblyProgram, packageAiAssemblyRevision } from '@/lib/ai/aiAssemblyRevision';
 import { AI_ASSEMBLY_REVISION_REQUEST_EVENT, AI_ASSEMBLY_REVISION_RESULT_EVENT, type AiAssemblyRevisionRequest, type AiAssemblyRevisionResult } from '@/lib/ai/aiAssemblyRevisionEvent';
+import type { JointEvidenceClaim } from '@/lib/reference/jointEvidenceReleaseGate';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -1598,6 +1599,65 @@ function applyPlanSteps(tree: FeatureTree, steps: readonly PlanStep[]): FeatureT
   return { nodes };
 }
 
+interface CommercialAssemblyVerificationResult {
+  releaseReady: boolean;
+  previewOk?: boolean;
+  assemblyCertificate?: {
+    solver?: string;
+    converged?: boolean;
+    exactCad?: 'pass' | 'fail' | 'not_run';
+    interference?: string;
+    dofAccepted?: boolean;
+    motion?: string;
+    jointEvidence?: string;
+    exactEvidenceConsistent?: boolean;
+  };
+  exactCadEvidence?: Record<string, {
+    solidCount: number;
+    stepSha256: string;
+    stepRoundTripVolumeRelError: number;
+  }>;
+  flaggedInterferences?: unknown[];
+  verificationUnavailable?: string[];
+  preciseInterference?: { status?: string };
+  verificationInputHash?: string;
+  jointEvidenceGate?: { status?: string; manufacturingReleaseEligible?: boolean; errors?: string[] };
+  releaseCertificate?: {
+    schema: 'nexyfab.assembly-release-certificate.v1';
+    verificationInputHash: string;
+    certificateSha256: string;
+    releaseReady: boolean;
+    blockers: string[];
+    checks: Record<string, boolean | 'not_required'>;
+    evidence: Record<string, unknown>;
+    releaseExecuted: false;
+    quoteOrRfqSideEffects: false;
+  };
+}
+
+interface CommercialMotionVerificationResult {
+  releaseReady: boolean;
+  verificationInputHash: string;
+  precise?: {
+    status?: 'completed' | 'incomplete' | 'not_run';
+    collisionFree?: boolean;
+    geometryErrors?: string[];
+    failureCodes?: string[];
+    exactCadEvidence?: Record<string, {
+      solidCount: number;
+      stepSha256: string;
+      stepRoundTripVolumeRelError: number;
+    }>;
+    continuous?: { timeOfImpact?: PreciseCollisionTimeEvidence[] };
+  };
+  jointEvidenceGate?: {
+    status?: 'pass' | 'fail' | 'not_run';
+    manufacturingReleaseEligible?: boolean;
+    usage?: string;
+    errors?: string[];
+  };
+}
+
 export default function AssemblyBrowserModal({
   lang,
   initialState,
@@ -1769,6 +1829,13 @@ export default function AssemblyBrowserModal({
     | { status: 'ok'; result: AssemblyBrowserSolveResult }
     | { status: 'error'; message: string }
   >({ status: 'idle' });
+  const [commercialVerification, setCommercialVerification] = useState<
+    | { status: 'idle' }
+    | { status: 'loading' }
+    | { status: 'ok'; result: CommercialAssemblyVerificationResult }
+    | { status: 'error'; message: string }
+  >({ status: 'idle' });
+  const [commercialAllowedDoF,setCommercialAllowedDoF]=useState(0);
 
   /**
    * Phase 3.2 — solver picker selection. 'auto' lets the server choose
@@ -3041,17 +3108,39 @@ export default function AssemblyBrowserModal({
   const [animationPlaying, setAnimationPlaying] = useState(false);
   const [animationPackageError,setAnimationPackageError]=useState<string|null>(null);
   const [animationCommand,setAnimationCommand]=useState('');
+  const [motionVerification,setMotionVerification]=useState<CommercialMotionVerificationResult|null>(null);
+  const [jointEvidence,setJointEvidence]=useState<JointEvidenceClaim|null>(null);
+  const jointEvidenceImportRef=useRef<HTMLInputElement|null>(null);
+  const commercialJointEvidenceImportRef=useRef<HTMLInputElement|null>(null);
   const runAnimationCommand=useCallback(()=>{try{const result=applyAssemblyAnimationCommand(state,animation,animationCommand);setAnimation(result.animation);setAnimationPackageError(null);}catch(error){setAnimationPackageError(error instanceof Error?error.message:String(error));}},[animation,animationCommand,state]);
   const animationImportRef=useRef<HTMLInputElement|null>(null);
   const exportAnimation=useCallback(()=>{try{const blob=new Blob([serializeAssemblyAnimationPackage(state,animation,featureTrees)],{type:'application/json'}),url=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=url;anchor.download=`${projectId??'assembly'}-animation.json`;document.body.appendChild(anchor);anchor.click();anchor.remove();URL.revokeObjectURL(url);setAnimationPackageError(null);}catch(error){setAnimationPackageError(error instanceof Error?error.message:String(error));}},[animation,featureTrees,projectId,state]);
   const exportAnimationHtml=useCallback(()=>{try{const blob=new Blob([buildStandaloneAssemblyHtml(state,animation,featureTrees)],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=url;anchor.download=`${projectId??'assembly'}-animation.html`;document.body.appendChild(anchor);anchor.click();anchor.remove();URL.revokeObjectURL(url);setAnimationPackageError(null);}catch(error){setAnimationPackageError(error instanceof Error?error.message:String(error));}},[animation,featureTrees,projectId,state]);
   const exportAnimationGlb=useCallback(async()=>{try{if(!viewerViewport)throw new Error('Open the 3D view and wait for all part geometry before exporting GLB.');const bytes=await encodeAssemblyGlb(viewerViewport.scene,state,animation);await downloadBlob(`${projectId??'assembly'}-animation.glb`,new Blob([bytes],{type:'model/gltf-binary'}));setAnimationPackageError(null);}catch(error){setAnimationPackageError(error instanceof Error?error.message:String(error));}},[animation,projectId,state,viewerViewport]);
   const importAnimation=useCallback(async(file:File)=>{try{const p=parseAssemblyAnimationPackage(await file.text());history.recordChange(p.state,'Import animation package');setFeatureTrees(p.featureTrees);setAnimation(p.animation);setAnimationFrame(p.animation.startFrame);setAnimationPlaying(false);setAnimationPackageError(null);}catch(error){setAnimationPackageError(error instanceof Error?error.message:String(error));}},[history,setFeatureTrees]);
+  const importJointEvidence=useCallback(async(file:File)=>{try{if(file.size>2*1024*1024)throw new Error('Joint evidence JSON must be 2 MiB or smaller.');const value=JSON.parse(await file.text()) as unknown;if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('Joint evidence must be a JSON object.');setJointEvidence(value as JointEvidenceClaim);setMotionVerification(null);setCommercialVerification({status:'idle'});setAnimationPackageError(null);}catch(error){setJointEvidence(null);setCommercialVerification({status:'idle'});setAnimationPackageError(error instanceof Error?error.message:String(error));}},[]);
   const animationLocalBoxes=useMemo(()=>Object.fromEntries(Object.entries(featureTrees).flatMap(([id,tree])=>{const b=bboxFromFeatureTree(tree);return b?[[id,{min:{x:b.cx-b.sx/2,y:b.cy-b.sy/2,z:b.cz-b.sz/2},max:{x:b.cx+b.sx/2,y:b.cy+b.sy/2,z:b.cz+b.sz/2}}]]:[];})),[featureTrees]);
+  useEffect(()=>setCommercialVerification({status:'idle'}),[featureTrees,state]);
+  const runCommercialVerification=useCallback(async()=>{
+    setCommercialVerification({status:'loading'});
+    try{
+      const response=await fetch('/api/cad/v1/assembly/release/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
+        state,featureTrees,solver:solverSelection,useGroups:useGroupsOn||undefined,maxParallel:useGroupsOn?clampedMaxParallel:undefined,
+        allowedDoF:commercialAllowedDoF,intendedContacts:[],
+        ...(commercialAllowedDoF>0?{animation}:{}),
+        ...(jointEvidence?{jointEvidence}:{}),
+      })});
+      const json=await response.json() as CommercialAssemblyVerificationResult&{ok?:boolean;message?:string};
+      if(!response.ok||json.ok===false)throw new Error(json.message??`Manufacturing verification failed (${response.status})`);
+      setCommercialVerification({status:'ok',result:json});
+    }catch(error){setCommercialVerification({status:'error',message:error instanceof Error?error.message:String(error)});}
+  },[animation,clampedMaxParallel,commercialAllowedDoF,featureTrees,jointEvidence,solverSelection,state,useGroupsOn]);
+  const downloadAssemblyReleaseCertificate=useCallback(async()=>{const result=commercialVerification.status==='ok'?commercialVerification.result:null;if(!result?.releaseCertificate)return;const certificate=result.releaseCertificate;await downloadBlob(`assembly-release-certificate-${certificate.verificationInputHash}.json`,new Blob([`${JSON.stringify(certificate,null,2)}\n`],{type:'application/json'}));},[commercialVerification]);
   const animationVerification = useMemo(() => animation.tracks.length ? verifyAssemblyAnimationWithRecovery(state,animation,new Map(Object.entries(animationLocalBoxes)),{frameStep:Math.max(1,Math.ceil((animation.endFrame-animation.startFrame)/200))}).verification : null, [animation, animationLocalBoxes, state]);
   const [preciseTimeOfImpact,setPreciseTimeOfImpact]=useState<PreciseCollisionTimeEvidence[]|null>(null),[preciseAnimationBusy,setPreciseAnimationBusy]=useState(false);
-  useEffect(()=>setPreciseTimeOfImpact(null),[animation,featureTrees,state]);
-  const runPreciseAnimationVerification=useCallback(async()=>{setPreciseAnimationBusy(true);try{const response=await fetch('/api/cad/v1/assembly/animation/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({state,animation,localBoxes:animationLocalBoxes,featureTrees,frameStep:Math.max(1,Math.ceil((animation.endFrame-animation.startFrame)/200)),toiFrameTolerance:1e-3,toiMaxDepth:20})}),json=await response.json() as {ok?:boolean;message?:string;precise?:{continuous?:{timeOfImpact?:PreciseCollisionTimeEvidence[]}}};if(!response.ok||!json.ok)throw new Error(json.message??`Precise animation verification failed (${response.status})`);setPreciseTimeOfImpact(json.precise?.continuous?.timeOfImpact??[]);setAnimationPackageError(null);}catch(error){setPreciseTimeOfImpact(null);setAnimationPackageError(error instanceof Error?error.message:String(error));}finally{setPreciseAnimationBusy(false);}},[animation,animationLocalBoxes,featureTrees,state]);
+  useEffect(()=>{setPreciseTimeOfImpact(null);setMotionVerification(null);setJointEvidence(null);setCommercialVerification({status:'idle'});},[animation,featureTrees,state]);
+  const runPreciseAnimationVerification=useCallback(async()=>{setPreciseAnimationBusy(true);try{const response=await fetch('/api/cad/v1/assembly/animation/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({state,animation,featureTrees,frameStep:Math.max(1,Math.ceil((animation.endFrame-animation.startFrame)/200)),toiFrameTolerance:1e-3,toiMaxDepth:20,...(jointEvidence?{jointEvidence}:{})})}),json=await response.json() as CommercialMotionVerificationResult&{ok?:boolean;message?:string};if(!response.ok||!json.ok)throw new Error(json.message??`Precise animation verification failed (${response.status})`);setMotionVerification(json);setPreciseTimeOfImpact(json.precise?.continuous?.timeOfImpact??[]);setAnimationPackageError(null);}catch(error){setMotionVerification(null);setPreciseTimeOfImpact(null);setAnimationPackageError(error instanceof Error?error.message:String(error));}finally{setPreciseAnimationBusy(false);}},[animation,featureTrees,jointEvidence,state]);
+  const downloadMotionReviewPacket=useCallback(async()=>{if(!motionVerification)return;const packet={schema:'nexyfab.motion-review-work-packet.v1',verificationInputHash:motionVerification.verificationInputHash,exactCadEvidence:motionVerification.precise?.exactCadEvidence??{},collisionVerification:{status:motionVerification.precise?.status??'not_run',collisionFree:motionVerification.precise?.collisionFree===true,failureCodes:motionVerification.precise?.failureCodes??[]},requiredEvidence:{schema:'nexyfab.native-cad-expert-review.v1',dualIndependentSignoff:true,nativeJointSemantics:true},releaseExecuted:false};await downloadBlob(`assembly-motion-review-${motionVerification.verificationInputHash}.json`,new Blob([`${JSON.stringify(packet,null,2)}\n`],{type:'application/json'}));},[motionVerification]);
   /** State handed to Assembly3DViewer — animation is evaluated without mutating design history. */
   const viewerState = useMemo(() => {
     const base = explodeOpen ? interpolateExplode(state, effectiveExploded, explodeAmount) : state;
@@ -4109,11 +4198,20 @@ export default function AssemblyBrowserModal({
               <AssemblyAnimationTimeline animation={animation} frame={animationFrame} playing={animationPlaying} onFrameChange={setAnimationFrame} onPlayingChange={setAnimationPlaying} verification={animationVerification} timeOfImpact={preciseTimeOfImpact}/>
               <div style={{display:'flex',gap:6,alignItems:'center'}}>
                 <button type="button" data-testid="solver-assembly-add-keyframe" disabled={!selectedPartId} onClick={addSelectedPoseKeyframe}>◆ Keyframe</button>
-                <button type="button" data-testid="solver-assembly-precise-animation-verify" disabled={preciseAnimationBusy||!animation.tracks.length} onClick={()=>void runPreciseAnimationVerification()}>{preciseAnimationBusy?'Verifying…':'Precise collision'}</button>
+                <button type="button" data-testid="solver-assembly-precise-animation-verify" disabled={preciseAnimationBusy||!animation.tracks.length} onClick={()=>void runPreciseAnimationVerification()}>{preciseAnimationBusy?'Verifying…':(lang==='ko'?'상용 운동 검증':'Manufacturing motion')}</button>
                 <label style={{fontSize:11}}>End <input aria-label="Animation end frame" type="number" min={1} max={100000} value={animation.endFrame} onChange={event=>setAnimation(previous=>({...previous,endFrame:Math.max(previous.startFrame+1,Number(event.target.value)||1)}))} style={{width:70}}/></label>
                 <label style={{fontSize:11}}>FPS <input aria-label="Animation FPS" type="number" min={1} max={240} value={animation.fps} onChange={event=>setAnimation(previous=>({...previous,fps:Math.max(1,Math.min(240,Number(event.target.value)||30))}))} style={{width:55}}/></label>
                 <button type="button" onClick={exportAnimation}>Export JSON</button><button type="button" onClick={exportAnimationHtml}>Export HTML</button><button type="button" onClick={()=>void exportAnimationGlb()}>Export GLB</button><button type="button" onClick={()=>animationImportRef.current?.click()}>Import JSON</button><input ref={animationImportRef} type="file" accept="application/json,.json" hidden onChange={event=>{const file=event.target.files?.[0];if(file)void importAnimation(file);event.target.value='';}}/>
+                <button type="button" data-testid="solver-assembly-joint-evidence-import" onClick={()=>jointEvidenceImportRef.current?.click()}>{jointEvidence?(lang==='ko'?'조인트 증거 로드됨':'Joint evidence loaded'):(lang==='ko'?'서명 조인트 증거':'Signed joint evidence')}</button><input data-testid="solver-assembly-joint-evidence-file" ref={jointEvidenceImportRef} type="file" accept="application/json,.json" hidden onChange={event=>{const file=event.target.files?.[0];if(file)void importJointEvidence(file);event.target.value='';}}/>
               </div>
+              {motionVerification&&<div data-testid="solver-assembly-motion-verify-result" role="status" style={{fontSize:11,padding:7,border:`1px solid ${motionVerification.releaseReady?'#6ee7b7':'#fdba74'}`,background:motionVerification.releaseReady?'#ecfdf5':'#fff7ed',borderRadius:4}}>
+                <strong>{motionVerification.releaseReady?(lang==='ko'?'운동 출시 게이트 통과':'Motion release gate passed'):(lang==='ko'?'운동 출시 게이트 차단':'Motion release gate blocked')}</strong>
+                {' · '}precise {motionVerification.precise?.status??'not_run'} · collision-free {motionVerification.precise?.collisionFree?'yes':'no'} · exact parts {Object.keys(motionVerification.precise?.exactCadEvidence??{}).length}/{state.parts.length} · joint {motionVerification.jointEvidenceGate?.status??'not_run'}
+                <div data-testid="solver-assembly-motion-review-hash">review target {motionVerification.verificationInputHash}</div>
+                {(motionVerification.precise?.failureCodes?.length??0)>0&&<div>{motionVerification.precise!.failureCodes!.join(' · ')}</div>}
+                {(motionVerification.jointEvidenceGate?.errors?.length??0)>0&&<div>{motionVerification.jointEvidenceGate!.errors!.join(' · ')}</div>}
+                <button type="button" data-testid="solver-assembly-motion-review-download" onClick={()=>void downloadMotionReviewPacket()}>{lang==='ko'?'전문가 검토 패킷':'Expert review packet'}</button>
+              </div>}
               {animationPackageError&&<div role="alert" style={{fontSize:11,color:'#dc2626'}}>{animationPackageError}</div>}
               <div style={{display:'flex',gap:6}}><input aria-label="Animation command" value={animationCommand} onChange={event=>setAnimationCommand(event.target.value)} placeholder="0~100프레임 arm X축 100mm 이동" style={{flex:1}}/><button type="button" onClick={runAnimationCommand}>AI timeline</button></div>
               {/* ── RRRRR Agent: PartManipulatorGizmo integration ──
@@ -4793,6 +4891,30 @@ export default function AssemblyBrowserModal({
             }}
           >
             {solveState.message}
+          </div>
+        )}
+        {commercialVerification.status === 'error' && (
+          <div data-testid="solver-assembly-commercial-verify-error" role="alert" style={{fontSize:12,color:'#b91c1c',padding:8,background:'#fef2f2',border:'1px solid #fecaca',borderRadius:4}}>
+            {commercialVerification.message}
+          </div>
+        )}
+        {commercialVerification.status === 'ok' && (
+          <div data-testid="solver-assembly-commercial-verify-result" role="status" style={{fontSize:12,padding:8,background:commercialVerification.result.releaseReady?'#ecfdf5':'#fff7ed',border:`1px solid ${commercialVerification.result.releaseReady?'#6ee7b7':'#fdba74'}`,borderRadius:4}}>
+            <strong>{commercialVerification.result.releaseReady?(lang==='ko'?'정확 조립 출시 게이트 통과':'Exact assembly release gate passed'):(lang==='ko'?'정확 조립 출시 게이트 차단':'Exact assembly release gate blocked')}</strong>
+            {' · '}OCCT/STEP {commercialVerification.result.assemblyCertificate?.exactCad??'not_run'}
+            {' · '}interference {commercialVerification.result.assemblyCertificate?.interference??'not_run'}
+            {' · '}DoF {commercialVerification.result.assemblyCertificate?.dofAccepted?'accepted':'blocked'}
+            {' · '}motion {commercialVerification.result.assemblyCertificate?.motion??'not_run'}
+            {' · '}joint {commercialVerification.result.assemblyCertificate?.jointEvidence??commercialVerification.result.jointEvidenceGate?.status??'not_run'}
+            {' · '}same exact evidence {commercialVerification.result.assemblyCertificate?.exactEvidenceConsistent===false?'no':'yes'}
+            <div data-testid="solver-assembly-commercial-exact-count">
+              {lang==='ko'?'STEP 왕복 검증 부품':'STEP round-trip parts'}: {Object.keys(commercialVerification.result.exactCadEvidence??{}).length}/{state.parts.length}
+            </div>
+            {commercialVerification.result.releaseCertificate&&<>
+              <div data-testid="solver-assembly-release-certificate-hash">release target {commercialVerification.result.releaseCertificate.verificationInputHash} · certificate {commercialVerification.result.releaseCertificate.certificateSha256}</div>
+              <button type="button" data-testid="solver-assembly-release-certificate-download" onClick={()=>void downloadAssemblyReleaseCertificate()}>{lang==='ko'?'통합 릴리스 인증서':'Unified release certificate'}</button>
+            </>}
+            {(commercialVerification.result.verificationUnavailable?.length??0)>0&&<div>{commercialVerification.result.verificationUnavailable!.join(' · ')}</div>}
           </div>
         )}
         {solveState.status === 'ok' && (
@@ -5595,6 +5717,26 @@ export default function AssemblyBrowserModal({
               />
             </label>
           )}
+          <label style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,color:'var(--nx-text-2)'}}>
+            {lang==='ko'?'허용 DoF':'Allowed DoF'}
+            <input data-testid="solver-assembly-commercial-allowed-dof" aria-label="Commercial allowed DoF" type="number" min={0} max={100} step={1} value={commercialAllowedDoF} onChange={event=>setCommercialAllowedDoF(Math.max(0,Math.min(100,Math.floor(Number(event.target.value)||0))))} style={{width:52,padding:'4px 5px'}}/>
+          </label>
+          {commercialAllowedDoF>0&&<>
+            <button type="button" data-testid="solver-assembly-commercial-joint-evidence-import" onClick={()=>commercialJointEvidenceImportRef.current?.click()} style={{padding:'7px 10px',fontSize:11}}>
+              {jointEvidence?(lang==='ko'?'서명 조인트 증거 로드됨':'Signed joint evidence loaded'):(lang==='ko'?'서명 조인트 증거 업로드':'Upload signed joint evidence')}
+            </button>
+            <input ref={commercialJointEvidenceImportRef} data-testid="solver-assembly-commercial-joint-evidence-file" type="file" accept="application/json,.json" hidden onChange={event=>{const file=event.target.files?.[0];if(file)void importJointEvidence(file);event.target.value='';}}/>
+            {animation.tracks.length===0&&<span data-testid="solver-assembly-commercial-motion-required" style={{fontSize:10,color:'#b45309'}}>{lang==='ko'?'가동 조립은 키프레임 운동이 필요합니다':'Movable release requires governed keyframe motion'}</span>}
+          </>}
+          <button
+            type="button"
+            onClick={()=>void runCommercialVerification()}
+            disabled={commercialVerification.status==='loading'||hasFeatureTreeError||state.parts.length===0||state.parts.some(part=>!featureTrees[part.id])||(commercialAllowedDoF>0&&animation.tracks.length===0)}
+            data-testid="solver-assembly-commercial-verify"
+            style={{padding:'8px 14px',fontSize:12,fontWeight:600,background:'#7c3aed',color:'#fff',border:'1px solid #6d28d9',borderRadius:4,cursor:'pointer'}}
+          >
+            {commercialVerification.status==='loading'?(lang==='ko'?'정확 검증 중…':'Exact verifying…'):(lang==='ko'?'상용 정확 검증':'Manufacturing verify')}
+          </button>
           <button
             type="button"
             onClick={onSolveClick}

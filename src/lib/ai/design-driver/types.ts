@@ -320,9 +320,8 @@ export interface CurvedSpec {
  * 한계(명시):
  *   · 관통과 블라인드 둘 다 지원(블라인드는 브리지의 buildPrismAt로 윗면 기준 배치).
  *     깊이가 두께 이상이면 관통으로 둔갑시키지 않고 거부한다.
- *   · 공구는 정n각형 프리즘(기본 64각형)이라 원기둥의 **테셀레이션 근사**다. 게이트는
- *     그 사실을 노트로 밝히고, 기대 부피도 테셀레이션 면적 기준으로 계산한다
- *     (πr² 로 검사하면 스스로 못 맞추는 기준을 세우는 셈 — sb-stepped-shaft 선례와 동일 사상).
+ *   · 원형 공구는 샘플 루프로 전달되지만 OCCT 분석형 원통으로 승격됐다는 커널 확인이
+ *     없으면 거부한다. 기대 부피도 정확한 πr² 기준이며 다각형 절삭은 허용하지 않는다.
  */
 export interface HoleSpec {
   /** Stable id within the part (naming/보고용). */
@@ -352,9 +351,9 @@ export interface HoleSpec {
   /** blind only: depth from the TOP face, mm. Must be > 0 and < the thickness. */
   depthMm?: number;
   /**
-   * Tool tessellation segments. Default 64, clamped to [12, 256]. Must be the
-   * SAME for every hole in the part — one part, one stated deviation (mixed
-   * values are refused, not silently unified).
+   * Circular-loop recognition sample count. Default 64, clamped to [16, 256].
+   * This is transport encoding only: accepted round tools are exact analytic
+   * OCCT cylinders. Mixed values in one part are refused for determinism.
    */
   segments?: number;
 }
@@ -558,7 +557,7 @@ export interface DesignPlan {
 
 // ─── gate IR ─────────────────────────────────────────────────────────────
 
-export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern' | 'gdt' | 'weldment' | 'fastener' | 'pattern' | 'curved' | 'hole';
+export type GateKind = 'geometry' | 'exact-cad' | 'exact-drawing' | 'manufacturing-drawing' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern' | 'gdt' | 'weldment' | 'fastener' | 'pattern' | 'curved' | 'hole';
 
 export interface GateResult {
   /** `${kind}:${scope}` — e.g. 'geometry:bracket', 'assembly', 'drawing:pin'. */
@@ -668,6 +667,69 @@ export interface PartPackage {
   dimensions: MeasuredDimensionEntry[];
   /** Measured mesh volume, mm³ (geometry gate value, restated). */
   volumeMm3: number;
+  /** Mandatory exact OCCT B-rep bodies and STEP round-trip evidence. */
+  exactCad: {
+    exactVolumeMm3: number;
+    bodies: Array<{
+      bodyId: string;
+      source: 'direct-extrude' | 'direct-revolve' | 'hole-step' | 'curved-step';
+      volumeMm3: number;
+      faceCount: number;
+      edgeCount: number;
+      degeneratedEdgeCount: number;
+      boundaryEdgeCount: number;
+      nonManifoldEdgeCount: number;
+      analyticCylinder: boolean;
+      roundTripVolumeRelError: number;
+      roundTripDegeneratedEdgeCount: number;
+      roundTripBoundaryEdgeCount: number;
+      roundTripNonManifoldEdgeCount: number;
+      step: string;
+    }>;
+  };
+  /** Exact front/top/right OCCT HLR projections derived from packaged STEP. */
+  exactDrawing: {
+    views: Array<{
+      bodyId: string;
+      view: 'front' | 'top' | 'right';
+      method: 'replicad-hlr' | 'analytic-sphere-fallback';
+      visiblePathCount: number;
+      hiddenPathCount: number;
+      analyticCurveEvidence: boolean;
+      sourceStepSha256: string;
+      svgSha256: string;
+      svg: string;
+      curveRecordSha256: string;
+      curveCount: number;
+      curveTypes: number[];
+      exactDxfSha256: string;
+      exactDxf: string;
+    }>;
+  };
+  /** Exact-HLR engineering drawing work packet. Human approval is mandatory. */
+  manufacturingDrawing: {
+    releaseEligible: false;
+    releaseBlockers: string[];
+    plannedDimensionCount: number;
+    includedDimensionCount: number;
+    sheets: Array<{
+      schema: 'nexyfab.manufacturing-drawing-sheet.v1';
+      partId: string;
+      bodyId: string;
+      role: 'geometry-and-dimensions' | 'dimension-continuation';
+      sheetNumber: number;
+      sheetCount: number;
+      paperSize: PaperSize;
+      widthMm: number;
+      heightMm: number;
+      sourceStepSha256: string;
+      exactViewCount: number;
+      dimensionCount: number;
+      releaseStatus: 'engineering-review-required';
+      svgSha256: string;
+      svg: string;
+    }>;
+  };
   /** Present iff the part declared a sheetMetal spec (WB-2 flat pattern). */
   sheetMetal?: SheetMetalFlatPattern;
   /** Present iff the part declared a weldment spec (WB-3 cut list). */
@@ -686,7 +748,7 @@ export interface PartPackage {
 
 export interface HoleResult {
   count: number;
-  /** Tool tessellation segments actually used (regular n-gon prism). */
+  /** Circular-loop recognition samples used to request an analytic cylinder. */
   segments: number;
   /** REAL kernel volume of the base extrude solid, mm³. */
   baseVolumeMm3: number;
@@ -702,8 +764,7 @@ export interface HoleResult {
     id: string; label: string; shape: 'round' | 'rect';
     atX: number; atY: number; depthMm: number | null; removedMm3: number;
   }>;
-  /** n-gon area ÷ circle area − 1 for ROUND tools (근사 명시: the tool under-cuts a
-   *  true cylinder). 0 when every declared hole is rectangular (exact tool). */
+  /** Backward-compatible approximation metric; 0 for exact analytic tools. */
   tessellationAreaRelDev: number;
   /** STEP of the cut solid (best-effort). */
   step?: string;

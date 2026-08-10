@@ -81,8 +81,8 @@ test.describe('Collab — awareness latency (Phase 3 hands-on)', () => {
     await seedShapeGeneratorForE2e(bobPage);
 
     const room = sharedRoomId();
-    const aliceUrl = `/en/shape-generator?roomId=${room}&crdt=v2`;
-    const bobUrl = `/en/shape-generator?roomId=${room}&crdt=v2`;
+    const aliceUrl = `/en/shape-generator?expert=1&roomId=${room}&crdt=v2`;
+    const bobUrl = `/en/shape-generator?expert=1&roomId=${room}&crdt=v2`;
 
     try {
       await Promise.all([

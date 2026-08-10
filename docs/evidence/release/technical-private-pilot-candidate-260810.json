@@ -18,7 +18,7 @@
     "runtimeKernelMode": "wasm-only-no-stub",
     "closedBetaIntegrity": {
       "status": "pass",
-      "reportSha256": "2577b2c717e4e3455ac9d7d83143d97ad3959dd1dca9b40b2f20132eaffb8f58",
+      "reportSha256": "5d69f2def2ff2acb674df275ae744b5450b517ce0ec0c29fe18d606ce5766a76",
       "tableDiff": 0,
       "fileDiff": 0
     },
@@ -47,7 +47,7 @@
         "id": "ai-complex-product",
         "support": "preview",
         "publicClaimAllowed": false,
-        "evidenceSha256": "7f649364fd5b5140ce997cdafd01a8f9f3d2fe0e365efef5bb37a233ea2f788c",
+        "evidenceSha256": "fcf373df64af1a69df7abe148363ba2a3dbf4d8154219b1c4a8c73c3ae9bbaa9",
         "samples": 0,
         "passed": 0,
         "independentHoldout": false,
@@ -60,7 +60,7 @@
         "id": "manual-parametric-editing",
         "support": "preview",
         "publicClaimAllowed": false,
-        "evidenceSha256": "74f246a49d7a0985c2c4a90501722cd55a72445505908d543f75f028842c284b",
+        "evidenceSha256": "3321da918cda13f5047cd69d27defbbb29c2b7f14de7e7b4eb925b7c72fb90ae",
         "samples": 0,
         "passed": 0,
         "independentHoldout": false,
@@ -73,7 +73,7 @@
         "id": "expert-precision-cad",
         "support": "preview",
         "publicClaimAllowed": false,
-        "evidenceSha256": "f530ff8c098c14b5e3e276ba1c42dc2cb48fb8544d1b28e61f87549c619c0363",
+        "evidenceSha256": "e9919832be2379365f89847349a617ff3731e6557da2fc0a94fd7ba05e5d1835",
         "samples": 0,
         "passed": 0,
         "independentHoldout": false,
@@ -86,7 +86,7 @@
         "id": "assembly-motion",
         "support": "preview",
         "publicClaimAllowed": false,
-        "evidenceSha256": "92f77646afa5c3c913024683a23e70e2c73d1f8a88402f942cca6818b52733d4",
+        "evidenceSha256": "1c2ef89b27193f35f18b93bca62334653f7a49b543fcf9f3a37805d8632c0caf",
         "samples": 0,
         "passed": 0,
         "independentHoldout": false,
@@ -99,7 +99,7 @@
         "id": "continuous-collision",
         "support": "preview",
         "publicClaimAllowed": false,
-        "evidenceSha256": "bf910c8ed4fe097abc88302a1aa413ba580cd4fbe0b7e26d05eeffc380adbb9f",
+        "evidenceSha256": "8e7ed1be76d17d81c12e8ba64f302c2f325a3bad943f6bf42368afed5b3474f2",
         "samples": 0,
         "passed": 0,
         "independentHoldout": false,
@@ -112,7 +112,7 @@
         "id": "step-exchange",
         "support": "preview",
         "publicClaimAllowed": false,
-        "evidenceSha256": "77e85bc137b48fe760881f8362fb20ce6a7688f63044ae40115eee28d66a6815",
+        "evidenceSha256": "e78a6da759b4a998b8e7b7860c02e71fdeb1e7f42b6d5f6bcda169b85706ca91",
         "samples": 0,
         "passed": 0,
         "independentHoldout": false,
@@ -125,7 +125,7 @@
         "id": "drawing-bom-manufacturing",
         "support": "preview",
         "publicClaimAllowed": false,
-        "evidenceSha256": "32de68ba1d31bfc270d7536574631ba9727c1fc3792de3b62c2b2764aa442ce3",
+        "evidenceSha256": "b3315725e2c9e5314b0a335eb6e592f7886085546804a2a2707caf857b68c850",
         "samples": 0,
         "passed": 0,
         "independentHoldout": false,
@@ -141,7 +141,7 @@
       "monitoring": "fail",
       "workerResume": "fail",
       "performanceBudget": "fail",
-      "evidenceSha256": "1cfd63e99051e00c1cf96098a29b68622d82bacbc36336b99ad6673dd99e3bca"
+      "evidenceSha256": "68dfbfde2b4600631c874ae2aa44436521012cff2c31811f4906519adabe5a47"
     }
   },
   "auditIssues": [
@@ -433,7 +433,7 @@
     "domain.landscape:approved_signed_independent_campaign_missing",
     "domain.interior:approved_signed_independent_campaign_missing"
   ],
-  "generatedAt": "2026-08-09T23:47:22.118Z",
+  "generatedAt": "2026-08-10T21:43:02.908Z",
   "evidencePolicy": {
     "localTestsMayProveImplementationButNotIndependentAccuracy": true,
     "dryRunsMayNotCertifyRelease": true,
@@ -454,13 +454,24 @@
     "docs/evidence/topology-survival-260806/run-8.json": "933d4aae046c11236b1f9d24bbdc010eb190b6846681fb0f0c6c3a4373a63c62",
     "docs/evidence/workspace/design-workspace-revision-260810.json": "360a072a4b5f06a16845fb47ca761aae362661d513efb0fc5f949762f79e57c5",
     "scripts/perf-benchmark.mjs": "254e7289e894416cbea540affd377efc55d054649714c29ddaa7132528828807",
-    "scripts/verify-backup-restore.mjs": "061810ff186fb5c5cc5a12e36a0613e71a2ca817e87620040fac0ed6e7fc7d34",
+    "scripts/verify-backup-restore.mjs": "75f70c684c137745fb0d0d327f201e944b571eadde8ad06a2ca5a1592c5b45ec",
     "scripts/verify-rollback-target.mjs": "2734b3ba75d40654bb9c108515186b28845ead4551e656ab7ac72eea6aa10710",
+    "src/app/[lang]/shape-generator/design-brief/workspaceCandidateToModeler.ts": "7d1ce28a22f47c458eb850ea3cd698b8c1b3a3b4725e32943141058477228f44",
+    "src/app/[lang]/shape-generator/design-brief/workspaceRevisionVerification.ts": "b6deebcc63fed696020506db9858c77074f5d519e00229d7c4d83e9e7c81dd4a",
+    "src/app/api/cad/v1/assembly/release/verify/route.ts": "b03157e184782b669978a2fec6e72b105185fa65ab1438f47b882df165872071",
+    "src/lib/ai/design-driver/exactCadGate.ts": "5ee3b689f903419b7ac7a292b39511d446583621428d858b3f1d7319097fb4ad",
+    "src/lib/ai/design-driver/exactDrawingGate.ts": "abbc014090087ca5a5962a04f0d4eaf951de34ff44b172ba6236c04dd2e75759",
+    "src/lib/ai/design-driver/manufacturingDrawingGate.ts": "4e38d31199c112baef0164f6fe49de73a2a1ec2b274ef4beb6d57f5019fa968f",
+    "src/lib/ai/design-driver/workspaceCandidate.ts": "47c3f2328051a1339269ad281ce70429cb6ec7dc0f6f6502f81fd9428a99e2d7",
     "src/lib/ai/designWorkspaceRevision.ts": "baf8395ed19bd734ce6b49f519b27b701f03f079e5bd6af8d7e74db5d9377b11",
     "src/lib/ai/generationStateStore.ts": "fa9bae17047bf13569223b8623fdbc38d2284b30887bb433bf277c75f042dc4c",
     "src/lib/ai/productDecompositionAccuracy.ts": "be6bc5a6c3a5e332383e77441d1274ad1140b20833a33d9b1e6eff3eec962c47",
+    "src/lib/assembly/featureTreePreciseInterference.ts": "49d6fe978f5ad7c86af5a0713f21c4f088767cea460fdec09fb8d6b4ce6d4698",
+    "src/lib/drawing/occtHlrDxf.ts": "02f596eb9a4407561c2b23dd00deb4b28d035f60fd0f8a406ad36e15829570c7",
+    "src/lib/occt/nodeOcctBridge.ts": "3fca536371c13033c8ee5a4c92027cca22db1bf7e04771890db15be08d680c03",
+    "src/lib/occt/serverReplicad.ts": "5d8a268af77b5b620351c467825df52f89bc2ec36816aae8c7b715fde2a6a674",
     "src/lib/technicalCanaryPolicy.ts": "c035a72cbc6f76cafeb428b99959a7fca15a587548d34b1ab8fd933be0f9b1e5",
     "validation-reports/closed-beta-integrity-260809-commercial-v1-baseline.json": "250469e2786d1023d6fb09711bafb05107c189b4426ce8f8c5a7bd21ccce093f",
-    "validation-reports/closed-beta-integrity-260810-active-master-wp20-final.json": "2577b2c717e4e3455ac9d7d83143d97ad3959dd1dca9b40b2f20132eaffb8f58"
+    "validation-reports/closed-beta-integrity-260810-active-master-wp9-security-final.json": "5d69f2def2ff2acb674df275ae744b5450b517ce0ec0c29fe18d606ce5766a76"
   }
 }

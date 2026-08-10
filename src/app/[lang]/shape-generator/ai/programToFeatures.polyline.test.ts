@@ -71,11 +71,10 @@ describe('F-1 — boss via face-frame seeding', () => {
     expect(config.depth).toBe(15);
     expect(faceFrame).toEqual({ origin: [0, 4, 0], normal: [0, 1, 0], uAxis: [1, 0, 0], vAxis: [0, 0, 1] });
     expect(profile.closed).toBe(true);
-    // 원 프로파일 중심이 (posX, posY)=( −20, 0 ) — 세그먼트 점들의 평균으로 검증
-    const pts = profile.segments.flatMap((seg: { points: Array<{ x: number; y: number }> }) => seg.points);
-    const cx = pts.reduce((a: number, q: { x: number }) => a + q.x, 0) / pts.length;
-    const cy = pts.reduce((a: number, q: { y: number }) => a + q.y, 0) / pts.length;
-    expect(cx).toBeCloseTo(-20, 6);
-    expect(cy).toBeCloseTo(0, 6);
+    // 원 의미를 선분 다각형으로 잃지 않는다: 중심+반지름점 한 요소.
+    expect(profile.segments).toHaveLength(1);
+    expect(profile.segments[0].type).toBe('circle');
+    expect(profile.segments[0].points[0]).toMatchObject({ x: -20, y: 0 });
+    expect(profile.segments[0].points[1]).toMatchObject({ x: -10, y: 0 });
   });
 });

@@ -61,8 +61,8 @@ test.describe('Collab — multi-context CRDT', () => {
 
     // Both pages join the same room via URL query.
     const room = sharedRoomId();
-    const aliceUrl = `/en/shape-generator?roomId=${room}`;
-    const bobUrl = `/en/shape-generator?roomId=${room}`;
+    const aliceUrl = `/en/shape-generator?expert=1&roomId=${room}`;
+    const bobUrl = `/en/shape-generator?expert=1&roomId=${room}`;
 
     try {
       await Promise.all([

@@ -26,6 +26,7 @@ describe('commercial drawing projection precondition', () => {
     expect(result.visiblePaths.length).toBeGreaterThan(0);
     expect(result.analyticCurveEvidence).toBe(true);
     expect(result.serialized).toMatch(/"8\s/);
+    expect(paths(rc.makeCylinder(10, 30), 'front').analyticCurveEvidence).toBe(false);
   });
 
   it('projects conical, filleted and hollow B-Reps with visible/hidden separation', () => {

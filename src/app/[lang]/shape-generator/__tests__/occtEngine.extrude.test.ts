@@ -296,7 +296,7 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     expect(brepContourPoints(withHole)).toBeNull();
   });
 
-  it('occtBaseSolid builds cylinder/sphere B-rep bases (so the chain can start from the base)', () => {
+  it('occtBaseSolid builds primitive B-rep bases (so the chain can start from the base)', () => {
     resetShapeRegistry();
     // Cylinder Ø40 × h50 → π·20²·50 ≈ 62832 mm³.
     const cyl = occtBaseSolid('cylinder', { diameter: 40, height: 50 });
@@ -308,8 +308,14 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     expect(sph.handle).toBeTruthy();
     expect(meshVolume(sph.geometry)).toBeGreaterThan(13000);
     expect(meshVolume(sph.geometry)).toBeLessThan(15200);
-    // Box is intentionally unsupported (bbox fallback already correct).
-    expect(occtBaseSolid('box', { width: 20, height: 20, depth: 20 }).handle).toBeNull();
+    // Box 20 cubed is centred like THREE.BoxGeometry and seeds an exact handle.
+    const box = occtBaseSolid('box', { width: 20, height: 20, depth: 20 });
+    expect(box.handle).toBeTruthy();
+    expect(meshVolume(box.geometry)).toBeGreaterThan(7900);
+    expect(meshVolume(box.geometry)).toBeLessThan(8100);
+    box.geometry.computeBoundingBox();
+    expect(box.geometry.boundingBox!.min.z).toBeCloseTo(-10, 3);
+    expect(box.geometry.boundingBox!.max.z).toBeCloseTo(10, 3);
     // Pipe Ø60/Ø40 × L100 → π(30²−20²)·100 ≈ 157080 mm³ (tube, not bbox).
     const pipe = occtBaseSolid('pipe', { outerDiameter: 60, innerDiameter: 40, length: 100 });
     expect(pipe.handle).toBeTruthy();

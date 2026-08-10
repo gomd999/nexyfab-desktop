@@ -4,6 +4,20 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const REQUIRED_DOMAINS = ['mechanical', 'building', 'civil', 'landscape', 'interior'];
+export const REQUIRED_DOMAIN_AXES = {
+  mechanical: ['dimension', 'topology', 'assembly', 'motion', 'collision clearance', 'STEP roundtrip', 'drawing', 'BOM', 'manufacturing'],
+  building: ['spatial hierarchy', 'placement', 'IFC semantics', 'openings', 'quantity'],
+  civil: ['alignment', 'profile', 'corridor', 'terrain', 'LandXML/IFC roundtrip'],
+  landscape: ['terrain', 'grading', 'drainage', 'planting quantities', 'spatial clearance'],
+  interior: ['space boundary', 'egress', 'door swing', 'MEP interference', 'quantity'],
+};
+
+function sameStringSet(actual, expected) {
+  return Array.isArray(actual)
+    && actual.length === expected.length
+    && new Set(actual).size === actual.length
+    && [...actual].sort().join('\0') === [...expected].sort().join('\0');
+}
 
 export function validateIndependentDomainReviewKit(value) {
   const issues = [];
@@ -20,7 +34,12 @@ export function validateIndependentDomainReviewKit(value) {
     if (!item?.caseId || ids.has(item.caseId)) issues.push(`case_id_invalid:${item?.caseId ?? 'missing'}`);
     ids.add(item?.caseId);
     if (!REQUIRED_DOMAINS.includes(item?.domain)) issues.push(`case_domain_invalid:${item?.caseId ?? 'missing'}`);
-    else counts[item.domain] += 1;
+    else {
+      counts[item.domain] += 1;
+      if (!sameStringSet(item?.requiredAxes, REQUIRED_DOMAIN_AXES[item.domain])) {
+        issues.push(`case_required_axes_invalid:${item?.caseId ?? 'missing'}`);
+      }
+    }
     const sourceReady = /^[a-f0-9]{64}$/.test(String(item?.source?.sourceSha256 ?? ''))
       && item?.source?.licenseDecision === 'approved'
       && item?.source?.independentOfTrainingAndReferenceCorpus === true

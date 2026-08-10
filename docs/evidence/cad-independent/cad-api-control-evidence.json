@@ -2,8 +2,8 @@
   "schema": "nexyfab.cad-api-control-evidence.v1",
   "status": "pass",
   "externalCadRequired": false,
-  "routeFiles": 59,
-  "exportedHandlers": 59,
+  "routeFiles": 60,
+  "exportedHandlers": 60,
   "documentedCadOperations": 28,
   "publicExceptions": [
     {

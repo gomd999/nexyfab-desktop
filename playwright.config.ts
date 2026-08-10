@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'node:path';
 
 const isCi = !!process.env.CI;
 const browserMatrix = process.env.PW_BROWSER_MATRIX === '1';
@@ -73,6 +74,17 @@ export default defineConfig({
         'e2e-jwt-secret-placeholder-must-be-at-least-32-characters-long',
       ADMIN_SECRET: process.env.ADMIN_SECRET ?? 'e2e-admin-secret-16',
       NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? defaultOrigin,
+      /**
+       * The standalone server intentionally refuses ephemeral production
+       * storage. E2E uses an explicit, ignored SQLite file in the workspace so
+       * startup validation remains strict while the browser run stays isolated.
+       */
+      NEXYFAB_DB_PATH:
+        process.env.NEXYFAB_DB_PATH ?? path.join(process.cwd(), '.e2e-nexyfab.db'),
+      /** Proxy enforcement has dedicated unit/security coverage. Keeping it in
+       * shadow mode here prevents unrelated browser retries from exhausting the
+       * process-local login bucket and coupling otherwise independent specs. */
+      SECURITY_GATE_MODE: process.env.SECURITY_GATE_MODE ?? 'shadow',
       /**
        * Protected forms load reCAPTCHA only when explicitly submitted. Google's
        * documented test keys keep those submit-path E2E cases deterministic.

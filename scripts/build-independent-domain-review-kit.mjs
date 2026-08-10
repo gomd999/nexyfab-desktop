@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const domains = {
-  mechanical: ['dimension', 'topology', 'assembly', 'STEP roundtrip', 'BOM'],
+  mechanical: ['dimension', 'topology', 'assembly', 'motion', 'collision clearance', 'STEP roundtrip', 'drawing', 'BOM', 'manufacturing'],
   building: ['spatial hierarchy', 'placement', 'IFC semantics', 'openings', 'quantity'],
   civil: ['alignment', 'profile', 'corridor', 'terrain', 'LandXML/IFC roundtrip'],
   landscape: ['terrain', 'grading', 'drainage', 'planting quantities', 'spatial clearance'],

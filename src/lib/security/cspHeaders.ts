@@ -58,6 +58,7 @@ export interface BuildSecurityHeadersOptions {
 }
 
 const EXACT_CAD_ROUTE = '/:lang(kr|en|ja|cn|es|ar)/shape-generator/:path*';
+const EXACT_CAD_PIPELINE_WORKER_ROUTE = '/_next/static/chunks/pipeline-worker.:hash.js';
 
 /**
  * Build the CSP `Content-Security-Policy` header value.
@@ -101,9 +102,9 @@ export function buildCspValue(opts: BuildSecurityHeadersOptions = {}): string {
     "form-action 'self'",
     `script-src ${scriptSrcParts.join(' ')}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://api.dicebear.com https://www.facebook.com",
+    "img-src 'self' data: blob: https://api.dicebear.com https://www.facebook.com https://www.google-analytics.com https://www.googletagmanager.com https://www.google.com https://www.google.co.kr",
     "font-src 'self' https://fonts.gstatic.com",
-    `connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://www.google.com https://*.sentry.io${
+    `connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://www.google.com https://*.sentry.io${
       extra ? ` ${extra}` : ''
     }`,
     "worker-src 'self' blob:",
@@ -124,20 +125,20 @@ export function buildCspValue(opts: BuildSecurityHeadersOptions = {}): string {
  *
  * Replicad's current Emscripten glue evaluates generated JavaScript during
  * kernel startup, so `wasm-unsafe-eval` by itself is insufficient. Keeping
- * this as a later, route-specific header preserves the stricter global CSP.
+ * these as later, route-specific headers preserves the stricter global CSP.
+ * The worker needs its own response header because it does not inherit the
+ * creating document's route-specific policy.
  * Moving the kernel to isolated, eval-free worker glue remains future
  * hardening work.
  */
 export function buildExactCadCspHeaders(
   opts: BuildSecurityHeadersOptions = {},
 ): SecurityHeadersGroup[] {
-  return [{
-    source: EXACT_CAD_ROUTE,
-    headers: [{
-      key: 'Content-Security-Policy',
-      value: buildCspValue({ ...opts, allowUnsafeEval: true }),
-    }],
-  }];
+  const value = buildCspValue({ ...opts, allowUnsafeEval: true });
+  return [EXACT_CAD_ROUTE, EXACT_CAD_PIPELINE_WORKER_ROUTE].map(source => ({
+    source,
+    headers: [{ key: 'Content-Security-Policy', value }],
+  }));
 }
 
 /**

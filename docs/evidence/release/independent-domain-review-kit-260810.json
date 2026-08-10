@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.independent-domain-review-kit.v1",
-  "generatedAt": "2026-08-10T04:55:04.758Z",
+  "generatedAt": "2026-08-10T21:42:48.098Z",
   "policy": {
     "casesPerDomain": 20,
     "independentReviewersPerCase": 2,
@@ -26,8 +26,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -68,8 +72,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -110,8 +118,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -152,8 +164,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -194,8 +210,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -236,8 +256,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -278,8 +302,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -320,8 +348,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -362,8 +394,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -404,8 +440,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -446,8 +486,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -488,8 +532,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -530,8 +578,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -572,8 +624,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -614,8 +670,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -656,8 +716,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -698,8 +762,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -740,8 +808,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -782,8 +854,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,
@@ -824,8 +900,12 @@
         "dimension",
         "topology",
         "assembly",
+        "motion",
+        "collision clearance",
         "STEP roundtrip",
-        "BOM"
+        "drawing",
+        "BOM",
+        "manufacturing"
       ],
       "source": {
         "organizationId": null,

@@ -176,7 +176,7 @@ export default function UnsubscribePage({ params }: { params: Promise<{ lang: st
           </div>
         )}
 
-        <p style={{ marginTop: 32, fontSize: 11, color: '#5b6373', lineHeight: 1.6 }}>
+        <p style={{ marginTop: 32, fontSize: 11, color: '#8a93a3', lineHeight: 1.6 }}>
           {isKo
             ? '거래 안내 (영수증, 비밀번호 재설정 등) 는 법적으로 발송이 필요하여 끌 수 없습니다.'
             : 'Transactional emails (receipts, password resets) are legally required and cannot be disabled.'}

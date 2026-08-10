@@ -2,7 +2,7 @@
   "schema": "nexyfab.third-party-notices.v1",
   "title": "Open-source and third-party components",
   "notice": "Generated from package-lock.json for production dependencies. Legal review and corresponding-source delivery records remain separate release evidence.",
-  "packageLockSha256": "12fd26ea7736e4fe7d693239cfedc14f145c97a82d34293c0f02907fc5046032",
+  "packageLockSha256": "ec5896a3246a0404b91265df9f5ffbc306d5f4fd2760c677ffb6524a7b573b2b",
   "licenseOverridesSha256": "3daaa175bebe51d25b1a64d184dde6f287283d67fc63799eaff7c131b628f142",
   "packageCount": 684,
   "criticalCopyleft": [

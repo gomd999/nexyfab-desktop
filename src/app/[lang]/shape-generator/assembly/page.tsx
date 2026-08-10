@@ -18,9 +18,12 @@ import { AssemblyBrowserPageContent } from './_content';
 
 interface PageProps {
   params: Promise<{ lang: string }>;
+  searchParams: Promise<{ aiRevision?: string | string[] }>;
 }
 
-export default function AssemblyBrowserPage({ params }: PageProps): React.ReactElement {
+export default function AssemblyBrowserPage({ params, searchParams }: PageProps): React.ReactElement {
   const { lang } = use(params);
-  return <AssemblyBrowserPageContent lang={lang} />;
+  const query = use(searchParams);
+  const aiRevisionId = typeof query.aiRevision === 'string' ? query.aiRevision : undefined;
+  return <AssemblyBrowserPageContent lang={lang} aiRevisionId={aiRevisionId} />;
 }

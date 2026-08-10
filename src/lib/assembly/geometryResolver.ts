@@ -65,6 +65,7 @@ import type {
 } from './iterativeSolver';
 import type { MateRef } from './mate';
 import type { PartInstance } from './assemblyState';
+import type { PartRefSpec } from './api';
 import { rotateVec } from './mateSolver';
 import { vec3, add, type Vec3 } from '@/lib/sketch/sketchPlane';
 
@@ -86,6 +87,7 @@ type LocalGeometry =
  */
 export function buildPartRefRegistry(
   tree: FeatureTree,
+  explicitRefs?: Readonly<Record<string, PartRefSpec>>,
 ): ReadonlyMap<string, LocalGeometry> {
   const registry = new Map<string, LocalGeometry>();
   const ORIGIN = vec3(0, 0, 0);
@@ -149,6 +151,26 @@ export function buildPartRefRegistry(
     const loop = base.loop.filter((point,index,all)=>index===0||Math.hypot(point.x-all[index-1]!.x,point.y-all[index-1]!.y)>1e-9);
     if(loop.length>1&&Math.hypot(loop[0]!.x-loop.at(-1)!.x,loop[0]!.y-loop.at(-1)!.y)<1e-9)loop.pop();
     loop.forEach((a,index)=>{const b=loop[(index+1)%loop.length]!,dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;registry.set(`f.side.${index}`,{kind:'plane',origin:vec3(a.x,a.y,baseZ),normal:vec3(dy/len,-dx/len,0)});registry.set(`v.bottom.${index}`,{kind:'point',origin:vec3(a.x,a.y,baseZ)});registry.set(`v.top.${index}`,{kind:'point',origin:vec3(a.x,a.y,topZ)});});
+  }
+
+  // Explicit semantic refs intentionally win over generated aliases. This
+  // preserves imported/AI intent such as an offset boss axis.
+  for (const [refId, ref] of Object.entries(explicitRefs ?? {})) {
+    if (ref.kind === 'point') {
+      registry.set(refId, { kind: 'point', origin: vec3(ref.origin.x, ref.origin.y, ref.origin.z) });
+    } else if (ref.kind === 'axis') {
+      registry.set(refId, {
+        kind: 'axis',
+        origin: vec3(ref.origin.x, ref.origin.y, ref.origin.z),
+        direction: vec3(ref.direction.x, ref.direction.y, ref.direction.z),
+      });
+    } else {
+      registry.set(refId, {
+        kind: 'plane',
+        origin: vec3(ref.origin.x, ref.origin.y, ref.origin.z),
+        normal: vec3(ref.normal.x, ref.normal.y, ref.normal.z),
+      });
+    }
   }
 
   return registry;
@@ -266,18 +288,18 @@ export function featureTreeGeometryResolver(
   // Memoize the per-part registry — feature trees don't change mid-solve,
   // so this turns a per-call O(nodes) walk into O(1).
   const registries = new Map<string, ReadonlyMap<string, LocalGeometry>>();
-  function registryFor(partId: string): ReadonlyMap<string, LocalGeometry> | null {
+  function registryFor(partId: string, part: PartInstance): ReadonlyMap<string, LocalGeometry> | null {
     const cached = registries.get(partId);
     if (cached) return cached;
     const tree = parts.get(partId);
     if (!tree) return null;
-    const built = buildPartRefRegistry(tree);
+    const built = buildPartRefRegistry(tree, part.refs);
     registries.set(partId, built);
     return built;
   }
 
   return (ref: MateRef, part: PartInstance): ResolvedGeometry | null => {
-    const registry = registryFor(ref.partId);
+    const registry = registryFor(ref.partId, part);
     if (!registry) return null;
     const local = registry.get(ref.refId);
     if (!local) return null;

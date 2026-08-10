@@ -29,7 +29,7 @@ test.describe('Configurations v2 — UI', () => {
   test.beforeEach(async ({ page }) => {
     test.setTimeout(120_000);
     await seedShapeGeneratorForE2e(page);
-    await page.goto('/en/shape-generator/?configs=v2', { waitUntil: 'domcontentloaded' });
+    await page.goto('/en/shape-generator/?expert=1&configs=v2', { waitUntil: 'domcontentloaded' });
     await dismissShapeGeneratorOverlays(page);
     await expect(page.getByTestId('shape-generator-workspace')).toBeVisible({ timeout: 60000 });
     await exitSketchIfNeeded(page);

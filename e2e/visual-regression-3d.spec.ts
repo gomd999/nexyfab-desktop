@@ -22,20 +22,25 @@
  */
 
 import { test, expect } from '@playwright/test';
+import {
+  dismissShapeGeneratorOverlays,
+  pickBoxWaitForGeometry,
+  seedShapeGeneratorForE2e,
+} from './helpers/shapeGeneratorEnv';
 
 test.describe('3D viewport visual regression', () => {
   test('shape-generator default cube renders deterministically', async ({ page }) => {
-    await page.addInitScript(() => {
-      try {
-        window.localStorage.setItem('nf_onboarding_done', '1');
-      } catch { /* ignore */ }
-    });
+    test.setTimeout(120_000);
+    await seedShapeGeneratorForE2e(page);
 
-    await page.goto('/en/shape-generator/');
+    await page.goto('/en/shape-generator/?expert=1');
+    await dismissShapeGeneratorOverlays(page);
 
     // Wait for the 3D viewport to mount. .nx-viewport is the canvas wrapper
     // (per useTouchGestures hook) — exists once shape-generator hydrates.
     await page.locator('.nx-viewport, canvas').first().waitFor({ state: 'visible', timeout: 30_000 });
+    await pickBoxWaitForGeometry(page);
+    await page.getByRole('button', { name: 'Close', exact: true }).click({ timeout: 2_000 }).catch(() => {});
 
     // Settle: give 3D renderer time to finish all post-mount update passes
     // (env map prep, OCCT init detection, default cube generation).
@@ -51,6 +56,7 @@ test.describe('3D viewport visual regression', () => {
     });
 
     await expect(page).toHaveScreenshot('shape-generator-default-cube.png', {
+      timeout: 30_000,
       // 0.5% of pixels may differ — absorbs AA/swiftshader noise.
       maxDiffPixelRatio: 0.005,
       // Per-pixel color tolerance — 0.2 absorbs subtle gamma/AA shifts.

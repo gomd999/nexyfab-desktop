@@ -94,6 +94,24 @@ describe('geometryResolver — always-on refs', () => {
 // ─── 2. world-frame transform: position ──────────────────────────────────
 
 describe('geometryResolver — placement transform', () => {
+  it('resolves a persisted explicit semantic axis in the part local frame', () => {
+    const resolver = featureTreeGeometryResolver(new Map([['p', EMPTY_TREE]]));
+    const withRefs: PartInstance = {
+      ...part('p', { position: vec3(10, 5, 2) }),
+      refs: {
+        boss_axis: {
+          kind: 'axis',
+          origin: { x: 20, y: 20, z: 0 },
+          direction: { x: 0, y: 0, z: 1 },
+        },
+      },
+    };
+    const g = resolver(ref('p', 'boss_axis', 'axis'), withRefs);
+    if (g?.kind !== 'axis') throw new Error('explicit axis missing');
+    expect(g.world.origin).toEqual({ x: 30, y: 25, z: 2 });
+    expect(g.world.direction).toEqual({ x: 0, y: 0, z: 1 });
+  });
+
   it('applies position offset to point refs', () => {
     const resolver = featureTreeGeometryResolver(new Map([['p', EMPTY_TREE]]));
     const g = resolver(ref('p', 'origin', 'point'), part('p', { position: vec3(3, 4, 5) }));

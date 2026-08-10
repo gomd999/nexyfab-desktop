@@ -10,9 +10,9 @@
  *   monthly slot (429) → runDesignBrief(planner injected) → 200 package /
  *   422 refusal (stage · reason · failed gate ids — 값 날조 없음).
  *
- * The planner is NOT chosen here: `runDesignBrief` defaults to the deterministic
- * `fixturePlanner` and the orchestrator swaps in llmPlanner at the runner seam
- * (./runner) without touching this file. Helpers/types live in ./runner
+ * Planner selection is centralized in ./runner: an explicit fixture uses the
+ * reproducible catalog planner; free text uses the real LLM planner after the
+ * Pro closed-beta feature gate below. Helpers/types live in ./runner
  * (sibling module) so this file is handlers + config only (Next 16 rule).
  *
  * Same contract as the MCP `design_brief` tool and the web entry — all three
@@ -25,7 +25,8 @@ import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { checkUserBudget } from '@/lib/ai/userBudget';
 import { captureServerError } from '@/lib/error-capture';
-import { parseBrief, runDesignBrief } from './runner';
+import { isFeatureEnabled } from '@/lib/feature-flags';
+import { buildBriefExecutionDisclosure, parseBrief, runDesignBrief } from './runner';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,10 +37,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  // Auth is required (design-brief spends AI budget). checkPlan returns 401 for
-  // an unauthenticated request and 403 when the plan is insufficient.
-  const planCheck = await checkPlan(req, 'free');
+  const isReferenceFixture = typeof parsed.brief.params?.fixture === 'string'
+    && parsed.brief.params.fixture.length > 0;
+
+  // Reference fixtures remain available to signed-in users. A real LLM design
+  // run is a Pro closed-beta capability until the manufacturing release
+  // evidence is complete.
+  const planCheck = await checkPlan(req, isReferenceFixture ? 'free' : 'pro');
   if (!planCheck.ok) return planCheck.response;
+
+  if (!isReferenceFixture && !(await isFeatureEnabled('complex_product_design', false))) {
+    return NextResponse.json(
+      {
+        error: 'Complex Product AI Design is currently limited to the expert-assisted closed beta.',
+        code: 'FEATURE_DISABLED',
+        execution: buildBriefExecutionDisclosure(parsed.brief),
+      },
+      { status: 503 },
+    );
+  }
 
   // Per-user daily $ budget gate.
   const budget = await checkUserBudget(planCheck.userId);

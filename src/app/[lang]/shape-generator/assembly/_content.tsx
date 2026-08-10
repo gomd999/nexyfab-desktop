@@ -17,7 +17,7 @@
  * still defaults to a blank assembly and the existing tests keep passing.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type {
   AssemblyBrowserLang,
@@ -32,6 +32,11 @@ import {
   getSampleAssembly,
   type SampleAssemblyName,
 } from '@/lib/assembly/sampleAssemblies';
+import {
+  readAiAssemblyWorkspaceSeed,
+  removeAiAssemblyWorkspaceSeed,
+  type AiAssemblyWorkspaceSeed,
+} from '../design-brief/assemblyWorkspaceSeed';
 
 // The assembly editor pulls in the 3D viewer, constraint solvers and the
 // optional expert tooling. Keep that graph out of the route's hydration
@@ -170,6 +175,8 @@ export interface AssemblyBrowserPageContentProps {
    * stays on its in-memory state path.
    */
   projectId?: string;
+  /** One-shot session handoff from the AI design-brief workspace. */
+  aiRevisionId?: string;
 }
 
 export function AssemblyBrowserPageContent({
@@ -178,6 +185,7 @@ export function AssemblyBrowserPageContent({
   initialFeatureTrees,
   onSolve,
   projectId,
+  aiRevisionId,
 }: AssemblyBrowserPageContentProps): React.ReactElement {
   const editorLang = normalizeLang(lang);
   const labels = SAMPLE_LABELS[editorLang];
@@ -197,17 +205,31 @@ export function AssemblyBrowserPageContent({
   // sample change without giving the modal an imperative reset API.
   const [sample, setSample] = useState<SampleSelection>(BLANK_SENTINEL);
   const [modalKey, setModalKey] = useState(0);
+  const [aiSeed, setAiSeed] = useState<AiAssemblyWorkspaceSeed | null>(null);
+
+  useEffect(() => {
+    if (!aiRevisionId || initialState || initialFeatureTrees) return;
+    const seed = readAiAssemblyWorkspaceSeed(aiRevisionId);
+    if (!seed) return;
+    setAiSeed(seed);
+    setSample(BLANK_SENTINEL);
+    setModalKey(key => key + 1);
+    removeAiAssemblyWorkspaceSeed(aiRevisionId);
+  }, [aiRevisionId, initialFeatureTrees, initialState]);
 
   const { loadedState, loadedTrees } = useMemo<{
     loadedState: AssemblyState | undefined;
     loadedTrees: Record<string, FeatureTree> | undefined;
   }>(() => {
     if (sample === BLANK_SENTINEL) {
-      return { loadedState: initialState, loadedTrees: initialFeatureTrees };
+      return {
+        loadedState: initialState ?? aiSeed?.candidate.assembly?.state,
+        loadedTrees: initialFeatureTrees ?? aiSeed?.candidate.assembly?.featureTrees,
+      };
     }
     const preset = getSampleAssembly(sample);
     return { loadedState: preset.state, loadedTrees: preset.featureTrees };
-  }, [sample, initialState, initialFeatureTrees]);
+  }, [sample, initialState, initialFeatureTrees, aiSeed]);
 
   const handleSampleChange = useCallback((next: string) => {
     if (next === BLANK_SENTINEL) {
@@ -277,6 +299,30 @@ export function AssemblyBrowserPageContent({
           ))}
         </select>
       </div>
+
+      {aiSeed && (
+        <div
+          data-testid="ai-assembly-revision-warning"
+          role="status"
+          style={{
+            position: 'fixed',
+            top: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1100,
+            maxWidth: 620,
+            padding: '7px 12px',
+            border: '1px solid #b45309',
+            borderRadius: 4,
+            background: '#2b2112',
+            color: '#fcd34d',
+            fontSize: 11,
+            textAlign: 'center',
+          }}
+        >
+          AI revision {aiSeed.revisionId} · semantic mates preserved · prior verification not inherited · run Manufacturing verify for exact OCCT/STEP, static interference and DoF evidence; motion still requires a governed timeline
+        </div>
+      )}
 
       <AssemblyBrowserModal
         key={modalKey}

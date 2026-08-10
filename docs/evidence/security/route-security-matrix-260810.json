@@ -2,15 +2,15 @@
   "schema": "nexyfab.route-security-matrix.v1",
   "status": "pass",
   "summary": {
-    "routeFiles": 547,
-    "exportedHandlers": 759,
-    "classifiedRoutes": 547,
+    "routeFiles": 548,
+    "exportedHandlers": 760,
+    "classifiedRoutes": 548,
     "unknownClassifications": 0,
     "routesWithGaps": 0,
     "gapCounts": {},
     "byClassification": {
       "public": 122,
-      "authenticated": 315,
+      "authenticated": 316,
       "admin": 68,
       "webhook": 6,
       "internal-worker": 24,
@@ -1343,7 +1343,7 @@
       },
       "gaps": [],
       "file": "src/app/api/admin/settings/route.ts",
-      "sourceSha256": "8906a018661194fcb26abcf8bdfd15db96728bb3ab2fee40f76fcba2edad6d00"
+      "sourceSha256": "ebd8b9ab9aa8d870fdedd0be3732ff520e1e7327129db00545f45f5d88679f18"
     },
     {
       "route": "/api/admin/sla",
@@ -3528,7 +3528,34 @@
       },
       "gaps": [],
       "file": "src/app/api/cad/v1/assembly/animation/verify/route.ts",
-      "sourceSha256": "39965e8bd4b87f080f8985d471365b85b5ce8475b73e09bfb155453162a3923c"
+      "sourceSha256": "926b6825e77fea730cb625a0ded3a14aaea98e90633abba132a132992fe0a396"
+    },
+    {
+      "route": "/api/cad/v1/assembly/release/verify",
+      "methods": [
+        "POST"
+      ],
+      "mutation": true,
+      "classification": "authenticated",
+      "classificationBasis": "active-proxy-boundary",
+      "controls": {
+        "authentication": true,
+        "objectAcl": false,
+        "csrfOrigin": false,
+        "schema": false,
+        "size": false,
+        "rateLimit": true,
+        "audit": false,
+        "idempotency": false,
+        "webhookSignature": false,
+        "activeProxyRateLimit": true,
+        "activeProxyCookieOrigin": true,
+        "activeProxyEnvelopeSize": true,
+        "publicMutationPolicy": null
+      },
+      "gaps": [],
+      "file": "src/app/api/cad/v1/assembly/release/verify/route.ts",
+      "sourceSha256": "b03157e184782b669978a2fec6e72b105185fa65ab1438f47b882df165872071"
     },
     {
       "route": "/api/cad/v1/assembly/selection-edit",
@@ -3582,7 +3609,7 @@
       },
       "gaps": [],
       "file": "src/app/api/cad/v1/assembly/verify/route.ts",
-      "sourceSha256": "837357eb68095013d93547d3b5f4591c9bde2314c3b1e796e4033b50b6eec50e"
+      "sourceSha256": "e0973f97a648e625f6f21c24eb59662af1169f8d1e9b0aae5d6ea20b4dead619"
     },
     {
       "route": "/api/cad/v1/brep/push-pull",
@@ -3744,7 +3771,7 @@
       },
       "gaps": [],
       "file": "src/app/api/cad/v1/generation/finalize/route.ts",
-      "sourceSha256": "d171b252e3e390157b2ce465d6a8e1b4c8ba4694dc871368a32e69f7d6786f34"
+      "sourceSha256": "9de57e5da1bd57b5ef3775e6a04782a1dc708d5eb908a1085a89678475a872ed"
     },
     {
       "route": "/api/cad/v1/generation/refine",
@@ -8531,7 +8558,7 @@
       },
       "gaps": [],
       "file": "src/app/api/nexyfab/design-brief/route.ts",
-      "sourceSha256": "09535c07f3148f1beb0a66d5b25130382c3945b1563a729b8e19b202dbaa16f7"
+      "sourceSha256": "e758a8efb93fa45e36123f3385823fbe8baf0b764b6d8c1dcb20a4a3f2c893c0"
     },
     {
       "route": "/api/nexyfab/dfm-check/[id]/action",

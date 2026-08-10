@@ -132,6 +132,8 @@ describe('buildCspValue', () => {
   it("retains existing connect-src origins (sentry, google, stripe)", () => {
     const csp = buildCspValue();
     expect(csp).toMatch(/connect-src[^;]*https:\/\/api\.stripe\.com/);
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/analytics\.google\.com/);
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/stats\.g\.doubleclick\.net/);
     expect(csp).toMatch(/connect-src[^;]*https:\/\/\*\.sentry\.io/);
   });
 
@@ -139,6 +141,7 @@ describe('buildCspValue', () => {
     const csp = buildCspValue();
     expect(csp).toMatch(/img-src 'self' data: blob:/);
     expect(csp).toMatch(/img-src[^;]*https:\/\/api\.dicebear\.com/);
+    expect(csp).toMatch(/img-src[^;]*https:\/\/www\.google\.co\.kr/);
   });
 
   it("frame-ancestors is 'none' (clickjacking defence)", () => {
@@ -165,9 +168,12 @@ describe('precision-CAD production CSP exception', () => {
     const groups = buildExactCadCspHeaders({ isDev: false });
     expect(groups.map(group => group.source)).toEqual([
       '/:lang(kr|en|ja|cn|es|ar)/shape-generator/:path*',
+      '/_next/static/chunks/pipeline-worker.:hash.js',
     ]);
-    const csp = groups[0].headers.find(header => header.key === 'Content-Security-Policy')!.value;
-    const script = csp.split(';').find(value => value.trim().startsWith('script-src')) ?? '';
-    expect(script.split(/\s+/)).toContain("'unsafe-eval'");
+    for (const group of groups) {
+      const csp = group.headers.find(header => header.key === 'Content-Security-Policy')!.value;
+      const script = csp.split(';').find(value => value.trim().startsWith('script-src')) ?? '';
+      expect(script.split(/\s+/)).toContain("'unsafe-eval'");
+    }
   });
 });

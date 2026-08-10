@@ -4058,3 +4058,97 @@ describe('AssemblyBrowserModal', () => {
     );
   });
 });
+
+describe('AssemblyBrowserModal commercial exact verification', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('submits the current semantic assembly for server-derived OCCT/STEP verification and renders evidence', async () => {
+    const state: AssemblyState = {
+      parts: [{ id: 'part', name: 'Part', partTemplateId: 'part', position: { x: 0, y: 0, z: 0 }, orientation: IDENTITY_QUAT, fixed: true }],
+      mates: [],
+    };
+    const tree: FeatureTree = { nodes: [{
+      id: 'body', name: 'Body', dependencies: [],
+      payload: { kind: 'extrude', loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], depth: 10, direction: 'one_sided', mode: 'add' },
+    }] };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      ok: true,
+      releaseReady: true,
+      assemblyCertificate: { solver: 'pass', converged: true, exactCad: 'pass', interference: 'precise', dofAccepted: true, motion: 'not_required' },
+      exactCadEvidence: { part: { solidCount: 1, stepSha256: 'a'.repeat(64), stepRoundTripVolumeRelError: 0 } },
+      flaggedInterferences: [],
+      verificationUnavailable: [],
+      preciseInterference: { status: 'not-needed-no-candidates' },
+      verificationInputHash: 'd'.repeat(64),
+      releaseCertificate: {
+        schema: 'nexyfab.assembly-release-certificate.v1', verificationInputHash: 'd'.repeat(64), certificateSha256: 'e'.repeat(64),
+        releaseReady: true, blockers: [], checks: { solverAndResidual: true }, evidence: {}, releaseExecuted: false, quoteOrRfqSideEffects: false,
+      },
+    }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<AssemblyBrowserModal lang="en" initialState={state} initialFeatureTrees={{ part: tree }} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId('solver-assembly-commercial-verify'));
+    await waitFor(() => expect(screen.getByTestId('solver-assembly-commercial-verify-result')).toHaveTextContent('Exact assembly release gate passed'));
+    expect(screen.getByTestId('solver-assembly-commercial-exact-count')).toHaveTextContent('1/1');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/cad/v1/assembly/release/verify');
+    const body = JSON.parse(String(init.body));
+    expect(body).toMatchObject({ state, featureTrees: { part: tree }, allowedDoF: 0, intendedContacts: [] });
+    expect(body).not.toHaveProperty('localBoxes');
+    expect(body).not.toHaveProperty('animation');
+    expect(screen.getByTestId('solver-assembly-release-certificate-hash')).toHaveTextContent('d'.repeat(64));
+  });
+
+  it('submits exact motion without caller boxes, includes uploaded joint evidence, and renders the review target', async () => {
+    const state: AssemblyState = {
+      parts: [{ id: 'part', name: 'Part', partTemplateId: 'part', position: { x: 0, y: 0, z: 0 }, orientation: IDENTITY_QUAT, fixed: true }],
+      mates: [],
+    };
+    const tree: FeatureTree = { nodes: [{
+      id: 'body', name: 'Body', dependencies: [],
+      payload: { kind: 'extrude', loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], depth: 10, direction: 'one_sided', mode: 'add' },
+    }] };
+    const reviewHash = 'd'.repeat(64);
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      ok: true,
+      releaseReady: false,
+      verificationInputHash: reviewHash,
+      precise: {
+        status: 'completed', collisionFree: true, geometryErrors: [], failureCodes: [],
+        exactCadEvidence: { part: { solidCount: 1, stepSha256: 'a'.repeat(64), stepRoundTripVolumeRelError: 0 } },
+        continuous: { timeOfImpact: [] },
+      },
+      jointEvidenceGate: { status: 'fail', manufacturingReleaseEligible: false, usage: 'native-pending-review', errors: ['expert_review_missing_or_invalid'] },
+    }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<AssemblyBrowserModal lang="en" initialState={state} initialFeatureTrees={{ part: tree }} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId('solver-assembly-3d-toggle'));
+    fireEvent.click(screen.getByTestId('solver-assembly-part-row-part'));
+    fireEvent.click(screen.getByTestId('solver-assembly-add-keyframe'));
+    const claim = {
+      provenance: 'native-cad', sourceHash: 'a'.repeat(64), artifactHashes: ['b'.repeat(64)],
+      jointDefinitionHash: 'c'.repeat(64), verificationInputHash: reviewHash,
+      revision: 1, jointCount: 1, semanticsComplete: true,
+    };
+    const jointFile = new File([JSON.stringify(claim)], 'joint-evidence.json', { type: 'application/json' });
+    Object.defineProperty(jointFile, 'text', { value: async () => JSON.stringify(claim) });
+    fireEvent.change(screen.getByTestId('solver-assembly-joint-evidence-file'), {
+      target: { files: [jointFile] },
+    });
+    await waitFor(() => expect(screen.getByTestId('solver-assembly-joint-evidence-import')).toHaveTextContent('Joint evidence loaded'));
+
+    fireEvent.click(screen.getByTestId('solver-assembly-precise-animation-verify'));
+    await waitFor(() => expect(screen.getByTestId('solver-assembly-motion-verify-result')).toHaveTextContent('Motion release gate blocked'));
+    expect(screen.getByTestId('solver-assembly-motion-verify-result')).toHaveTextContent('precise completed');
+    expect(screen.getByTestId('solver-assembly-motion-verify-result')).toHaveTextContent('exact parts 1/1');
+    expect(screen.getByTestId('solver-assembly-motion-review-hash')).toHaveTextContent(reviewHash);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/cad/v1/assembly/animation/verify');
+    const body = JSON.parse(String(init.body));
+    expect(body).toMatchObject({ state, featureTrees: { part: tree }, jointEvidence: claim });
+    expect(body).not.toHaveProperty('localBoxes');
+  });
+});

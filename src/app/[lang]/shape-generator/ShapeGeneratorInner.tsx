@@ -90,6 +90,14 @@ import type { OptimizeResult, ModifyResult, ChatMessage, ChatResult, SingleResul
 import { computeMassProperties, combineAssemblyMassProperties } from './analysis/massProperties';
 import type { ElementSelectionInfo, FaceSelectionInfo } from './editing/selectionInfo';
 import type { FeatureType } from './features/types';
+import type { EditableWorkspaceCandidate } from '@/lib/ai/design-driver/workspaceCandidate';
+import { workspaceCandidateToModelerDraft } from './design-brief/workspaceCandidateToModeler';
+import { writeAiAssemblyWorkspaceSeed } from './design-brief/assemblyWorkspaceSeed';
+import {
+  evaluateWorkspaceRevision,
+  pendingWorkspaceRevisionVerification,
+  type WorkspaceRevisionVerification,
+} from './design-brief/workspaceRevisionVerification';
 const HoleWizardModal = dynamic(() => import('./features/HoleWizardModal'), { ssr: false });
 const FeatureParams = dynamic(() => import('./FeatureParams'), { ssr: false });
 const CommandToolbar = dynamic(() => import('./CommandToolbar'), { ssr: false });
@@ -4472,6 +4480,10 @@ export function ShapeGeneratorInner() {
 
   // ── Feature pipeline (async, off main thread via Worker) ───────────────────
   const [result, setResult] = useState<ShapeResult | null>(null);
+  const [workspaceRevisionVerification, setWorkspaceRevisionVerification] = useState<
+    (WorkspaceRevisionVerification & { requiredPipelineGeneration?: number }) | null
+  >(null);
+  const [pipelineCommittedGeneration, setPipelineCommittedGeneration] = useState(0);
   /** Monotonic id so only the latest pipeline run may commit mesh/errors (debounce + worker races). */
   const pipelineRunGenerationRef = useRef(0);
   useEffect(() => {
@@ -4479,12 +4491,19 @@ export function ShapeGeneratorInner() {
 
     if (!baseShapeResult) {
       setResult(null);
+      setWorkspaceRevisionVerification(previous => previous?.status === 'pending'
+        ? {
+            ...previous,
+            status: 'failed',
+            reason: 'base geometry generation failed before exact-kernel verification',
+          }
+        : previous);
       return;
     }
 
     const hasEnabledFeatures = features.length > 0 && features.some(f => f.enabled);
 
-    if (!hasEnabledFeatures) {
+    if (!hasEnabledFeatures && !occtMode) {
       // No features — base result is the final result; clear stale errors.
       setPipelineErrors(prev => (Object.keys(prev).length === 0 ? prev : {}));
       setResult(baseShapeResult);
@@ -4494,8 +4513,8 @@ export function ShapeGeneratorInner() {
     // Run features asynchronously via the Web Worker.
     // occtMode is a dep so changing the topology engine triggers a re-run.
     // baseSpec lets the worker rebuild the base primitive as a real B-rep solid
-    // in its own OCCT context, so a cylinder/sphere base fillet rounds the real
-    // shape (not its bbox). occtBaseSolid ignores unsupported ids (e.g. box).
+    // in its own OCCT context, so downstream operations start from the real
+    // solid (not an inferred bbox stand-in) before the exact feature chain.
     runPipelineWorker(baseShapeResult.geometry, features, { occtMode, baseSpec: { shapeId: selectedId, params: debouncedParams } }).then(pipe => {
       if (gen !== pipelineRunGenerationRef.current) return;
       const finalGeometry = pipe.geometry;
@@ -4513,6 +4532,7 @@ export function ShapeGeneratorInner() {
       const size = bb.getSize(new Vector3());
       const bbox = { w: Math.round(size.x), h: Math.round(size.y), d: Math.round(size.z) };
       setResult({ geometry: finalGeometry, edgeGeometry, volume_cm3, surface_area_cm2, bbox });
+      setPipelineCommittedGeneration(gen);
     }).catch((err) => {
       // On worker failure fall back to the base result so the viewport is never blank.
       if (gen !== pipelineRunGenerationRef.current) return;
@@ -4527,9 +4547,30 @@ export function ShapeGeneratorInner() {
         enabledFeatureCount: features.filter(f => f.enabled).length,
       });
       setResult(baseShapeResult);
+      setWorkspaceRevisionVerification(previous => (
+        previous?.status === 'pending'
+        && gen >= (previous.requiredPipelineGeneration ?? Number.POSITIVE_INFINITY)
+          ? { ...previous, status: 'failed', reason: `exact-kernel pipeline failed: ${msg}` }
+          : previous
+      ));
       addToast('warning', lt.pipelineFailed(msg));
     });
   }, [baseShapeResult, features, occtMode, runPipelineWorker]);
+
+  useEffect(() => {
+    const pending = workspaceRevisionVerification;
+    if (!pending || pending.status !== 'pending') return;
+    if (pipelineCommittedGeneration < (pending.requiredPipelineGeneration ?? Number.POSITIVE_INFINITY)) return;
+    const evaluated = evaluateWorkspaceRevision(
+      pending.revisionId,
+      result?.geometry ?? null,
+      pipelineErrors,
+    );
+    setWorkspaceRevisionVerification({
+      ...evaluated,
+      requiredPipelineGeneration: pending.requiredPipelineGeneration,
+    });
+  }, [pipelineCommittedGeneration, pipelineErrors, result, workspaceRevisionVerification]);
 
   // Merge pipeline errors into history nodes so FeatureTree can render diagnostics
   const featureHistoryWithErrors = useMemo(() => {
@@ -5163,22 +5204,25 @@ export function ShapeGeneratorInner() {
   useEffect(() => {
     const onDfm = () => setShowDFM(true);
     const onFea = () => setShowFEA(true);
+    const onBuckling = () => setShowBucklingAnalysis(true);
     const onCost = () => setShowCostPanel(true);
     const onVariants = () => setShowVariantsPanel(true);
     const onRfq = () => setShowRfqPanel(true);
     window.addEventListener('nexyfab:open-dfm', onDfm);
     window.addEventListener('nexyfab:open-fea', onFea);
+    window.addEventListener('nexyfab:open-buckling', onBuckling);
     window.addEventListener('nexyfab:open-cost', onCost);
     window.addEventListener('nexyfab:open-variants', onVariants);
     window.addEventListener('nexyfab:open-rfq', onRfq);
     return () => {
       window.removeEventListener('nexyfab:open-dfm', onDfm);
       window.removeEventListener('nexyfab:open-fea', onFea);
+      window.removeEventListener('nexyfab:open-buckling', onBuckling);
       window.removeEventListener('nexyfab:open-cost', onCost);
       window.removeEventListener('nexyfab:open-variants', onVariants);
       window.removeEventListener('nexyfab:open-rfq', onRfq);
     };
-  }, [setShowDFM, setShowFEA, setShowCostPanel, setShowVariantsPanel, setShowRfqPanel]);
+  }, [setShowDFM, setShowFEA, setShowBucklingAnalysis, setShowCostPanel, setShowVariantsPanel, setShowRfqPanel]);
 
   /** Sketch palette “slice guide” ↔ 3D section plane (X) when solid geometry exists. */
   useEffect(() => {
@@ -7089,6 +7133,62 @@ export function ShapeGeneratorInner() {
     handleExport3MF,
     handleExportPresentationHtml } = useImportExport(addToast, getEffectiveGeometry, setSketchResult as React.Dispatch<React.SetStateAction<ShapeResult | null>>, setBomParts, setBomLabel, setIsSketchMode as React.Dispatch<React.SetStateAction<boolean>>, activeTab, resultMesh);
 
+  const handleApplyDesignBriefWorkspace = useCallback(async (
+    candidate: EditableWorkspaceCandidate,
+  ): Promise<{ ok: true; revisionId: string } | { ok: false; reason: string }> => {
+    if (isMobile) {
+      return { ok: false, reason: 'exact_kernel_reverification_requires_desktop' };
+    }
+    const revisionId = `${candidate.sourcePlanId}-${typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Date.now().toString(36)}`;
+
+    if (candidate.target === 'assembly-browser') {
+      const stored = writeAiAssemblyWorkspaceSeed(revisionId, candidate);
+      if (!stored.ok) return { ok: false, reason: stored.reason };
+      setShowDesignBrief(false);
+      addToast('warning', isKorean(lang)
+        ? '의미 기반 조립 리비전을 열었습니다. 이전 검증은 승계하지 않으며 파트 B-rep·도면·간섭·운동 재검증이 필요합니다.'
+        : 'Opened a semantic assembly revision. Prior verification was not inherited; part B-rep, drawing, interference and motion reverification are required.');
+      router.push(`/${lang}/shape-generator/assembly?aiRevision=${encodeURIComponent(revisionId)}`);
+      return { ok: true, revisionId };
+    }
+
+    const converted = workspaceCandidateToModelerDraft(candidate);
+    if (!converted.ok) return { ok: false, reason: converted.blockers.join(', ') };
+
+    // The candidate contract only admits feature kinds the modeler can replay.
+    // Enable the exact kernel before the atomic state swap so the first rebuild
+    // is the required B-rep re-verification, never a silently inherited mesh verdict.
+    if (!useUIStore.getState().occtMode) {
+      await setOcctMode(true);
+      if (!useUIStore.getState().occtMode) return { ok: false, reason: 'exact_kernel_initialization_failed' };
+    }
+
+    const { draft } = converted;
+    const requiredPipelineGeneration = pipelineRunGenerationRef.current + 1;
+    setImportedGeometry(null);
+    setImportedFilename('');
+    setSketchResult(null);
+    setBodies([]);
+    setPlacedParts([]);
+    setAssemblyMates([]);
+    setSelectedBodyIds([]);
+    setActiveBodyId(null);
+    setSelectedId(draft.baseShape.id);
+    setParams(draft.baseShape.params);
+    replaceHistory(draft.history.nodes, draft.history.rootId, draft.history.activeNodeId);
+    setViewMode('workspace');
+    setWorkspaceRevisionVerification({
+      ...pendingWorkspaceRevisionVerification(revisionId),
+      requiredPipelineGeneration,
+    });
+    addToast('warning', isKorean(lang)
+      ? '편집 가능한 새 리비전을 적용했습니다. 이전 게이트 결과는 승계하지 않았으며 정확 커널 재검증이 필요합니다.'
+      : 'Applied a new editable revision. Prior gate results were not inherited; exact-kernel reverification is required.');
+    return { ok: true, revisionId };
+  }, [addToast, isMobile, lang, replaceHistory, router, setActiveBodyId, setAssemblyMates, setBodies, setImportedFilename, setImportedGeometry, setParams, setPlacedParts, setSelectedBodyIds, setSelectedId, setSketchResult, setViewMode, setOcctMode]);
+
   // Wire the refs used by handleGeometryApply (declared above) so direct mesh
   // edits on an imported part persist onto importedGeometry.
   setImportedGeometryRef.current = setImportedGeometry;
@@ -7208,6 +7308,13 @@ export function ShapeGeneratorInner() {
         // F-4 후속 — B-rep 핸들 페리 실측(워커 소속 플래그 포함).
         resultOcctHandle: (result?.geometry?.userData as { occtHandle?: string } | undefined)?.occtHandle ?? null,
         resultHandleInWorker: !!(result?.geometry?.userData as { occtHandleInWorker?: boolean } | undefined)?.occtHandleInWorker,
+        occtMode,
+        occtInitPending,
+        occtInitError,
+        pipelineWorkerLoading,
+        isMobile,
+        pipelineWorkerDiagnostic: result?.geometry?.userData?.pipelineWorkerDiagnostic ?? null,
+        meshDowngrades: result?.geometry?.userData?.meshDowngrades ?? [],
         pipelineErrors,
         // F-6(260808g) — 어셈블리 시드 실증용: 배치 파트의 사상 결과 실측.
         placedParts: placedParts.map(p => ({
@@ -7222,7 +7329,7 @@ export function ShapeGeneratorInner() {
       };
     };
     return () => { delete (window as unknown as { __nfabProbe?: unknown }).__nfabProbe; };
-  }, [effectiveResult, getCloudSceneObject, result, baseShapeResult, pipelineErrors, placedParts]);
+  }, [effectiveResult, getCloudSceneObject, result, baseShapeResult, occtMode, occtInitPending, occtInitError, pipelineWorkerLoading, isMobile, pipelineErrors, placedParts]);
 
   // Local browser verification only: exercise the same registry-owning worker
   // STEP RPC without weakening the product's Pro export entitlement.
@@ -7390,6 +7497,14 @@ export function ShapeGeneratorInner() {
       if (programRaw) {
         try {
           const program = JSON.parse(programRaw);
+          // A precise handoff must not race the idle-time kernel bootstrap.
+          // Prepare the kernel before replaying features so the first pipeline
+          // run owns an exact worker B-rep rather than briefly settling on the
+          // mesh fallback and depending on a later state-driven retry.
+          if (!isMobile && !useUIStore.getState().occtMode) {
+            await setOcctMode(true);
+            if (cancelled) return;
+          }
           const { reconstructFeatureTree } = await import('./ai/programToFeatures');
           if (cancelled) return;
           const out = reconstructFeatureTree(program, {
@@ -7475,7 +7590,7 @@ export function ShapeGeneratorInner() {
       }
     })();
     return () => { cancelled = true; };
-  }, [setImportedGeometry, setImportedFilename, addToast, addSketchFeature, addFeatureWithParams, setSelectedId, setParams, clearAll, setSketchResult]);
+  }, [setImportedGeometry, setImportedFilename, addToast, addSketchFeature, addFeatureWithParams, setSelectedId, setParams, clearAll, setSketchResult, isMobile, setOcctMode]);
 
   // ─── K-series STEP import (B-rep, gap #3) ────────────────────────────────
   // Read a STEP file as a true OCCT B-rep solid (STEPControl_Reader via the
@@ -7861,7 +7976,7 @@ export function ShapeGeneratorInner() {
     // Drawing route instead of opening a modal. The legacy modal state
     // (setShowAutoDrawing) is preserved for regression-rollback only
     // and is no longer reachable from the toolbar.
-    autoDrawing:      () => router.push(`/${langRef.current}/shape-generator/drawing`),
+    autoDrawing:      () => router.push(`/${langRef.current}/shape-generator/drawing?expert=1`),
     mfgPipeline:      () => setShowMfgPipeline(true) }), [router]);
 
   // Entries that need geometry to be meaningful — handleAnalysis will bail before
@@ -12746,7 +12861,11 @@ export function ShapeGeneratorInner() {
       {/* ═══ AI Design-Brief panel (Wave A · WA-D3) + autonomy dashboard (WA-E/GA3) ═══ */}
       {showDesignBrief && (
         <div style={{ position: 'fixed', top: 60, right: 360, zIndex: 600, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <DesignBriefPanel onClose={() => setShowDesignBrief(false)} />
+          <DesignBriefPanel
+            onClose={() => setShowDesignBrief(false)}
+            onApplyWorkspaceCandidate={handleApplyDesignBriefWorkspace}
+            workspaceRevisionVerification={workspaceRevisionVerification}
+          />
           {/* Bound to autonomySessionStore. Renders "측정 없음(n=0)" until real
               partner-session actions accrue — measurement prep, not a claim. */}
           <div style={{ width: 360, maxHeight: '38vh', overflow: 'auto', padding: 10, background: 'var(--nx-panel, #161b22)', border: '1px solid var(--nx-border, #30363d)', borderRadius: 8 }}>

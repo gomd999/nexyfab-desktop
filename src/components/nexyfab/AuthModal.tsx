@@ -153,7 +153,6 @@ export default function AuthModal({
 
   return (
     <div
-      aria-hidden="true"
       style={{
         position: 'fixed', inset: 0, zIndex: 9000,
         background: 'rgba(0,0,0,0.65)',

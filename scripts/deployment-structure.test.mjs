@@ -7,6 +7,7 @@ const workerDockerfile = await readFile(new URL('../services/openscad-worker/Doc
 const railwayJson = JSON.parse(await readFile(new URL('../railway.json', import.meta.url), 'utf8'));
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const standaloneSync = await readFile(new URL('./sync-standalone-static.mjs', import.meta.url), 'utf8');
+const preflightCheck = await readFile(new URL('./preflight-check.ts', import.meta.url), 'utf8');
 
 test('public web image has no native CAD executable installation', () => {
   assert.doesNotMatch(rootDockerfile, /apt-get install[\s\S]{0,240}\b(?:openscad|gmsh)\b/i);
@@ -35,6 +36,14 @@ test('native CAD tools live in the isolated worker image', () => {
 test('web Railway service has a single-purpose start command', () => {
   assert.equal(railwayJson.deploy.startCommand, 'node server.js');
   assert.doesNotMatch(railwayJson.deploy.startCommand, /NEXYFAB_PROCESS_ROLE|openscad-worker/);
+});
+
+test('production preflight enforces external CAD workers without requiring Docker in the web image', () => {
+  assert.match(preflightCheck, /commercialReadinessIssues\(process\.env\)/);
+  assert.doesNotMatch(preflightCheck, /process\.env\.OPENSCAD_USE_DOCKER/);
+  assert.match(preflightCheck, /railwayEnvironmentInjected/);
+  assert.match(preflightCheck, /RAILWAY_ENVIRONMENT_ID/);
+  assert.doesNotMatch(preflightCheck, /\{ key: 'TOSS_SECRET_KEY'/);
 });
 
 test('postbuild prunes mutable state and repairs the standalone runtime', () => {

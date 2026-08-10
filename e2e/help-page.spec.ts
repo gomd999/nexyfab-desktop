@@ -1,29 +1,20 @@
-import { test, expect } from '@playwright/test';
-
-// Help center — categorised FAQ + search.
+import { expect, test } from '@playwright/test';
 
 test.describe('Help center', () => {
-  test('renders 6 categories', async ({ page }) => {
+  test('renders the current guide accordion', async ({ page }) => {
     await page.goto('/kr/help');
-    // Korean category headings.
-    for (const heading of ['시작하기', '구독 & 결제', 'AI 사용', '도면 & 내보내기']) {
-      await expect(page.getByRole('heading', { name: new RegExp(heading) })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '사용 가이드' })).toBeVisible();
+    for (const guide of ['첫 설계 만들기', 'AI 에이전트 사용하기', 'RFQ (견적 요청) 보내기', '견적 비교 + 수락']) {
+      await expect(page.getByRole('button', { name: guide, exact: false })).toBeVisible();
     }
   });
 
-  test('search filters items', async ({ page }) => {
+  test('search filters items when the search control is present', async ({ page }) => {
     await page.goto('/kr/help');
-    // The HelpClient may not expose the input as a search role — try both.
-    const candidates = [
-      page.getByRole('searchbox'),
-      page.getByPlaceholder(/검색|Search/i).first(),
-    ];
-    for (const candidate of candidates) {
-      if (await candidate.count() > 0) {
-        await candidate.fill('환불');
-        await expect(page.getByText(/환불/).first()).toBeVisible();
-        return;
-      }
+    const search = page.getByRole('searchbox').or(page.getByPlaceholder(/검색|Search/i).first());
+    if (await search.count()) {
+      await search.first().fill('환불');
+      await expect(page.getByText(/환불/).first()).toBeVisible();
     }
   });
 });

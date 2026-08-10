@@ -11,11 +11,16 @@ import { join } from 'node:path';
  */
 const GOLDEN_REL = join('tests', 'golden', 'm3-assembly-minimal.nfab.json');
 
-async function loadGoldenNfab(page: import('@playwright/test').Page) {
+async function loadNfab(page: import('@playwright/test').Page, filePath: string) {
+  await expect(page.getByTestId('shape-generator-workspace')).toBeVisible({ timeout: 60_000 });
   await page.keyboard.press('Control+O');
-  const input = page.locator('input[type="file"]');
-  await input.last().waitFor({ state: 'attached', timeout: 15000 });
-  await input.last().setInputFiles(join(process.cwd(), GOLDEN_REL));
+  const projectInput = page.locator('input[type="file"][accept*=".nfab"]');
+  await projectInput.waitFor({ state: 'attached', timeout: 30_000 });
+  await projectInput.setInputFiles(filePath);
+}
+
+async function loadGoldenNfab(page: import('@playwright/test').Page) {
+  await loadNfab(page, join(process.cwd(), GOLDEN_REL));
 }
 
 test.describe('M3 assembly — golden nfab', () => {
@@ -23,9 +28,9 @@ test.describe('M3 assembly — golden nfab', () => {
     test.skip(testInfo.project.name === 'mobile-chrome', 'desktop file upload');
   });
 
-  test('Ctrl+O loads two-part assembly; reload + reopen keeps BOM count', async ({ page }) => {
+  test('Open loads two-part assembly; reload + reopen keeps BOM count', async ({ page }) => {
     test.setTimeout(120_000);
-    const res = await page.goto('/en/shape-generator/', { waitUntil: 'domcontentloaded' });
+    const res = await page.goto('/en/shape-generator/?expert=1', { waitUntil: 'domcontentloaded' });
     if (res && res.status() >= 400) {
       throw new Error(`shape-generator returned HTTP ${res.status()} — use production server if dev (Turbopack) fails`);
     }
@@ -48,7 +53,7 @@ test.describe('M3 assembly — golden nfab', () => {
    */
   test('Ctrl+S saves .nfab download; reload + reopen saved file keeps BOM (2)', async ({ page }) => {
     test.setTimeout(180_000);
-    const res = await page.goto('/en/shape-generator/', { waitUntil: 'domcontentloaded' });
+    const res = await page.goto('/en/shape-generator/?expert=1', { waitUntil: 'domcontentloaded' });
     if (res && res.status() >= 400) {
       throw new Error(`shape-generator returned HTTP ${res.status()} — use production server if dev (Turbopack) fails`);
     }
@@ -75,10 +80,7 @@ test.describe('M3 assembly — golden nfab', () => {
       await expect(page).toHaveURL(/\/en\/shape-generator/);
       await page.waitForTimeout(2000);
 
-      await page.keyboard.press('Control+O');
-      const input = page.locator('input[type="file"]');
-      await input.last().waitFor({ state: 'attached', timeout: 15000 });
-      await input.last().setInputFiles(outPath);
+      await loadNfab(page, outPath);
       await expect(page.getByTestId('assembly-bom-count')).toHaveText('(2)', { timeout: 40000 });
     } finally {
       await rm(dir, { recursive: true, force: true }).catch(() => {});

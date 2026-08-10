@@ -10,6 +10,14 @@
 import type { OcctBridge } from './bridge';
 import type { OcctShape } from './types';
 import type { OcctPlan, OcctCommand } from './featurePlan';
+import { detectSampledCircle } from '@/lib/cad/sampledCircle';
+
+function extrudeRange(feature: Extract<OcctCommand, { op: 'extrude' }>['feature']) {
+  const offset = feature.profileOffsetZ ?? 0;
+  if (feature.direction === 'two_sided') return { z0: offset - feature.depth, height: feature.depth * 2 };
+  if (feature.direction === 'midplane') return { z0: offset - feature.depth / 2, height: feature.depth };
+  return { z0: offset, height: feature.depth };
+}
 
 export interface ExecuteOcctPlanResult {
   ok: boolean;
@@ -173,7 +181,11 @@ export async function executeOcctPlan(plan: OcctPlan, bridge: OcctBridge): Promi
     let res: { ok: true; shape: OcctShape; warnings: string[] } | { ok: false; error: string };
     switch (cmd.op) {
       case 'extrude': {
-        const r = await bridge.buildFromExtrude(cmd.feature);
+        const circle = detectSampledCircle(cmd.feature.loop);
+        const range = extrudeRange(cmd.feature);
+        const r = circle && bridge.buildPrismAt
+          ? await bridge.buildPrismAt(cmd.feature.loop, range.z0, range.height)
+          : await bridge.buildFromExtrude(cmd.feature);
         res = r.ok && r.shape ? { ok: true, shape: r.shape, warnings: r.warnings } : { ok: false, error: `extrude ${cmd.resultId}: ${r.error ?? 'no shape'}` };
         break;
       }

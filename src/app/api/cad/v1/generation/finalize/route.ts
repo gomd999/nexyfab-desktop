@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
     let motionVerification: { ok?: boolean; releaseReady?: boolean; precise?: unknown; broad?: unknown; code?: string; message?: string } | undefined;
     if (body.motion.required && body.motion.animation) {
-      const built = await Promise.all(body.program.parts.map(async part => [part.instanceId, await collisionGeometryFromFeatureTree(part.instanceId, part.featureTree)] as const));
+      const built = await Promise.all(body.program.parts.map(async part => [part.instanceId, await collisionGeometryFromFeatureTree(part.instanceId, part.featureTree, { requireExact: true })] as const));
       const unavailable = built.filter(([, geometry]) => !geometry.available);
       if (unavailable.length) motionVerification = { ok: false, releaseReady: false, code: 'MOTION_GEOMETRY_UNAVAILABLE', message: unavailable.map(([, geometry]) => geometry.reason).join('; ') };
       else {

@@ -30,6 +30,11 @@ function jsonResponse(status: number, body: unknown): Response {
 const OK_PAYLOAD = {
   ok: true,
   planId: 'fixture-l-bracket',
+  execution: { mode: 'ai-generated', assuranceLevel: 'engineering-screening', manufacturingReleaseReady: false, workspaceApplied: false, humanReviewRequired: true, exactCadRequiredForRelease: true, releaseBlockers: [] },
+  workspaceCandidate: {
+    schema: 'nexyfab.editable-workspace-candidate.v1', sourcePlanId: 'fixture-l-bracket', target: 'modeler-feature-tree', supported: false, blockers: ['test_no_apply'],
+    reverificationRequired: true, inheritedVerification: false, manufacturingReleaseReady: false,
+  },
   package: {
     planId: 'fixture-l-bracket',
     parts: [{ partId: 'bracket', volumeMm3: 14720, dxf: '0\n', dimensions: [] }],
@@ -39,6 +44,7 @@ const OK_PAYLOAD = {
 
 const REFUSAL_PAYLOAD = {
   ok: false,
+  execution: { mode: 'ai-generated', assuranceLevel: 'engineering-screening', manufacturingReleaseReady: false, workspaceApplied: false, humanReviewRequired: true, exactCadRequiredForRelease: true, releaseBlockers: [] },
   refusal: { stage: 'plan', reason: "fixturePlanner: unknown brief 'nope'", failedGateIds: [] },
   gates: [],
 };
@@ -59,6 +65,7 @@ describe('DesignBriefPanel — autonomy 제출 방출', () => {
   it('검증 패키지(200) → run_started 만(in_progress)', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, OK_PAYLOAD));
     const { getByTestId } = render(<DesignBriefPanel fetchImpl={fetchImpl} />);
+    fireEvent.change(getByTestId('db-text'), { target: { value: 'design a bracket' } });
     fireEvent.submit(getByTestId('db-form'));
     await waitFor(() => expect(getByTestId('db-package')).toBeTruthy());
 
@@ -75,6 +82,7 @@ describe('DesignBriefPanel — autonomy 제출 방출', () => {
   it('명시 거부(422) → run_started + abandoned', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(422, REFUSAL_PAYLOAD));
     const { getByTestId } = render(<DesignBriefPanel fetchImpl={fetchImpl} />);
+    fireEvent.change(getByTestId('db-text'), { target: { value: 'design a bracket' } });
     fireEvent.submit(getByTestId('db-form'));
     await waitFor(() => expect(getByTestId('db-refusal')).toBeTruthy());
 
@@ -91,6 +99,7 @@ describe('DesignBriefPanel — autonomy 제출 방출', () => {
   it('인증 실패(401) → 드라이버 런 없음 → 방출 없음', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(401, { error: 'Unauthorized' }));
     const { getByTestId } = render(<DesignBriefPanel fetchImpl={fetchImpl} />);
+    fireEvent.change(getByTestId('db-text'), { target: { value: 'design a bracket' } });
     fireEvent.submit(getByTestId('db-form'));
     await waitFor(() => expect(getByTestId('db-error')).toBeTruthy());
     expect(selectRunEventLogs(store())).toEqual([]);

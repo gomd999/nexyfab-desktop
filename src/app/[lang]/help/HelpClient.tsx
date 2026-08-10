@@ -646,7 +646,7 @@ const stepItemStyle: React.CSSProperties = { marginBottom: 6 };
 const ctaBtnStyle: React.CSSProperties = {
   display: 'inline-block', marginTop: 6,
   padding: '6px 14px', fontSize: 12, fontWeight: 600,
-  background: '#3b82f6', color: '#fff',
+  background: '#2563eb', color: '#fff',
   borderRadius: 6, textDecoration: 'none',
 };
 const footerNoticeStyle: React.CSSProperties = {

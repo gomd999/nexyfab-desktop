@@ -14,7 +14,7 @@ const detail: OcctDetailedShapeInspection = {
   absoluteVolume: 6000, surfaceArea: 2200, centroid: { x: 5, y: 10, z: 15 },
   inertia: { status: 'available', units: 'mm^5', about: 'centroid', matrix: [[1, 0, 0], [0, 2, 0], [0, 0, 3]] },
   surfaceTypes: { status: 'available', counts: { plane: 6 } }, curveTypes: { status: 'available', counts: { line: 12 } },
-  faceAdjacency: { status: 'available', faceCount: 6, uniqueEdgeCount: 12, boundaryEdgeCount: 0, manifoldEdgeCount: 12, nonManifoldEdgeCount: 0, faceDegreeHistogram: { '4': 6 } },
+  faceAdjacency: { status: 'available', faceCount: 6, uniqueEdgeCount: 12, degeneratedEdgeCount: 0, boundaryEdgeCount: 0, manifoldEdgeCount: 12, nonManifoldEdgeCount: 0, faceDegreeHistogram: { '4': 6 } },
 };
 
 function mockBridge(options: { inspect?: boolean; importOk?: boolean; inspectError?: Error } = {}): { bridge: OcctBridge; release: ReturnType<typeof vi.fn> } {

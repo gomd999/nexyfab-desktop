@@ -67,7 +67,7 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
   const [activeTab, setActiveTab] = useState('render');
 
   const langSeg = lang === 'ko' ? 'kr' : lang;
-  const project = projectId ? `?project=${projectId}` : '';
+  const project = projectId ? `?expert=1&project=${encodeURIComponent(projectId)}` : '?expert=1';
 
   // Cross-mode tab navigation — clicking File/Solid/Assembly/Drawing/Inspect/
   // View from inside Render jumps to the relevant route (or back to modeler).
@@ -77,7 +77,7 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
     else if (id === 'solid' || id === 'file' || id === 'inspect' || id === 'view')
       router.push(`/${langSeg}/shape-generator${project}`);
     else if (id === 'assembly')
-      router.push(`/${langSeg}/shape-generator${project ? project + '&entry=assembly' : '?entry=assembly'}`);
+      router.push(`/${langSeg}/shape-generator${project}&entry=assembly`);
   };
   const [matFilter, setMatFilter] = useState<MaterialSwatch['group'] | 'all'>('all');
   const [selectedMaterial, setSelectedMaterialLocal] = useState(() => useSceneStore.getState().materialId ?? 'aluminum');

@@ -25,6 +25,7 @@
 
 import type { Mate } from './mate';
 import { validateMate, approxDofReduction } from './mate';
+import type { PartRefSpec } from './api';
 
 // ─── Quaternion (rigid-body orientation) ─────────────────────────────────
 
@@ -64,6 +65,8 @@ export interface PartInstance {
   /** When true the solver does not move this part. At least one part must
    *  be fixed (or the solver has infinite DoF — see validateAssembly). */
   fixed?: boolean;
+  /** Stable part-local semantic refs preserved across save and solve. */
+  refs?: Readonly<Record<string, PartRefSpec>>;
 }
 
 export function partInstance(opts: Omit<PartInstance, 'fixed'> & { fixed?: boolean }): PartInstance {
@@ -96,6 +99,28 @@ export function validateAssembly(state: AssemblyState): void {
     }
     ids.add(part.id);
     if (part.fixed) fixedCount += 1;
+    for (const [refId, ref] of Object.entries(part.refs ?? {})) {
+      if (!refId) throw new AssemblyValidationError(`part ${part.id}: empty semantic ref id`);
+      if (!ref || typeof ref !== 'object') {
+        throw new AssemblyValidationError(`part ${part.id} ref ${refId}: invalid reference`);
+      }
+      const finiteVec = (value: { x: number; y: number; z: number } | undefined): boolean =>
+        !!value && Number.isFinite(value.x) && Number.isFinite(value.y) && Number.isFinite(value.z);
+      if (!finiteVec(ref.origin)) {
+        throw new AssemblyValidationError(`part ${part.id} ref ${refId}: origin must be finite`);
+      }
+      if (ref.kind === 'axis') {
+        if (!finiteVec(ref.direction) || Math.hypot(ref.direction.x, ref.direction.y, ref.direction.z) <= 1e-12) {
+          throw new AssemblyValidationError(`part ${part.id} ref ${refId}: axis direction must be non-zero and finite`);
+        }
+      } else if (ref.kind === 'plane') {
+        if (!finiteVec(ref.normal) || Math.hypot(ref.normal.x, ref.normal.y, ref.normal.z) <= 1e-12) {
+          throw new AssemblyValidationError(`part ${part.id} ref ${refId}: plane normal must be non-zero and finite`);
+        }
+      } else if (ref.kind !== 'point') {
+        throw new AssemblyValidationError(`part ${part.id} ref ${refId}: unsupported kind`);
+      }
+    }
   }
   if (state.parts.length > 0 && fixedCount === 0) {
     throw new AssemblyValidationError(

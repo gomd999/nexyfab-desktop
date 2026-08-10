@@ -53,6 +53,7 @@ import { CadWorkflowRail } from './CadWorkflowRail';
 import type { AdaptiveComplexProductExecutionPlan } from '@/lib/ai/adaptiveComplexProductExecution';
 import { DomainWorkspaceBar } from './DomainWorkspaceBar';
 import { useDomainWorkspaceSelection } from './domainWorkspaceStore';
+import { loc } from '@/lib/i18n/loc';
 
 // Best-effort keyboard event dispatch so Shell's TitleBar buttons reach Inner's
 // existing keyboard shortcut handlers (Inner registers global Ctrl+Z / ⌘K /
@@ -533,11 +534,11 @@ export function ModelerShell() {
           }
           // Drawing / Render tabs route to their standalone surfaces.
           if (id === 'drawing') {
-            router.push(`/${langSeg}/shape-generator/drawing`);
+            router.push(`/${langSeg}/shape-generator/drawing?expert=1`);
             return;
           }
           if (id === 'render') {
-            router.push(`/${langSeg}/shape-generator/render`);
+            router.push(`/${langSeg}/shape-generator/render?expert=1`);
             return;
           }
           if (id === 'assembly') {
@@ -644,7 +645,7 @@ export function ModelerShell() {
             ? <MotionStudyPanel isKo={isKo} />
             : drawerTab === 'versions'
               ? <VersionTreePanel isKo={isKo} />
-              : <DrawerContent tab={drawerTab as 'dfm' | 'fea' | 'cost' | 'variants'} d={d} />}
+              : <DrawerContent tab={drawerTab as 'dfm' | 'fea' | 'cost' | 'variants'} d={d} lang={lang} />}
         </BottomDrawer>
       }
       statusBar={{
@@ -671,11 +672,11 @@ export function ModelerShell() {
 // existing ErrorBoundary-wrapped modal opens. This keeps the analytical
 // panels fully functional with their original prop wiring while exposing
 // them through the new Inspector → ANALYZE → drawer flow.
-function DrawerContent({ tab, d }: { tab: 'dfm' | 'fea' | 'cost' | 'variants'; d: ShellDict }) {
+function DrawerContent({ tab, d, lang }: { tab: 'dfm' | 'fea' | 'cost' | 'variants'; d: ShellDict; lang: string }) {
   // FEA + Cost + DFM render rich inline summaries reading analysisStore;
   // Variants stays as a simple launcher card.
   if (tab === 'dfm') return <DfmDrawerContent d={d} />;
-  if (tab === 'fea') return <FeaDrawerContent d={d} />;
+  if (tab === 'fea') return <FeaDrawerContent d={d} lang={lang} />;
   if (tab === 'cost') return <CostDrawerContent d={d} />;
   // Only `variants` reaches this path; dfm/fea/cost intercepted above.
   const plainTab = 'variants' as const;
@@ -723,13 +724,28 @@ function DrawerContent({ tab, d }: { tab: 'dfm' | 'fea' | 'cost' | 'variants'; d
 }
 
 // FEA drawer adds a solver-mode picker on top of the launcher card.
-function FeaDrawerContent({ d }: { d: ShellDict }) {
-  const [solverMode, setSolverMode] = useState<'linear' | 'nonlinear' | 'modal'>('linear');
+function FeaDrawerContent({ d, lang }: { d: ShellDict; lang: string }) {
+  const [solverMode, setSolverMode] = useState<'linear' | 'nonlinear' | 'modal' | 'buckling'>('linear');
   const launch = () => {
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('nexyfab:open-fea', { detail: { solverMode } }));
+      if (solverMode === 'buckling') {
+        window.dispatchEvent(new CustomEvent('nexyfab:open-buckling'));
+      } else {
+        window.dispatchEvent(new CustomEvent('nexyfab:open-fea', { detail: { solverMode } }));
+      }
     }
   };
+  const bucklingLabel = loc(lang, {
+    ko: '좌굴', en: 'Buckling', ja: '座屈', zh: '屈曲', es: 'Pandeo', ar: 'الانبعاج',
+  });
+  const bucklingDescription = loc(lang, {
+    ko: '임계하중 계수 · 고유치 기반 선형 좌굴.',
+    en: 'Critical load factor · eigenvalue linear buckling.',
+    ja: '臨界荷重係数 · 固有値線形座屈解析。',
+    zh: '临界载荷系数 · 特征值线性屈曲分析。',
+    es: 'Factor de carga crítica · pandeo lineal por autovalores.',
+    ar: 'معامل الحمل الحرج · انبعاج خطي بالقيم الذاتية.',
+  });
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12, color: 'var(--nx-text)' }}>
       <div>
@@ -739,7 +755,7 @@ function FeaDrawerContent({ d }: { d: ShellDict }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: 4 }}>
-        {(['linear', 'nonlinear', 'modal'] as const).map(m => (
+        {(['linear', 'nonlinear', 'modal', 'buckling'] as const).map(m => (
           <button
             key={m}
             onClick={() => setSolverMode(m)}
@@ -751,7 +767,7 @@ function FeaDrawerContent({ d }: { d: ShellDict }) {
               borderRadius: 3,
             }}
           >
-            {m === 'linear' ? d.feaLinear : m === 'nonlinear' ? d.feaNonlinear : d.feaModal}
+            {m === 'linear' ? d.feaLinear : m === 'nonlinear' ? d.feaNonlinear : m === 'modal' ? d.feaModal : bucklingLabel}
           </button>
         ))}
       </div>
@@ -759,6 +775,7 @@ function FeaDrawerContent({ d }: { d: ShellDict }) {
         {solverMode === 'linear' && d.feaLinearDesc}
         {solverMode === 'nonlinear' && d.feaNonlinearDesc}
         {solverMode === 'modal' && d.feaModalDesc}
+        {solverMode === 'buckling' && bucklingDescription}
       </div>
       <button
         onClick={launch}

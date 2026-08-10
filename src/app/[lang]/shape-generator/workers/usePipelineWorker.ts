@@ -139,6 +139,9 @@ export function usePipelineWorker() {
           if (data.occtHandle) {
             geo.userData = { ...geo.userData, occtHandle: data.occtHandle, occtHandleInWorker: true };
           }
+          if (data.occtShapeEvidence) {
+            geo.userData = { ...geo.userData, occtShapeEvidence: data.occtShapeEvidence };
+          }
           // Re-attach stable topology ids (userData doesn't cross the worker
           // boundary, so the worker ships them as plain JSON alongside the mesh).
           if (data.topoEdgeSignatures) {
@@ -148,6 +151,9 @@ export function usePipelineWorker() {
           // path too (the same userData-doesn't-cross-the-boundary issue).
           if (data.meshDowngrades && data.meshDowngrades.length > 0) {
             geo.userData = { ...geo.userData, meshDowngrades: data.meshDowngrades };
+          }
+          if (data.workerDiagnostic) {
+            geo.userData = { ...geo.userData, pipelineWorkerDiagnostic: data.workerDiagnostic };
           }
           // Re-attach face provenance (nfabFaceFeatureId attribute +
           // topoFaceMapByFeature/topoSketchExtrudeHashes/nfabFeatureIdMap)

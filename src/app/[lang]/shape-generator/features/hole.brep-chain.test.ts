@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { holeFeature } from './hole';
+import { runPipelineAsync } from './pipelineManager';
+import type { FeatureInstance, MapBackedFeatureType, FeatureDefinition } from './types';
 import {
   ensureOcctReady,
   getShape,
@@ -64,6 +66,32 @@ describeMaybe('holeFeature OCCT B-rep chain regression', () => {
     // A Y-axis through-hole is circular in the front projection (u,v)=(x,-z).
     // The two holes must survive in the final registry handle used by PROJECT_VIEWS.
     const views = occtProjectViews(secondHandle, ['front', 'top', 'right']);
+    expect(views).not.toBeNull();
+    expect(arcPathCount(views!.front!.visible)).toBeGreaterThanOrEqual(2);
+  }, 120_000);
+
+  it('does not reuse a stale exact handle when a second hole is appended on the next run', async () => {
+    const plate = new THREE.BoxGeometry(100, 8, 60);
+    const left: FeatureInstance = {
+      id: 'hole-left',
+      type: 'hole',
+      params: { ...HOLE_PARAMS, posX: -20 },
+      enabled: true,
+    };
+    const right: FeatureInstance = {
+      id: 'hole-right',
+      type: 'hole',
+      params: { ...HOLE_PARAMS, posX: 20 },
+      enabled: true,
+    };
+    const featureMap = { hole: holeFeature } as Record<MapBackedFeatureType, FeatureDefinition>;
+
+    const firstRun = await runPipelineAsync(plate, [left], featureMap, { occtMode: true });
+    handleOf(firstRun.geometry);
+
+    const secondRun = await runPipelineAsync(plate, [left, right], featureMap, { occtMode: true });
+    const finalHandle = handleOf(secondRun.geometry);
+    const views = occtProjectViews(finalHandle, ['front']);
     expect(views).not.toBeNull();
     expect(arcPathCount(views!.front!.visible)).toBeGreaterThanOrEqual(2);
   }, 120_000);

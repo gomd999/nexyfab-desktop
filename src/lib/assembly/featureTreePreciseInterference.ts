@@ -14,18 +14,105 @@ import { executeOcctPlan } from '@/lib/occt/planExecutor';
 import { loadOcctNode } from '@/lib/occt/nodeOcctLoader';
 import { createNodeOcctBridge } from '@/lib/occt/nodeOcctBridge';
 import { VertexWeld, triangleNormal } from '@/lib/occt/occtTessellate';
+import type { OcctDetailedShapeInspection } from '@/lib/occt/bridge';
+import type { OcctShape } from '@/lib/occt/types';
+import { createHash } from 'node:crypto';
 
 const MESHABLE = new Set(['extrude', 'revolve', 'sweep', 'sweep_path', 'loft']);
+const EXACT_GEOMETRY_CACHE_LIMIT = 64;
+const exactGeometryCache = new Map<string, Promise<FeatureTreeCollisionGeometry>>();
 
 export interface FeatureTreeCollisionGeometry {
   part: PlanPart;
   geometry: ReturnType<typeof buildPartGeometry>;
+  source: 'preview-mesh' | 'occt-exact';
   available: boolean;
+  exactCad?: FeatureTreeExactCadEvidence;
   reason?: string;
 }
 
+export interface FeatureTreeExactCadEvidence {
+  schema: 'nexyfab.feature-tree-exact-cad.v1';
+  kernel: 'OCCT';
+  valid: true;
+  solidCount: 1;
+  faceCount: number;
+  edgeCount: number;
+  degeneratedEdgeCount: number;
+  freeBoundaryEdgeCount: 0;
+  nonManifoldEdgeCount: 0;
+  volumeMm3: number;
+  bbox: { min: readonly [number, number, number]; max: readonly [number, number, number] };
+  stepSha256: string;
+  stepByteLength: number;
+  stepRoundTripVolumeMm3: number;
+  stepRoundTripVolumeRelError: number;
+  stepRoundTripFreeBoundaryEdgeCount: 0;
+  stepRoundTripNonManifoldEdgeCount: 0;
+}
+
+export interface CollisionGeometryOptions {
+  /** Refuse preview meshes and require one BRepCheck-valid OCCT solid + STEP round trip. */
+  requireExact?: boolean;
+}
+
+/** Exact local broad-phase bounds from the BRep inspection, never tessellation or caller input. */
+export function exactLocalAabb(geometry: FeatureTreeCollisionGeometry): AABB | null {
+  const bbox = geometry.exactCad?.bbox;
+  if (!geometry.available || geometry.source !== 'occt-exact' || !bbox) return null;
+  return {
+    min: { x: bbox.min[0], y: bbox.min[1], z: bbox.min[2] },
+    max: { x: bbox.max[0], y: bbox.max[1], z: bbox.max[2] },
+  };
+}
+
 /** Build collision geometry from the active terminal bodies of one FeatureTree. */
-export async function collisionGeometryFromFeatureTree(partId: string, tree: FeatureTree): Promise<FeatureTreeCollisionGeometry> {
+export async function collisionGeometryFromFeatureTree(
+  partId: string,
+  tree: FeatureTree,
+  options: CollisionGeometryOptions = {},
+): Promise<FeatureTreeCollisionGeometry> {
+  if (options.requireExact) {
+    const key = exactGeometryCacheKey(partId, tree);
+    const cached = exactGeometryCache.get(key);
+    if (cached) return cached;
+    const pending = buildCollisionGeometryFromFeatureTree(partId, tree, options);
+    exactGeometryCache.set(key, pending);
+    while (exactGeometryCache.size > EXACT_GEOMETRY_CACHE_LIMIT) {
+      const oldest = exactGeometryCache.keys().next().value as string | undefined;
+      if (!oldest) break;
+      exactGeometryCache.delete(oldest);
+    }
+    try {
+      const result = await pending;
+      // Transient kernel/resource failures must be retried on the next request.
+      // Only a complete exact result is safe to reuse as governed evidence.
+      if (!result.available || result.source !== 'occt-exact' || !result.exactCad) {
+        exactGeometryCache.delete(key);
+      }
+      return result;
+    } catch (error) {
+      exactGeometryCache.delete(key);
+      throw error;
+    }
+  }
+  return buildCollisionGeometryFromFeatureTree(partId, tree, options);
+}
+
+function exactGeometryCacheKey(partId: string, tree: FeatureTree): string {
+  const serialized = JSON.stringify(tree);
+  return createHash('sha256')
+    .update('nexyfab.feature-tree-collision-geometry.v1:')
+    .update(String(partId.length)).update(':').update(partId)
+    .update(String(serialized.length)).update(':').update(serialized)
+    .digest('hex');
+}
+
+async function buildCollisionGeometryFromFeatureTree(
+  partId: string,
+  tree: FeatureTree,
+  options: CollisionGeometryOptions,
+): Promise<FeatureTreeCollisionGeometry> {
   const active = tree.nodes.filter(node => !node.suppressed);
   const consumed = new Set(active.flatMap(node => [...node.dependencies]));
   const terminal = active.filter(node => !consumed.has(node.id));
@@ -38,13 +125,28 @@ export async function collisionGeometryFromFeatureTree(partId: string, tree: Fea
       .map(node => ({ bodyId: node.id, feature: node.payload as MeshableFeature })),
   };
   const geometry = buildPartGeometry(part);
-  if (terminal.length === 0) return { part, geometry, available: false, reason: `${partId}: no active terminal body` };
-  if (unsupported.length > 0) return collisionGeometryFromOcct(partId, tree, part, geometry);
+  if (terminal.length === 0) return { part, geometry, source: 'preview-mesh', available: false, reason: `${partId}: no active terminal body` };
+  if (options.requireExact || unsupported.length > 0) {
+    return collisionGeometryFromOcct(partId, tree, part, geometry, options.requireExact === true, terminal.map(node => node.id));
+  }
   const failed = geometry.bodies.filter(body => !body.poly || !body.watertight);
   if (failed.length > 0) {
-    return { part, geometry, available: false, reason: `${partId}: invalid collision mesh: ${failed.map(body => body.bodyId).join(', ')}` };
+    return { part, geometry, source: 'preview-mesh', available: false, reason: `${partId}: invalid collision mesh: ${failed.map(body => body.bodyId).join(', ')}` };
   }
-  return { part, geometry, available: true };
+  return { part, geometry, source: 'preview-mesh', available: true };
+}
+
+const STEP_VOLUME_TOL_REL = 1e-9;
+
+function exactInspectionProblem(partId: string, detail: OcctDetailedShapeInspection): string | null {
+  if (!detail.valid) return `${partId}: OCCT BRepCheck_Analyzer reports invalid topology`;
+  if (detail.solidCount !== 1) return `${partId}: expected exactly one OCCT solid, got ${detail.solidCount}`;
+  if (!(detail.absoluteVolume > 0) || !Number.isFinite(detail.absoluteVolume)) return `${partId}: OCCT volume is not positive`;
+  if (detail.faceAdjacency.status !== 'available') return `${partId}: exact face adjacency unavailable: ${detail.faceAdjacency.reason}`;
+  if (detail.faceAdjacency.boundaryEdgeCount !== 0 || detail.faceAdjacency.nonManifoldEdgeCount !== 0) {
+    return `${partId}: exact topology has ${detail.faceAdjacency.boundaryEdgeCount} free-boundary and ${detail.faceAdjacency.nonManifoldEdgeCount} non-manifold edge(s)`;
+  }
+  return null;
 }
 
 async function collisionGeometryFromOcct(
@@ -52,35 +154,64 @@ async function collisionGeometryFromOcct(
   tree: FeatureTree,
   fallbackPart: PlanPart,
   fallbackGeometry: PartGeometry,
+  requireExact = false,
+  terminalIds: readonly string[] = [],
 ): Promise<FeatureTreeCollisionGeometry> {
   let plan;
   try { plan = featureTreeToOcctPlan(tree); }
   catch (error) {
-    return { part: fallbackPart, geometry: fallbackGeometry, available: false, reason: `${partId}: OCCT plan failed: ${error instanceof Error ? error.message : String(error)}` };
+    return { part: fallbackPart, geometry: fallbackGeometry, source: 'occt-exact', available: false, reason: `${partId}: OCCT plan failed: ${error instanceof Error ? error.message : String(error)}` };
+  }
+  if (requireExact && (terminalIds.length !== 1 || terminalIds[0] !== plan.finalResultId)) {
+    return {
+      part: fallbackPart, geometry: fallbackGeometry, source: 'occt-exact', available: false,
+      reason: `${partId}: exact collision verification requires one explicit terminal solid; got ${terminalIds.join(', ') || 'none'}`,
+    };
   }
   if (!plan.finalResultId || plan.unsupported.length > 0) {
     return {
-      part: fallbackPart, geometry: fallbackGeometry, available: false,
+      part: fallbackPart, geometry: fallbackGeometry, source: 'occt-exact', available: false,
       reason: `${partId}: OCCT unsupported feature(s): ${plan.unsupported.map(node => `${node.resultId}:${node.kind}`).join(', ') || 'no final solid'}`,
     };
   }
   const loaded = await loadOcctNode();
   if (!loaded.ok || !loaded.oc) {
-    return { part: fallbackPart, geometry: fallbackGeometry, available: false, reason: `${partId}: OCCT unavailable: ${loaded.reason ?? 'load failed'}` };
+    return { part: fallbackPart, geometry: fallbackGeometry, source: 'occt-exact', available: false, reason: `${partId}: OCCT unavailable: ${loaded.reason ?? 'load failed'}` };
   }
   const bridge = createNodeOcctBridge(loaded.oc);
   const executed = await executeOcctPlan(plan, bridge);
   if (!executed.ok || !executed.finalShape) {
-    return { part: fallbackPart, geometry: fallbackGeometry, available: false, reason: `${partId}: OCCT execution failed: ${executed.error ?? 'no final shape'}` };
+    return { part: fallbackPart, geometry: fallbackGeometry, source: 'occt-exact', available: false, reason: `${partId}: OCCT execution failed: ${executed.error ?? 'no final shape'}` };
   }
+  let imported: OcctShape | undefined;
   try {
+    if (!bridge.inspectShapeDetailed) throw new Error('detailed OCCT inspection unavailable');
+    const detail = await bridge.inspectShapeDetailed(executed.finalShape);
+    const originalProblem = exactInspectionProblem(partId, detail);
+    if (originalProblem) throw new Error(originalProblem);
+    const step = await bridge.exportSTEP(executed.finalShape);
+    if (!/^ISO-10303-21;/m.test(step)) throw new Error(`${partId}: STEP export has no ISO-10303-21 header`);
+    const importedResult = await bridge.importSTEP(step);
+    if (!importedResult.ok || !importedResult.shape) throw new Error(`${partId}: STEP re-import failed: ${importedResult.error ?? 'no shape'}`);
+    imported = importedResult.shape;
+    const roundTrip = await bridge.inspectShapeDetailed(imported);
+    const roundTripProblem = exactInspectionProblem(`${partId}:STEP`, roundTrip);
+    if (roundTripProblem) throw new Error(roundTripProblem);
+    if (detail.faceAdjacency.status !== 'available' || roundTrip.faceAdjacency.status !== 'available') {
+      throw new Error(`${partId}: exact adjacency evidence unexpectedly unavailable`);
+    }
+    const roundTripVolumeRelError = Math.abs(roundTrip.absoluteVolume - detail.absoluteVolume)
+      / Math.max(Math.abs(detail.absoluteVolume), 1e-12);
+    if (roundTripVolumeRelError > STEP_VOLUME_TOL_REL) {
+      throw new Error(`${partId}: STEP round-trip volume relError ${roundTripVolumeRelError} > ${STEP_VOLUME_TOL_REL}`);
+    }
     const tessellated = await bridge.tessellate(executed.finalShape, 0.1);
     if (!tessellated.ok || !tessellated.mesh) {
-      return { part: fallbackPart, geometry: fallbackGeometry, available: false, reason: `${partId}: OCCT tessellation failed: ${tessellated.error ?? 'no mesh'}` };
+      throw new Error(`${partId}: OCCT tessellation failed: ${tessellated.error ?? 'no mesh'}`);
     }
     const poly = polyhedronFromTrianglePositions(tessellated.mesh.positions);
     if (poly.faces.length === 0) {
-      return { part: fallbackPart, geometry: fallbackGeometry, available: false, reason: `${partId}: OCCT tessellation returned no triangles` };
+      throw new Error(`${partId}: OCCT tessellation returned no triangles`);
     }
     const xs = poly.vertices.map(vertex => vertex.x);
     const ys = poly.vertices.map(vertex => vertex.y);
@@ -99,8 +230,39 @@ async function collisionGeometryFromOcct(
       bbox: { min: bbox[0]!, max: bbox[1]! },
       overlappingBodyPairs: [],
     };
-    return { part, geometry, available: true };
+    const exactCad: FeatureTreeExactCadEvidence = {
+      schema: 'nexyfab.feature-tree-exact-cad.v1',
+      kernel: 'OCCT',
+      valid: true,
+      solidCount: 1,
+      faceCount: detail.faceCount,
+      edgeCount: detail.edgeCount,
+      degeneratedEdgeCount: detail.faceAdjacency.degeneratedEdgeCount,
+      freeBoundaryEdgeCount: 0,
+      nonManifoldEdgeCount: 0,
+      volumeMm3: detail.absoluteVolume,
+      bbox: {
+        min: [detail.bbox.min.x, detail.bbox.min.y, detail.bbox.min.z],
+        max: [detail.bbox.max.x, detail.bbox.max.y, detail.bbox.max.z],
+      },
+      stepSha256: createHash('sha256').update(step).digest('hex'),
+      stepByteLength: new TextEncoder().encode(step).byteLength,
+      stepRoundTripVolumeMm3: roundTrip.absoluteVolume,
+      stepRoundTripVolumeRelError: roundTripVolumeRelError,
+      stepRoundTripFreeBoundaryEdgeCount: 0,
+      stepRoundTripNonManifoldEdgeCount: 0,
+    };
+    return { part, geometry, source: 'occt-exact', available: true, exactCad };
+  } catch (error) {
+    return {
+      part: fallbackPart,
+      geometry: fallbackGeometry,
+      source: 'occt-exact',
+      available: false,
+      reason: error instanceof Error ? error.message : String(error),
+    };
   } finally {
+    if (imported) bridge.release(imported);
     bridge.release(executed.finalShape);
   }
 }

@@ -13,6 +13,12 @@ import React from 'react';
 import { AssemblyBrowserPageContent } from '@/app/[lang]/shape-generator/assembly/_content';
 import { IDENTITY_QUAT, type AssemblyState } from '@/lib/assembly/assemblyState';
 import type { FeatureTree } from '@/lib/cad/featureTree';
+import { pinBlockAssemblyPlan } from '@/lib/ai/design-driver/fixturePlanner';
+import { buildEditableWorkspaceCandidate } from '@/lib/ai/design-driver/workspaceCandidate';
+import {
+  readAiAssemblyWorkspaceSeed,
+  writeAiAssemblyWorkspaceSeed,
+} from '@/app/[lang]/shape-generator/design-brief/assemblyWorkspaceSeed';
 
 describe('AssemblyBrowserPageContent', () => {
   it('mounts the modal inside a page wrapper', async () => {
@@ -72,6 +78,20 @@ describe('AssemblyBrowserPageContent', () => {
   });
 
   // ── Phase 4: default fetcher routes featureTrees correctly ────────────
+
+  it('consumes an AI semantic-assembly handoff without inheriting verification', async () => {
+    const candidate = buildEditableWorkspaceCandidate(pinBlockAssemblyPlan());
+    expect(writeAiAssemblyWorkspaceSeed('ai-rev-1', candidate)).toEqual({ ok: true });
+
+    render(<AssemblyBrowserPageContent lang="en" aiRevisionId="ai-rev-1" onSolve={vi.fn()} />);
+    expect(await screen.findByTestId('ai-assembly-revision-warning')).toHaveTextContent(
+      /prior verification not inherited/i,
+    );
+    expect(await screen.findByTestId('solver-assembly-part-row-block')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-part-row-pin')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-mate-row-m_concentric')).toBeInTheDocument();
+    expect(readAiAssemblyWorkspaceSeed('ai-rev-1')).toBeNull();
+  });
 
   describe('default onSolve fetcher', () => {
     let fetchMock: ReturnType<typeof vi.fn>;

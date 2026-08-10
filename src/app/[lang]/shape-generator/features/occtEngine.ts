@@ -32,6 +32,7 @@ import type { EdgeSig, FaceSig } from './edgeCorrespondence';
 
 let ocInstance: unknown = null;
 let initPromise: Promise<void> | null = null;
+let lastInitError: string | null = null;
 
 export class OcctNotReadyError extends Error {
   constructor() {
@@ -42,6 +43,10 @@ export class OcctNotReadyError extends Error {
 
 export function isOcctReady(): boolean {
   return ocInstance !== null;
+}
+
+export function getOcctInitError(): string | null {
+  return lastInitError;
 }
 
 /**
@@ -61,10 +66,27 @@ export async function ensureOcctReady(): Promise<void> {
     // locateFile hook so emscripten finds it. In node (tests) omit the
     // hook entirely — emscripten resolves relative to the .js file, which
     // is where the wasm lives in node_modules.
-    const factoryOpts = typeof window !== 'undefined'
+    const wasmUrl = publicWasmUrl('replicad_single.wasm');
+    const isWindow = typeof window !== 'undefined';
+    const isModuleWorker = !isWindow
+      && typeof WorkerGlobalScope !== 'undefined'
+      && self instanceof WorkerGlobalScope;
+    // This Emscripten build detects classic workers through `importScripts`.
+    // Module workers intentionally do not expose importScripts, so the runtime
+    // misclassifies them as a shell and has no async loader. Preload the bytes
+    // there; the window path can continue using locateFile and streaming WASM.
+    let wasmBinary: ArrayBuffer | undefined;
+    if (isModuleWorker) {
+      const response = await fetch(wasmUrl, { credentials: 'same-origin' });
+      if (!response.ok) {
+        throw new Error(`Failed to load OCCT WASM (${response.status}) from ${wasmUrl}`);
+      }
+      wasmBinary = await response.arrayBuffer();
+    }
+    const factoryOpts = isWindow || isModuleWorker
       ? {
-          locateFile: (p: string) =>
-            p.endsWith('.wasm') ? publicWasmUrl('replicad_single.wasm') : p,
+          locateFile: (p: string) => p.endsWith('.wasm') ? wasmUrl : p,
+          ...(wasmBinary ? { wasmBinary } : {}),
         }
       : undefined;
     const oc = await factory(factoryOpts);
@@ -76,6 +98,10 @@ export async function ensureOcctReady(): Promise<void> {
 
   try {
     await initPromise;
+    lastInitError = null;
+  } catch (err) {
+    lastInitError = err instanceof Error ? err.message : String(err);
+    throw err;
   } finally {
     initPromise = null;
   }
@@ -129,6 +155,91 @@ export function registerShape(shape: unknown): string {
 export function getShape(handle: string | undefined | null): unknown | null {
   if (!handle) return null;
   return shapeRegistry.get(handle) ?? null;
+}
+
+export interface OcctRegisteredShapeEvidence {
+  /** Replicad wrapper kind, normalised to `Solid` for native TopAbs_SOLID. */
+  kind: string;
+  /** True only for one OCCT TopoDS_Solid, never inferred from display meshes. */
+  singleSolid: boolean;
+  nativeShapeType: number | null;
+  solidCount: number | null;
+  /** Kernel-measured volume of the registered topology, mm³. */
+  volumeMm3: number | null;
+}
+
+/**
+ * Serializable kernel-topology evidence for a registry-owned handle. Display
+ * tessellations may contain one disconnected shell per face/feature, so they
+ * must not be used to decide whether the exact result is one solid.
+ */
+export function occtRegisteredShapeEvidence(
+  handle: string | undefined | null,
+): OcctRegisteredShapeEvidence | null {
+  const shape = getShape(handle) as {
+    constructor?: { name?: string };
+    wrapped?: { ShapeType?: () => unknown };
+  } | null;
+  if (!shape) return null;
+  let nativeShapeType: number | null = null;
+  let solidCount: number | null = null;
+  try {
+    const measured = shape.wrapped?.ShapeType?.();
+    if (typeof measured === 'number' && Number.isFinite(measured)) {
+      nativeShapeType = measured;
+    } else if (
+      measured !== null
+      && typeof measured === 'object'
+      && 'value' in measured
+      && typeof measured.value === 'number'
+      && Number.isFinite(measured.value)
+    ) {
+      nativeShapeType = measured.value;
+    }
+  } catch { /* fail closed below */ }
+  try {
+    const oc = ocInstance as {
+      TopExp_Explorer_2?: new (shape: unknown, kind: unknown, avoid: unknown) => {
+        More: () => boolean;
+        Next: () => void;
+        delete?: () => void;
+      };
+      TopAbs_ShapeEnum?: { TopAbs_SOLID: unknown; TopAbs_SHAPE: unknown };
+    } | null;
+    if (oc?.TopExp_Explorer_2 && oc.TopAbs_ShapeEnum && shape.wrapped) {
+      const explorer = new oc.TopExp_Explorer_2(
+        shape.wrapped,
+        oc.TopAbs_ShapeEnum.TopAbs_SOLID,
+        oc.TopAbs_ShapeEnum.TopAbs_SHAPE,
+      );
+      let count = 0;
+      try {
+        while (explorer.More()) {
+          count++;
+          explorer.Next();
+        }
+      } finally {
+        explorer.delete?.();
+      }
+      solidCount = count;
+    }
+  } catch { /* fail closed below */ }
+  const wrapperKind = shape.constructor?.name || 'Unknown';
+  // Open CASCADE TopAbs_ShapeEnum: COMPOUND=0, COMPSOLID=1, SOLID=2.
+  const singleSolid = solidCount === 1 || (solidCount === null && (wrapperKind === 'Solid' || nativeShapeType === 2));
+  let volumeMm3: number | null = null;
+  try {
+    const measureVolume = (replicadMod as { measureVolume?: (value: unknown) => number } | null)?.measureVolume;
+    const measured = measureVolume?.(shape);
+    if (Number.isFinite(measured) && (measured as number) > 0) volumeMm3 = measured as number;
+  } catch { /* fail closed in consumers */ }
+  return {
+    kind: singleSolid ? 'Solid' : wrapperKind,
+    singleSolid,
+    nativeShapeType,
+    solidCount,
+    volumeMm3,
+  };
 }
 
 /**
@@ -1586,13 +1697,13 @@ export function occtMoveCopy(
 
 /**
  * Build a base PRIMITIVE as a real B-rep solid so the OCCT chain can start from
- * the base (not just from a sketch). Without this, a cylinder/sphere base has
- * no handle, so a downstream fillet falls back to its bounding BOX — wrong for
- * non-box shapes. Box is intentionally omitted: its bbox equals the shape, so
- * the mesh-bbox fallback already gives the correct fillet.
+ * the base (not just from a sketch). Without this, a primitive base has no
+ * handle, so downstream features depend on a mesh-to-kernel reconstruction.
+ * Explicit box construction also keeps worker serialization from breaking the
+ * exact feature chain.
  *
- * Conventions match the THREE primitives: cylinder is +Y, centered at origin;
- * sphere centered at origin. Returns a null handle for unsupported shapes.
+ * Conventions match the THREE primitives: cylinder is +Y; supported primitives
+ * are centred at the origin. Returns a null handle for unsupported shapes.
  */
 interface PrismSolid extends MeshedShape {
   translate: (v: [number, number, number]) => PrismSolid;
@@ -1609,7 +1720,17 @@ export function occtBaseSolid(
   const rc = requireReplicad();
   const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
   let solid: MeshedShape | null = null;
-  if (shapeId === 'cylinder') {
+  if (shapeId === 'box') {
+    const w = num(params.width, 50);
+    const h = num(params.height, 30);
+    const d = num(params.depth, 20);
+    if (w > 0 && h > 0 && d > 0) {
+      // makeBaseBox is centred in X/Y and spans z in [0,d]. Match
+      // THREE.BoxGeometry by centring the solid on Z as well.
+      solid = ((rc.makeBaseBox as ReplicadLike['makeBaseBox'])(w, h, d) as unknown as PrismSolid)
+        .translate([0, 0, -d / 2]);
+    }
+  } else if (shapeId === 'cylinder') {
     const r = num(params.diameter ?? params.outerDiameter, 30) / 2;
     const h = num(params.height ?? params.length, 50);
     if (r > 0 && h > 0) {

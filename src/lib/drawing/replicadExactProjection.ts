@@ -47,6 +47,28 @@ interface ReplicadShapeLike {
   };
 }
 
+function serializedDrawingHasCircle(serialized: string): boolean {
+  if (!serialized) return false;
+  try {
+    const root = JSON.parse(serialized) as unknown;
+    const visit = (value: unknown): boolean => {
+      if (typeof value === 'string') {
+        // OCCT GeomTools format: a trimmed curve begins with `8 first last`;
+        // its nested analytic circle record begins on its own line with type 2.
+        // Matching the wrapper/type numbers anywhere in JSON produced false
+        // positives when an unrelated coordinate happened to equal 8.
+        return value.split(/\r?\n/).some(line => /^\s*2(?:\s|$)/.test(line));
+      }
+      if (Array.isArray(value)) return value.some(visit);
+      if (!value || typeof value !== 'object') return false;
+      return Object.values(value as Record<string, unknown>).some(visit);
+    };
+    return visit(root);
+  } catch {
+    return false;
+  }
+}
+
 function boundsOf(shape: ReplicadShapeLike): [number[], number[]] | null {
   const box = shape.boundingBox;
   if (!box) return null;
@@ -128,10 +150,9 @@ export function projectReplicadShapeExact(
     return {
       ...projected,
       method: 'replicad-hlr',
-      // Replicad Drawing.serialize() is JSON whose curve payload starts with
-      // OCCT curve type 8 for an analytic circle. Inspect the JSON payload,
-      // not the approximated SVG polyline.
-      analyticCurveEvidence: /"8\s/.test(serialized),
+      // Inspect the underlying OCCT GeomTools curve records, not the
+      // approximated SVG polyline.
+      analyticCurveEvidence: serializedDrawingHasCircle(serialized),
     };
   } catch (cause) {
     const sphere = analyticSphereProjection(rc, shape, view);

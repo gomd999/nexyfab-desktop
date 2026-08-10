@@ -6,6 +6,7 @@ import { featureTreeGeometryResolver } from '@/lib/assembly/geometryResolver';
 import { analyzeConstraintRank, type ConstraintRankResult } from '@/lib/assembly/constraintJacobianRank';
 import {
   collisionGeometryFromFeatureTree,
+  exactLocalAabb,
   refineFeatureTreeInterferences,
   type FeatureTreeCollisionGeometry,
   type RefinedInterference,
@@ -14,6 +15,8 @@ import { runMotionSweep, type MotionSweepRequest } from '@/lib/assembly/motionSt
 import type { FeatureTree } from '@/lib/cad/featureTree';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
+import { evaluateJointEvidenceRelease, type JointEvidenceClaim } from '@/lib/reference/jointEvidenceReleaseGate';
+import { hashNativeCadVerificationInput } from '@/lib/reference/nativeCadExpertReview';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,6 +33,7 @@ type VerifyBody = {
   intendedContacts?: Array<{ partA: string; partB: string; justification: string }>;
   allowedDoF?: number;
   motion?: MotionSweepRequest;
+  jointEvidence?: JointEvidenceClaim;
   preciseInterference?: boolean;
 };
 
@@ -62,19 +66,26 @@ export async function POST(req: NextRequest) {
   if (!solvedResponse.ok) return NextResponse.json(solved, { status: solvedResponse.status });
 
   const solvedState = (solved.state ?? body.state) as AssemblyState | undefined;
-  const boxes = validBoxes(body.localBoxes) && solvedState
-    ? new Map(Object.entries(body.localBoxes!))
-    : null;
-  const interferences = boxes && solvedState
-    ? assemblyInterferencesSpatial(solvedState.parts, boxes, interferenceExclusions)
-    : [];
   const collisionGeometries = new Map<string, FeatureTreeCollisionGeometry>();
   if (body.preciseInterference && body.featureTrees) {
     const built = await Promise.all(Object.entries(body.featureTrees).map(async ([partId, tree]) => (
-      [partId, await collisionGeometryFromFeatureTree(partId, tree)] as const
+      [partId, await collisionGeometryFromFeatureTree(partId, tree, { requireExact: true })] as const
     )));
     for (const [partId, geometry] of built) collisionGeometries.set(partId, geometry);
   }
+  const suppliedBoxes = validBoxes(body.localBoxes) && solvedState
+    ? new Map(Object.entries(body.localBoxes!))
+    : null;
+  const exactBoxes = body.preciseInterference && solvedState
+    ? exactCollisionBoxes(solvedState, collisionGeometries)
+    : null;
+  // In precise mode the broad phase must use bounds measured from the same
+  // OCCT-rebuilt solids as the narrow phase. Caller boxes remain preview hints
+  // and cannot suppress a collision candidate or manufacturing release block.
+  const boxes = exactBoxes ?? suppliedBoxes;
+  const interferences = boxes && solvedState
+    ? assemblyInterferencesSpatial(solvedState.parts, boxes, interferenceExclusions)
+    : [];
   const staticRefinement = body.preciseInterference && solvedState
     ? refineFeatureTreeInterferences(interferences, solvedState.parts, collisionGeometries)
     : [];
@@ -141,11 +152,25 @@ export async function POST(req: NextRequest) {
     }
   }
   const allRefinements: RefinedInterference[] = [...staticRefinement, ...motionRefinements];
+  const exactCadFailures = body.preciseInterference && solvedState
+    ? solvedState.parts.flatMap(part => {
+        const geometry = collisionGeometries.get(part.id);
+        return geometry?.available && geometry.source === 'occt-exact' && geometry.exactCad
+          ? []
+          : [geometry?.reason ?? `${part.id}: exact OCCT/STEP evidence unavailable`];
+      })
+    : [];
+  const exactCadEvidence = Object.fromEntries(
+    [...collisionGeometries]
+      .filter((entry): entry is [string, FeatureTreeCollisionGeometry & { exactCad: NonNullable<FeatureTreeCollisionGeometry['exactCad']> }] => Boolean(entry[1].exactCad))
+      .map(([partId, geometry]) => [partId, geometry.exactCad]),
+  );
   const preciseAvailable = allRefinements.filter(result => result.available);
   const preciseFallback = allRefinements.filter(result => !result.available);
   const preciseInterference = {
     requested: body.preciseInterference === true,
     status: body.preciseInterference !== true ? 'not-requested'
+      : exactCadFailures.length > 0 ? 'unavailable-no-tessellated-part-geometry'
       : candidateKeys.size === 0 ? 'not-needed-no-candidates'
       : preciseFallback.length === 0 ? 'completed'
       : preciseAvailable.length > 0 ? 'partial-conservative-fallback'
@@ -168,6 +193,23 @@ export async function POST(req: NextRequest) {
   const unsupportedResiduals = Array.isArray(solved.residuals)
     ? solved.residuals.filter(item => !(item as { supported?: boolean }).supported).length : 0;
   const allowedDoF = Number.isInteger(body.allowedDoF) && body.allowedDoF! >= 0 ? body.allowedDoF! : 0;
+  const motionRequired = allowedDoF > 0;
+  const verificationInputHash = hashNativeCadVerificationInput({
+    state: body.state ?? null,
+    featureTrees: body.featureTrees ?? null,
+    motion: body.motion ?? null,
+    allowedDoF,
+    intendedContacts: documentedContacts,
+  });
+  const jointEvidenceGate = body.jointEvidence
+    ? evaluateJointEvidenceRelease(body.jointEvidence, undefined, verificationInputHash)
+    : {
+        status: 'not_run' as const,
+        nativeKpiEligible: false,
+        manufacturingReleaseEligible: false,
+        usage: 'missing' as const,
+        errors: ['joint_evidence_missing'],
+      };
   const preciseComplete = preciseInterference.requested
     && (preciseInterference.status === 'completed' || preciseInterference.status === 'not-needed-no-candidates');
   const legacyWhitelistUsed = (body.interferenceWhitelist?.length ?? 0) > 0;
@@ -184,23 +226,37 @@ export async function POST(req: NextRequest) {
     dofAccepted: constraintRank?.authoritative === true && constraintRank.dof >= 0 && constraintRank.dof <= allowedDoF,
     interference: preciseComplete ? 'precise' : interferenceChecked ? 'conservative' : 'not_run',
     intendedContactsDocumented: !legacyWhitelistUsed && documentedContacts.length === (body.intendedContacts?.length ?? 0),
-    motion: body.motion ? (motionOk ? 'pass' : 'fail') : 'not_required',
+    motion: body.motion ? (motionOk ? 'pass' : 'fail') : motionRequired ? 'not_run' : 'not_required',
+    motionRequired,
+    jointEvidence: motionRequired ? (jointEvidenceGate.manufacturingReleaseEligible ? 'pass' : 'fail') : 'not_required',
+    exactCad: !body.preciseInterference ? 'not_run' : exactCadFailures.length === 0 ? 'pass' : 'fail',
   };
   const releaseReady = assemblyCertificate.solver === 'pass' && assemblyCertificate.converged
     && typeof assemblyCertificate.finalMaxResidual === 'number' && assemblyCertificate.finalMaxResidual <= tolerance
     && unsupportedResiduals === 0 && assemblyCertificate.dofAccepted && preciseComplete
-    && flaggedInterferences.length === 0 && assemblyCertificate.intendedContactsDocumented && motionOk;
+    && assemblyCertificate.exactCad === 'pass'
+    && flaggedInterferences.length === 0 && assemblyCertificate.intendedContactsDocumented && motionOk
+    && (!motionRequired || (assemblyCertificate.motion === 'pass' && jointEvidenceGate.manufacturingReleaseEligible));
   const previewOk = solved.success === true && interferenceChecked && flaggedInterferences.length === 0 && motionOk;
   return NextResponse.json({
     ...solved,
     ok: true,
     interferences,
     flaggedInterferences,
-    interferenceMethod: boxes ? 'aabb-spatial-conservative' : 'not-run-no-local-boxes',
+    interferenceMethod: exactBoxes ? 'occt-derived-aabb-plus-precise-mesh'
+      : boxes ? 'aabb-spatial-conservative' : 'not-run-no-local-boxes',
     motion,
     motionInterference,
     preciseInterference,
-    verificationUnavailable: interferenceChecked ? [] : ['interference: localBoxes were not supplied'],
+    exactCadEvidence,
+    jointEvidenceGate,
+    verificationInputHash,
+    verificationUnavailable: [
+      ...(interferenceChecked ? [] : ['interference: localBoxes were not supplied']),
+      ...exactCadFailures,
+      ...(motionRequired && !body.motion ? ['motion: allowedDoF > 0 requires a governed motion sweep'] : []),
+      ...(motionRequired && !jointEvidenceGate.manufacturingReleaseEligible ? [`joint evidence: ${jointEvidenceGate.errors.join(', ')}`] : []),
+    ],
     previewOk,
     designOk: releaseReady,
     assemblyCertificate,
@@ -229,6 +285,20 @@ function validBoxes(value: unknown): value is Record<string, AABB> {
     box && finiteVec(box.min) && finiteVec(box.max) &&
     box.min.x <= box.max.x && box.min.y <= box.max.y && box.min.z <= box.max.z,
   );
+}
+
+function exactCollisionBoxes(
+  state: AssemblyState,
+  geometries: ReadonlyMap<string, FeatureTreeCollisionGeometry>,
+): Map<string, AABB> | null {
+  const boxes = new Map<string, AABB>();
+  for (const part of state.parts) {
+    const geometry = geometries.get(part.id);
+    const bbox = geometry ? exactLocalAabb(geometry) : null;
+    if (!bbox) return null;
+    boxes.set(part.id, bbox);
+  }
+  return boxes;
 }
 
 function finiteVec(value: unknown): value is { x: number; y: number; z: number } {

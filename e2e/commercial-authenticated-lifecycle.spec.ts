@@ -19,6 +19,12 @@ function credentials(): Credentials {
 test('authenticated project → CAD verify → reconnect → expert workspace → cleanup', async ({ browser, baseURL }) => {
   test.setTimeout(180_000);
   if (!baseURL) throw new Error('E2E baseURL is required');
+  const target = new URL(baseURL);
+  const isLocal = ['127.0.0.1', 'localhost', '::1'].includes(target.hostname);
+  test.skip(
+    isLocal && process.env.E2E_ALLOW_LOCAL_AUTH_LIFECYCLE !== '1',
+    'The production-mode local server intentionally disables demo auth; run this lifecycle against isolated staging or opt in explicitly.',
+  );
   const receiptPath = process.env.COMMERCIAL_E2E_RECEIPT
     ? path.resolve(process.env.COMMERCIAL_E2E_RECEIPT)
     : null;

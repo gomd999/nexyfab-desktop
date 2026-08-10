@@ -244,6 +244,64 @@ describe('POST /api/assembly-solve — real-solve phase', () => {
     expect(Math.hypot(pin.position.x, pin.position.y)).toBeLessThan(1e-4);
   });
 
+  it('round-trips explicit named axis/plane refs through the real API solver', async () => {
+    const state: AssemblyState = {
+      parts: [
+        {
+          id: 'block',
+          name: 'Block',
+          partTemplateId: 'block',
+          position: { x: 0, y: 0, z: 0 },
+          orientation: IDENTITY_QUAT,
+          fixed: true,
+          refs: {
+            boss_axis: { kind: 'axis', origin: { x: 20, y: 20, z: 0 }, direction: { x: 0, y: 0, z: 1 } },
+            top_plane: { kind: 'plane', origin: { x: 0, y: 0, z: 20 }, normal: { x: 0, y: 0, z: 1 } },
+          },
+        },
+        {
+          id: 'pin',
+          name: 'Pin',
+          partTemplateId: 'pin',
+          position: { x: 5, y: -3, z: 2 },
+          orientation: IDENTITY_QUAT,
+          refs: {
+            axis: { kind: 'axis', origin: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: 0, z: 1 } },
+            base_plane: { kind: 'plane', origin: { x: 0, y: 0, z: 0 }, normal: { x: 0, y: 0, z: 1 } },
+          },
+        },
+      ],
+      mates: [
+        {
+          id: 'm_concentric',
+          kind: 'concentric',
+          a: { partId: 'pin', refId: 'axis', refKind: 'axis' },
+          b: { partId: 'block', refId: 'boss_axis', refKind: 'axis' },
+        },
+        {
+          id: 'm_seated',
+          kind: 'coincident',
+          a: { partId: 'pin', refId: 'base_plane', refKind: 'plane' },
+          b: { partId: 'block', refId: 'top_plane', refKind: 'plane' },
+        },
+      ],
+    };
+    const r = await POST(makeReq({
+      state,
+      featureTrees: { block: TINY_TREE, pin: TINY_TREE },
+      solver: 'gauss_seidel',
+    }) as never);
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.phase).toBe('real');
+    expect(data.success).toBe(true);
+    const pin = data.state.parts.find((part: { id: string }) => part.id === 'pin');
+    expect(pin.position.x).toBeCloseTo(20, 6);
+    expect(pin.position.y).toBeCloseTo(20, 6);
+    expect(pin.position.z).toBeCloseTo(20, 6);
+    expect(pin.refs.base_plane.kind).toBe('plane');
+  });
+
   it('omitting featureTrees keeps the existing phase=stub path', async () => {
     // Re-uses the validState from above by inlining the same shape.
     const state: AssemblyState = {

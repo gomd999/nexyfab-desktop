@@ -62,6 +62,9 @@ import type { OcctOperationResult, OcctShape, OcctTessellationResult, Vec3 } fro
 import { featureToPolyhedron } from '@/lib/cad/featureMesh';
 import { polyhedronToMesh, polyhedronFeatureEdges, meshBounds } from './occtViewerMesh';
 
+/** Emitted only when a sampled circular loop was built as an exact OCCT cylinder. */
+export const ANALYTIC_CIRCULAR_PRISM_WARNING = 'analytic circular prism promoted to OCCT cylinder';
+
 // ─── public bridge interface ──────────────────────────────────────────────
 
 /**
@@ -94,6 +97,8 @@ export type OcctFaceAdjacencySummary = Readonly<{
   status: 'available';
   faceCount: number;
   uniqueEdgeCount: number;
+  /** Zero-length/pole edges explicitly marked by OCCT. They are not free boundaries. */
+  degeneratedEdgeCount: number;
   boundaryEdgeCount: number;
   manifoldEdgeCount: number;
   nonManifoldEdgeCount: number;

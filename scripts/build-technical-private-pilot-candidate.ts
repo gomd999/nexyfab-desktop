@@ -25,27 +25,42 @@ const sourceSets: Record<RequiredTechnicalCapabilityId, string[]> = {
   'ai-complex-product': [
     'docs/evidence/ai-robot6axis-demonstrator-260809/report.json',
     'docs/evidence/fea/multibody-contact-260810.json',
+    'src/app/api/cad/v1/assembly/release/verify/route.ts',
+    'src/lib/ai/design-driver/workspaceCandidate.ts',
   ],
-  'manual-parametric-editing': ['docs/evidence/workspace/design-workspace-revision-260810.json'],
+  'manual-parametric-editing': [
+    'docs/evidence/workspace/design-workspace-revision-260810.json',
+    'src/app/[lang]/shape-generator/design-brief/workspaceCandidateToModeler.ts',
+    'src/app/[lang]/shape-generator/design-brief/workspaceRevisionVerification.ts',
+  ],
   'expert-precision-cad': [
     'docs/evidence/workspace/design-workspace-revision-260810.json',
     'docs/evidence/topology-survival-260806/run-8.json',
+    'src/lib/ai/design-driver/exactCadGate.ts',
+    'src/lib/occt/nodeOcctBridge.ts',
+    'src/lib/occt/serverReplicad.ts',
   ],
   'assembly-motion': [
     'docs/evidence/joint-motion-clearance-260807/specimen-run-1.json',
     'docs/evidence/ai-robot6axis-demonstrator-260809/report.json',
+    'src/app/api/cad/v1/assembly/release/verify/route.ts',
   ],
   'continuous-collision': [
     'docs/evidence/external-step-structure-coverage-260806/ifc-collision-capability-run-1.json',
     'docs/evidence/fea/multibody-contact-260810.json',
+    'src/lib/assembly/featureTreePreciseInterference.ts',
   ],
   'step-exchange': [
     'docs/evidence/step-body-membership-260806/run-1.json',
     'docs/evidence/scad-native-step-assembly-260806/run-5.json',
+    'src/lib/ai/design-driver/exactCadGate.ts',
   ],
   'drawing-bom-manufacturing': [
     'docs/evidence/bim-guideline/ifc-deep-roundtrip-260810.json',
     'docs/evidence/fea/multibody-contact-260810.json',
+    'src/lib/ai/design-driver/exactDrawingGate.ts',
+    'src/lib/ai/design-driver/manufacturingDrawingGate.ts',
+    'src/lib/drawing/occtHlrDxf.ts',
   ],
 };
 

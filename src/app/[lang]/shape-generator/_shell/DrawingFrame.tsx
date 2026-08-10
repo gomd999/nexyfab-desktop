@@ -77,7 +77,7 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
   const activeSheetMeta = sheets.find(s => s.id === activeSheet) ?? sheets[0];
 
   const langSeg = lang === 'ko' ? 'kr' : lang;
-  const project = projectId ? `?project=${projectId}` : '';
+  const project = projectId ? `?expert=1&project=${encodeURIComponent(projectId)}` : '?expert=1';
 
   // Cross-mode tab navigation — clicking File/Solid/Assembly/Inspect/Render/
   // View from inside Drawing jumps to the relevant route (or back to modeler).
@@ -87,7 +87,7 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
     else if (id === 'solid' || id === 'file' || id === 'inspect' || id === 'view')
       router.push(`/${langSeg}/shape-generator${project}`);
     else if (id === 'assembly')
-      router.push(`/${langSeg}/shape-generator${project ? project + '&entry=assembly' : '?entry=assembly'}`);
+      router.push(`/${langSeg}/shape-generator${project}&entry=assembly`);
   };
 
   // Sheet tree nodes — one entry per sheet plus its view children (built

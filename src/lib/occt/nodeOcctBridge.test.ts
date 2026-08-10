@@ -169,6 +169,7 @@ describe("nodeOcctBridge (real OCCT)", () => {
       status: "available",
       faceCount: 6,
       uniqueEdgeCount: 12,
+      degeneratedEdgeCount: 0,
       boundaryEdgeCount: 0,
       manifoldEdgeCount: 12,
       nonManifoldEdgeCount: 0,
@@ -211,6 +212,7 @@ describe("nodeOcctBridge (real OCCT)", () => {
       status: "available",
       faceCount: 3,
       uniqueEdgeCount: 3,
+      degeneratedEdgeCount: 0,
       boundaryEdgeCount: 0,
       manifoldEdgeCount: 3,
       nonManifoldEdgeCount: 0,
@@ -246,6 +248,7 @@ describe("nodeOcctBridge (real OCCT)", () => {
       status: "available",
       faceCount: 12,
       uniqueEdgeCount: 24,
+      degeneratedEdgeCount: 0,
       boundaryEdgeCount: 0,
       manifoldEdgeCount: 24,
       nonManifoldEdgeCount: 0,
@@ -281,6 +284,7 @@ describe("nodeOcctBridge (real OCCT)", () => {
       status: "available",
       faceCount: 3,
       uniqueEdgeCount: 3,
+      degeneratedEdgeCount: 0,
       boundaryEdgeCount: 0,
       manifoldEdgeCount: 3,
       nonManifoldEdgeCount: 0,
@@ -914,6 +918,8 @@ describe("nodeOcctBridge (real OCCT)", () => {
       return { x: 4 * Math.cos(a), y: 4 * Math.sin(a) };
     });
     const rod = await bridge.buildPrismAt!(circle, 0, 4);
+    expect(rod.warnings).toContain("analytic circular prism promoted to OCCT cylinder");
+    expect(rod.shape?.volume).toBeCloseTo(Math.PI * 4 * 4 * 4, 6);
     const cutter = await bridge.buildThreadHelixCutter!({
       center: { x: 0, y: 0 }, z0: 0.5, innerRadius: 3.3, outerRadius: 4.3,
       pitch: 1.25, lengthMm: 2.5, direction: "right_hand",

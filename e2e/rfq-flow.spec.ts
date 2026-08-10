@@ -27,7 +27,7 @@ test.describe('RFQ flow', () => {
   });
 
   test('shape-generator → RFQ 패널 접근점 존재', async ({ page }) => {
-    await page.goto('/kr/shape-generator', { waitUntil: 'domcontentloaded' });
+    await page.goto('/kr/shape-generator?expert=1', { waitUntil: 'domcontentloaded' });
     // Wait for the workspace shell.
     await page.waitForLoadState('networkidle').catch(() => {});
     // RFQ entry can be a button, link or panel toggle — accept any.

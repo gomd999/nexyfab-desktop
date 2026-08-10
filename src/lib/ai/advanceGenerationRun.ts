@@ -105,6 +105,7 @@ export async function advanceGenerationRun(
       collision: await collisionGeometryFromFeatureTree(
         part.instanceId,
         part.featureTree,
+        { requireExact: true },
       ),
     })),
   );

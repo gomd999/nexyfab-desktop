@@ -45,6 +45,8 @@ const KNOWN_SETTINGS: Array<{
   { key: 'budget.daily_usd_cap',  scope: 'budget', description: '일일 AI 비용 자동 차단 임계 (USD)' },
   { key: 'budget.hourly_usd_cap', scope: 'budget', description: '시간당 AI 비용 자동 차단 임계 (USD)' },
   // Feature flag overrides (true/false; absent = code default)
+  { key: 'feature.complex_product_design.enabled', scope: 'feature_flag', description: 'Complex Product AI closed-beta access (absent/false returns 503 for free-text runs)' },
+  { key: 'feature.complex_product_design.beta',    scope: 'feature_flag', description: 'Complex Product AI beta disclosure visibility' },
   { key: 'feature.scad_agent.enabled', scope: 'feature_flag', description: 'AI SCAD Agent 활성화 (false 면 503 반환)' },
   { key: 'feature.scad_agent.beta',    scope: 'feature_flag', description: 'BetaBanner 표시 여부 (false 면 숨김)' },
 ];

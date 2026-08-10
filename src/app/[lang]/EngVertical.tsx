@@ -291,16 +291,16 @@ node cli.mjs package asm.json --out ./out --step
         <div className="reveal" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '28px' }}>
           <div style={{ background: '#0d1117', borderRadius: '16px', padding: '22px', border: '1px solid #1e293b' }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '14px', fontWeight: 800, color: '#e2e8f0', marginBottom: '12px' }}><span style={{ color: '#7dd3fc', display: 'inline-flex' }}><LineIcon name="keyboard" size={17} /></span>{t.devCurlTitle}</h3>
-            <pre style={{ margin: 0, fontSize: '11px', lineHeight: 1.6, color: '#7dd3fc', overflowX: 'auto', fontFamily: 'ui-monospace, monospace' }}>{curl}</pre>
+            <pre tabIndex={0} style={{ margin: 0, fontSize: '11px', lineHeight: 1.6, color: '#7dd3fc', overflowX: 'auto', fontFamily: 'ui-monospace, monospace' }}>{curl}</pre>
           </div>
           <div style={{ background: '#0d1117', borderRadius: '16px', padding: '22px', border: '1px solid #1e293b' }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '14px', fontWeight: 800, color: '#e2e8f0', marginBottom: '12px' }}><span style={{ color: '#86efac', display: 'inline-flex' }}><LineIcon name="robot" size={17} /></span>{t.devMcpTitle}</h3>
-            <pre style={{ margin: '0 0 10px', fontSize: '11px', lineHeight: 1.6, color: '#86efac', overflowX: 'auto', fontFamily: 'ui-monospace, monospace' }}>{mcp}</pre>
+            <pre tabIndex={0} style={{ margin: '0 0 10px', fontSize: '11px', lineHeight: 1.6, color: '#86efac', overflowX: 'auto', fontFamily: 'ui-monospace, monospace' }}>{mcp}</pre>
             <p style={{ margin: 0, fontSize: '12px', color: '#8b949e', lineHeight: 1.6, wordBreak: 'keep-all' }}>{t.devMcpDesc}</p>
           </div>
           <div style={{ background: '#0d1117', borderRadius: '16px', padding: '22px', border: '1px solid #1e293b' }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '14px', fontWeight: 800, color: '#e2e8f0', marginBottom: '12px' }}><span style={{ color: '#fcd34d', display: 'inline-flex' }}><LineIcon name="keyboard" size={17} /></span>{t.devCliTitle}</h3>
-            <pre style={{ margin: 0, fontSize: '11px', lineHeight: 1.6, color: '#fcd34d', overflowX: 'auto', fontFamily: 'ui-monospace, monospace' }}>{cli}</pre>
+            <pre tabIndex={0} style={{ margin: 0, fontSize: '11px', lineHeight: 1.6, color: '#fcd34d', overflowX: 'auto', fontFamily: 'ui-monospace, monospace' }}>{cli}</pre>
           </div>
         </div>
 

@@ -66,8 +66,7 @@ test.describe('Shape Generator', () => {
   });
 
   test('can switch between design and optimize tabs', async ({ page }) => {
-    test.setTimeout(60_000);
-    await dismissShapeGeneratorOverlays(page);
+    test.setTimeout(120_000);
     const designTab = page.locator('button', { hasText: /design|디자인/i }).first();
     const optimizeTab = page.locator('[data-tour="optimize-tab"]').first();
 

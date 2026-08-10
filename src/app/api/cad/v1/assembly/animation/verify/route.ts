@@ -15,6 +15,7 @@ import {
 import type { FeatureTree } from "@/lib/cad/featureTree";
 import {
   collisionGeometryFromFeatureTree,
+  exactLocalAabb,
   locatePreciseCollisionTime,
   refineFeatureTreeInterferences,
   refineLinearIntervals,
@@ -52,17 +53,22 @@ export async function POST(req: NextRequest) {
     toiMaxEvaluations?: number;
     jointEvidence?: JointEvidenceClaim;
   } | null;
-  if (!b?.state || !b.animation || !b.localBoxes)
+  if (!b?.state || !b.animation || (!b.localBoxes && !b.featureTrees))
     return NextResponse.json(
       {
         ok: false,
         code: "BAD_REQUEST",
-        message: "state, animation and localBoxes are required",
+        message: "state, animation, and featureTrees (or preview localBoxes) are required",
       },
       { status: 400 },
     );
+  const verificationInputHash = hashNativeCadVerificationInput({
+    state: b.state,
+    animation: b.animation,
+    featureTrees: b.featureTrees ?? null,
+  });
   const jointEvidenceGate = b.jointEvidence
-    ? evaluateJointEvidenceRelease(b.jointEvidence, undefined, hashNativeCadVerificationInput({ state: b.state, animation: b.animation, localBoxes: b.localBoxes, featureTrees: b.featureTrees ?? null }))
+    ? evaluateJointEvidenceRelease(b.jointEvidence, undefined, verificationInputHash)
     : {
         status: "not_run" as const,
         nativeKpiEligible: false,
@@ -70,20 +76,20 @@ export async function POST(req: NextRequest) {
         usage: "missing" as const,
         errors: ["joint_evidence_missing"],
       };
-  const boxes = new Map(Object.entries(b.localBoxes));
+  let boxes = new Map(Object.entries(b.localBoxes ?? {}));
   const span = b.animation.endFrame - b.animation.startFrame,
     step = Math.max(
       1,
       Math.floor(b.frameStep ?? Math.ceil(Math.max(1, span) / 500)),
     );
-  const ccdRecovery = verifyAssemblyAnimationWithRecovery(
+  let ccdRecovery = verifyAssemblyAnimationWithRecovery(
     b.state,
     b.animation,
     boxes,
     { frameStep: step, rotationalMaxDepth: b.rotationalMaxDepth },
   );
-  const broad = ccdRecovery.verification,
-    ccdRecoveryEvidence = {
+  let broad = ccdRecovery.verification;
+  let ccdRecoveryEvidence = {
       attempts: ccdRecovery.attempts,
       exhausted: ccdRecovery.exhausted,
     };
@@ -100,6 +106,7 @@ export async function POST(req: NextRequest) {
         recovery: [cadFailureDisposition(code)],
       },
       jointEvidenceGate,
+      verificationInputHash,
       releaseReady: false,
       quoteOrRfqSideEffects: false,
     });
@@ -108,10 +115,25 @@ export async function POST(req: NextRequest) {
     await Promise.all(
       Object.entries(b.featureTrees).map(
         async ([id, tree]) =>
-          [id, await collisionGeometryFromFeatureTree(id, tree)] as const,
+          [id, await collisionGeometryFromFeatureTree(id, tree, { requireExact: true })] as const,
       ),
     ),
   );
+  const exactBoxEntries = b.state.parts.map(part => {
+    const geometry = geometries.get(part.id);
+    return [part.id, geometry ? exactLocalAabb(geometry) : null] as const;
+  });
+  if (exactBoxEntries.every((entry): entry is readonly [string, AABB] => entry[1] !== null)) {
+    boxes = new Map(exactBoxEntries);
+    ccdRecovery = verifyAssemblyAnimationWithRecovery(
+      b.state,
+      b.animation,
+      boxes,
+      { frameStep: step, rotationalMaxDepth: b.rotationalMaxDepth },
+    );
+    broad = ccdRecovery.verification;
+    ccdRecoveryEvidence = { attempts: ccdRecovery.attempts, exhausted: ccdRecovery.exhausted };
+  }
   const geometryErrors = b.state.parts.flatMap((part) => {
     const geometry = geometries.get(part.id);
     return geometry?.available
@@ -121,6 +143,11 @@ export async function POST(req: NextRequest) {
             `${part.id}: FeatureTree collision geometry missing`,
         ];
   });
+  const exactCadEvidence = Object.fromEntries(
+    [...geometries]
+      .filter((entry) => Boolean(entry[1].exactCad))
+      .map(([partId, geometry]) => [partId, geometry.exactCad]),
+  );
   const frames = broad.frames
     .filter((f) => f.pairs.length)
     .map((f) => {
@@ -266,6 +293,7 @@ export async function POST(req: NextRequest) {
       status: complete ? "completed" : "incomplete",
       collisionFree,
       geometryErrors,
+      exactCadEvidence,
       failureCodes,
       recovery: failureCodes.map(cadFailureDisposition),
       frames,
@@ -281,6 +309,7 @@ export async function POST(req: NextRequest) {
       },
     },
     jointEvidenceGate,
+    verificationInputHash,
     releaseReady:
       collisionFree && jointEvidenceGate.manufacturingReleaseEligible,
     quoteOrRfqSideEffects: false,

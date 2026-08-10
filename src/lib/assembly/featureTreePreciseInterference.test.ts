@@ -17,6 +17,35 @@ const pose = (id: string) => ({
 });
 
 describe('FeatureTree OCCT precise collision geometry', () => {
+  it('strict mode rebuilds a sampled circle as an analytic OCCT solid and round-trips STEP', async () => {
+    const loaded = await loadOcctNode();
+    if (!loaded.ok) return;
+    const loop = Array.from({ length: 64 }, (_, index) => {
+      const angle = 2 * Math.PI * index / 64;
+      return { x: 4 + 3 * Math.cos(angle), y: 5 + 3 * Math.sin(angle) };
+    });
+    const result = await collisionGeometryFromFeatureTree('pin', {
+      nodes: [{ id: 'pin-body', name: 'pin', dependencies: [], payload: { kind: 'extrude', loop, depth: 12, direction: 'one_sided', mode: 'add' } }],
+    }, { requireExact: true });
+    expect(result.available, result.reason).toBe(true);
+    expect(result.source).toBe('occt-exact');
+    expect(result.exactCad).toMatchObject({ valid: true, solidCount: 1, faceCount: 3, freeBoundaryEdgeCount: 0, nonManifoldEdgeCount: 0 });
+    expect(result.exactCad!.volumeMm3).toBeCloseTo(Math.PI * 3 ** 2 * 12, 8);
+    expect(result.exactCad!.stepRoundTripVolumeRelError).toBeLessThanOrEqual(1e-9);
+    const reused = await collisionGeometryFromFeatureTree('pin', {
+      nodes: [{ id: 'pin-body', name: 'pin', dependencies: [], payload: { kind: 'extrude', loop, depth: 12, direction: 'one_sided', mode: 'add' } }],
+    }, { requireExact: true });
+    expect(reused).toBe(result);
+  }, 60_000);
+
+  it('strict mode refuses multiple unjoined terminal bodies', async () => {
+    const result = await collisionGeometryFromFeatureTree('multi', {
+      nodes: [extrude('a', 0, 10, 10), extrude('b', 20, 30, 10)],
+    }, { requireExact: true });
+    expect(result.available).toBe(false);
+    expect(result.reason).toContain('one explicit terminal solid');
+  });
+
   it('executes and tessellates a boolean final feature instead of falling back to AABB', async () => {
     const loaded = await loadOcctNode();
     if (!loaded.ok) return;

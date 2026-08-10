@@ -20,6 +20,7 @@ import type {
   OcctFaceAdjacencySummary,
   OcctTypeHistogram,
 } from "./bridge";
+import { ANALYTIC_CIRCULAR_PRISM_WARNING } from "./bridge";
 import type {
   OcctShape,
   OcctShapeKind,
@@ -28,6 +29,7 @@ import type {
 } from "./types";
 import type { ExtrudeFeature } from "@/lib/cad/extrudeProfile";
 import type { RevolveFeature } from "@/lib/cad/revolveProfile";
+import { detectSampledCircle } from "@/lib/cad/sampledCircle";
 import type { OcctModule } from "./nodeOcctLoader";
 import {
   buildExtrudeTopo,
@@ -170,6 +172,25 @@ function buildPrism(
   const vec = m.inst("gp_Vec_4", 0, 0, h);
   return m
     .inst("BRepPrimAPI_MakePrism_1", face, vec, false, true)
+    .Shape() as OcctInstance;
+}
+
+/** Exact analytic cylinder, not a polygonal prism. */
+function buildCylinder(
+  oc: OcctModule,
+  center: { x: number; y: number },
+  z0: number,
+  heightMm: number,
+  radius: number,
+): OcctInstance {
+  const m = maker(oc);
+  const axis = m.inst(
+    "gp_Ax2_3",
+    m.inst("gp_Pnt_3", center.x, center.y, z0),
+    m.inst("gp_Dir_4", 0, 0, 1),
+  );
+  return m
+    .inst("BRepPrimAPI_MakeCylinder_3", axis, radius, heightMm)
     .Shape() as OcctInstance;
 }
 
@@ -450,15 +471,26 @@ function faceAdjacencySummary(
     shape: OcctInstance;
     uses: number;
     faces: Set<number>;
+    degenerated: boolean;
   }> = [];
   // TopoDS_Shape::HashCode is only an index accelerator: hash collisions are
   // still resolved with IsSame, so the exact topology verdict is unchanged.
   // Without this bucket the former Array.find made dense PCB/plant models O(E^2).
   const edgeBuckets = new Map<
     number,
-    Array<{ shape: OcctInstance; uses: number; faces: Set<number> }>
+    Array<{
+      shape: OcctInstance;
+      uses: number;
+      faces: Set<number>;
+      degenerated: boolean;
+    }>
   >();
   const faceBuckets = new Map<number, OcctInstance[]>();
+  const brepTool = oc.BRep_Tool as unknown as Record<
+    string,
+    ((edge: OcctInstance) => boolean) | undefined
+  >;
+  const isDegenerated = brepTool.Degenerated ?? brepTool.Degenerated_1;
   try {
     while (faceExplorer.More()) {
       const face = topoDS.Face_1(faceExplorer.Current());
@@ -494,7 +526,12 @@ function faceAdjacencySummary(
             existing.faces.add(faceIndex);
             deleteNative(edge);
           } else {
-            const item = { shape: edge, uses: 1, faces: new Set([faceIndex]) };
+            const item = {
+              shape: edge,
+              uses: 1,
+              faces: new Set([faceIndex]),
+              degenerated: isDegenerated ? Boolean(isDegenerated(edge)) : false,
+            };
             edges.push(item);
             if (hash !== null)
               edgeBuckets.set(hash, [...(edgeBuckets.get(hash) ?? []), item]);
@@ -525,9 +562,19 @@ function faceAdjacencySummary(
       status: "available",
       faceCount: faces.length,
       uniqueEdgeCount: edges.length,
-      boundaryEdgeCount: edges.filter((edge) => edge.uses === 1).length,
-      manifoldEdgeCount: edges.filter((edge) => edge.uses === 2).length,
-      nonManifoldEdgeCount: edges.filter((edge) => edge.uses > 2).length,
+      degeneratedEdgeCount: edges.filter((edge) => edge.degenerated).length,
+      // A degenerated TopoDS_Edge represents a surface pole/zero-length
+      // boundary. It may have one use in a perfectly closed, BRepCheck-valid
+      // shell, so classifying it as a free boundary is a false positive.
+      boundaryEdgeCount: edges.filter(
+        (edge) => !edge.degenerated && edge.uses === 1,
+      ).length,
+      manifoldEdgeCount: edges.filter(
+        (edge) => !edge.degenerated && edge.uses === 2,
+      ).length,
+      nonManifoldEdgeCount: edges.filter(
+        (edge) => !edge.degenerated && edge.uses > 2,
+      ).length,
       faceDegreeHistogram: Object.fromEntries(
         [...degreeCounts]
           .sort(([left], [right]) => left - right)
@@ -2126,6 +2173,11 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
           throw new Error(`height must be positive, got ${heightMm}`);
         if (loop.length < 3)
           throw new Error(`loop needs >= 3 points, got ${loop.length}`);
+        const circle = detectSampledCircle(loop);
+        if (circle) {
+          const shape = buildCylinder(oc, circle.center, z0, heightMm, circle.radius);
+          return result(shape, [ANALYTIC_CIRCULAR_PRISM_WARNING], undefined, "solid");
+        }
         const shape = buildPrism(oc, loop, z0, heightMm);
         return result(shape, [], undefined, "solid");
       } catch (e) {

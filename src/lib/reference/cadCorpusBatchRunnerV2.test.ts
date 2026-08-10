@@ -18,7 +18,7 @@ const details: OcctDetailedShapeInspection = {
   bbox: { min: { x: 0, y: 0, z: 0 }, max: { x: 1, y: 1, z: 1 } }, absoluteVolume: 1, surfaceArea: 6,
   centroid: { x: .5, y: .5, z: .5 }, inertia: { status: 'available', units: 'mm^5', about: 'centroid', matrix: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] },
   surfaceTypes: { status: 'available', counts: { plane: 6 } }, curveTypes: { status: 'available', counts: { line: 12 } },
-  faceAdjacency: { status: 'available', faceCount: 6, uniqueEdgeCount: 12, boundaryEdgeCount: 0, manifoldEdgeCount: 12, nonManifoldEdgeCount: 0, faceDegreeHistogram: { '4': 6 } },
+  faceAdjacency: { status: 'available', faceCount: 6, uniqueEdgeCount: 12, degeneratedEdgeCount: 0, boundaryEdgeCount: 0, manifoldEdgeCount: 12, nonManifoldEdgeCount: 0, faceDegreeHistogram: { '4': 6 } },
 };
 
 function fixture(fixtureId: 'A01' | 'B01', name: string, source: string): CadCorpusFixtureV2 {

@@ -236,7 +236,7 @@ function InspectorTab({
             : fmtShell(d.warnCount, { n: dfmWarningCount })}
           drawer="dfm"
         />
-        <AnalyzeRow label={d.feaRowLabel} meta={d.runLower} drawer="fea" />
+        <AnalyzeRow testId="shell-open-fea" label={d.feaRowLabel} meta={d.runLower} drawer="fea" />
         <AnalyzeRow label={d.costEstimate} meta={volume ? `≈ ${(volume * 0.003).toFixed(2)} g` : ''} drawer="cost" />
         <AnalyzeRow label={d.variantsTitle} drawer="variants" />
         <AnalyzeRow label={d.motionStudy} meta={d.simLower} drawer="motion" />

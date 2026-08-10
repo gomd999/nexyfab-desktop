@@ -12,10 +12,13 @@
  */
 import path from 'path';
 import fs from 'fs';
+import { commercialReadinessIssues } from '../src/lib/commercial-readiness';
 
 const ROOT = path.join(__dirname, '..');
 
-// Load parent .env per the project's env policy.
+// Load local env files for developer runs only. `railway run` injects the
+// selected remote environment; supplementing missing production keys from a
+// workstation .env would make the preflight report a false pass.
 function loadEnvFile(filePath: string) {
   if (!fs.existsSync(filePath)) return;
   for (const raw of fs.readFileSync(filePath, 'utf-8').split(/\r?\n/)) {
@@ -28,17 +31,21 @@ function loadEnvFile(filePath: string) {
     if (process.env[key] === undefined) process.env[key] = value;
   }
 }
-loadEnvFile(path.resolve(ROOT, '../..', '.env'));
-loadEnvFile(path.join(ROOT, '.env.local'));
+const railwayEnvironmentInjected = Boolean(
+  process.env.RAILWAY_ENVIRONMENT_ID
+  || process.env.RAILWAY_ENVIRONMENT_NAME
+  || process.env.RAILWAY_SERVICE_ID,
+);
+if (!railwayEnvironmentInjected) {
+  loadEnvFile(path.resolve(ROOT, '../..', '.env'));
+  loadEnvFile(path.join(ROOT, '.env.local'));
+}
 
 const REQUIRED_ENV: Array<{ key: string; reason: string; critical: boolean }> = [
   { key: 'DATABASE_URL',         reason: 'Postgres connection',         critical: true },
   { key: 'CRON_SECRET',          reason: 'Cron auth (8 jobs)',          critical: true },
   { key: 'NEXYFAB_ADMIN_EMAIL',  reason: 'Operator notifications',      critical: true },
   { key: 'NEXT_PUBLIC_AUTH_URL', reason: 'Auth server endpoint',        critical: true },
-  { key: 'TOSS_SECRET_KEY',      reason: 'Server-side payment confirm', critical: true },
-  { key: 'NEXT_PUBLIC_TOSS_CLIENT_KEY', reason: 'Browser SDK',          critical: true },
-  { key: 'TOSS_WEBHOOK_SECRET',  reason: 'Webhook signature verify',    critical: true },
   { key: 'SMTP_HOST',            reason: 'Email send',                  critical: true },
   { key: 'SMTP_USER',            reason: 'Email auth',                  critical: true },
   { key: 'SMTP_PASS',            reason: 'Email auth',                  critical: true },
@@ -79,9 +86,11 @@ interface Result { ok: boolean; failures: string[]; warnings: string[] }
 async function checkEnv(): Promise<Result> {
   const failures: string[] = [];
   const warnings: string[] = [];
+  const missingRequiredKeys = new Set<string>();
   for (const { key, reason, critical } of REQUIRED_ENV) {
     const v = process.env[key];
     if (!v || v.trim() === '') {
+      missingRequiredKeys.add(key);
       const msg = `${key} (${reason})`;
       if (critical) failures.push(msg); else warnings.push(msg);
     }
@@ -93,8 +102,14 @@ async function checkEnv(): Promise<Result> {
   if (process.env.TOSS_SECRET_KEY?.startsWith('test_')) {
     warnings.push('TOSS_SECRET_KEY is a TEST key — fine for staging, swap to live before launch');
   }
-  if (!['1', 'true'].includes(process.env.OPENSCAD_USE_DOCKER?.trim().toLowerCase() ?? '')) {
-    failures.push('OPENSCAD_USE_DOCKER must be 1/true — production CAD execution requires network-isolated containers');
+
+  // Keep the deploy preflight aligned with the fail-closed commercial gate.
+  // The web service delegates native CAD work to isolated Railway workers; it
+  // must not require or launch Docker/OpenSCAD inside the public web container.
+  for (const issue of commercialReadinessIssues(process.env)) {
+    const referencedKey = issue.message.match(/^([A-Z0-9_]+)/)?.[1];
+    if (referencedKey && missingRequiredKeys.has(referencedKey)) continue;
+    failures.push(`Commercial readiness ${issue.code}: ${issue.message}`);
   }
   return { ok: failures.length === 0, failures, warnings };
 }
@@ -140,12 +155,16 @@ async function checkRedis(): Promise<Result> {
   if (!process.env.REDIS_URL) {
     return { ok: false, failures: ['REDIS_URL missing — distributed rate limiting unavailable'], warnings: [] };
   }
+  let connectionError: Error | null = null;
   try {
     const { default: Redis } = await import('ioredis');
     const redis = new Redis(process.env.REDIS_URL, {
       lazyConnect: true,
       maxRetriesPerRequest: 1,
       connectTimeout: 3_000,
+    });
+    redis.on('error', error => {
+      connectionError = error;
     });
     try {
       await redis.connect();
@@ -156,7 +175,8 @@ async function checkRedis(): Promise<Result> {
     }
     return { ok: true, failures: [], warnings: [] };
   } catch (error) {
-    return { ok: false, failures: [`Redis connection failed: ${(error as Error).message}`], warnings: [] };
+    const cause = connectionError ?? (error instanceof Error ? error : new Error(String(error)));
+    return { ok: false, failures: [`Redis connection failed: ${cause.message}`], warnings: [] };
   }
 }
 

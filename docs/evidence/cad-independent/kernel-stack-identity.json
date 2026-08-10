@@ -10,7 +10,7 @@
   },
   "dependencyLock": {
     "path": "package-lock.json",
-    "sha256": "12fd26ea7736e4fe7d693239cfedc14f145c97a82d34293c0f02907fc5046032"
+    "sha256": "ec5896a3246a0404b91265df9f5ffbc306d5f4fd2760c677ffb6524a7b573b2b"
   },
   "components": [
     {
@@ -76,14 +76,92 @@
     {
       "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 120589,
-      "sha256": "6277ba31e7d955fbca2ec034a3e6bdec3f50378bd922b40611ab1c2e7dd84f91"
+      "bytes": 125078,
+      "sha256": "cf09a06f9002ced5c640e9409b3797f58ff95af323487bb55803270330e02041"
+    },
+    {
+      "path": "src/lib/occt/nodeOcctBridge.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 86233,
+      "sha256": "3fca536371c13033c8ee5a4c92027cca22db1bf7e04771890db15be08d680c03"
+    },
+    {
+      "path": "src/lib/occt/serverReplicad.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 1602,
+      "sha256": "5d8a268af77b5b620351c467825df52f89bc2ec36816aae8c7b715fde2a6a674"
+    },
+    {
+      "path": "src/lib/occt/planExecutor.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 12788,
+      "sha256": "9b3f301bc315dc7bf08972c0b7e1d7dd8aa8af1f556ef2027b3478885765c7fe"
     },
     {
       "path": "src/lib/drawing/replicadExactProjection.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 4355,
-      "sha256": "f3d166c322712d04abc4930351ba84fa6281364b4e2575837c47ff42b6da31eb"
+      "bytes": 5179,
+      "sha256": "ca8ce27585f74db8ede08479ec65aebdabeda097d9ebfa6d9e597a48e2e0493c"
+    },
+    {
+      "path": "src/lib/drawing/occtHlrDxf.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 9846,
+      "sha256": "02f596eb9a4407561c2b23dd00deb4b28d035f60fd0f8a406ad36e15829570c7"
+    },
+    {
+      "path": "src/lib/cad/sampledCircle.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 1779,
+      "sha256": "2c0fea1408bc4bc840b1a6a1c269de8c9999d50997037086ea9213e091d93fe2"
+    },
+    {
+      "path": "src/lib/ai/design-driver/exactCadGate.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 11771,
+      "sha256": "5ee3b689f903419b7ac7a292b39511d446583621428d858b3f1d7319097fb4ad"
+    },
+    {
+      "path": "src/lib/ai/design-driver/exactDrawingGate.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 7580,
+      "sha256": "abbc014090087ca5a5962a04f0d4eaf951de34ff44b172ba6236c04dd2e75759"
+    },
+    {
+      "path": "src/lib/ai/design-driver/manufacturingDrawingGate.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 19015,
+      "sha256": "4e38d31199c112baef0164f6fe49de73a2a1ec2b274ef4beb6d57f5019fa968f"
+    },
+    {
+      "path": "src/lib/ai/design-driver/workspaceCandidate.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 19174,
+      "sha256": "47c3f2328051a1339269ad281ce70429cb6ec7dc0f6f6502f81fd9428a99e2d7"
+    },
+    {
+      "path": "src/lib/assembly/featureTreePreciseInterference.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 25870,
+      "sha256": "49d6fe978f5ad7c86af5a0713f21c4f088767cea460fdec09fb8d6b4ce6d4698"
+    },
+    {
+      "path": "src/app/api/cad/v1/assembly/release/verify/route.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 11720,
+      "sha256": "b03157e184782b669978a2fec6e72b105185fa65ab1438f47b882df165872071"
+    },
+    {
+      "path": "src/app/api/nexyfab/design-brief/route.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 4530,
+      "sha256": "e758a8efb93fa45e36123f3385823fbe8baf0b764b6d8c1dcb20a4a3f2c893c0"
+    },
+    {
+      "path": "src/app/api/nexyfab/design-brief/runner.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 7184,
+      "sha256": "0b4ed778e4568052a88611f0de40930c1cd4cd9feb644184fbbee87050453d15"
     },
     {
       "path": "src/lib/reference/xcafAssemblyRoundtripEvidence.ts",
@@ -220,8 +298,8 @@
     {
       "path": "src/app/api/cad/v1/generation/finalize/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 5878,
-      "sha256": "d171b252e3e390157b2ce465d6a8e1b4c8ba4694dc871368a32e69f7d6786f34"
+      "bytes": 5902,
+      "sha256": "9de57e5da1bd57b5ef3775e6a04782a1dc708d5eb908a1085a89678475a872ed"
     },
     {
       "path": "src/app/[lang]/shape-generator/ai/generationSessionClient.ts",
@@ -238,8 +316,8 @@
     {
       "path": "src/app/[lang]/shape-generator/_shell/ModelerShell.tsx",
       "role": "semantic-and-release-policy",
-      "bytes": 36635,
-      "sha256": "66194d51a8cd3fe3590e9b5e4ce591d8ad058ae5bb8da31db607ca8798ace3c6"
+      "bytes": 37598,
+      "sha256": "1950335902b5ddc4a519a6bbabaf52d78747b86dbdb3f0dae72ad9192e0fa1a9"
     },
     {
       "path": "src/app/[lang]/shape-generator/ShapeGeneratorClientPage.tsx",
@@ -329,7 +407,7 @@
       "path": "src/content/third-party-notices.generated.json",
       "role": "semantic-and-release-policy",
       "bytes": 224012,
-      "sha256": "77d895257169cc7c8dc93529c77041740bffa389a51378ded754c8759ece4c4f"
+      "sha256": "704fe6d30c4ee7dd38d075be12f76cac4792f7e6bbe5e1847c3a58ef5735decd"
     },
     {
       "path": "scripts/check-occt-readiness.js",
@@ -338,5 +416,5 @@
       "sha256": "50d0f0cd4bacadf24b337c8e36784d834a14cdeee175fc6b1850df12fe017c9f"
     }
   ],
-  "identitySha256": "422d8a296f15d731fd9b3212aa942c086f72cfa22aab44a21f152fb6558e951f"
+  "identitySha256": "505e6f4b6b05c7389f49897cdeffedfbb943f2cc887b5f9d6fd0fa444b602611"
 }

@@ -1,29 +1,29 @@
 import { test, expect } from '@playwright/test';
 
-// Unified sidebar — verifies the 3-section layout renders on all NexyFab
-// surfaces and that the active item flips between sections when navigating.
-// Guest mode is assumed; signed-in routes are gated behind auth and reached
-// via the /portal entry which redirects to login when unauthenticated.
+// Unified sidebar — verifies the current domain-first IA and the integrated AI
+// chat entry point. Manufacturing lives on the dashboard and account actions
+// live in the avatar menu, so the retired three-section layout is not expected.
 
 test.describe('NexyfabUnifiedSidebar', () => {
-  test('renders DESIGN / MANUFACTURING / ACCOUNT sections on Hub', async ({ page }) => {
+  test('renders domain-first design navigation on Hub', async ({ page }) => {
     await page.goto('/kr/nexyfab/hub');
-    // Section titles should appear (Korean labels).
-    await expect(page.getByText('디자인', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('제조', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('계정', { exact: true }).first()).toBeVisible();
+    const nav = page.getByRole('navigation', { name: '주요 메뉴' });
+    await expect(nav.getByRole('link', { name: '기계', exact: true })).toBeVisible();
+    await expect(nav.getByRole('link', { name: '건축', exact: true })).toBeVisible();
+    await expect(nav.getByRole('link', { name: '토목', exact: true })).toBeVisible();
+    await expect(nav.getByRole('link', { name: '내 프로젝트', exact: true })).toBeVisible();
   });
 
-  test('shows AI Studio NEW badge', async ({ page }) => {
+  test('shows the integrated New chat entry', async ({ page }) => {
     await page.goto('/kr/nexyfab/hub');
-    const aiLink = page.getByRole('link', { name: /Nexy AI 스튜디오/ });
+    const aiLink = page.getByRole('link', { name: '새 채팅', exact: true });
     await expect(aiLink).toBeVisible();
-    await expect(aiLink).toContainText('NEW');
+    await expect(aiLink).toHaveAttribute('href', '/kr/nexyfab/ai/');
   });
 
-  test('navigates to AI Studio when clicked', async ({ page }) => {
+  test('navigates to integrated AI chat when clicked', async ({ page }) => {
     await page.goto('/kr/nexyfab/hub');
-    await page.getByRole('link', { name: /Nexy AI 스튜디오/ }).click();
-    await expect(page).toHaveURL(/\/nexyfab\/ai-studio$/);
+    await page.getByRole('link', { name: '새 채팅', exact: true }).click();
+    await expect(page).toHaveURL(/\/nexyfab\/ai\/?$/);
   });
 });

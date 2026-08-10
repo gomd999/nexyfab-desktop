@@ -1,76 +1,49 @@
-import { test, expect } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import {
-  seedShapeGeneratorForE2e,
   dismissShapeGeneratorOverlays,
   exitSketchIfNeeded,
-  pickBoxEvaluateWaitForAutoDrawing,
-  openAutoDrawingPanel,
+  pickBoxWaitForGeometry,
+  seedShapeGeneratorForE2e,
 } from './helpers/shapeGeneratorEnv';
 
-/**
- * M4: 스케치 모드 종료 → Evaluate → 자동 도면 패널 → 생성 → SVG 프리뷰 표시.
- *
- * 로컬: `E2E_BASE_URL`에 맞춤. Turbopack dev가 500이면 `npm run build && npx next start -p 3334` 등 프로덕션 서버 권장.
- * CI: playwright.config `webServer`(build+start).
- */
-test.describe('M4 auto drawing panel', () => {
+async function openDrawingWorkspace(page: Page): Promise<void> {
+  await seedShapeGeneratorForE2e(page);
+  const response = await page.goto('/en/shape-generator/?expert=1', { waitUntil: 'domcontentloaded' });
+  expect(response?.status() ?? 500).toBeLessThan(400);
+  await dismissShapeGeneratorOverlays(page);
+  await expect(page.getByTestId('shape-generator-workspace')).toBeVisible({ timeout: 60_000 });
+  await exitSketchIfNeeded(page);
+  await pickBoxWaitForGeometry(page);
+  await page.locator('button.tab').filter({ hasText: /^Drawing$/ }).click();
+  await expect(page).toHaveURL(
+    url => url.pathname === '/en/shape-generator/drawing/' && url.searchParams.get('expert') === '1',
+    { timeout: 30_000 },
+  );
+}
+
+test.describe('M4 production drawing workspace', () => {
   test.beforeEach(({}, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile-chrome', 'ribbon Evaluate tab is desktop-oriented');
+    test.skip(testInfo.project.name === 'mobile-chrome', 'desktop drawing workspace');
   });
 
-  test('Exit sketch, open Auto Drawing, generate shows SVG preview', async ({ page }) => {
-    test.setTimeout(120_000);
-    await seedShapeGeneratorForE2e(page);
-    const res = await page.goto('/en/shape-generator/', { waitUntil: 'domcontentloaded' });
-    if (res && res.status() >= 400) {
-      throw new Error(`shape-generator returned HTTP ${res.status()} — use production server if dev (Turbopack) fails`);
-    }
-    await expect(page).toHaveURL(/\/en\/shape-generator/);
-    await dismissShapeGeneratorOverlays(page);
-    await expect(page.getByTestId('shape-generator-workspace')).toBeVisible({ timeout: 60000 });
-    await exitSketchIfNeeded(page);
-    await expect(page.getByRole('button', { name: 'Evaluate' })).toBeVisible({ timeout: 30000 });
-    await pickBoxEvaluateWaitForAutoDrawing(page);
-    await openAutoDrawingPanel(page);
-
-    const panel = page.getByTestId('auto-drawing-panel');
-    await expect(panel.getByTestId('auto-drawing-empty')).toHaveCount(0);
-
-    await panel.getByTestId('auto-drawing-generate').click();
-
-    await expect(panel.locator('[data-testid="auto-drawing-preview-svg"]')).toBeVisible({ timeout: 20000 });
-    const svg = panel.locator('[data-testid="auto-drawing-preview-svg"]');
-    await expect(svg.locator('line,path,polyline,rect').first()).toBeAttached();
+  test('modeler Drawing tab opens the production sheet with export controls', async ({ page }) => {
+    test.setTimeout(150_000);
+    await openDrawingWorkspace(page);
+    await expect(page.getByTestId('drawing-page-root')).toBeVisible();
+    await expect(page.getByTestId('drawing-export-pdf-button')).toBeVisible();
+    await expect(page.getByTestId('drawing-export-dxf-button')).toBeVisible();
+    const sheet = page.locator('svg[data-testid="sheet-renderer-root"]');
+    await expect(sheet).toHaveCount(1);
+    await expect(sheet.locator('line, polyline, path').first()).toBeAttached();
   });
 
-  test('after generate, box width change shows stale banner; regenerate clears it', async ({ page }) => {
-    test.setTimeout(120_000);
-    await seedShapeGeneratorForE2e(page);
-    const res = await page.goto('/en/shape-generator/', { waitUntil: 'domcontentloaded' });
-    if (res && res.status() >= 400) {
-      throw new Error(`shape-generator returned HTTP ${res.status()} — use production server if dev (Turbopack) fails`);
-    }
-    await expect(page).toHaveURL(/\/en\/shape-generator/);
-    await dismissShapeGeneratorOverlays(page);
-    await expect(page.getByTestId('shape-generator-workspace')).toBeVisible({ timeout: 60000 });
-    await exitSketchIfNeeded(page);
-    await expect(page.getByRole('button', { name: 'Evaluate' })).toBeVisible({ timeout: 30000 });
-    await pickBoxEvaluateWaitForAutoDrawing(page);
-    await openAutoDrawingPanel(page);
-
-    const panel = page.getByTestId('auto-drawing-panel');
-    await expect(panel.getByTestId('auto-drawing-empty')).toHaveCount(0);
-    await panel.getByTestId('auto-drawing-generate').click();
-    await expect(panel.locator('[data-testid="auto-drawing-preview-svg"]')).toBeVisible({ timeout: 20000 });
-
-    const widthNum = page.getByTestId('m4-box-width-number');
-    await expect(widthNum).toBeVisible({ timeout: 10000 });
-    await widthNum.clear();
-    await widthNum.fill('120');
-    await widthNum.blur();
-    await expect(panel.getByTestId('auto-drawing-stale-banner')).toBeVisible({ timeout: 15000 });
-
-    await panel.getByTestId('auto-drawing-generate').click();
-    await expect(panel.getByTestId('auto-drawing-stale-banner')).toHaveCount(0);
+  test('part and paper controls keep the production sheet live', async ({ page }) => {
+    test.setTimeout(150_000);
+    await openDrawingWorkspace(page);
+    await page.getByTestId('drawing-part-select').selectOption('sample-cylinder');
+    await page.getByTestId('drawing-paper-select').selectOption('A4');
+    await expect(page.getByTestId('drawing-part-select')).toHaveValue('sample-cylinder');
+    await expect(page.getByTestId('drawing-paper-select')).toHaveValue('A4');
+    await expect(page.locator('svg[data-testid="sheet-renderer-root"] line, svg[data-testid="sheet-renderer-root"] polyline, svg[data-testid="sheet-renderer-root"] path').first()).toBeAttached();
   });
 });

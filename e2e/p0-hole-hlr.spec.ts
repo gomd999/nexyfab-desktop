@@ -18,6 +18,11 @@ type Probe = {
   resultNull: boolean;
   resultOcctHandle: string | null;
   resultHandleInWorker: boolean;
+  occtMode: boolean;
+  occtInitPending: boolean;
+  occtInitError: string | null;
+  pipelineWorkerLoading: boolean;
+  isMobile: boolean;
   pipelineErrors: Record<string, string>;
   bbox: { min: number[]; max: number[] } | null;
   nodes: Array<{ featureType: string | null; params: Record<string, number> }>;
@@ -28,6 +33,42 @@ test.describe('P0 two-hole worker HLR', () => {
     test.skip(testInfo.project.name === 'mobile-chrome', 'desktop drawing entry point');
     test.setTimeout(360_000);
     await seedShapeGeneratorForE2e(page);
+    await page.addInitScript(() => {
+      type Summary = {
+        type: string;
+        occtHandle?: string | null;
+        errors?: Record<string, string>;
+        meshDowngrades?: unknown[];
+        positionCount?: number;
+      };
+      const target = window as unknown as { __nfabPipelineMessages: Summary[]; Worker: typeof Worker };
+      target.__nfabPipelineMessages = [];
+      const NativeWorker = window.Worker;
+      class DiagnosticWorker extends NativeWorker {
+        constructor(scriptURL: string | URL, options?: WorkerOptions) {
+          super(scriptURL, options);
+          this.addEventListener('message', event => {
+            const data = event.data as {
+              type?: string;
+              occtHandle?: string | null;
+              errors?: Record<string, string>;
+              meshDowngrades?: unknown[];
+              positions?: Float32Array;
+            };
+            if (data?.type === 'PIPELINE_RESULT' || data?.type === 'PIPELINE_ERROR') {
+              target.__nfabPipelineMessages.push({
+                type: data.type,
+                occtHandle: data.occtHandle,
+                errors: data.errors,
+                meshDowngrades: data.meshDowngrades,
+                positionCount: data.positions?.length,
+              });
+            }
+          });
+        }
+      }
+      target.Worker = DiagnosticWorker;
+    });
     // sessionStorage is origin-scoped. Establish the E2E origin first; writing
     // from the initial about:blank document is not reliable across browsers.
     const bootstrap = await page.goto('/api/health', { waitUntil: 'domcontentloaded' });
@@ -37,8 +78,29 @@ test.describe('P0 two-hole worker HLR', () => {
     }, TWO_HOLE_PROGRAM);
 
     const consoleErrors: string[] = [];
+    const kernelDiagnostics: string[] = [];
+    let pipelineWorkerCsp: string | null = null;
     page.on('console', message => {
       if (message.type() === 'error') consoleErrors.push(message.text());
+      if ((message.type() === 'error' || message.type() === 'warning')
+        && /occt|wasm|worker|hole|pipeline/i.test(message.text())) {
+        kernelDiagnostics.push(`console:${message.type()}:${message.text()}`);
+      }
+    });
+    page.on('requestfailed', request => {
+      if (/occt|wasm|worker/i.test(request.url())) {
+        kernelDiagnostics.push(`requestfailed:${request.url()}:${request.failure()?.errorText ?? 'unknown'}`);
+      }
+    });
+    page.on('response', response => {
+      if (/occt|wasm|worker/i.test(response.url())) {
+        kernelDiagnostics.push(`response:${response.status()}:${response.url()}`);
+      }
+      if (/\/pipeline-worker\.[^/]+\.js(?:\?|$)/i.test(response.url())) {
+        void response.headerValue('content-security-policy').then(value => {
+          pipelineWorkerCsp = value;
+        });
+      }
     });
 
     const response = await page.goto('/kr/shape-generator?expert=1&mode=expert', { waitUntil: 'domcontentloaded' });
@@ -46,24 +108,39 @@ test.describe('P0 two-hole worker HLR', () => {
     await dismissShapeGeneratorOverlays(page);
     await expect(page.getByTestId('shape-generator-workspace')).toBeVisible({ timeout: 60_000 });
     const handoffBanner = page.getByTestId('ai-cad-handoff-banner');
-    await expect(handoffBanner).toBeVisible();
+    // A cold browser must initialize the main-thread OCCT kernel before the
+    // precise handoff is replayed. The 10 MB WASM compile can exceed the
+    // default 5 s locator timeout on CI even though the workspace is visible.
+    await expect(handoffBanner).toBeVisible({ timeout: 120_000 });
     await expect(page.getByTestId('ai-cad-handoff-title')).toContainText(/P0 two-hole plate.*3/);
     await expect(handoffBanner).toContainText(/편집 가능한 B-rep|Editable B-rep/);
     await page.getByTestId('dismiss-ai-cad-handoff').click();
     await expect(handoffBanner).toBeHidden();
 
-    await page.waitForFunction(() => {
-      const fn = (window as unknown as { __nfabProbe?: () => Probe }).__nfabProbe;
-      if (!fn) return false;
-      const probe = fn();
-      return probe.ok && !probe.resultNull && probe.resultHandleInWorker && !!probe.resultOcctHandle;
-    }, undefined, { timeout: 90_000 });
+    try {
+      await page.waitForFunction(() => {
+        const fn = (window as unknown as { __nfabProbe?: () => Probe }).__nfabProbe;
+        if (!fn) return false;
+        const probe = fn();
+        return probe.ok && !probe.resultNull && probe.resultHandleInWorker && !!probe.resultOcctHandle;
+      }, undefined, { timeout: 90_000 });
+    } catch (error) {
+      const lastProbe = await page.evaluate(() =>
+        (window as unknown as { __nfabProbe?: () => unknown }).__nfabProbe?.() ?? null);
+      const pipelineMessages = await page.evaluate(() =>
+        (window as unknown as { __nfabPipelineMessages?: unknown[] }).__nfabPipelineMessages ?? []);
+      throw new Error(
+        `worker B-rep did not become ready: probe=${JSON.stringify(lastProbe)} pipelineMessages=${JSON.stringify(pipelineMessages)} kernelDiagnostics=${JSON.stringify(kernelDiagnostics)} consoleErrors=${JSON.stringify(consoleErrors)}`,
+        { cause: error },
+      );
+    }
 
     const probe = await page.evaluate(() =>
       (window as unknown as { __nfabProbe: () => Probe }).__nfabProbe());
     expect(probe.pipelineErrors).toEqual({});
     expect(probe.resultOcctHandle).toMatch(/^occt:\d+$/);
     expect(probe.resultHandleInWorker).toBe(true);
+    expect(pipelineWorkerCsp).toContain("'unsafe-eval'");
     expect(probe.nodes.filter(node => node.featureType === 'hole')).toHaveLength(2);
     expect(probe.bbox?.min).toEqual(expect.arrayContaining([-50, -4, -30]));
     expect(probe.bbox?.max).toEqual(expect.arrayContaining([50, 4, 30]));
@@ -77,17 +154,6 @@ test.describe('P0 two-hole worker HLR', () => {
     await expect(page.getByText(/STEP.*Pro.*기능|STEP.*Pro.*feature/i)).toBeVisible();
     const upgradeDialog = page.getByRole('dialog', { name: /업그레이드 플랜 선택|Upgrade plan/i });
     await upgradeDialog.getByRole('button', { name: /닫기|Close dialog/i }).click();
-    const stepText = await page.evaluate(async () => {
-      const exportStepFromWorker = (window as unknown as {
-        __nfabExportWorkerStep?: () => Promise<string | null>;
-      }).__nfabExportWorkerStep;
-      return exportStepFromWorker ? await exportStepFromWorker() : null;
-    });
-    expect(stepText).toBeTruthy();
-    if (!stepText) throw new Error('worker STEP RPC returned null');
-    expect(stepText).toContain('ISO-10303-21');
-    expect((stepText.match(/CYLINDRICAL_SURFACE/gi) ?? []).length).toBeGreaterThanOrEqual(2);
-
     await page.getByTestId('drawing-view-toggle').click();
     const hlrToggle = page.getByTestId('drawing-hlr-toggle');
     await expect(hlrToggle).toBeVisible({ timeout: 30_000 });

@@ -114,7 +114,7 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
             </div>
             <button onClick={dismissOnboarding} style={{
               marginTop: 20, background: 'none', border: 'none',
-              color: '#6e7681', fontSize: 12, cursor: 'pointer',
+              color: '#9ca3af', fontSize: 12, cursor: 'pointer',
               textDecoration: 'underline',
             }}>
               {t.onboardingSkip}

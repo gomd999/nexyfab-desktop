@@ -56,6 +56,21 @@ import {
   holeGate,
   type HoleArtifact,
 } from './holeGate';
+import {
+  buildExactCadArtifact,
+  exactCadGate,
+  type ExactCadArtifact,
+} from './exactCadGate';
+import {
+  buildExactDrawingArtifact,
+  exactDrawingGate,
+  type ExactDrawingArtifact,
+} from './exactDrawingGate';
+import {
+  buildManufacturingDrawingArtifact,
+  manufacturingDrawingGate,
+  type ManufacturingDrawingArtifact,
+} from './manufacturingDrawingGate';
 import { buildDrawingArtifact, drawingGate } from './drawingGate';
 import { buildGdtArtifact, gdtGate } from './gdtGate';
 import { buildDesignPackage } from './packager';
@@ -195,7 +210,44 @@ export async function runDesignDriver(
       holeArtifacts.set(part.partId, null);
     }
   }
+  // Exact CAD is mandatory and independent of the display/drawing mesh gate.
+  const exactCads = new Map<string, ExactCadArtifact | null>();
+  for (const part of plan.parts) {
+    try {
+      exactCads.set(part.partId, await buildExactCadArtifact(
+        part,
+        curveds.get(part.partId) ?? null,
+        holeArtifacts.get(part.partId) ?? null,
+      ));
+    } catch {
+      exactCads.set(part.partId, null);
+    }
+  }
   const drawingArtifact = buildDrawingArtifact(plan);
+  const exactDrawings = new Map<string, ExactDrawingArtifact | null>();
+  for (const part of plan.parts) {
+    try {
+      exactDrawings.set(part.partId, await buildExactDrawingArtifact(
+        part,
+        exactCads.get(part.partId) ?? null,
+      ));
+    } catch {
+      exactDrawings.set(part.partId, null);
+    }
+  }
+  const manufacturingDrawings = new Map<string, ManufacturingDrawingArtifact | null>();
+  for (const part of plan.parts) {
+    try {
+      manufacturingDrawings.set(part.partId, buildManufacturingDrawingArtifact(
+        plan,
+        part,
+        exactDrawings.get(part.partId) ?? null,
+        drawingArtifact,
+      ));
+    } catch {
+      manufacturingDrawings.set(part.partId, null);
+    }
+  }
   // WB-5: GD&T auto-propose + verify over the named topology; declared specs are
   // enforced (build never throws — refusals become gate reasons).
   const gdtArtifact = buildGdtArtifact(plan, drawingArtifact.topologies);
@@ -204,6 +256,16 @@ export async function runDesignDriver(
   const gates: GateResult[] = [];
   for (const part of plan.parts) {
     gates.push(geometryGate(part, geometries.get(part.partId)!));
+    gates.push(exactCadGate(part, exactCads.get(part.partId) ?? null));
+    gates.push(exactDrawingGate(
+      part,
+      exactCads.get(part.partId) ?? null,
+      exactDrawings.get(part.partId) ?? null,
+    ));
+    gates.push(manufacturingDrawingGate(
+      part,
+      manufacturingDrawings.get(part.partId) ?? null,
+    ));
   }
   if (plan.assembly && assemblyArtifact) {
     gates.push(assemblyGate(plan, assemblyArtifact));
@@ -280,6 +342,9 @@ export async function runDesignDriver(
     patterns,
     curveds,
     holeArtifacts,
+    exactCads,
+    exactDrawings,
+    manufacturingDrawings,
     gdt: gdtArtifact,
   });
   return { ok: true, plan, gates, package: pkg };

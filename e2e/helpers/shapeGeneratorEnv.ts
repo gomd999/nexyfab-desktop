@@ -40,6 +40,17 @@ export async function exitSketchIfNeeded(page: Page): Promise<void> {
   await page.waitForTimeout(400);
 }
 
+/** Select the deterministic gallery box and wait for the live geometry probe. */
+export async function pickBoxWaitForGeometry(page: Page): Promise<void> {
+  await page.getByTestId('m4-pick-box').click({ force: true, timeout: 20_000 }).catch(() => {});
+  await page.waitForFunction(() => {
+    const probe = (window as unknown as {
+      __nfabProbe?: () => { ok: boolean; resultNull: boolean };
+    }).__nfabProbe?.();
+    return !!probe?.ok && !probe.resultNull;
+  }, undefined, { timeout: 90_000 });
+}
+
 /** 갤러리 박스 → Evaluate 완료까지 기다린 뒤 Auto Drawing 버튼이 활성화될 때까지 대기 */
 export async function pickBoxEvaluateWaitForAutoDrawing(page: Page): Promise<void> {
   await page.getByTestId('m4-pick-box').click({ force: true, timeout: 20000 }).catch(() => {});

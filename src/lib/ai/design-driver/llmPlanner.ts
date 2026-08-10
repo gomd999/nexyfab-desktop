@@ -997,7 +997,7 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
           "at": {"x":number,"y":number},  // centre in the SAME sketch frame as the extrude loop
           "kind": "through"|"blind"?,   // default through; blind needs depthMm
           "depthMm": number?,            // blind only — depth DOWN FROM THE TOP FACE (< thickness)
-          "segments": number?  // round tool tessellation, default 64 (range 12..256)
+          "segments": number?  // analytic-circle recognition samples, default 64 (range 16..256)
         }
       ]
       // HOW TO MODEL A HOLE — this is the ONLY way, and getting it wrong is the single

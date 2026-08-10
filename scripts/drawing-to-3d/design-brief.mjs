@@ -16,6 +16,7 @@ import path from 'node:path';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const RUNNER = path.join(HERE, 'design-brief-runner.ts');
 const PROJECT_ROOT = path.resolve(HERE, '..', '..');
+const RESULT_PREFIX = '@@NEXYFAB_DESIGN_BRIEF_JSON@@';
 
 /**
  * Run a design brief through the real TS driver and return the shared payload.
@@ -39,10 +40,17 @@ export function runDesignBriefTool(brief) {
         resolve({ ok: false, error: `design-brief runner produced no output${err ? `: ${err.trim().slice(0, 300)}` : ''}` });
         return;
       }
+      // OCCT/STEP writers emit native transfer statistics directly to stdout.
+      // Read only the runner's explicitly framed final payload so those logs
+      // cannot corrupt the MCP JSON contract.
+      const marker = out.lastIndexOf(RESULT_PREFIX);
+      const framed = marker >= 0
+        ? out.slice(marker + RESULT_PREFIX.length).split(/\r?\n/, 1)[0].trim()
+        : trimmed;
       try {
-        resolve(JSON.parse(trimmed));
+        resolve(JSON.parse(framed));
       } catch {
-        resolve({ ok: false, error: `design-brief runner returned non-JSON: ${trimmed.slice(0, 300)}` });
+        resolve({ ok: false, error: `design-brief runner returned non-JSON: ${framed.slice(0, 300)}` });
       }
     });
     // The runner reads the brief JSON from stdin.

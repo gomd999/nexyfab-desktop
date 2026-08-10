@@ -162,7 +162,17 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
         // y=h/2 가 아니므로(월드 z 압출) 계속 정직하게 skipped.
         if ((base.shape !== 'rect' && base.shape !== 'circle') || !api.addSketchFeature) { skipped.push('boss'); break; }
         const profile: SketchProfile = {
-          segments: generateCircleSegments(pt(num(f.posX, 0), num(f.posY, 0)), dia / 2, 48),
+          // Preserve circle semantics. Expanding this to 48 line segments
+          // silently turned an exact boss into a polygonal prism in the OCCT
+          // B-rep chain (measured volume deviation ~0.077% on a stepped shaft).
+          segments: [{
+            type: 'circle',
+            points: [
+              pt(num(f.posX, 0), num(f.posY, 0)),
+              pt(num(f.posX, 0) + dia / 2, num(f.posY, 0)),
+            ],
+            id: `boss_circle_${f.id}`,
+          }],
           closed: true,
         };
         const config = { mode: 'extrude', depth: bossH, revolveAngle: 360, revolveAxis: 'y', segments: 48 } as unknown as SketchConfig;

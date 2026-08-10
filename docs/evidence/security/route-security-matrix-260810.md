@@ -2,9 +2,9 @@
 
 - Schema: `nexyfab.route-security-matrix.v1`
 - Status: **PASS**
-- Route files: 547
-- Exported handlers: 759
-- Classified: 547; unknown: 0
+- Route files: 548
+- Exported handlers: 760
+- Classified: 548; unknown: 0
 - Routes with gaps: 0
 
 - Reviewed public mutations: 85
@@ -15,7 +15,7 @@
 | Class | Routes |
 |---|---:|
 | public | 122 |
-| authenticated | 315 |
+| authenticated | 316 |
 | admin | 68 |
 | webhook | 6 |
 | internal-worker | 24 |

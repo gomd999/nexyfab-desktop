@@ -2689,7 +2689,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <button
               type="button"
-              onClick={() => router.push(`/${langSeg}/shape-generator`)}
+              onClick={() => router.push(`/${langSeg}/shape-generator?expert=1`)}
               title={dict.closeEditor}
               style={{
                 marginTop: 2, padding: '6px 12px', borderRadius: 8,

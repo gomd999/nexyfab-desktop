@@ -10,12 +10,13 @@ import {
   cacheGet,
   cachePut,
   cacheDelete,
+  cacheClear,
   featureCacheKey,
   stampGeoId,
   getGeoId,
   type PipelineCacheKernel,
 } from './pipelineCache';
-import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeProfileOnFrame, occtExtrudeCircleOnFrame, occtRevolveProfileOnFrame, occtExtrudeCircle, occtRevolveProfile, occtBaseSolid, occtEdgeSignatures, getShape, registerShape, composeTopoNamesAfterBoolean } from './occtEngine';
+import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, setOcctGlobalMode, occtExtrudeProfile, occtExtrudeProfileOnFrame, occtExtrudeCircleOnFrame, occtRevolveProfileOnFrame, occtExtrudeCircle, occtRevolveProfile, occtBaseSolid, occtEdgeSignatures, getShape, registerShape, composeTopoNamesAfterBoolean, occtRegisteredShapeEvidence } from './occtEngine';
 import { TopologyNamer } from './topologyRegistry';
 
 // Persistent across rebuilds within this module's lifetime (the worker reuses
@@ -104,6 +105,10 @@ export async function runPipelineAsync(
   opts: PipelineOptions = {},
 ): Promise<PipelineResult> {
   if (opts.onProgress) opts.onProgress(0, 'Initializing Engine');
+  // The worker owns a separate module graph, so the UI thread's global kernel
+  // toggle cannot reach it. Mirror the requested mode in this execution
+  // context before feature implementations consult shouldUseOcctEngine().
+  setOcctGlobalMode(Boolean(opts.occtMode));
   if (opts.occtMode) {
     try {
       await ensureOcctReady();
@@ -119,10 +124,16 @@ export async function runPipelineAsync(
       });
     }
   }
+  // OCCT cache entries carry registry-local handles. resetShapeRegistry()
+  // invalidates those handles on every rebuild, so reusing an earlier exact
+  // entry can turn a valid 1-feature run into a silent mesh fallback when the
+  // next feature is appended. Clear the worker-local cache before an exact run;
+  // the mesh cache remains available for preview-mode rebuilds.
+  if (opts.occtMode) cacheClear();
   resetShapeRegistry();
   // Seed a real B-rep base handle (this context's registry) so the chain starts
-  // from a cylinder/sphere base instead of its bounding box. Built AFTER the
-  // reset so it survives into the loop; mesh display untouched (handle-only).
+  // from the requested primitive instead of reconstructing it from a mesh.
+  // Built AFTER the reset so it survives into the loop; display mesh untouched.
   if (opts.occtMode && opts.baseSpec && isOcctReady()) {
     try {
       const base = occtBaseSolid(opts.baseSpec.shapeId, opts.baseSpec.params);
@@ -130,7 +141,15 @@ export async function runPipelineAsync(
     } catch { /* mesh fallback — no handle */ }
   }
   const cacheKernel: PipelineCacheKernel = opts.occtMode ? 'occt' : 'mesh';
-  return await runLoopAsync(baseGeometry, features, featureMap, cacheKernel, opts.onProgress);
+  const pipelineResult = await runLoopAsync(baseGeometry, features, featureMap, cacheKernel, opts.onProgress);
+  const finalHandle = pipelineResult.geometry.userData?.occtHandle as string | undefined;
+  if (finalHandle) {
+    pipelineResult.geometry.userData = {
+      ...pipelineResult.geometry.userData,
+      occtShapeEvidence: occtRegisteredShapeEvidence(finalHandle),
+    };
+  }
+  return pipelineResult;
 }
 
 // ─── Internal loop ──────────────────────────────────────────────────────────
@@ -557,14 +576,32 @@ function runSketchExtrude(
         const off = planeOffset ?? 0;
         let tool: { geometry: THREE.BufferGeometry; handle: string | null };
         if (faceFrameExtrude) {
+          // Touching boss/host faces can remain two solids inside a Compound.
+          // Give the hidden tool start a micron-scale overlap and extend by the
+          // same amount, preserving the exact external design envelope while
+          // forcing a volumetric union.
+          const overlap = operation === 'subtract'
+            ? 0
+            : Math.min(1e-3, Math.max(Math.abs(depth) * 1e-4, 1e-6));
+          const frameForTool = overlap > 0
+            ? {
+                ...faceFrame!,
+                origin: [
+                  faceFrame!.origin[0] - faceFrame!.normal[0] * overlap,
+                  faceFrame!.origin[1] - faceFrame!.normal[1] * overlap,
+                  faceFrame!.origin[2] - faceFrame!.normal[2] * overlap,
+                ] as [number, number, number],
+              }
+            : faceFrame!;
+          const toolDepth = depth + overlap;
           if (segs.length === 1 && segs[0].type === 'circle') {
             // Circular boss/hole on the face → exact cylinder along the normal.
             const c = segs[0].points[0], rim = segs[0].points[1];
             const rr = Math.hypot(rim.x - c.x, rim.y - c.y);
-            tool = occtExtrudeCircleOnFrame(rr, c.x, c.y, depth, faceFrame!);
+            tool = occtExtrudeCircleOnFrame(rr, c.x, c.y, toolDepth, frameForTool);
           } else {
             const pts = brepContourPoints(profile);
-            tool = pts ? occtExtrudeProfileOnFrame(pts, depth, faceFrame!) : { geometry: geo, handle: null };
+            tool = pts ? occtExtrudeProfileOnFrame(pts, toolDepth, frameForTool) : { geometry: geo, handle: null };
           }
         } else if (faceFrameRevolve) {
           // Revolve the (u,v) contour 360° about the face's v-axis.
@@ -590,7 +627,10 @@ function runSketchExtrude(
             brepHandle = tool.handle; // first solid — starts the chain
           } else if (upstreamHandle) {
             const host = getShape(upstreamHandle) as
-              { cut?: (o: unknown) => unknown; fuse?: (o: unknown) => unknown } | null;
+              {
+                cut?: (o: unknown) => unknown;
+                fuse?: (o: unknown, options?: { optimisation?: 'none' | 'commonFace' | 'sameFace' }) => unknown;
+              } | null;
             const toolSolid = getShape(tool.handle);
             if (host && toolSolid) {
               const res = operation === 'subtract'

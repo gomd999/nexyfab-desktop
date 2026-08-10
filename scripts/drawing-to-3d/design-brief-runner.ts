@@ -13,6 +13,11 @@
 
 import { parseBrief, runDesignBrief } from '../../src/app/api/nexyfab/design-brief/runner';
 
+const RESULT_PREFIX = '@@NEXYFAB_DESIGN_BRIEF_JSON@@';
+const writeResult = (value: unknown) => {
+  process.stdout.write(`\n${RESULT_PREFIX}${JSON.stringify(value)}\n`);
+};
+
 (async () => {
   const chunks: Buffer[] = [];
   for await (const c of process.stdin) chunks.push(c as Buffer);
@@ -24,12 +29,12 @@ import { parseBrief, runDesignBrief } from '../../src/app/api/nexyfab/design-bri
   }
   const parsed = parseBrief(body);
   if ('error' in parsed) {
-    process.stdout.write(JSON.stringify({ ok: false, error: parsed.error }));
+    writeResult({ ok: false, error: parsed.error });
     return;
   }
   const payload = await runDesignBrief(parsed.brief);
-  process.stdout.write(JSON.stringify(payload));
+  writeResult(payload);
 })().catch((e: unknown) => {
-  process.stdout.write(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : String(e) }));
+  writeResult({ ok: false, error: e instanceof Error ? e.message : String(e) });
   process.exitCode = 1;
 });

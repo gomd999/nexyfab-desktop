@@ -31,6 +31,13 @@ describe('buildCspValue — Phase 5 OCCT WASM directives', () => {
     expect(csp).toMatch(/connect-src[^;]*https:\/\/example\.test/);
   });
 
+  it('permits the GA4 collection endpoints used after analytics consent', () => {
+    const csp = buildCspValue();
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/analytics\.google\.com/);
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/stats\.g\.doubleclick\.net/);
+    expect(csp).toMatch(/img-src[^;]*https:\/\/www\.google\.co\.kr/);
+  });
+
   it("does not grant JavaScript eval in production", () => {
     const script = buildCspValue({ isDev: false }).split(';')
       .find(value => value.trim().startsWith('script-src')) ?? '';
@@ -82,13 +89,18 @@ describe('buildExactCadCspHeaders — route-scoped Emscripten exception', () => 
       .find(group => group.source === '/(.*)')!
       .headers.find(header => header.key === 'Content-Security-Policy')!.value;
     const exactCad = buildExactCadCspHeaders({ isDev: false });
-    const scoped = exactCad[0].headers[0].value;
+    const documentPolicy = exactCad.find(group => group.source.includes('/shape-generator/'))!;
+    const workerPolicy = exactCad.find(group => group.source.includes('pipeline-worker.'))!;
+    const scoped = documentPolicy.headers[0].value;
 
-    expect(exactCad).toHaveLength(1);
-    expect(exactCad[0].source).toBe('/:lang(kr|en|ja|cn|es|ar)/shape-generator/:path*');
+    expect(exactCad).toHaveLength(2);
+    expect(documentPolicy.source).toBe('/:lang(kr|en|ja|cn|es|ar)/shape-generator/:path*');
+    expect(workerPolicy.source).toBe('/_next/static/chunks/pipeline-worker.:hash.js');
     expect(global.split(';').find(value => value.trim().startsWith('script-src')))
       .not.toContain("'unsafe-eval'");
     expect(scoped.split(';').find(value => value.trim().startsWith('script-src')))
+      .toContain("'unsafe-eval'");
+    expect(workerPolicy.headers[0].value.split(';').find(value => value.trim().startsWith('script-src')))
       .toContain("'unsafe-eval'");
   });
 });

@@ -56,9 +56,9 @@ describe('WB-9 driver integration — 구멍이 커널 cut으로 뚫리고 실�
     expect(hg!.metrics.netVolumeMm3).toBeLessThan(96000);
     // 커널 순부피 ↔ 선언한 절삭이 함의하는 부피가 1e-6 이내로 일치
     expect(hg!.metrics.netVolumeRelError).toBeLessThan(1e-6);
-    // 근사는 숨기지 않는다 — 64각형은 원보다 약간 작게 깎는다(음수, 0.1% 미만)
-    expect(hg!.metrics.tessellationAreaRelDev).toBeLessThan(0);
-    expect(Math.abs(hg!.metrics.tessellationAreaRelDev)).toBeLessThan(0.002);
+    // 원형 홀은 다각형 근사가 아니라 분석형 OCCT 원통이다.
+    expect(hg!.metrics.tessellationAreaRelDev).toBe(0);
+    expect(removed).toBeCloseTo(4 * Math.PI * 3.25 * 3.25 * 10, 3);
 
     const holes = res.package.parts[0]!.holes!;
     expect(holes.count).toBe(4);
@@ -180,18 +180,18 @@ describe('WB-9 driver integration — 구멍이 커널 cut으로 뚫리고 실�
 
   it('블라인드 홀 — 윗면에서 선언 깊이만큼만 커널이 파낸다(관통 아님)', async () => {
     if (!occtOk) return;
-    // 120×80×10 판재에 ⌀10 블라인드 4 mm → 제거량 = 정64각형 면적 × 4(두께 10이 아니라).
+    // 120×80×10 판재에 ⌀10 블라인드 4 mm → 제거량 = 정확한 πr² × 4.
     const part: PlanPart = {
       ...holedPlatePlan().parts[0]!,
       holes: [{ id: 'h1', kind: 'blind', diameterMm: 10, at: { x: 30, y: 30 }, depthMm: 4 }],
     };
     const art = await buildHoleArtifact(part);
     expect(art!.ok, art!.reason).toBe(true);
-    const ngonArea = (64 / 2) * 5 * 5 * Math.sin((2 * Math.PI) / 64);
-    expect(art!.cuts[0]!.removedMm3).toBeCloseTo(ngonArea * 4, 3);   // 깊이 4만큼만
+    const circleArea = Math.PI * 5 * 5;
+    expect(art!.cuts[0]!.removedMm3).toBeCloseTo(circleArea * 4, 3);   // 깊이 4만큼만
     expect(art!.cuts[0]!.depthMm).toBe(4);
-    expect(art!.netVolumeMm3).toBeCloseTo(96000 - ngonArea * 4, 3);
-    expect(art!.netVolumeMm3).toBeGreaterThan(96000 - ngonArea * 10); // 관통이었다면 이보다 작다
+    expect(art!.netVolumeMm3).toBeCloseTo(96000 - circleArea * 4, 3);
+    expect(art!.netVolumeMm3).toBeGreaterThan(96000 - circleArea * 10); // 관통이었다면 이보다 작다
     expect(holeGate(part, art).pass).toBe(true);
   }, 120_000);
 
