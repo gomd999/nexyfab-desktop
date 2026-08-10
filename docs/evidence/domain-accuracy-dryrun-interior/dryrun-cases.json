@@ -1,0 +1,2482 @@
+[
+  {
+    "caseId": "dryrun-interior-interior_floor-01",
+    "domain": "interior",
+    "sourceHash": "f39dec58908a5b0651da16c4f342f134ebb89b9e4346c440f0c57aaf925e79ab",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d2e43726c9b80b342f977a20a92f27268212fbcc3297c60a6c50e96176d609b8"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-apartment_unit-01",
+    "domain": "interior",
+    "sourceHash": "1655062907726510ae7e4e5deab0e5cb5bd610f5c6c66b3f93615ffca9f72011",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "16098e18a81702b84eb3bace173bf63fadc33c37437601c9eb3225be5a27a91f"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-studio_unit-01",
+    "domain": "interior",
+    "sourceHash": "f6cacb8fde81de01f4c55952ff404b942f693e5956bbe0fb54b3c5c81d436774",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7c7a96af838f275ffc617dd1bc3090b52c850d5df94249d68b6d6b1921566a3f"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-three_room_unit-01",
+    "domain": "interior",
+    "sourceHash": "f01d362fdfd1ceebccdeb1d644e61811dc861a314804b163dd1175f622c8014c",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ede418ff80d2fa0f8503b3db4de09d1d263fc5f6963ac4c0bc052f1f0c7f17b3"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-two_room-01",
+    "domain": "interior",
+    "sourceHash": "43f1a00fab52477b5c7a463a8fdc1e3c39203fb090b8992fc0eee8ffcdc68864",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b4464881a685bf35b81de8d0969528c4696fbf137d02afe583c1fe8c47e10a69"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-cafe_room-01",
+    "domain": "interior",
+    "sourceHash": "f69be7fc36933f00b91ad65ea22fef0696c6ae48ddaa215a8b26f3075f6e906f",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "710a6abdc254eeb236c4446b23bf062120ef7401372125110dd7d1446e0fcaad"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-built_in_closet-01",
+    "domain": "interior",
+    "sourceHash": "b74cb8cda2690793fecd2ca2768083a4eda884516d5168bb73a12a2e02d95aad",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4ef47f88a5badff45f79f8bbe5ed5591398474fe420bb04f388c9165dc85c94c"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-counter_bar-01",
+    "domain": "interior",
+    "sourceHash": "345936c47a344811e89f70e913ccc1970279b52c82988ef992c5803dc47810ef",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d0250e0971b0a358679a6a5c11035fb1784bd613e9a863a17bc037bd4783bf7e"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-partition_wall-01",
+    "domain": "interior",
+    "sourceHash": "108df8f61815fd3ef2bf7019356bef0cce7cf48d8c7274359241edb3fe95b4b0",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ae47bca28114b3a1c0088fef9a9452b5547df5c782e4750f6a7d2c00a6728451"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-ceiling_grid-01",
+    "domain": "interior",
+    "sourceHash": "4f79a986ab052d086d0126a09ce1b9e1e005b04ea861088db2c46d90fd30531f",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "aa1440c8c7706c2bea016058b0a58dfd8e606c2d0a6f8380894c78d574b485af"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-interior_floor-02",
+    "domain": "interior",
+    "sourceHash": "d9c4ed10dbf95cff628956dfed784490e55cd8242848e2ec3205765cff16ecb3",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "158828cd3bb351de0a70df9b8cba0f3a0ae6d440b2dc3b40134600a0725fd240"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-apartment_unit-02",
+    "domain": "interior",
+    "sourceHash": "9edc5574e9f843bb46f4cdbe3f00313d231108ba266e5e542d036e63fa1d7bd1",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b290b93608d59f2a9317060193f8f901c1e796984b2f4bc051318367e86cbd33"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-studio_unit-02",
+    "domain": "interior",
+    "sourceHash": "351d86d922594cbdad4a3a9cbf34641979e6e923f12b0361f6aed81a56e9ee99",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a05fb553db1b9328cbcd5ae9f52e2c946d6d211d02cae54b4c71f1f4763a366c"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-three_room_unit-02",
+    "domain": "interior",
+    "sourceHash": "65421c3497cc63f979f8cc0dba5250436753f93cc5086b058138347208012d71",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "71c65489cbd0458b7f4302b5a489754a224ba4a0e66693a5a8ee5090ec21dd7b"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-two_room-02",
+    "domain": "interior",
+    "sourceHash": "9031e60f144488a3330871e8f3c878a5695fc2bb5e4ca534a022d1721eb280a0",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "484e07cef3f664d9cbc9c8bc9eac63eaeb3e769cff2c8cf69b02ea2ce0c0f352"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-cafe_room-02",
+    "domain": "interior",
+    "sourceHash": "5a7849d63ab7a83d7571be05d9d1185efef70cda58cf945d7bc4c7085ff4bb7a",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "48c9b0f5f92081c6d122a09dede84d1ba19518e0d414edb41d6d232e400445fc"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-built_in_closet-02",
+    "domain": "interior",
+    "sourceHash": "00a5ad120055683e0327eedfded29d334dea04f0464c21cdc968ef4bb741902c",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "909fcf131245a34bb995cc1ecfb769d3d44e2640437d5b166db0a306cca70325"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-counter_bar-02",
+    "domain": "interior",
+    "sourceHash": "5f8f647b980ffee7a89dbbd87429cc52676d4eb069194bcfc0c4c61fa6cf18d4",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c3a332c18e4d0d6ffdb65bef796a68139266393ce9cfe9552ae12c99f5ebe180"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-partition_wall-02",
+    "domain": "interior",
+    "sourceHash": "9d547f500a98b28fa2d242c578e6564d22552ef466aa6b320db5effb627748ed",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "df507cd732d3a811b84fd40ae9f416f41cc0a293d82d548be3b7573c8119ebd8"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-ceiling_grid-02",
+    "domain": "interior",
+    "sourceHash": "10fd0032b6eeece87941793ad241f3e700e3d330bdb7dd6c28a4a4337225fee5",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      },
+      {
+        "axis": "body_membership",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      },
+      {
+        "axis": "joints",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      },
+      {
+        "axis": "motion",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8316550569625d84ffad70ebba4dfff50d0280c3e57f4796d0da6d8c327d9533"
+        ]
+      }
+    ]
+  }
+]

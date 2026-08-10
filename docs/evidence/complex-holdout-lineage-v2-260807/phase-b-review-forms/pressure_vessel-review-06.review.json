@@ -1,0 +1,329 @@
+{
+  "schema": "nexyfab.ground-truth-review-form.v1",
+  "caseId": "pressure_vessel-review-06",
+  "family": "pressure_vessel",
+  "tier": "T1",
+  "immutableTarget": {
+    "source": {
+      "hash": "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3",
+      "locator": "참고파일들4/shell-and-tube-heat-exchanger-66.snapshot.4/Shell Tube Heat Exchanger.STEP",
+      "extension": "step",
+      "bytes": 8747651,
+      "holdoutGroup": "pressure_vessel:shell-and-tube-heat-exchanger-66",
+      "hashPassed": true
+    },
+    "artifactSetHash": "4e468e00a735d7d764a60b3a16fe204517a2bcd35fcf777d4163b584e6198c90",
+    "requiredAssertionIds": [
+      "requirements:source-intent",
+      "part-definitions:count",
+      "occurrences:count",
+      "hierarchy:structure",
+      "dimensions:governed",
+      "features:required",
+      "step-roundtrip:preservation"
+    ],
+    "evidence": {
+      "automaticPasses": 3,
+      "reviewerRequired": 4,
+      "assertions": [
+        {
+          "assertionId": "requirements:source-intent",
+          "axis": "requirements",
+          "artifactHashes": [
+            "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "axis": "part_definitions",
+          "artifactHashes": [
+            "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3"
+          ],
+          "tolerancePolicy": "exact-count",
+          "automaticEvidence": {
+            "axis": "part_definitions",
+            "status": "pass",
+            "reason": "STEP product definitions measured.",
+            "measured": {
+              "definitions": 37,
+              "solids": 33
+            }
+          },
+          "reviewerRequired": false,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "occurrences:count",
+          "axis": "occurrences",
+          "artifactHashes": [
+            "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3"
+          ],
+          "tolerancePolicy": "exact-count",
+          "automaticEvidence": {
+            "axis": "occurrences",
+            "status": "pass",
+            "reason": "STEP assembly occurrences measured.",
+            "measured": 514
+          },
+          "reviewerRequired": false,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "axis": "hierarchy",
+          "artifactHashes": [
+            "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": {
+            "axis": "hierarchy",
+            "status": "pass",
+            "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+            "measured": 514
+          },
+          "reviewerRequired": false,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "axis": "dimensions",
+          "artifactHashes": [
+            "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3"
+          ],
+          "tolerancePolicy": "reviewed-linear-tolerance-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "features:required",
+          "axis": "features",
+          "artifactHashes": [
+            "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "axis": "step_roundtrip",
+          "artifactHashes": [
+            "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        }
+      ],
+      "nativeStatus": "not_run",
+      "nativeReleaseReady": false,
+      "nativeAxes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ],
+          "measured": 516
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ],
+          "measured": 513
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ],
+          "measured": 516
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ],
+          "measured": 515
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ],
+          "measured": 516
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    }
+  },
+  "instructions": {
+    "decisions": [
+      "approved",
+      "rejected",
+      "changes_requested"
+    ],
+    "reviewerIdsMustBeRealAndNonEmpty": true,
+    "notesMustBeNonEmpty": true,
+    "timestampsMustBeIso8601": true,
+    "independentReviewerMustDiffer": true,
+    "independentReviewerMustNotAuthorAssertionReviews": true
+  },
+  "submission": {
+    "revision": 1,
+    "licenseReview": {
+      "decision": null,
+      "reviewerId": null,
+      "note": null,
+      "reviewedAt": null
+    },
+    "holdoutIsolationReview": {
+      "decision": null,
+      "reviewerId": null,
+      "note": null,
+      "reviewedAt": null
+    },
+    "assertionReviews": [
+      {
+        "assertionId": "requirements:source-intent",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "part-definitions:count",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "occurrences:count",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "hierarchy:structure",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "dimensions:governed",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "features:required",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "step-roundtrip:preservation",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      }
+    ],
+    "signoffs": [
+      {
+        "role": "domain-reviewer",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null,
+        "artifactSetHash": "4e468e00a735d7d764a60b3a16fe204517a2bcd35fcf777d4163b584e6198c90",
+        "reviewedAssertionIds": [
+          "requirements:source-intent",
+          "part-definitions:count",
+          "occurrences:count",
+          "hierarchy:structure",
+          "dimensions:governed",
+          "features:required",
+          "step-roundtrip:preservation"
+        ]
+      },
+      {
+        "role": "independent-reviewer",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null,
+        "artifactSetHash": "4e468e00a735d7d764a60b3a16fe204517a2bcd35fcf777d4163b584e6198c90",
+        "reviewedAssertionIds": [
+          "requirements:source-intent",
+          "part-definitions:count",
+          "occurrences:count",
+          "hierarchy:structure",
+          "dimensions:governed",
+          "features:required",
+          "step-roundtrip:preservation"
+        ]
+      }
+    ]
+  },
+  "checklist": [
+    "provenance_and_commercial_license",
+    "lineage_independence",
+    "native_definition_occurrence_counts",
+    "units_and_coordinate_system",
+    "assertion_graph_and_tolerance",
+    "prompt_and_holdout_isolation"
+  ]
+}

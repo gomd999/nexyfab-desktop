@@ -11,7 +11,7 @@ describe('domain accuracy report CLI', () => {
   it('rejects an unknown domain', () => {
     expect(() => parseDomainReportArgs([
       '--domain', 'generic', '--cases', 'cases.json', '--runs', 'runs.json',
-    ])).toThrow('mechanical, civil, building, landscape, interior');
+    ])).toThrow('mechanical, building, civil, landscape, interior');
   });
 
   it('requires both evidence files', () => {
@@ -19,4 +19,3 @@ describe('domain accuracy report CLI', () => {
     expect(() => parseDomainReportArgs(['--domain', 'civil', '--cases', 'cases.json'])).toThrow('--runs');
   });
 });
-

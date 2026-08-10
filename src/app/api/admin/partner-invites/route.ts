@@ -14,6 +14,10 @@ import { randomUUID, randomBytes } from 'crypto';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { hashPartnerInviteToken } from '@/lib/partner-invite-token';
+import { checkOrigin } from '@/lib/csrf';
+import { getTrustedClientIp } from '@/lib/client-ip';
+import { rateLimitAsync, rateLimitHeaders } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,10 +55,20 @@ async function ensureTable(db: ReturnType<typeof getDbAdapter>): Promise<void> {
 }
 
 export async function POST(req: NextRequest) {
+  if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
   const auth = await getAuthUser(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const isAdmin = await verifyAdmin(req).catch(() => false);
   if (!isAdmin) return NextResponse.json({ error: 'Forbidden — admin only' }, { status: 403 });
+  const limit = await rateLimitAsync(
+    `admin-partner-invite:${auth.userId}:${getTrustedClientIp(req.headers)}`, 30, 60 * 60 * 1000,
+  );
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many invites' },
+      { status: 429, headers: rateLimitHeaders(limit, 30) },
+    );
+  }
 
   let body: Record<string, unknown>;
   try {
@@ -68,16 +82,17 @@ export async function POST(req: NextRequest) {
 
   const id = `pinv_${randomUUID()}`;
   const token = randomBytes(24).toString('base64url');
+  const storedToken = hashPartnerInviteToken(token);
   const now = Date.now();
   const expiresAt = now + INVITE_TTL_MS;
 
-  const factoryId = typeof body.factoryId === 'string' ? body.factoryId : null;
+  const factoryId = typeof body.factoryId === 'string' ? body.factoryId.trim().slice(0, 160) : null;
   const prefillEmail = typeof body.prefillEmail === 'string' ? body.prefillEmail.trim().toLowerCase() : null;
   const prefillName = typeof body.prefillName === 'string' ? body.prefillName.trim().slice(0, 80) : null;
   const prefillCompany = typeof body.prefillCompany === 'string' ? body.prefillCompany.trim().slice(0, 120) : null;
   const prefillPhone = typeof body.prefillPhone === 'string' ? body.prefillPhone.replace(/[^\d-]/g, '').slice(0, 20) : null;
   const prefillBizRegNo = typeof body.prefillBizRegNo === 'string' ? body.prefillBizRegNo.replace(/[^\d-]/g, '').slice(0, 13) : null;
-  const rfqContextId = typeof body.rfqContextId === 'string' ? body.rfqContextId : null;
+  const rfqContextId = typeof body.rfqContextId === 'string' ? body.rfqContextId.trim().slice(0, 160) : null;
 
   await db.execute(
     `INSERT INTO nf_partner_invites
@@ -85,7 +100,7 @@ export async function POST(req: NextRequest) {
         prefill_phone, prefill_biz_reg_no, rfq_context_id, created_by,
         created_at, expires_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    id, token, factoryId, prefillEmail, prefillName, prefillCompany,
+    id, storedToken, factoryId, prefillEmail, prefillName, prefillCompany,
     prefillPhone, prefillBizRegNo, rfqContextId, auth.userId, now, expiresAt,
   );
 

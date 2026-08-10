@@ -46,7 +46,8 @@ describe('stepToIr — faithful STEP measurement', () => {
     expect(ir.extent?.units_source).toBe('declared');
 
     // Real geometry, not an AABB-of-an-AABB tautology.
-    const size = ir.extent?.size!;
+    const size = ir.extent?.size;
+    if (!size) throw new Error('STEP extent size missing');
     expect(size[0]).toBeCloseTo(10, 3);
     expect(size[1]).toBeCloseTo(20, 3);
     expect(size[2]).toBeCloseTo(5, 3);

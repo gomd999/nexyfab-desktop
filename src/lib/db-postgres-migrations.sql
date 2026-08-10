@@ -1930,3 +1930,57 @@ ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS document_version_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_rfqs_lineage ON nf_rfqs(lineage_id);
 CREATE INDEX IF NOT EXISTS idx_quotes_lineage ON nf_quotes(lineage_id);
 CREATE INDEX IF NOT EXISTS idx_orders_lineage ON nf_orders(lineage_id);
+-- New partner applications use a nullable active key so only one pending
+-- application can exist per normalized email. Existing rows remain untouched.
+CREATE TABLE IF NOT EXISTS partner_applications (
+  id TEXT PRIMARY KEY,
+  company_name TEXT NOT NULL,
+  biz_number TEXT NOT NULL,
+  ceo_name TEXT NOT NULL,
+  founded_year INTEGER,
+  employee_count TEXT,
+  contact_name TEXT NOT NULL,
+  contact_email TEXT NOT NULL,
+  contact_phone TEXT NOT NULL,
+  contact_title TEXT,
+  processes TEXT,
+  certifications TEXT,
+  monthly_capacity TEXT,
+  industries TEXT,
+  bio TEXT,
+  homepage TEXT,
+  active_key TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT
+);
+ALTER TABLE IF EXISTS partner_applications
+  ADD COLUMN IF NOT EXISTS active_key TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_partner_applications_active_key
+  ON partner_applications(active_key);
+
+-- Immutable common CAD workspace revisions. The head row is updated with a
+-- compare-and-swap predicate by workspaceRevisionStore; revision rows are
+-- append-only and bind requirements, semantic data, exact B-rep identity,
+-- relations, artifact graph, provenance, locks and real WASM-kernel identity.
+CREATE TABLE IF NOT EXISTS nf_cad_workspace_revisions (
+  id              TEXT PRIMARY KEY,
+  project_id      TEXT NOT NULL,
+  lineage_id      TEXT NOT NULL,
+  revision        INTEGER NOT NULL,
+  parent_revision INTEGER,
+  domain          TEXT NOT NULL,
+  content_hash    TEXT NOT NULL,
+  payload_json    TEXT NOT NULL,
+  created_by      TEXT NOT NULL,
+  created_at      BIGINT NOT NULL,
+  UNIQUE(project_id, revision)
+);
+CREATE INDEX IF NOT EXISTS idx_nf_cad_revision_project
+  ON nf_cad_workspace_revisions(project_id, revision DESC);
+CREATE TABLE IF NOT EXISTS nf_cad_workspace_heads (
+  project_id   TEXT PRIMARY KEY,
+  revision     INTEGER NOT NULL,
+  content_hash TEXT NOT NULL,
+  updated_at   BIGINT NOT NULL
+);

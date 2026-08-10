@@ -1,4 +1,5 @@
 import { compileProductDecomposition, type ProductDecompositionPlan } from '@/lib/ai/productDecomposition';
+import { assessProductDecompositionAccuracy, isProductDecompositionPlan, productPlanAccuracyReasons, type ProductDecompositionAccuracyAssessment } from '@/lib/ai/productDecompositionAccuracy';
 import { evaluateRefinementDraft, refinementPromptContract, type RefinementContext, type RefinementDraft } from '@/lib/ai/multiStageRefinement';
 import { recordGenerationStage, type GenerationRunState } from '@/lib/ai/generationRunState';
 
@@ -35,12 +36,26 @@ export async function handleGenerationRefine(body: RefineBody, ai: RefinementAi)
   if (!draft) return { status: 422, payload: { ok: false, code: 'INVALID_REFINEMENT_DRAFT', message: 'AI returned an invalid stage draft' } };
 
   const maxAttempts = Math.max(1, Math.min(5, body.maxAttempts ?? 3));
-  let decision = evaluateRefinementDraft(draft, body.context.attempt, maxAttempts);
+  let decision = evaluateRefinementDraft(draft, body.context.attempt, maxAttempts, body.context);
   let program: unknown;
+  let accuracyAssessment: ProductDecompositionAccuracyAssessment | undefined;
   if (decision.disposition === 'advance' && draft.stage === 'part_programs') {
-    const compiled = compileProductDecomposition(draft.output as ProductDecompositionPlan);
-    if (!compiled.ok) decision = { disposition: body.context.attempt >= maxAttempts ? 'stop' : 'refine_same_stage', stage: draft.stage, reasons: compiled.issues.map(issue => `${issue.path}: ${issue.message}`) };
-    else program = compiled.program;
+    if (!isProductDecompositionPlan(draft.output)) {
+      decision = { disposition: body.context.attempt >= maxAttempts ? 'stop' : 'refine_same_stage', stage: draft.stage, reasons: ['ProductDecompositionPlan envelope is incomplete or invalid.'] };
+    } else {
+      accuracyAssessment = assessProductDecompositionAccuracy(draft.output, new Set(draft.evidenceRefs));
+      if (!accuracyAssessment.readyForGeometry) {
+        decision = {
+          disposition: accuracyAssessment.requiresAuthoritativeInput ? 'request_input' : body.context.attempt >= maxAttempts ? 'stop' : 'refine_same_stage',
+          stage: draft.stage,
+          reasons: productPlanAccuracyReasons(accuracyAssessment),
+        };
+      } else {
+        const compiled = compileProductDecomposition(draft.output as ProductDecompositionPlan);
+        if (!compiled.ok) decision = { disposition: body.context.attempt >= maxAttempts ? 'stop' : 'refine_same_stage', stage: draft.stage, reasons: compiled.issues.map(issue => `${issue.path}: ${issue.message}`) };
+        else program = compiled.program;
+      }
+    }
   }
   const status = decision.disposition === 'advance' ? 'passed' : decision.disposition === 'request_input' || decision.disposition === 'manual_review' ? 'blocked' : 'failed';
   try {
@@ -48,8 +63,11 @@ export async function handleGenerationRefine(body: RefineBody, ai: RefinementAi)
       stage: draft.stage, input: { request: body.context.request, priorCheckpointHashes: body.context.priorCheckpointHashes, attempt: body.context.attempt }, output: draft.output, status,
       errorCodes: decision.disposition === 'advance' ? [] : [decision.disposition === 'request_input' ? 'AUTHORITATIVE_INPUT_REQUIRED' : decision.disposition === 'manual_review' ? 'DESIGN_CONFLICT' : 'REFINEMENT_INCOMPLETE'],
       unresolved: decision.reasons, affectedPartIds: draft.affectedPartIds,
-      metrics: { completeness: draft.completeness, confidence: draft.confidence, evidenceRefs: draft.evidenceRefs.length },
+      metrics: {
+        completeness: draft.completeness, confidence: draft.confidence, evidenceRefs: draft.evidenceRefs.length,
+        ...(accuracyAssessment ? { accuracyGatesPassed: accuracyAssessment.gates.filter(gate => gate.status === 'pass').length, accuracyGatesTotal: accuracyAssessment.gates.length } : {}),
+      },
     });
-    return { status: 200, payload: { ok: true, state, draft, decision, ...(program ? { program } : {}), quoteOrRfqSideEffects: false } };
+    return { status: 200, payload: { ok: true, state, draft, decision, ...(accuracyAssessment ? { accuracyAssessment } : {}), ...(program ? { program } : {}), quoteOrRfqSideEffects: false } };
   } catch (error) { return { status: 409, payload: { ok: false, code: 'INVALID_TRANSITION', message: error instanceof Error ? error.message : 'Invalid stage transition' } }; }
 }

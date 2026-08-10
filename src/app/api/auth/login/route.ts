@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbAdapter, toBool } from '@/lib/db-adapter';
 import { signJWT } from '@/lib/jwt';
-import { rateLimit, rateLimitHeaders } from '@/lib/rate-limit';
+import { rateLimitAsync, rateLimitHeaders } from '@/lib/rate-limit';
 import { checkOrigin } from '@/lib/csrf';
 import { logAudit } from '@/lib/audit';
 import { recordLoginAndCheck } from '@/lib/login-security';
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   // Rate limit: 10 requests/minute per IP
   const ip = getTrustedClientIp(req.headers);
-  const rateLimitResult = rateLimit(`login:${ip}`, 10, 60_000);
+  const rateLimitResult = await rateLimitAsync(`login:${ip}`, 10, 60_000);
   if (!rateLimitResult.allowed) {
     return NextResponse.json(
       { error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' },
@@ -38,6 +38,17 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json() as { email?: string; password?: string };
+  if (typeof body.email === 'string') {
+    const normalizedEmail = body.email.trim().toLowerCase();
+    const emailKey = createHash('sha256').update(normalizedEmail).digest('hex');
+    const accountLimit = await rateLimitAsync(`login-account:${emailKey}`, 10, 60_000);
+    if (!accountLimit.allowed) {
+      return NextResponse.json(
+        { error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' },
+        { status: 429, headers: rateLimitHeaders(accountLimit, 10) },
+      );
+    }
+  }
 
   // Demo / local DB mode
   if (!AUTH_URL) {
@@ -301,6 +312,7 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json({
       expiresIn: 900,
       user,
+      ...(recoveryRemaining !== null ? { recoveryCodesRemaining: recoveryRemaining } : {}),
     });
 
     const rc = refreshTokenCookie(rawRefreshToken);

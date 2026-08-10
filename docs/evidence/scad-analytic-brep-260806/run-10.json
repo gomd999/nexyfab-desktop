@@ -1,0 +1,1813 @@
+{
+  "schema": "nexyfab.scad-analytic-brep-campaign.v1",
+  "generatedAt": "2026-08-06T10:54:59.298Z",
+  "sourceCanonical": "docs/evidence/scad-canonical-features-260806/run-4.json",
+  "sourceMesh": "docs/evidence/scad-definition-geometry-260806/run-4.json",
+  "summary": {
+    "definitions": 12,
+    "analyticPass": 12,
+    "notRun": 0,
+    "fail": 0,
+    "crossCheckPass": 0,
+    "stepRoundtripPass": 12,
+    "nativeTopologyPass": 12,
+    "nativeTopologyNotRun": 0,
+    "partCertificatePass": 12,
+    "partCertificateNotRun": 0,
+    "partCertificateFail": 0,
+    "manufacturingReady": 0
+  },
+  "scenarios": [
+    {
+      "scenarioId": "sc7_gear_train",
+      "definitions": [
+        {
+          "definitionId": "scad:def:gear20",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              43.97805392495291,
+              43.97805392495291,
+              8.0000002
+            ],
+            "volumeMm3": 9401.755177651492,
+            "solidCount": 1,
+            "faceCount": 583
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "fail",
+            "bboxMaxErrorMm": null,
+            "volumeRelativeError": null,
+            "codes": [
+              "SCAD_BREP_MESH_EVIDENCE_MISSING"
+            ]
+          },
+          "step": {
+            "valid": true,
+            "bytes": 2312657,
+            "sha256": "3d42d744c9f7c9a3f6565751463e32df79f6c335d0eca4e176261856a6d72e5d",
+            "file": "step/sc7_gear_train-gear20.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 6.636469151999336e-12,
+            "volumeRelativeError": 1.5032882050734052e-13,
+            "importedMeasurement": {
+              "bboxSize": [
+                43.97805392494627,
+                43.97805392494627,
+                8.0000002
+              ],
+              "volumeMm3": 9401.755177650079,
+              "solidCount": 1,
+              "faceCount": 583
+            },
+            "codes": []
+          },
+          "nativeTopology": {
+            "valid": true,
+            "solidCount": 1,
+            "faceCount": 583,
+            "edgeCount": 1743,
+            "shapeTypeCounts": {
+              "compound": 0,
+              "compsolid": 0,
+              "solid": 1,
+              "shell": 1
+            },
+            "productOccurrences": {
+              "status": "not_run",
+              "reason": "STEPCAFControl/XCAF product-occurrence traversal is unavailable in this OCCT binding; topology counts are not substituted."
+            },
+            "bbox": {
+              "min": {
+                "x": -21.989026962470273,
+                "y": -21.989026962470273,
+                "z": -4.0000001
+              },
+              "max": {
+                "x": 21.989026962476,
+                "y": 21.989026962476,
+                "z": 4.0000001
+              }
+            },
+            "absoluteVolume": 9401.755177650079,
+            "surfaceArea": 4657.4948976077985,
+            "centroid": {
+              "x": 2.210673827074093e-12,
+              "y": 1.8586385553004488e-12,
+              "z": 4.5430660870543733e-17
+            },
+            "inertia": {
+              "status": "not_run",
+              "reason": "MatrixOfInertia failed: Cannot call GProp_GProps.MatrixOfInertia due to unbound types: 6gp_Mat"
+            },
+            "surfaceTypes": {
+              "status": "available",
+              "counts": {
+                "cylinder": 1,
+                "plane": 582
+              }
+            },
+            "curveTypes": {
+              "status": "available",
+              "counts": {
+                "circle": 2,
+                "line": 1741
+              }
+            },
+            "cylindricalRadii": [
+              4
+            ],
+            "faceAdjacency": {
+              "status": "available",
+              "faceCount": 583,
+              "uniqueEdgeCount": 1743,
+              "boundaryEdgeCount": 0,
+              "manifoldEdgeCount": 1743,
+              "nonManifoldEdgeCount": 0,
+              "faceDegreeHistogram": {
+                "2": 1,
+                "4": 580,
+                "581": 2
+              }
+            },
+            "maxTolerance": 0,
+            "minEdgeLength": 0.26886415410687065
+          },
+          "nativeTopologyError": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:gear20",
+            "intent": "general",
+            "status": "pass",
+            "releaseReady": true,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "topology",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        },
+        {
+          "definitionId": "scad:def:gear30",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              63.98300849260889,
+              63.78664780433679,
+              8.0000002
+            ],
+            "volumeMm3": 21905.612171892157,
+            "solidCount": 1,
+            "faceCount": 873
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "fail",
+            "bboxMaxErrorMm": null,
+            "volumeRelativeError": null,
+            "codes": [
+              "SCAD_BREP_MESH_EVIDENCE_MISSING"
+            ]
+          },
+          "step": {
+            "valid": true,
+            "bytes": 3478841,
+            "sha256": "4a8cd9311d07cae61b76b1e1b8e27f77f5117194e4dfcce63c3472da6a354a4c",
+            "file": "step/sc7_gear_train-gear30.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 4.035882739117369e-12,
+            "volumeRelativeError": 2.46123438587483e-13,
+            "importedMeasurement": {
+              "bboxSize": [
+                63.98300849260485,
+                63.78664780433708,
+                8.0000002
+              ],
+              "volumeMm3": 21905.612171886765,
+              "solidCount": 1,
+              "faceCount": 873
+            },
+            "codes": []
+          },
+          "nativeTopology": {
+            "valid": true,
+            "solidCount": 1,
+            "faceCount": 873,
+            "edgeCount": 2613,
+            "shapeTypeCounts": {
+              "compound": 0,
+              "compsolid": 0,
+              "solid": 1,
+              "shell": 1
+            },
+            "productOccurrences": {
+              "status": "not_run",
+              "reason": "STEPCAFControl/XCAF product-occurrence traversal is unavailable in this OCCT binding; topology counts are not substituted."
+            },
+            "bbox": {
+              "min": {
+                "x": -31.991504246300817,
+                "y": -31.893323902168003,
+                "z": -4.0000001
+              },
+              "max": {
+                "x": 31.991504246304036,
+                "y": 31.893323902169076,
+                "z": 4.0000001
+              }
+            },
+            "absoluteVolume": 21905.612171886765,
+            "surfaceArea": 8809.104254184063,
+            "centroid": {
+              "x": 4.4293187669425125e-12,
+              "y": 2.1430667414539825e-12,
+              "z": 4.524902304891097e-17
+            },
+            "inertia": {
+              "status": "not_run",
+              "reason": "MatrixOfInertia failed: Cannot call GProp_GProps.MatrixOfInertia due to unbound types: 6gp_Mat"
+            },
+            "surfaceTypes": {
+              "status": "available",
+              "counts": {
+                "cylinder": 1,
+                "plane": 872
+              }
+            },
+            "curveTypes": {
+              "status": "available",
+              "counts": {
+                "circle": 2,
+                "line": 2611
+              }
+            },
+            "cylindricalRadii": [
+              4
+            ],
+            "faceAdjacency": {
+              "status": "available",
+              "faceCount": 873,
+              "uniqueEdgeCount": 2613,
+              "boundaryEdgeCount": 0,
+              "manifoldEdgeCount": 2613,
+              "nonManifoldEdgeCount": 0,
+              "faceDegreeHistogram": {
+                "2": 1,
+                "4": 870,
+                "871": 2
+              }
+            },
+            "maxTolerance": 0,
+            "minEdgeLength": 0.31902154406014355
+          },
+          "nativeTopologyError": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:gear30",
+            "intent": "general",
+            "status": "pass",
+            "releaseReady": true,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "topology",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        },
+        {
+          "definitionId": "scad:def:gear_base",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              90.0000002,
+              50.0000002,
+              4.0000002
+            ],
+            "volumeMm3": 18000,
+            "solidCount": 1,
+            "faceCount": 6
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "fail",
+            "bboxMaxErrorMm": null,
+            "volumeRelativeError": null,
+            "codes": [
+              "SCAD_BREP_MESH_EVIDENCE_MISSING"
+            ]
+          },
+          "step": {
+            "valid": true,
+            "bytes": 15541,
+            "sha256": "6a2c45387db48bfd20ee3d348403cc8649b36c6f252cf98df05cb00956526cd1",
+            "file": "step/sc7_gear_train-gear_base.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 0,
+            "importedMeasurement": {
+              "bboxSize": [
+                90.0000002,
+                50.0000002,
+                4.0000002
+              ],
+              "volumeMm3": 18000,
+              "solidCount": 1,
+              "faceCount": 6
+            },
+            "codes": []
+          },
+          "nativeTopology": {
+            "valid": true,
+            "solidCount": 1,
+            "faceCount": 6,
+            "edgeCount": 12,
+            "shapeTypeCounts": {
+              "compound": 0,
+              "compsolid": 0,
+              "solid": 1,
+              "shell": 1
+            },
+            "productOccurrences": {
+              "status": "not_run",
+              "reason": "STEPCAFControl/XCAF product-occurrence traversal is unavailable in this OCCT binding; topology counts are not substituted."
+            },
+            "bbox": {
+              "min": {
+                "x": -45.0000001,
+                "y": -25.0000001,
+                "z": -2.0000001
+              },
+              "max": {
+                "x": 45.0000001,
+                "y": 25.0000001,
+                "z": 2.0000001
+              }
+            },
+            "absoluteVolume": 18000,
+            "surfaceArea": 10120,
+            "centroid": {
+              "x": 9.020562075079397e-17,
+              "y": 1.4186183092432555e-16,
+              "z": 0
+            },
+            "inertia": {
+              "status": "not_run",
+              "reason": "MatrixOfInertia failed: Cannot call GProp_GProps.MatrixOfInertia due to unbound types: 6gp_Mat"
+            },
+            "surfaceTypes": {
+              "status": "available",
+              "counts": {
+                "plane": 6
+              }
+            },
+            "curveTypes": {
+              "status": "available",
+              "counts": {
+                "line": 12
+              }
+            },
+            "cylindricalRadii": [],
+            "faceAdjacency": {
+              "status": "available",
+              "faceCount": 6,
+              "uniqueEdgeCount": 12,
+              "boundaryEdgeCount": 0,
+              "manifoldEdgeCount": 12,
+              "nonManifoldEdgeCount": 0,
+              "faceDegreeHistogram": {
+                "4": 6
+              }
+            },
+            "maxTolerance": 0,
+            "minEdgeLength": 4
+          },
+          "nativeTopologyError": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:gear_base",
+            "intent": "general",
+            "status": "pass",
+            "releaseReady": true,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "topology",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        },
+        {
+          "definitionId": "scad:def:shaft20",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              7.8000001999999995,
+              7.8000001999999995,
+              16.0000002
+            ],
+            "volumeMm3": 764.537988177612,
+            "solidCount": 1,
+            "faceCount": 3
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "fail",
+            "bboxMaxErrorMm": null,
+            "volumeRelativeError": null,
+            "codes": [
+              "SCAD_BREP_MESH_EVIDENCE_MISSING"
+            ]
+          },
+          "step": {
+            "valid": true,
+            "bytes": 5698,
+            "sha256": "d4aaaf700c9a97fc920766b354592113f63411bdd36b8738b9ebdefc9adf2b59",
+            "file": "step/sc7_gear_train-shaft20.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 0,
+            "importedMeasurement": {
+              "bboxSize": [
+                7.8000001999999995,
+                7.8000001999999995,
+                16.0000002
+              ],
+              "volumeMm3": 764.537988177612,
+              "solidCount": 1,
+              "faceCount": 3
+            },
+            "codes": []
+          },
+          "nativeTopology": {
+            "valid": true,
+            "solidCount": 1,
+            "faceCount": 3,
+            "edgeCount": 3,
+            "shapeTypeCounts": {
+              "compound": 0,
+              "compsolid": 0,
+              "solid": 1,
+              "shell": 1
+            },
+            "productOccurrences": {
+              "status": "not_run",
+              "reason": "STEPCAFControl/XCAF product-occurrence traversal is unavailable in this OCCT binding; topology counts are not substituted."
+            },
+            "bbox": {
+              "min": {
+                "x": -3.9000000999999997,
+                "y": -3.9000000999999997,
+                "z": -8.0000001
+              },
+              "max": {
+                "x": 3.9000000999999997,
+                "y": 3.9000000999999997,
+                "z": 8.0000001
+              }
+            },
+            "absoluteVolume": 764.537988177612,
+            "surfaceArea": 487.6380116902334,
+            "centroid": {
+              "x": 4.461001525611771e-16,
+              "y": -1.1557728241826952e-16,
+              "z": 1.4870005085372568e-16
+            },
+            "inertia": {
+              "status": "not_run",
+              "reason": "MatrixOfInertia failed: Cannot call GProp_GProps.MatrixOfInertia due to unbound types: 6gp_Mat"
+            },
+            "surfaceTypes": {
+              "status": "available",
+              "counts": {
+                "cylinder": 1,
+                "plane": 2
+              }
+            },
+            "curveTypes": {
+              "status": "available",
+              "counts": {
+                "circle": 2,
+                "line": 1
+              }
+            },
+            "cylindricalRadii": [
+              3.9
+            ],
+            "faceAdjacency": {
+              "status": "available",
+              "faceCount": 3,
+              "uniqueEdgeCount": 3,
+              "boundaryEdgeCount": 0,
+              "manifoldEdgeCount": 3,
+              "nonManifoldEdgeCount": 0,
+              "faceDegreeHistogram": {
+                "1": 2,
+                "2": 1
+              }
+            },
+            "maxTolerance": 0,
+            "minEdgeLength": 16
+          },
+          "nativeTopologyError": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:shaft20",
+            "intent": "general",
+            "status": "pass",
+            "releaseReady": true,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "topology",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        },
+        {
+          "definitionId": "scad:def:shaft30",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              7.8000001999999995,
+              7.8000001999999995,
+              16.0000002
+            ],
+            "volumeMm3": 764.537988177612,
+            "solidCount": 1,
+            "faceCount": 3
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "fail",
+            "bboxMaxErrorMm": null,
+            "volumeRelativeError": null,
+            "codes": [
+              "SCAD_BREP_MESH_EVIDENCE_MISSING"
+            ]
+          },
+          "step": {
+            "valid": true,
+            "bytes": 5698,
+            "sha256": "4d14f40e245d6b63b37265cd4e9bbe3f9ed5969b5b2cf98341875e42b8735b1d",
+            "file": "step/sc7_gear_train-shaft30.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 0,
+            "importedMeasurement": {
+              "bboxSize": [
+                7.8000001999999995,
+                7.8000001999999995,
+                16.0000002
+              ],
+              "volumeMm3": 764.537988177612,
+              "solidCount": 1,
+              "faceCount": 3
+            },
+            "codes": []
+          },
+          "nativeTopology": {
+            "valid": true,
+            "solidCount": 1,
+            "faceCount": 3,
+            "edgeCount": 3,
+            "shapeTypeCounts": {
+              "compound": 0,
+              "compsolid": 0,
+              "solid": 1,
+              "shell": 1
+            },
+            "productOccurrences": {
+              "status": "not_run",
+              "reason": "STEPCAFControl/XCAF product-occurrence traversal is unavailable in this OCCT binding; topology counts are not substituted."
+            },
+            "bbox": {
+              "min": {
+                "x": -3.9000000999999997,
+                "y": -3.9000000999999997,
+                "z": -8.0000001
+              },
+              "max": {
+                "x": 3.9000000999999997,
+                "y": 3.9000000999999997,
+                "z": 8.0000001
+              }
+            },
+            "absoluteVolume": 764.537988177612,
+            "surfaceArea": 487.6380116902334,
+            "centroid": {
+              "x": 4.461001525611771e-16,
+              "y": -1.1557728241826952e-16,
+              "z": 1.4870005085372568e-16
+            },
+            "inertia": {
+              "status": "not_run",
+              "reason": "MatrixOfInertia failed: Cannot call GProp_GProps.MatrixOfInertia due to unbound types: 6gp_Mat"
+            },
+            "surfaceTypes": {
+              "status": "available",
+              "counts": {
+                "cylinder": 1,
+                "plane": 2
+              }
+            },
+            "curveTypes": {
+              "status": "available",
+              "counts": {
+                "circle": 2,
+                "line": 1
+              }
+            },
+            "cylindricalRadii": [
+              3.9
+            ],
+            "faceAdjacency": {
+              "status": "available",
+              "faceCount": 3,
+              "uniqueEdgeCount": 3,
+              "boundaryEdgeCount": 0,
+              "manifoldEdgeCount": 3,
+              "nonManifoldEdgeCount": 0,
+              "faceDegreeHistogram": {
+                "1": 2,
+                "2": 1
+              }
+            },
+            "maxTolerance": 0,
+            "minEdgeLength": 16
+          },
+          "nativeTopologyError": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:shaft30",
+            "intent": "general",
+            "status": "pass",
+            "releaseReady": true,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "topology",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        }
+      ]
+    },
+    {
+      "scenarioId": "sc8_pipe_joint",
+      "definitions": [
+        {
+          "definitionId": "scad:def:main_pipe_left",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              30.0000002,
+              30.0000002,
+              50.0000002
+            ],
+            "volumeMm3": 19634.95408493621,
+            "solidCount": 1,
+            "faceCount": 4
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "fail",
+            "bboxMaxErrorMm": null,
+            "volumeRelativeError": null,
+            "codes": [
+              "SCAD_BREP_MESH_EVIDENCE_MISSING"
+            ]
+          },
+          "step": {
+            "valid": true,
+            "bytes": 9350,
+            "sha256": "747c904abed3e8660f2013bcd3e1e83c8f5d1c7a61d815018df5d47853b87ee0",
+            "file": "step/sc8_pipe_joint-main_pipe_left.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 2.2233688704468587e-14,
+            "importedMeasurement": {
+              "bboxSize": [
+                30.0000002,
+                30.0000002,
+                50.0000002
+              ],
+              "volumeMm3": 19634.954084936646,
+              "solidCount": 1,
+              "faceCount": 4
+            },
+            "codes": []
+          },
+          "nativeTopology": {
+            "valid": true,
+            "solidCount": 1,
+            "faceCount": 4,
+            "edgeCount": 6,
+            "shapeTypeCounts": {
+              "compound": 0,
+              "compsolid": 0,
+              "solid": 1,
+              "shell": 1
+            },
+            "productOccurrences": {
+              "status": "not_run",
+              "reason": "STEPCAFControl/XCAF product-occurrence traversal is unavailable in this OCCT binding; topology counts are not substituted."
+            },
+            "bbox": {
+              "min": {
+                "x": -15.0000001,
+                "y": -15.0000001,
+                "z": -1e-7
+              },
+              "max": {
+                "x": 15.0000001,
+                "y": 15.0000001,
+                "z": 50.0000001
+              }
+            },
+            "absoluteVolume": 19634.954084936646,
+            "surfaceArea": 8639.379797372449,
+            "centroid": {
+              "x": 2.7931071434988044e-13,
+              "y": -6.127669862080225e-16,
+              "z": 24.999999999999996
+            },
+            "inertia": {
+              "status": "not_run",
+              "reason": "MatrixOfInertia failed: Cannot call GProp_GProps.MatrixOfInertia due to unbound types: 6gp_Mat"
+            },
+            "surfaceTypes": {
+              "status": "available",
+              "counts": {
+                "cylinder": 2,
+                "plane": 2
+              }
+            },
+            "curveTypes": {
+              "status": "available",
+              "counts": {
+                "circle": 4,
+                "line": 2
+              }
+            },
+            "cylindricalRadii": [
+              10,
+              15
+            ],
+            "faceAdjacency": {
+              "status": "available",
+              "faceCount": 4,
+              "uniqueEdgeCount": 6,
+              "boundaryEdgeCount": 0,
+              "manifoldEdgeCount": 6,
+              "nonManifoldEdgeCount": 0,
+              "faceDegreeHistogram": {
+                "2": 4
+              }
+            },
+            "maxTolerance": 0,
+            "minEdgeLength": 50
+          },
+          "nativeTopologyError": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:main_pipe_left",
+            "intent": "general",
+            "status": "pass",
+            "releaseReady": true,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "topology",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        },
+        {
+          "definitionId": "scad:def:main_pipe_right",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              30.0000002,
+              30.0000002,
+              50.0000002
+            ],
+            "volumeMm3": 19634.95408493621,
+            "solidCount": 1,
+            "faceCount": 4
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "fail",
+            "bboxMaxErrorMm": null,
+            "volumeRelativeError": null,
+            "codes": [
+              "SCAD_BREP_MESH_EVIDENCE_MISSING"
+            ]
+          },
+          "step": {
+            "valid": true,
+            "bytes": 9350,
+            "sha256": "e9f704ab6773148529e18bb1c4742b83319dbb1bcd1697ece66e932e2b52fa2d",
+            "file": "step/sc8_pipe_joint-main_pipe_right.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 2.2233688704468587e-14,
+            "importedMeasurement": {
+              "bboxSize": [
+                30.0000002,
+                30.0000002,
+                50.0000002
+              ],
+              "volumeMm3": 19634.954084936646,
+              "solidCount": 1,
+              "faceCount": 4
+            },
+            "codes": []
+          },
+          "nativeTopology": {
+            "valid": true,
+            "solidCount": 1,
+            "faceCount": 4,
+            "edgeCount": 6,
+            "shapeTypeCounts": {
+              "compound": 0,
+              "compsolid": 0,
+              "solid": 1,
+              "shell": 1
+            },
+            "productOccurrences": {
+              "status": "not_run",
+              "reason": "STEPCAFControl/XCAF product-occurrence traversal is unavailable in this OCCT binding; topology counts are not substituted."
+            },
+            "bbox": {
+              "min": {
+                "x": -15.0000001,
+                "y": -15.0000001,
+                "z": -1e-7
+              },
+              "max": {
+                "x": 15.0000001,
+                "y": 15.0000001,
+                "z": 50.0000001
+              }
+            },
+            "absoluteVolume": 19634.954084936646,
+            "surfaceArea": 8639.379797372449,
+            "centroid": {
+              "x": 2.7931071434988044e-13,
+              "y": -6.127669862080225e-16,
+              "z": 24.999999999999996
+            },
+            "inertia": {
+              "status": "not_run",
+              "reason": "MatrixOfInertia failed: Cannot call GProp_GProps.MatrixOfInertia due to unbound types: 6gp_Mat"
+            },
+            "surfaceTypes": {
+              "status": "available",
+              "counts": {
+                "cylinder": 2,
+                "plane": 2
+              }
+            },
+            "curveTypes": {
+              "status": "available",
+              "counts": {
+                "circle": 4,
+                "line": 2
+              }
+            },
+            "cylindricalRadii": [
+              10,
+              15
+            ],
+            "faceAdjacency": {
+              "status": "available",
+              "faceCount": 4,
+              "uniqueEdgeCount": 6,
+              "boundaryEdgeCount": 0,
+              "manifoldEdgeCount": 6,
+              "nonManifoldEdgeCount": 0,
+              "faceDegreeHistogram": {
+                "2": 4
+              }
+            },
+            "maxTolerance": 0,
+            "minEdgeLength": 50
+          },
+          "nativeTopologyError": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:main_pipe_right",
+            "intent": "general",
+            "status": "pass",
+            "releaseReady": true,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "topology",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        },
+        {
+          "definitionId": "scad:def:branch_pipe",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              30.0000002,
+              30.0000002,
+              60.0000002
+            ],
+            "volumeMm3": 23561.94490192345,
+            "solidCount": 1,
+            "faceCount": 4
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "fail",
+            "bboxMaxErrorMm": null,
+            "volumeRelativeError": null,
+            "codes": [
+              "SCAD_BREP_MESH_EVIDENCE_MISSING"
+            ]
+          },
+          "step": {
+            "valid": true,
+            "bytes": 9350,
+            "sha256": "fc7f866b311d5e9f21cabd1035153675cd27605a602fccaf346478dd57c74879",
+            "file": "step/sc8_pipe_joint-branch_pipe.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 2.2079288088465337e-14,
+            "importedMeasurement": {
+              "bboxSize": [
+                30.0000002,
+                30.0000002,
+                60.0000002
+              ],
+              "volumeMm3": 23561.94490192397,
+              "solidCount": 1,
+              "faceCount": 4
+            },
+            "codes": []
+          },
+          "nativeTopology": {
+            "valid": true,
+            "solidCount": 1,
+            "faceCount": 4,
+            "edgeCount": 6,
+            "shapeTypeCounts": {
+              "compound": 0,
+              "compsolid": 0,
+              "solid": 1,
+              "shell": 1
+            },
+            "productOccurrences": {
+              "status": "not_run",
+              "reason": "STEPCAFControl/XCAF product-occurrence traversal is unavailable in this OCCT binding; topology counts are not substituted."
+            },
+            "bbox": {
+              "min": {
+                "x": -15.0000001,
+                "y": -15.0000001,
+                "z": -1e-7
+              },
+              "max": {
+                "x": 15.0000001,
+                "y": 15.0000001,
+                "z": 60.0000001
+              }
+            },
+            "absoluteVolume": 23561.94490192397,
+            "surfaceArea": 10210.176124167449,
+            "centroid": {
+              "x": 2.8486913652599754e-13,
+              "y": -2.6829586791153414e-16,
+              "z": 29.999999999999996
+            },
+            "inertia": {
+              "status": "not_run",
+              "reason": "MatrixOfInertia failed: Cannot call GProp_GProps.MatrixOfInertia due to unbound types: 6gp_Mat"
+            },
+            "surfaceTypes": {
+              "status": "available",
+              "counts": {
+                "cylinder": 2,
+                "plane": 2
+              }
+            },
+            "curveTypes": {
+              "status": "available",
+              "counts": {
+                "circle": 4,
+                "line": 2
+              }
+            },
+            "cylindricalRadii": [
+              10,
+              15
+            ],
+            "faceAdjacency": {
+              "status": "available",
+              "faceCount": 4,
+              "uniqueEdgeCount": 6,
+              "boundaryEdgeCount": 0,
+              "manifoldEdgeCount": 6,
+              "nonManifoldEdgeCount": 0,
+              "faceDegreeHistogram": {
+                "2": 4
+              }
+            },
+            "maxTolerance": 0,
+            "minEdgeLength": 60
+          },
+          "nativeTopologyError": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:branch_pipe",
+            "intent": "general",
+            "status": "pass",
+            "releaseReady": true,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "topology",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        }
+      ]
+    },
+    {
+      "scenarioId": "sc9_simple_car",
+      "definitions": [
+        {
+          "definitionId": "scad:def:body",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              60.0000002,
+              30.0000002,
+              20.0000002
+            ],
+            "volumeMm3": 36000,
+            "solidCount": 1,
+            "faceCount": 6
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "fail",
+            "bboxMaxErrorMm": null,
+            "volumeRelativeError": null,
+            "codes": [
+              "SCAD_BREP_MESH_EVIDENCE_MISSING"
+            ]
+          },
+          "step": {
+            "valid": true,
+            "bytes": 15571,
+            "sha256": "6455b822ea4cec90b06bff5f5e6fd35416d9491b23b23e669accc834c7aff6e4",
+            "file": "step/sc9_simple_car-body.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 0,
+            "importedMeasurement": {
+              "bboxSize": [
+                60.0000002,
+                30.0000002,
+                20.0000002
+              ],
+              "volumeMm3": 36000,
+              "solidCount": 1,
+              "faceCount": 6
+            },
+            "codes": []
+          },
+          "nativeTopology": {
+            "valid": true,
+            "solidCount": 1,
+            "faceCount": 6,
+            "edgeCount": 12,
+            "shapeTypeCounts": {
+              "compound": 0,
+              "compsolid": 0,
+              "solid": 1,
+              "shell": 1
+            },
+            "productOccurrences": {
+              "status": "not_run",
+              "reason": "STEPCAFControl/XCAF product-occurrence traversal is unavailable in this OCCT binding; topology counts are not substituted."
+            },
+            "bbox": {
+              "min": {
+                "x": -30.0000001,
+                "y": -15.0000001,
+                "z": -10.0000001
+              },
+              "max": {
+                "x": 30.0000001,
+                "y": 15.0000001,
+                "z": 10.0000001
+              }
+            },
+            "absoluteVolume": 36000,
+            "surfaceArea": 7200,
+            "centroid": {
+              "x": -1.2212453270876723e-16,
+              "y": -2.3999321048980467e-16,
+              "z": 2.021099337273174e-16
+            },
+            "inertia": {
+              "status": "not_run",
+              "reason": "MatrixOfInertia failed: Cannot call GProp_GProps.MatrixOfInertia due to unbound types: 6gp_Mat"
+            },
+            "surfaceTypes": {
+              "status": "available",
+              "counts": {
+                "plane": 6
+              }
+            },
+            "curveTypes": {
+              "status": "available",
+              "counts": {
+                "line": 12
+              }
+            },
+            "cylindricalRadii": [],
+            "faceAdjacency": {
+              "status": "available",
+              "faceCount": 6,
+              "uniqueEdgeCount": 12,
+              "boundaryEdgeCount": 0,
+              "manifoldEdgeCount": 12,
+              "nonManifoldEdgeCount": 0,
+              "faceDegreeHistogram": {
+                "4": 6
+              }
+            },
+            "maxTolerance": 0,
+            "minEdgeLength": 20
+          },
+          "nativeTopologyError": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:body",
+            "intent": "general",
+            "status": "pass",
+            "releaseReady": true,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "topology",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        },
+        {
+          "definitionId": "scad:def:wheel",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              14.0000002,
+              6.0000002000000014,
+              14.0000002
+            ],
+            "volumeMm3": 923.6282401553995,
+            "solidCount": 1,
+            "faceCount": 3
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "fail",
+            "bboxMaxErrorMm": null,
+            "volumeRelativeError": null,
+            "codes": [
+              "SCAD_BREP_MESH_EVIDENCE_MISSING"
+            ]
+          },
+          "step": {
+            "valid": true,
+            "bytes": 5869,
+            "sha256": "1d65b2e8926a556381ed1b4ee9899d3804bf2478b175b73acc448236b09f8d92",
+            "file": "step/sc9_simple_car-wheel.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 2.4617445153580046e-16,
+            "importedMeasurement": {
+              "bboxSize": [
+                14.0000002,
+                6.0000002000000014,
+                14.0000002
+              ],
+              "volumeMm3": 923.6282401553992,
+              "solidCount": 1,
+              "faceCount": 3
+            },
+            "codes": []
+          },
+          "nativeTopology": {
+            "valid": true,
+            "solidCount": 1,
+            "faceCount": 3,
+            "edgeCount": 3,
+            "shapeTypeCounts": {
+              "compound": 0,
+              "compsolid": 0,
+              "solid": 1,
+              "shell": 1
+            },
+            "productOccurrences": {
+              "status": "not_run",
+              "reason": "STEPCAFControl/XCAF product-occurrence traversal is unavailable in this OCCT binding; topology counts are not substituted."
+            },
+            "bbox": {
+              "min": {
+                "x": -7.0000001,
+                "y": -3.0000001000000007,
+                "z": -7.0000001
+              },
+              "max": {
+                "x": 7.0000001,
+                "y": 3.0000001000000007,
+                "z": 7.0000001
+              }
+            },
+            "absoluteVolume": 923.6282401553992,
+            "surfaceArea": 571.7698629533597,
+            "centroid": {
+              "x": -1.6616775478666535e-15,
+              "y": 6.154361288395013e-17,
+              "z": -1.4886447795747604e-16
+            },
+            "inertia": {
+              "status": "not_run",
+              "reason": "MatrixOfInertia failed: Cannot call GProp_GProps.MatrixOfInertia due to unbound types: 6gp_Mat"
+            },
+            "surfaceTypes": {
+              "status": "available",
+              "counts": {
+                "cylinder": 1,
+                "plane": 2
+              }
+            },
+            "curveTypes": {
+              "status": "available",
+              "counts": {
+                "circle": 2,
+                "line": 1
+              }
+            },
+            "cylindricalRadii": [
+              7
+            ],
+            "faceAdjacency": {
+              "status": "available",
+              "faceCount": 3,
+              "uniqueEdgeCount": 3,
+              "boundaryEdgeCount": 0,
+              "manifoldEdgeCount": 3,
+              "nonManifoldEdgeCount": 0,
+              "faceDegreeHistogram": {
+                "1": 2,
+                "2": 1
+              }
+            },
+            "maxTolerance": 0,
+            "minEdgeLength": 6
+          },
+          "nativeTopologyError": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:wheel",
+            "intent": "general",
+            "status": "pass",
+            "releaseReady": true,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "topology",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        },
+        {
+          "definitionId": "scad:def:window",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              10.0000002,
+              8.0000002,
+              4.0000002
+            ],
+            "volumeMm3": 319.99999999999994,
+            "solidCount": 1,
+            "faceCount": 6
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "fail",
+            "bboxMaxErrorMm": null,
+            "volumeRelativeError": null,
+            "codes": [
+              "SCAD_BREP_MESH_EVIDENCE_MISSING"
+            ]
+          },
+          "step": {
+            "valid": true,
+            "bytes": 15477,
+            "sha256": "c4c72d020abeb1a4c4d2832416cb8e8c7ea4ede43326c550413a158b36dfd2c1",
+            "file": "step/sc9_simple_car-window.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 0,
+            "importedMeasurement": {
+              "bboxSize": [
+                10.0000002,
+                8.0000002,
+                4.0000002
+              ],
+              "volumeMm3": 319.99999999999994,
+              "solidCount": 1,
+              "faceCount": 6
+            },
+            "codes": []
+          },
+          "nativeTopology": {
+            "valid": true,
+            "solidCount": 1,
+            "faceCount": 6,
+            "edgeCount": 12,
+            "shapeTypeCounts": {
+              "compound": 0,
+              "compsolid": 0,
+              "solid": 1,
+              "shell": 1
+            },
+            "productOccurrences": {
+              "status": "not_run",
+              "reason": "STEPCAFControl/XCAF product-occurrence traversal is unavailable in this OCCT binding; topology counts are not substituted."
+            },
+            "bbox": {
+              "min": {
+                "x": -5.0000001,
+                "y": -4.0000001,
+                "z": -2.0000001
+              },
+              "max": {
+                "x": 5.0000001,
+                "y": 4.0000001,
+                "z": 2.0000001
+              }
+            },
+            "absoluteVolume": 319.99999999999994,
+            "surfaceArea": 304,
+            "centroid": {
+              "x": 4.3368086899420185e-18,
+              "y": -3.4694469519536123e-18,
+              "z": 4.440892098500627e-17
+            },
+            "inertia": {
+              "status": "not_run",
+              "reason": "MatrixOfInertia failed: Cannot call GProp_GProps.MatrixOfInertia due to unbound types: 6gp_Mat"
+            },
+            "surfaceTypes": {
+              "status": "available",
+              "counts": {
+                "plane": 6
+              }
+            },
+            "curveTypes": {
+              "status": "available",
+              "counts": {
+                "line": 12
+              }
+            },
+            "cylindricalRadii": [],
+            "faceAdjacency": {
+              "status": "available",
+              "faceCount": 6,
+              "uniqueEdgeCount": 12,
+              "boundaryEdgeCount": 0,
+              "manifoldEdgeCount": 12,
+              "nonManifoldEdgeCount": 0,
+              "faceDegreeHistogram": {
+                "4": 6
+              }
+            },
+            "maxTolerance": 0,
+            "minEdgeLength": 4
+          },
+          "nativeTopologyError": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:window",
+            "intent": "general",
+            "status": "pass",
+            "releaseReady": true,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "topology",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        }
+      ]
+    },
+    {
+      "scenarioId": "sc10_brackets_grid",
+      "definitions": [
+        {
+          "definitionId": "scad:def:bracket",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              40.000000299999996,
+              40.000000299999996,
+              40.000000299999996
+            ],
+            "volumeMm3": 14999.99999999999,
+            "solidCount": 1,
+            "faceCount": 8
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "fail",
+            "bboxMaxErrorMm": null,
+            "volumeRelativeError": null,
+            "codes": [
+              "SCAD_BREP_MESH_EVIDENCE_MISSING"
+            ]
+          },
+          "step": {
+            "valid": true,
+            "bytes": 22298,
+            "sha256": "1f505c1d66b130b03b4c3cca1d8d4788c785fd6fde6adf936f4b3e1f973b2af7",
+            "file": "step/sc10_brackets_grid-bracket.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 9.999999406318238e-8,
+            "volumeRelativeError": 0,
+            "importedMeasurement": {
+              "bboxSize": [
+                40.0000002,
+                40.0000002,
+                40.0000002
+              ],
+              "volumeMm3": 14999.99999999999,
+              "solidCount": 1,
+              "faceCount": 8
+            },
+            "codes": []
+          },
+          "nativeTopology": {
+            "valid": true,
+            "solidCount": 1,
+            "faceCount": 8,
+            "edgeCount": 18,
+            "shapeTypeCounts": {
+              "compound": 0,
+              "compsolid": 0,
+              "solid": 1,
+              "shell": 1
+            },
+            "productOccurrences": {
+              "status": "not_run",
+              "reason": "STEPCAFControl/XCAF product-occurrence traversal is unavailable in this OCCT binding; topology counts are not substituted."
+            },
+            "bbox": {
+              "min": {
+                "x": -1e-7,
+                "y": -1e-7,
+                "z": -1e-7
+              },
+              "max": {
+                "x": 40.0000001,
+                "y": 40.0000001,
+                "z": 40.0000001
+              }
+            },
+            "absoluteVolume": 14999.99999999999,
+            "surfaceArea": 7150,
+            "centroid": {
+              "x": 11.833333333333334,
+              "y": 11.833333333333332,
+              "z": 20
+            },
+            "inertia": {
+              "status": "not_run",
+              "reason": "MatrixOfInertia failed: Cannot call GProp_GProps.MatrixOfInertia due to unbound types: 6gp_Mat"
+            },
+            "surfaceTypes": {
+              "status": "available",
+              "counts": {
+                "plane": 8
+              }
+            },
+            "curveTypes": {
+              "status": "available",
+              "counts": {
+                "line": 18
+              }
+            },
+            "cylindricalRadii": [],
+            "faceAdjacency": {
+              "status": "available",
+              "faceCount": 8,
+              "uniqueEdgeCount": 18,
+              "boundaryEdgeCount": 0,
+              "manifoldEdgeCount": 18,
+              "nonManifoldEdgeCount": 0,
+              "faceDegreeHistogram": {
+                "4": 6,
+                "6": 2
+              }
+            },
+            "maxTolerance": 0,
+            "minEdgeLength": 5
+          },
+          "nativeTopologyError": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:bracket",
+            "intent": "general",
+            "status": "pass",
+            "releaseReady": true,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "topology",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        }
+      ]
+    }
+  ]
+}

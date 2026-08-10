@@ -1,0 +1,332 @@
+{
+  "schema": "nexyfab.ground-truth-review-form.v1",
+  "caseId": "gearbox-review-14",
+  "family": "gearbox",
+  "tier": "T1",
+  "immutableTarget": {
+    "source": {
+      "hash": "36fa5483509d06002a2cc1439a6df6d4f8838b80e4da482c9ad47019e6ec9e7d",
+      "locator": "참고파일들4/reductor-de-tornillo-sinfin-gear-reducer-driven-1.snapshot.2/Reductor de tornillo/Reductor de Tornillo Assy.IGS",
+      "extension": "igs",
+      "bytes": 10197110,
+      "holdoutGroup": "gearbox:reductor-de-tornillo-sinfin-gear-reducer-driven-1",
+      "hashPassed": true
+    },
+    "artifactSetHash": "570d6c77aa95017fde499dbdab8724aa967a1339baf7ade7048e3e0f5d1bd4d9",
+    "requiredAssertionIds": [
+      "requirements:source-intent",
+      "part-definitions:count",
+      "occurrences:count",
+      "hierarchy:structure",
+      "dimensions:governed",
+      "features:required",
+      "step-roundtrip:preservation"
+    ],
+    "evidence": {
+      "automaticPasses": 3,
+      "reviewerRequired": 4,
+      "assertions": [
+        {
+          "assertionId": "requirements:source-intent",
+          "axis": "requirements",
+          "artifactHashes": [
+            "36fa5483509d06002a2cc1439a6df6d4f8838b80e4da482c9ad47019e6ec9e7d"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "axis": "part_definitions",
+          "artifactHashes": [
+            "36fa5483509d06002a2cc1439a6df6d4f8838b80e4da482c9ad47019e6ec9e7d"
+          ],
+          "tolerancePolicy": "exact-count",
+          "automaticEvidence": {
+            "axis": "part_definitions",
+            "status": "pass",
+            "reason": "IGES solid/subfigure definitions measured.",
+            "measured": {
+              "directoryEntries": 24086,
+              "solids": 0,
+              "definitions": 9
+            }
+          },
+          "reviewerRequired": false,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "occurrences:count",
+          "axis": "occurrences",
+          "artifactHashes": [
+            "36fa5483509d06002a2cc1439a6df6d4f8838b80e4da482c9ad47019e6ec9e7d"
+          ],
+          "tolerancePolicy": "exact-count",
+          "automaticEvidence": {
+            "axis": "occurrences",
+            "status": "pass",
+            "reason": "IGES singular subfigure instances measured.",
+            "measured": 28
+          },
+          "reviewerRequired": false,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "axis": "hierarchy",
+          "artifactHashes": [
+            "36fa5483509d06002a2cc1439a6df6d4f8838b80e4da482c9ad47019e6ec9e7d"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": {
+            "axis": "hierarchy",
+            "status": "pass",
+            "reason": "IGES subfigure definition-instance links are available for native follow-up.",
+            "measured": {
+              "definitions": 9,
+              "instances": 28
+            }
+          },
+          "reviewerRequired": false,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "axis": "dimensions",
+          "artifactHashes": [
+            "36fa5483509d06002a2cc1439a6df6d4f8838b80e4da482c9ad47019e6ec9e7d"
+          ],
+          "tolerancePolicy": "reviewed-linear-tolerance-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "features:required",
+          "axis": "features",
+          "artifactHashes": [
+            "36fa5483509d06002a2cc1439a6df6d4f8838b80e4da482c9ad47019e6ec9e7d"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "axis": "step_roundtrip",
+          "artifactHashes": [
+            "36fa5483509d06002a2cc1439a6df6d4f8838b80e4da482c9ad47019e6ec9e7d"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        }
+      ],
+      "nativeStatus": "not_run",
+      "nativeReleaseReady": false,
+      "nativeAxes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native solid membership is missing for one or more part definitions.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ]
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ],
+          "measured": 0
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    }
+  },
+  "instructions": {
+    "decisions": [
+      "approved",
+      "rejected",
+      "changes_requested"
+    ],
+    "reviewerIdsMustBeRealAndNonEmpty": true,
+    "notesMustBeNonEmpty": true,
+    "timestampsMustBeIso8601": true,
+    "independentReviewerMustDiffer": true,
+    "independentReviewerMustNotAuthorAssertionReviews": true
+  },
+  "submission": {
+    "revision": 1,
+    "licenseReview": {
+      "decision": null,
+      "reviewerId": null,
+      "note": null,
+      "reviewedAt": null
+    },
+    "holdoutIsolationReview": {
+      "decision": null,
+      "reviewerId": null,
+      "note": null,
+      "reviewedAt": null
+    },
+    "assertionReviews": [
+      {
+        "assertionId": "requirements:source-intent",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "part-definitions:count",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "occurrences:count",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "hierarchy:structure",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "dimensions:governed",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "features:required",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "step-roundtrip:preservation",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      }
+    ],
+    "signoffs": [
+      {
+        "role": "domain-reviewer",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null,
+        "artifactSetHash": "570d6c77aa95017fde499dbdab8724aa967a1339baf7ade7048e3e0f5d1bd4d9",
+        "reviewedAssertionIds": [
+          "requirements:source-intent",
+          "part-definitions:count",
+          "occurrences:count",
+          "hierarchy:structure",
+          "dimensions:governed",
+          "features:required",
+          "step-roundtrip:preservation"
+        ]
+      },
+      {
+        "role": "independent-reviewer",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null,
+        "artifactSetHash": "570d6c77aa95017fde499dbdab8724aa967a1339baf7ade7048e3e0f5d1bd4d9",
+        "reviewedAssertionIds": [
+          "requirements:source-intent",
+          "part-definitions:count",
+          "occurrences:count",
+          "hierarchy:structure",
+          "dimensions:governed",
+          "features:required",
+          "step-roundtrip:preservation"
+        ]
+      }
+    ]
+  },
+  "checklist": [
+    "provenance_and_commercial_license",
+    "lineage_independence",
+    "native_definition_occurrence_counts",
+    "units_and_coordinate_system",
+    "assertion_graph_and_tolerance",
+    "prompt_and_holdout_isolation"
+  ]
+}

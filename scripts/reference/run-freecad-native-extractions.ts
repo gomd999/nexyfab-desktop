@@ -15,7 +15,9 @@ const repairLegacyUtf8Locator = (locator: string) => {
 };
 const safePath = (root: string, locator: string) => { const absolute = path.resolve(root, locator), relative = path.relative(root, absolute); if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) throw new Error(`unsafe_locator:${locator}`); return absolute; };
 async function main() {
-  const requestsPath = value('requests'), selectedCase = value('case'), selectedFormat = value('format')?.toLowerCase(), timeoutMs = Number(value('timeout-ms') ?? 120_000), root = path.resolve(value('root') ?? 'C:/Users/gomd9/Downloads/참고파일들'), output = path.resolve(value('output') ?? 'docs/evidence/complex-holdout-review-260806/freecad-native-results.json'), artifacts = path.resolve(value('artifacts') ?? 'C:/tmp/nexyfab-freecad-extraction'), freecad = path.resolve(value('freecad') ?? 'C:/Program Files/FreeCAD 1.1/bin/FreeCADCmd.exe'), script = path.resolve('scripts/reference/freecad-extract-step.py');
+  const rootInput = value('root') ?? process.env.NEXYFAB_REFERENCE_CORPUS_ROOT?.trim();
+  if (!rootInput) throw new Error('reference_corpus_root_required');
+  const requestsPath = value('requests'), selectedCase = value('case'), selectedFormat = value('format')?.toLowerCase(), timeoutMs = Number(value('timeout-ms') ?? 120_000), root = path.resolve(rootInput), output = path.resolve(value('output') ?? 'docs/evidence/complex-holdout-review-260806/freecad-native-results.json'), artifacts = path.resolve(value('artifacts') ?? 'C:/tmp/nexyfab-freecad-extraction'), freecad = path.resolve(value('freecad') ?? 'C:/Program Files/FreeCAD 1.1/bin/FreeCADCmd.exe'), script = path.resolve('scripts/reference/freecad-extract-step.py');
   if (!requestsPath) throw new Error('Usage: --requests=requests.json [--root=corpus] [--output=results.json]');
   const batch = JSON.parse(await readFile(path.resolve(requestsPath), 'utf8')) as RequestBatch; if (batch.schema !== 'nexyfab.complex-native-extraction-request-batch.v1') throw new Error('freecad_request_batch_schema_invalid');
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 600_000) throw new Error('freecad_timeout_invalid');

@@ -1,0 +1,253 @@
+{
+  "schema": "nexyfab.complex-holdout-review.v1",
+  "family": "pressure_vessel",
+  "policy": {
+    "selectedDoesNotMeanApproved": true,
+    "scoreEligible": false,
+    "oneCasePerLineage": true,
+    "requiredApprovedCases": 20
+  },
+  "candidates": 12,
+  "selected": 11,
+  "shortfall": 9,
+  "structurallyRejected": [
+    {
+      "lineageGroup": "pressure_vessel:revit-family-prefeb-water-tank-1-1",
+      "relativePath": "참고파일들4/revit-family-prefeb-water-tank-1-1.snapshot.1.zip",
+      "reason": "supported_product_cad_missing"
+    }
+  ],
+  "items": [
+    {
+      "caseId": "pressure_vessel-review-01",
+      "family": "pressure_vessel",
+      "tierCandidate": "T1",
+      "holdoutGroup": "pressure_vessel:208-x-72-platform-with-dual-asme-tanks-1",
+      "sourceHash": "493dff8203ef2ac1b215d398a8cfeee52991c35d61ecd864005f48983e15a946",
+      "bytes": 65054678,
+      "extension": "step",
+      "localLocator": "참고파일들4/208-x-72-platform-with-dual-asme-tanks-1.snapshot.5/LARGE PLATFORM with ASME TANKS.step",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-02",
+      "family": "pressure_vessel",
+      "tierCandidate": "T3",
+      "holdoutGroup": "pressure_vessel:3-ton-water-tanker-design-wt-3tn-01-1",
+      "sourceHash": "87a60a108fafcb3029952d1adb6bdc6333da3d8c07857fedb1aba58ff6e3bbba",
+      "bytes": 15448721,
+      "extension": "zip",
+      "localLocator": "참고파일들4/3-ton-water-tanker-design-wt-3tn-01-1.snapshot.11.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-03",
+      "family": "pressure_vessel",
+      "tierCandidate": "T1",
+      "holdoutGroup": "pressure_vessel:asme-coded-horizontal-pressure-vessel-design-structural-validation-1",
+      "sourceHash": "b2a29a800fccd3cfb24d9e2a02a7064d293db3bb584dc084dbb3cb09c05b455c",
+      "bytes": 2574423,
+      "extension": "step",
+      "localLocator": "참고파일들4/asme-coded-horizontal-pressure-vessel-design-structural-validation-1.snapshot.3/Pressure Vessel Assembly.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-04",
+      "family": "pressure_vessel",
+      "tierCandidate": "T2",
+      "holdoutGroup": "pressure_vessel:intercambiador-de-calor-tubular-shell-tube-heat-exchanger-1",
+      "sourceHash": "f698142d610dd4270d5213362edba0343fb94392f34e8fa03cb86e73154b7b55",
+      "bytes": 4263474,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/intercambiador-de-calor-tubular-shell-tube-heat-exchanger-1.snapshot.2/Intercalor/Ensamble.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-05",
+      "family": "pressure_vessel",
+      "tierCandidate": "T3",
+      "holdoutGroup": "pressure_vessel:pressure-vessel-149",
+      "sourceHash": "ff81588922d0eb53ed23b5da73f6577560da3e8f82e9a8223d742fece16e25c9",
+      "bytes": 339577,
+      "extension": "zip",
+      "localLocator": "참고파일들4/pressure-vessel-149.snapshot.1.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-06",
+      "family": "pressure_vessel",
+      "tierCandidate": "T1",
+      "holdoutGroup": "pressure_vessel:shell-and-tube-heat-exchanger-66",
+      "sourceHash": "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3",
+      "bytes": 8747651,
+      "extension": "step",
+      "localLocator": "참고파일들4/shell-and-tube-heat-exchanger-66.snapshot.4/Shell Tube Heat Exchanger.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-07",
+      "family": "pressure_vessel",
+      "tierCandidate": "T2",
+      "holdoutGroup": "pressure_vessel:shell-and-tube-heat-exchanger-assembly-1",
+      "sourceHash": "1403b109c5c5310848054fcd77bbe0010f0e1d3794d3c1c801ce6aacddfaf7da",
+      "bytes": 593899,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/shell-and-tube-heat-exchanger-assembly-1.snapshot.1/Assem1.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-08",
+      "family": "pressure_vessel",
+      "tierCandidate": "T2",
+      "holdoutGroup": "pressure_vessel:shell-and-tube-heat-exchanger-model-1",
+      "sourceHash": "ffa472e9ccd293416868b95a292d155333e9428a09fcf64dd28d6429a4b22fbb",
+      "bytes": 1424610,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/shell-and-tube-heat-exchanger-model-1.snapshot.2/Heat exchanger/Heat Exchanger.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-09",
+      "family": "pressure_vessel",
+      "tierCandidate": "T1",
+      "holdoutGroup": "pressure_vessel:single-pass-tema-ael-shell-and-tube-heat-exchanger-1",
+      "sourceHash": "099c5ae609ab7ee6884d52835219905d15cdc3b6bf20ef6c3f13d174109c9009",
+      "bytes": 771388,
+      "extension": "step",
+      "localLocator": "참고파일들4/single-pass-tema-ael-shell-and-tube-heat-exchanger-1.snapshot.4/Shell and Tube Heat exchanger.step",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-10",
+      "family": "pressure_vessel",
+      "tierCandidate": "T2",
+      "holdoutGroup": "pressure_vessel:spherical-tank-3",
+      "sourceHash": "2673429b360d6d8a518da0448452cc98dcca8da596a52f817c714cab4d68f597",
+      "bytes": 1678193,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/spherical-tank-3.snapshot.2/NTC-MSIB7-SPHERICAL TANK/NTC-MSIB7-SPHERICAL TANK.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-11",
+      "family": "pressure_vessel",
+      "tierCandidate": "T3",
+      "holdoutGroup": "pressure_vessel:vertical-air-receiver-tank-2000-ltrs-sldprt",
+      "sourceHash": "354c508882ae878120d0bbab94a13ec81e41c826ca859e6d34e76a3ee6f0baee",
+      "bytes": 1235764,
+      "extension": "zip",
+      "localLocator": "참고파일들4/vertical-air-receiver-tank-2000-ltrs-sldprt.snapshot.4.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { writeImmutableArtifactAtomic } from '../../src/lib/reference/immutableArtifactStore';
+import { parseNativeCadSignatureResponse, serializeNativeCadUnsignedSignoff, type NativeCadUnsignedSignoff } from '../../src/lib/reference/nativeCadReviewClient';
+
+const payloadPath = process.argv[2] ? path.resolve(process.argv[2]) : '';
+const signaturePath = process.argv[3] ? path.resolve(process.argv[3]) : '';
+const outputDir = path.resolve(process.argv[4] ?? 'validation-reports/native-cad-signature-responses');
+if (!payloadPath || !signaturePath) throw new Error('usage: <signing-payload.json> <base64-signature.txt> [output-dir]');
+const payloadBytes = fs.readFileSync(payloadPath, 'utf8');
+const unsigned = JSON.parse(payloadBytes) as NativeCadUnsignedSignoff;
+if (serializeNativeCadUnsignedSignoff(unsigned) !== payloadBytes) throw new Error('signing_payload_not_canonical_exact_bytes');
+const signature = fs.readFileSync(signaturePath, 'utf8').trim();
+const candidate = { schema: 'nexyfab.native-cad-expert-signature-response.v1' as const, signoff: { ...unsigned, signature } };
+const checked = parseNativeCadSignatureResponse(candidate, { role: unsigned.role, targetHash: unsigned.targetHash, unsigned });
+if (!checked.ok) throw new Error(checked.error);
+const bytes = Buffer.from(`${JSON.stringify(checked.response, null, 2)}\n`);
+const responseHash = createHash('sha256').update(bytes).digest('hex');
+const basename = `${unsigned.targetHash}.${unsigned.role}.${responseHash}.signature-response.json`;
+writeImmutableArtifactAtomic(outputDir, basename, bytes, 'native_cad_signature_response_collision');
+console.log(JSON.stringify({ ok: true, response: basename, role: unsigned.role, targetHash: unsigned.targetHash, cryptographicallyVerified: false }));

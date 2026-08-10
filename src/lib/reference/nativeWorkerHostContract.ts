@@ -6,6 +6,7 @@ export interface NativeWorkerHealth {
   schema: 'nexyfab.native-worker-health.v1';
   workerKind: ExternalNativeWorkerKind;
   worker: { name: string; version: string; cadSystem: string };
+  protocol: { executionResultSchema: 'nexyfab.native-worker-execution-result.v1.1' };
   host: { os: 'windows' | 'linux'; architecture: 'x64' | 'arm64' };
   license: { status: 'valid' | 'missing' | 'expired' | 'unreachable'; expiresAt?: string };
   capabilities: { exactGeometry: boolean; nativeHierarchy: boolean; nativeConstraints: boolean; nativeParameters: boolean };
@@ -27,6 +28,7 @@ export function validateNativeWorkerHealth(expected: ExternalNativeWorkerKind, h
   if (health.schema !== 'nexyfab.native-worker-health.v1') errors.push('health_schema_invalid');
   if (health.workerKind !== expected) errors.push('worker_kind_mismatch');
   if (![health.worker?.name, health.worker?.version, health.worker?.cadSystem].every(value => typeof value === 'string' && value.trim())) errors.push('worker_identity_missing');
+  if (health.protocol?.executionResultSchema !== 'nexyfab.native-worker-execution-result.v1.1') errors.push('execution_result_protocol_unsupported');
   const requirement = NATIVE_WORKER_HOST_REQUIREMENTS[expected];
   if (requirement.hostOs === 'windows' && health.host?.os !== 'windows') errors.push('host_os_unsupported');
   if (health.license?.status !== 'valid') errors.push(`license_${health.license?.status ?? 'missing'}`);

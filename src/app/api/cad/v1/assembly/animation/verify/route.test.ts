@@ -4,6 +4,17 @@ import { IDENTITY_QUAT } from '@/lib/assembly/assemblyState';
 import { POST } from './route';
 
 describe('CAD v1 animation verification recovery contract', () => {
+  const untrustedNativeJointEvidence = {
+    provenance: 'native-cad' as const,
+    sourceHash: 'a'.repeat(64),
+    artifactHashes: ['b'.repeat(64)],
+    jointDefinitionHash: 'c'.repeat(64),
+    verificationInputHash: 'd'.repeat(64),
+    revision: 1,
+    jointCount: 1,
+    semanticsComplete: true,
+    reviewerApproved: true,
+  };
   it('returns a stable fail-closed recovery disposition when precise geometry is absent', async () => {
     const state = { parts: [{ id: 'p', name: 'part', partTemplateId: 'p', position: { x: 0, y: 0, z: 0 }, orientation: IDENTITY_QUAT }], mates: [] };
     const animation = { version: 1, name: 'still', fps: 30, startFrame: 0, endFrame: 1, tracks: [] };
@@ -13,6 +24,7 @@ describe('CAD v1 animation verification recovery contract', () => {
     }));
     expect(await response.json()).toMatchObject({
       ok: true, releaseReady: false, quoteOrRfqSideEffects: false,
+      jointEvidenceGate: { status: 'not_run', manufacturingReleaseEligible: false, usage: 'missing', errors: ['joint_evidence_missing'] },
       ccdRecovery: { exhausted: false, attempts: [{ rotationalMaxDepth: 6, unresolvedAfter: 0 }] },
       precise: { status: 'not_run', failureCodes: ['COLLISION_GEOMETRY_MISSING'], recovery: [{ automaticRepair: 'collision-refine', retryable: true, releaseBlocking: true }] },
     });
@@ -26,18 +38,18 @@ describe('CAD v1 animation verification recovery contract', () => {
     const response=await POST(new NextRequest('http://localhost/api/cad/v1/assembly/animation/verify',{method:'POST',headers:{'content-type':'application/json','x-forwarded-for':'animation-mesh-distance-test'},body:JSON.stringify(body)}));const json=await response.json();
     expect(json.broad.continuous.unresolved.length).toBeGreaterThan(0);
     expect(json.precise.continuous.intervals.every((item:{status:string})=>item.status==='proven_clear')).toBe(true);
-    expect(json).toMatchObject({releaseReady:true,precise:{status:'completed',collisionFree:true,failureCodes:[]}});
+    expect(json).toMatchObject({releaseReady:false,jointEvidenceGate:{status:'not_run',manufacturingReleaseEligible:false,usage:'missing'},precise:{status:'completed',collisionFree:true,failureCodes:[]}});
   });
 
   it('removes an exact swept-AABB false positive only after continuous mesh-distance proof',async()=>{
     const extrude=(id:string,loX:number,hiX:number,loY:number,hiY:number)=>({id,name:id,dependencies:[],payload:{kind:'extrude',loop:[{x:loX,y:loY},{x:hiX,y:loY},{x:hiX,y:hiY},{x:loX,y:hiY}],depth:10,direction:'one_sided',mode:'add'}});
     const state={parts:[{id:'l',name:'l',partTemplateId:'l',position:{x:0,y:0,z:0},orientation:IDENTITY_QUAT},{id:'pin',name:'pin',partTemplateId:'pin',position:{x:15,y:15,z:0},orientation:IDENTITY_QUAT}],mates:[]};
     const animation={version:1,name:'linear cavity motion',fps:30,startFrame:0,endFrame:10,tracks:[{id:'pin-track',targetPartId:'pin',keyframes:[{frame:0,position:{x:15,y:15,z:0}},{frame:10,position:{x:15.1,y:15,z:0}}]}]};
-    const body={state,animation,frameStep:10,localBoxes:{l:{min:{x:0,y:0,z:0},max:{x:30,y:30,z:10}},pin:{min:{x:0,y:0,z:0},max:{x:10,y:10,z:10}}},featureTrees:{l:{nodes:[extrude('bar-x',0,30,0,10),extrude('bar-y',0,10,10,30)]},pin:{nodes:[extrude('pin-body',0,10,0,10)]}}};
+    const body={state,animation,frameStep:10,jointEvidence:untrustedNativeJointEvidence,localBoxes:{l:{min:{x:0,y:0,z:0},max:{x:30,y:30,z:10}},pin:{min:{x:0,y:0,z:0},max:{x:10,y:10,z:10}}},featureTrees:{l:{nodes:[extrude('bar-x',0,30,0,10),extrude('bar-y',0,10,10,30)]},pin:{nodes:[extrude('pin-body',0,10,0,10)]}}};
     const response=await POST(new NextRequest('http://localhost/api/cad/v1/assembly/animation/verify',{method:'POST',headers:{'content-type':'application/json','x-forwarded-for':'animation-linear-mesh-test'},body:JSON.stringify(body)})),json=await response.json();
     expect(json.broad.continuous.candidates.some((item:{method:string})=>item.method==='exact-linear-aabb')).toBe(true);
     expect(json.precise.continuous.linear).toMatchObject([{status:'proven_clear'}]);
-    expect(json).toMatchObject({releaseReady:true,precise:{collisionFree:true,failureCodes:[]}});
+    expect(json).toMatchObject({releaseReady:false,jointEvidenceGate:{status:'fail',manufacturingReleaseEligible:false,usage:'native-pending-review',errors:expect.arrayContaining(['verification_input_hash_mismatch','expert_review_missing_or_invalid'])},precise:{collisionFree:true,failureCodes:[]}});
   });
   it('returns a bounded earliest mesh collision time and fails closed when TOI budget is insufficient',async()=>{
     const tree=(id:string,w:number)=>({nodes:[{id,name:id,dependencies:[],payload:{kind:'extrude',loop:[{x:-w,y:-.1},{x:w,y:-.1},{x:w,y:.1},{x:-w,y:.1}],depth:.2,direction:'one_sided',mode:'add'}}]});

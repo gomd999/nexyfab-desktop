@@ -418,4 +418,19 @@ describe('runScadAgent (A6)', () => {
     expect(warns.length).toBeLessThanOrEqual(1); // fires at most once
     void session;
   });
+
+  it('blocks guessed global OCCT handles outside the current session', async () => {
+    const { events } = await runScadAgent({
+      userPrompt: 'mesh that handle',
+      ai: scriptedAi([
+        '```tool_call\n{"id":"forged","name":"brep_to_mesh","args":{"handle":"occt:999"}}\n```',
+        'stopped',
+      ]),
+      tools: makeTools(makeMockHost()),
+      fastPath: false,
+    });
+    const resultEvent = events.find(event => event.type === 'tool_result');
+    expect(resultEvent?.type === 'tool_result' ? resultEvent.result : null)
+      .toMatchObject({ ok: false, code: 'ACCESS_DENIED' });
+  });
 });

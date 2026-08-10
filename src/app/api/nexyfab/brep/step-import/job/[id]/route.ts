@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
-import { getBrepStepJobAsync } from '@/lib/brep-bridge/jobQueue';
+import { cancelBrepStepJobAsync, getBrepStepJobAsync } from '@/lib/brep-bridge/jobQueue';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,5 +33,25 @@ export async function GET(
         }
       : {}),
     ...(job.status === 'failed' ? { error: job.errorMessage } : {}),
+    ...(job.status === 'cancelled' ? { cancelled: true } : {}),
   });
+}
+
+export async function DELETE(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+) {
+  const user = await getAuthUser(req);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { id } = await ctx.params;
+  const result = await cancelBrepStepJobAsync(id, user.userId);
+  if (result === 'not_found') return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+  if (result === 'processing') {
+    return NextResponse.json(
+      { error: 'Job is already processing and cannot be safely cancelled', code: 'ALREADY_PROCESSING' },
+      { status: 409 },
+    );
+  }
+  if (result === 'terminal') return NextResponse.json({ error: 'Job is already terminal' }, { status: 409 });
+  return NextResponse.json({ ok: true, status: 'cancelled' });
 }

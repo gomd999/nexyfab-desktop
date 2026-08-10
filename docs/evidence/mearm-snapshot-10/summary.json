@@ -1,0 +1,74 @@
+{
+  "schema": "nexyfab.cad-product-evidence-run.v1",
+  "generatorVersion": "1.0.0",
+  "caseId": "mearm-snapshot-10",
+  "lineageId": "참고파일들4/mearm-robotic-arm-1.snapshot.10",
+  "sourceBytesCopied": false,
+  "absolutePathsStored": false,
+  "stages": [
+    {
+      "id": "bundle",
+      "status": "pass",
+      "report": "bundle.json",
+      "summary": {
+        "members": 151,
+        "totalBytes": 89595298,
+        "excluded": 0,
+        "roles": {
+          "documentation": 1,
+          "authoritative_geometry": 1,
+          "mesh_part": 93,
+          "reference_visual": 7,
+          "motion_reference": 5,
+          "drawing": 1,
+          "native_assembly": 9,
+          "native_part": 34
+        }
+      }
+    },
+    {
+      "id": "mesh",
+      "status": "not_run",
+      "report": "mesh-occurrences.json",
+      "summary": {
+        "total": 93,
+        "pass": 87,
+        "fail": 0,
+        "notRun": 6
+      }
+    },
+    {
+      "id": "native",
+      "status": "not_run",
+      "report": "native-assembly.json",
+      "summary": {
+        "releaseReady": false,
+        "errors": [
+          "native_assembly_evidence_not_run"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "fusion",
+      "status": "not_run",
+      "report": "fusion.json",
+      "summary": {
+        "definitions": 35,
+        "occurrences": 93,
+        "nativeOccurrenceCount": 0,
+        "nativeJointCount": 0,
+        "errors": [
+          "native_assembly_extractor_not_run"
+        ],
+        "warnings": [
+          "mesh_occurrence_evidence_incomplete",
+          "compound_part_body_membership_not_run:141/93",
+          "definition_source_pairing_incomplete",
+          "mesh_occurrence_transforms_not_authoritative"
+        ]
+      }
+    }
+  ],
+  "status": "not_run"
+}

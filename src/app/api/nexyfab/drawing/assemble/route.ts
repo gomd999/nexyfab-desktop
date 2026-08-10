@@ -15,16 +15,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TraceRecorder, traceSummary } from '@/lib/pipeline-trace';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
 import { recordIntentMatch } from '@/lib/intentTelemetry';
 import { recordFailure } from '@/lib/failureLog';
+import {
+  normalizeGenerationDomain,
+  isTemplateDomainAllowed,
+  scopeDomainDescription,
+  templateDomainsFor,
+  type GenerationDomainId,
+} from '@/lib/ai/domainGenerationRequest';
+import { assemblyUnifiedProject } from '@/lib/ai/assemblyUnifiedProjectAdapter';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-type Assembly = { name?: string; parts?: Array<Record<string, unknown>> };
+type Assembly = { name?: string; parts?: Array<Record<string, unknown>>; [key: string]: unknown };
 type BuiltAssembly = { ok: boolean; openscad?: string; parts?: unknown; gateErrors?: string[]; interferences?: unknown[]; contacts?: unknown[]; welds?: unknown[]; weldTotalMm?: number; composeIntent?: unknown; structural?: unknown; support?: unknown; pipes?: unknown; designOk?: boolean };
 type FromTextModule = {
   callAiJson: (prompt: string, schema: unknown, o?: { models?: string[]; maxOutputTokens?: number; thinkingBudget?: number }) => Promise<{ data: Assembly; model?: string; repaired?: boolean }>;
@@ -45,6 +54,12 @@ const AI_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 12000, thinking
 // tb=512 는 2개 설명문 × 3회 반복 전부 성공 + 핵심 클레임(연장·R·수량·존재) 보존 확인.
 const CLAIMS_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 8192, thinkingBudget: 512 };
 type AssemblyModule = { buildAssembly: (asm: Assembly) => BuiltAssembly; autoPlaceCorrect: (asm: Assembly) => { assembly: Assembly; corrections: Array<Record<string, unknown>> }; autoTagAssembly: (asm: Assembly) => Assembly; assemblyAtLevel: (asm: Assembly, level: number) => Assembly };
+
+function canonicalizeAssembly(assembly: Assembly, domain: GenerationDomainId | null) {
+  if (!domain) return null;
+  const fingerprint = createHash('sha256').update(JSON.stringify(assembly)).digest('hex').slice(0, 24);
+  return assemblyUnifiedProject(`nf-${fingerprint}`, domain, assembly);
+}
 
 // 1차 골격→2차 상세(260719): 자동 태깅 후 detail≤1 부분집합의 별도 빌드(초안 프리뷰).
 // 실패해도 본 응답을 막지 않음(draft=null).
@@ -131,18 +146,22 @@ const PART_FIELDS = `부품 선택 필드(정확도·물량·조립트리에 중
 
 // 템플릿 카탈로그(챗 개방, 260717 — 참고파일들급 복잡물 대화 생성): 결정론 템플릿
 // 레지스트리에서 동적 생성. AI 는 template{domain,id,params} 선언만 — 형상·게이트·도서=엔진.
-let _catalog: string | null = null;
-async function templateCatalog(): Promise<string> {
-  if (_catalog) return _catalog;
+const _catalog = new Map<string, string>();
+async function templateCatalog(domain: GenerationDomainId | null = null): Promise<string> {
+  const cacheKey = domain ?? 'all';
+  const cached = _catalog.get(cacheKey);
+  if (cached) return cached;
   const p = join(process.cwd(), 'scripts', 'drawing-to-3d', 'domain-assemblies.mjs');
   const dm = (await import(/* webpackIgnore: true */ pathToFileURL(p).href)) as {
     listAssemblyTemplates: () => Array<{ domain: string; id: string; labelKo: string; params: Array<{ name: string; labelKo: string; unit: string; default: number; min: number; max: number }> }>;
   };
-  _catalog = dm.listAssemblyTemplates()
+  const catalog = dm.listAssemblyTemplates()
+    .filter((t) => !domain || templateDomainsFor(domain).includes(t.domain))
     .filter((t) => t.id !== 'retaining_wall_alignment') // 선형은 civilAlignment 전용 경로(더 풍부한 입력)
     .map((t) => `- ${t.domain}/${t.id} (${t.labelKo}): ${t.params.map((q) => `${q.name}=${q.labelKo}${q.unit ? '(' + q.unit + ')' : ''} 기본${q.default} 범위${q.min}~${q.max}`).join(', ')}`)
     .join('\n');
-  return _catalog;
+  _catalog.set(cacheKey, catalog);
+  return catalog;
 }
 
 /**
@@ -252,6 +271,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (planGuard) return planGuard;
 
   let description: string;
+  let requestedDomain: GenerationDomainId | null = null;
   /**
    * ★진행 스트림(260803) — `stream:true` 면 SSE 로 **지금 무슨 작업 중인지**를 보낸다.
    *
@@ -263,8 +283,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
    */
   let wantStream = false;
   try {
-    const body = (await req.json()) as { description?: string; stream?: boolean };
+    const body = (await req.json()) as { description?: string; domain?: string; stream?: boolean };
     description = (body.description ?? '').trim();
+    if (body.domain !== undefined) {
+      requestedDomain = normalizeGenerationDomain(body.domain);
+      if (!requestedDomain) {
+        return NextResponse.json({ ok: false, error: 'unsupported design domain' }, { status: 400 });
+      }
+    }
     wantStream = body.stream === true || (req.headers.get('accept') ?? '').includes('text/event-stream');
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
@@ -275,6 +301,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (description.length > 2000) {
     return NextResponse.json({ ok: false, error: 'description이 너무 깁니다(2000자 이하).' }, { status: 400 });
   }
+  const generationDescription = scopeDomainDescription(description, requestedDomain);
 
   let mods: { ft: FromTextModule; asm: AssemblyModule };
   let PROG: Awaited<ReturnType<typeof loadProgress>>;
@@ -350,18 +377,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     let lastErrors: string[] = [];
 
     emit(PROG.event('catalog'));
-    const catalog = await templateCatalog().catch(() => '');
+    const catalog = await templateCatalog(requestedDomain).catch(() => '');
     // ⚠ 어휘는 ALL_TYPES 에서 생성한다 — 라우트가 자기 목록을 들면 또 갈린다(§단일소스).
     const vocab = mods.ft.VOCAB_SPEC();
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const prompt = (round === 0 || !assembly
-        ? BASE_PROMPT(description, vocab)
-        : FIX_PROMPT(description, lastErrors, assembly, vocab)).replace('{{CATALOG}}', catalog);
+        ? BASE_PROMPT(generationDescription, vocab)
+        : FIX_PROMPT(generationDescription, lastErrors, assembly, vocab)).replace('{{CATALOG}}', catalog);
       emit(PROG.event('ai', { round: round + 1 }));
       const { data } = await mods.ft.callAiJson(prompt, null, AI_OPTS);
       const hasCA = !!(data && typeof (data as { civilAlignment?: unknown }).civilAlignment === 'object');
       const tpl = (data as { template?: { domain?: string; id?: string; params?: Record<string, unknown> } })?.template;
       const hasTpl = !!(tpl && typeof tpl === 'object' && typeof tpl.domain === 'string' && typeof tpl.id === 'string');
+      if (requestedDomain && hasCA && requestedDomain !== 'civil') {
+        lastErrors = [`civilAlignment is not valid for the selected ${requestedDomain} domain`];
+        continue;
+      }
+      if (requestedDomain && hasTpl && !isTemplateDomainAllowed(requestedDomain, tpl!.domain!)) {
+        lastErrors = [`template domain ${tpl!.domain} does not match selected domain ${requestedDomain}`];
+        continue;
+      }
+      if (requestedDomain && data && typeof data === 'object' && !hasTpl && !hasCA) {
+        Object.assign(data, { domain: requestedDomain });
+      }
       if (!data || (!hasCA && !hasTpl && (!Array.isArray(data.parts) || data.parts.length === 0))) {
         lastErrors = ['빈 어셈블리(parts 없음 — 선형이면 civilAlignment, 정형 구조물이면 template 선언)'];
         continue; // 다음 라운드에서 재시도
@@ -409,10 +447,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             try {
               const notes = intentMatch.results.filter((q) => q.verdict === 'MISMATCH').map((q) => `${q.text} → ${q.note}`).slice(0, 8);
               const { data: fd } = await mods.ft.callAiJson(
-                `직전 template 선언(${tpl!.domain}/${tpl!.id})의 결과가 요청과 실측 대조에서 불일치했다. params 만 고친 {"template":{...}} JSON 하나만 다시 내라(키·범위는 카탈로그).\n[요청] "${description}"\n[불일치]\n${notes.map((m) => '- ' + m).join('\n')}\n직전: ${JSON.stringify(tpl)}\nJSON 하나만.`,
+                `직전 template 선언(${tpl!.domain}/${tpl!.id})의 결과가 요청과 실측 대조에서 불일치했다. params 만 고친 {"template":{...}} JSON 하나만 다시 내라(키·범위는 카탈로그).\n[요청] "${generationDescription}"\n[불일치]\n${notes.map((m) => '- ' + m).join('\n')}\n직전: ${JSON.stringify(tpl)}\nJSON 하나만.`,
                 null, AI_OPTS);
               const t2 = (fd as { template?: { domain?: string; id?: string; params?: Record<string, unknown> } })?.template;
-              if (t2?.domain && t2?.id) {
+              if (t2?.domain && t2?.id && (!requestedDomain || isTemplateDomainAllowed(requestedDomain, t2.domain))) {
                 const a2 = dm.buildAssemblyTemplate(t2.domain, t2.id, t2.params ?? {});
                 if (a2 && !a2.alignmentErrors?.length) {
                   const b2 = mods.asm.buildAssembly(a2);
@@ -429,6 +467,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             (intentMatch as { repair?: unknown }).repair = { attempted: true, adopted, before, after: intentMatch.mismatched };
           }
           if (intentMatch) await recordIntentMatch(description, tpl!.domain!, intentMatch);
+          const canonical = canonicalizeAssembly(
+            assembly,
+            requestedDomain ?? normalizeGenerationDomain(tpl!.domain) ?? (tpl!.domain === 'bridge' ? 'civil' : null),
+          );
+          if (requestedDomain && (!canonical || canonical.issues.length > 0)) {
+            lastErrors = canonical?.issues ?? ['canonical domain document was not created'];
+            continue;
+          }
           const lodT = lodExtras(mods.asm, assembly as Assembly);
           return NextResponse.json({
             ok: true, assembly: lodT.assembly, draft: lodT.draft, openscad: built.openscad,
@@ -438,6 +484,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             composeIntent: built.composeIntent ?? null, structural: built.structural ?? null,
             support: built.support ?? null, pipes: built.pipes ?? null, designOk: built.designOk ?? null,
             intentMatch,
+            unifiedProject: canonical?.project ?? null, canonicalIssues: canonical?.issues ?? [],
             domain: tpl!.domain, template: tpl, gateErrors: [], rounds: round + 1,
           });
         }
@@ -465,7 +512,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             try {
               const notes = intentMatch.results
                 .filter((q) => q.verdict === 'MISMATCH').map((q) => `${q.text} → ${q.note}`).slice(0, 8);
-              const { data: fd } = await mods.ft.callAiJson(INTENT_FIX_CA_PROMPT(description, notes, ca), null, AI_OPTS);
+              const { data: fd } = await mods.ft.callAiJson(INTENT_FIX_CA_PROMPT(generationDescription, notes, ca), null, AI_OPTS);
               const ca2 = (fd as { civilAlignment?: Record<string, unknown> })?.civilAlignment;
               if (ca2 && typeof ca2 === 'object' && Array.isArray((ca2 as { ips?: unknown[] }).ips)) {
                 const asm2 = dm.buildAssemblyTemplate('civil', 'retaining_wall_alignment', ca2);
@@ -482,6 +529,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             (intentMatch as { repair?: unknown }).repair = { attempted: true, adopted, before, after: intentMatch.mismatched };
           }
           if (intentMatch) await recordIntentMatch(description, 'civil', intentMatch);
+          const canonical = canonicalizeAssembly(assembly, 'civil')!;
+          if (canonical.issues.length > 0) {
+            lastErrors = canonical.issues;
+            continue;
+          }
           const lodC = lodExtras(mods.asm, assembly as Assembly);
           return NextResponse.json({
             ok: true, assembly: lodC.assembly, draft: lodC.draft, openscad: built.openscad,
@@ -491,6 +543,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             composeIntent: built.composeIntent ?? null, structural: built.structural ?? null,
             support: built.support ?? null, pipes: built.pipes ?? null, designOk: built.designOk ?? null,
             intentMatch,
+            unifiedProject: canonical.project, canonicalIssues: [],
             domain: 'civil', gateErrors: [], rounds: round + 1,
           });
         }
@@ -580,7 +633,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           try {
             const notes = intentMatch.results
               .filter((q) => q.verdict === 'MISMATCH').map((q) => `${q.text} → ${q.note}`).slice(0, 8);
-            const { data: fd } = await mods.ft.callAiJson(INTENT_FIX_PROMPT(description, notes, assembly, vocab), null, AI_OPTS);
+            const { data: fd } = await mods.ft.callAiJson(INTENT_FIX_PROMPT(generationDescription, notes, assembly, vocab), null, AI_OPTS);
             if (fd && Array.isArray(fd.parts) && fd.parts.length) {
               const c2 = mods.asm.autoPlaceCorrect(fd);
               const b2 = mods.asm.buildAssembly(c2.assembly);
@@ -598,6 +651,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         }
         if (intentMatch && assumptions.length) (intentMatch as { assumptions?: string[] }).assumptions = assumptions as string[];
         if (intentMatch) await recordIntentMatch(description, (assembly as { domain?: string }).domain ?? null, intentMatch);
+        const inferredDomain = requestedDomain
+          ?? normalizeGenerationDomain((assembly as { domain?: unknown }).domain)
+          ?? ((assembly as { domain?: unknown }).domain === 'bridge' ? 'civil' : null);
+        const canonical = canonicalizeAssembly(assembly, inferredDomain);
+        if (requestedDomain && (!canonical || canonical.issues.length > 0)) {
+          lastErrors = canonical?.issues ?? ['canonical domain document was not created'];
+          continue;
+        }
         const lodA = lodExtras(mods.asm, assembly as Assembly);
         return NextResponse.json({
           ok: true, assembly: lodA.assembly, draft: lodA.draft, openscad: built.openscad,
@@ -616,6 +677,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           support: built.support ?? null, // 그물: 부유·면접촉(매립 제안)
           pipes: built.pipes ?? null, designOk: built.designOk ?? null,
           intentMatch, // 요청 정합(의도↔형상 실측 대조 — 불일치 노출 + 교정 라운드 내역)
+          unifiedProject: canonical?.project ?? null, canonicalIssues: canonical?.issues ?? [],
           gateErrors: [], rounds: round + 1,
           // ★ 과정을 같은 모양으로 — extract 라우트와 필드명을 맞춘다.
           ...(() => {

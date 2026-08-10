@@ -43,6 +43,7 @@ import type { AiAssemblyProgram } from '@/lib/ai/aiAssemblyProgram';
 import type { AiGenerationDecision } from '@/lib/ai/aiGenerationPipeline';
 import { refineGenerationSession } from '../ai/generationSessionClient';
 import type { GenerationRunState } from '@/lib/ai/generationRunState';
+import RobotPrecisionHandoffPanel from './RobotPrecisionHandoffPanel';
 
 export type AssemblyAiLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 
@@ -506,6 +507,8 @@ export default function AssemblyAiPanel(
       }}
     >
       <div style={{ fontWeight: 600, fontSize: 14 }}>{d.panelTitle}</div>
+
+      {onBuildProduct && <RobotPrecisionHandoffPanel lang={lang} onHandoff={onBuildProduct} />}
 
       <div style={{ display: 'flex', gap: 8 }}>
         <textarea

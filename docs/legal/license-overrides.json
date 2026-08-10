@@ -1,0 +1,14 @@
+{
+  "schema": "nexyfab.license-overrides.v1",
+  "overrides": [
+    {
+      "package": "buffers",
+      "version": "0.1.1",
+      "license": "MIT",
+      "licenseFile": "docs/legal/licenses/buffers-0.1.1-MIT.txt",
+      "evidenceUrl": "https://sources.debian.org/copyright/license/node-buffers/0.1.1-2/",
+      "evidenceNote": "Debian Sources identifies upstream buffers 0.1.1 as MIT and links the upstream license declaration commit 1b745ee35d33eb166e15ef1866073a07c6d7de87.",
+      "reviewedAt": "2026-08-09"
+    }
+  ]
+}

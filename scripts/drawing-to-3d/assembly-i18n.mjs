@@ -78,6 +78,10 @@ export const TEMPLATE_LABELS = {
   '벨트/롤러 컨베이어 (C찬넬 프레임)': { en: 'Belt/roller conveyor', zh: '带式/辊式输送机（C型钢机架）', ja: 'ベルト／ローラーコンベヤ（Cチャンネル架台）', es: 'Transportador de banda/rodillos', ar: 'ناقل سيور/بكرات' },
   '송전탑 (angle 격자)': { en: 'Transmission tower (angle lattice)', zh: '输电塔（角钢格构）', ja: '送電鉄塔（山形鋼格子）', es: 'Torre de transmisión (celosía angular)', ar: 'برج نقل كهرباء (شبكي زاوي)' },
   '굴착기 버킷 (판금 셸)': { en: 'Excavator bucket (sheet-metal shell)', zh: '挖掘机铲斗（钣金壳体）', ja: '油圧ショベルバケット（板金シェル）', es: 'Cazo de excavadora (chapa)', ar: 'دلو حفارة (هيكل صفائحي)' },
+  '고층 타워 (코어+기준층×N·유닛 포함)': { en: 'Hi-rise tower (core+typical floors, units)', zh: '高层塔楼（核心筒＋N个标准层及单元）', ja: '高層タワー（コア＋基準階×N・住戸）', es: 'Torre de gran altura (núcleo, plantas tipo y unidades)', ar: 'برج شاهق (نواة وطوابق نموذجية ووحدات)' },
+  '다경간 거더교 (교각·교좌 포함)': { en: 'Multi-span girder bridge (piers+bearings)', zh: '多跨梁桥（含桥墩和支座）', ja: '多径間桁橋（橋脚・支承を含む）', es: 'Puente de vigas de varios vanos (pilas y apoyos)', ar: 'جسر عوارض متعدد البحور (ركائز ومحامل)' },
+  '층 전체 평면 (복도+유닛×N·층 피난)': { en: 'Full floor plan (corridor+units, floor egress)', zh: '整层平面（走廊＋多个单元及楼层疏散）', ja: '階全体平面（廊下＋住戸×N・階避難）', es: 'Planta completa (pasillo, unidades y evacuación)', ar: 'مخطط طابق كامل (ممر ووحدات ومسار إخلاء)' },
+  '모듈형 롤러 컨베이어 라인 (서브어셈블리×N)': { en: 'Modular roller conveyor line', zh: '模块化辊筒输送线', ja: 'モジュール式ローラーコンベヤライン', es: 'Línea modular de transportadores de rodillos', ar: 'خط ناقل بكرات معياري' },
 };
 
 /**
@@ -378,6 +382,24 @@ export const PARAM_LABELS = {
   '높이': { en: 'Height', zh: '高度', ja: '高さ', es: 'Altura', ar: 'الارتفاع' },
   '투스 수': { en: 'Number of teeth', zh: '斗齿数量', ja: 'ツース本数', es: 'Número de dientes', ar: 'عدد الأسنان' },
   '셸 두께': { en: 'Shell thickness', zh: '壳体厚度', ja: 'シェル厚', es: 'Espesor de la envolvente', ar: 'سماكة الغلاف' },
+  'BOQ 패턴곱 교차 (슬래브·기둥 전개 수 = 닫힌형)': { en: 'BOQ pattern-count cross-check', zh: '工程量清单阵列数量交叉核对', ja: 'BOQパターン数の照合', es: 'Comprobación cruzada del patrón de mediciones', ar: 'تدقيق متقاطع لعدد نمط جدول الكميات' },
+  '풋프린트 포함 (전 부품 평면 범위 내)': { en: 'Footprint containment', zh: '占地边界包含全部构件', ja: 'フットプリント内への包含', es: 'Contención dentro de la huella', ar: 'احتواء جميع الأجزاء ضمن المسقط' },
+  '말단 봉합 (마지막 레그 = 라인 끝)': { en: 'Terminal closure (last leg at line end)', zh: '末端闭合（最后支腿位于线端）', ja: '終端閉合（最終脚＝ライン端）', es: 'Cierre terminal (última pata en el extremo)', ar: 'إغلاق النهاية (آخر رجل عند نهاية الخط)' },
+  '바닥판 표고 연속 (전 경간 동일)': { en: 'Deck elevation continuity', zh: '桥面板标高连续', ja: '床版標高の連続性', es: 'Continuidad de cota del tablero', ar: 'استمرارية منسوب البلاطة' },
+  '베이 X': { en: 'Bay X', zh: 'X向跨距', ja: 'ベイX', es: 'Vano X', ar: 'البحر س' },
+  '유닛 fit-out (1=포함)': { en: 'Unit fit-out (1 = included)', zh: '单元精装（1＝包含）', ja: '住戸内装（1＝含む）', es: 'Equipamiento de unidad (1 = incluido)', ar: 'تجهيز الوحدة (1 = مشمول)' },
+  '배수 구배(진입면 방향)': { en: 'Drainage slope (entry-face direction)', zh: '排水坡度（入口面方向）', ja: '排水勾配（進入面方向）', es: 'Pendiente de drenaje (dirección de entrada)', ar: 'ميل التصريف (باتجاه سطح الدخول)' },
+  '거더 열 수': { en: 'Number of girder lines', zh: '主梁列数', ja: '桁列数', es: 'Número de líneas de vigas', ar: 'عدد صفوف العوارض' },
+  '경간장(지점 중심간)': { en: 'Span length (support centers)', zh: '跨径（支点中心距）', ja: '支間長（支点中心間）', es: 'Longitud de vano (entre centros de apoyo)', ar: 'طول البحر (بين مركزي المسندين)' },
+  '거더 중심 간격': { en: 'Girder center spacing', zh: '主梁中心间距', ja: '桁中心間隔', es: 'Separación entre ejes de vigas', ar: 'تباعد مراكز العوارض' },
+  '측당 유닛 수': { en: 'Units per side', zh: '每侧单元数', ja: '片側住戸数', es: 'Unidades por lado', ar: 'عدد الوحدات لكل جانب' },
+  '유닛 폭': { en: 'Unit width', zh: '单元宽度', ja: '住戸幅', es: 'Ancho de unidad', ar: 'عرض الوحدة' },
+  '유닛 깊이': { en: 'Unit depth', zh: '单元进深', ja: '住戸奥行', es: 'Fondo de unidad', ar: 'عمق الوحدة' },
+  '복도 폭': { en: 'Corridor width', zh: '走廊宽度', ja: '廊下幅', es: 'Ancho del pasillo', ar: 'عرض الممر' },
+  '유닛 문 폭': { en: 'Unit door width', zh: '单元门宽', ja: '住戸扉幅', es: 'Ancho de puerta de unidad', ar: 'عرض باب الوحدة' },
+  '모듈 수': { en: 'Number of modules', zh: '模块数量', ja: 'モジュール数', es: 'Número de módulos', ar: 'عدد الوحدات المعيارية' },
+  '모듈 길이': { en: 'Module length', zh: '模块长度', ja: 'モジュール長さ', es: 'Longitud del módulo', ar: 'طول الوحدة المعيارية' },
+  '라인 폭': { en: 'Line width', zh: '生产线宽度', ja: 'ライン幅', es: 'Ancho de línea', ar: 'عرض الخط' },
 };
 
 /**

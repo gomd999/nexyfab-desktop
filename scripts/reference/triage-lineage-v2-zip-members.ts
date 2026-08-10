@@ -16,7 +16,9 @@ import path from 'node:path';
 import JSZip from 'jszip';
 
 const requestsPath = path.resolve(process.argv[2] ?? 'docs/evidence/complex-holdout-lineage-v2-260807/native-extraction-requests.json');
-const corpusRoot = path.resolve(process.argv[3] ?? 'C:/Users/gomd9/Downloads/참고파일들');
+const corpusRootInput = process.argv[3] ?? process.env.NEXYFAB_REFERENCE_CORPUS_ROOT?.trim();
+if (!corpusRootInput) throw new Error('reference_corpus_root_required');
+const corpusRoot = path.resolve(corpusRootInput);
 const output = path.resolve(process.argv[4] ?? 'docs/evidence/complex-holdout-lineage-v2-260807/zip-member-triage.json');
 
 const sha256 = (buffer: Buffer) => createHash('sha256').update(buffer).digest('hex');

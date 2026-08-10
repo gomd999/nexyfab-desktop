@@ -1,0 +1,5055 @@
+{
+  "schema": "nexyfab.complex-native-extraction-validation.v1",
+  "requestCount": 88,
+  "resultCount": 31,
+  "duplicates": [],
+  "unknown": [],
+  "counts": {
+    "not_run": 88
+  },
+  "axisCounts": {
+    "part_definitions": {
+      "pass": 31,
+      "not_run": 57
+    },
+    "body_membership": {
+      "pass": 24,
+      "not_run": 64
+    },
+    "occurrences": {
+      "pass": 31,
+      "not_run": 57
+    },
+    "hierarchy": {
+      "pass": 31,
+      "not_run": 57
+    },
+    "transforms": {
+      "pass": 31,
+      "not_run": 57
+    },
+    "joints": {
+      "not_run": 88
+    },
+    "units": {
+      "pass": 31,
+      "not_run": 57
+    }
+  },
+  "releaseReady": false,
+  "cases": [
+    {
+      "caseId": "robot-review-01",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "7169a75c3ade3757c5806bb3a42fcad8bb10df938f7500650825eb650ff1d9a0"
+          ],
+          "measured": 9
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "7169a75c3ade3757c5806bb3a42fcad8bb10df938f7500650825eb650ff1d9a0"
+          ],
+          "measured": 7
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "7169a75c3ade3757c5806bb3a42fcad8bb10df938f7500650825eb650ff1d9a0"
+          ],
+          "measured": 9
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "7169a75c3ade3757c5806bb3a42fcad8bb10df938f7500650825eb650ff1d9a0"
+          ],
+          "measured": 8
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "7169a75c3ade3757c5806bb3a42fcad8bb10df938f7500650825eb650ff1d9a0"
+          ],
+          "measured": 9
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "7169a75c3ade3757c5806bb3a42fcad8bb10df938f7500650825eb650ff1d9a0"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "7169a75c3ade3757c5806bb3a42fcad8bb10df938f7500650825eb650ff1d9a0"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-02",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-03",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "3b827446e46a391de557081dfae88ef3f932929198e514e9be5921a543486365"
+          ],
+          "measured": 7
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "3b827446e46a391de557081dfae88ef3f932929198e514e9be5921a543486365"
+          ],
+          "measured": 5
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "3b827446e46a391de557081dfae88ef3f932929198e514e9be5921a543486365"
+          ],
+          "measured": 7
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "3b827446e46a391de557081dfae88ef3f932929198e514e9be5921a543486365"
+          ],
+          "measured": 6
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "3b827446e46a391de557081dfae88ef3f932929198e514e9be5921a543486365"
+          ],
+          "measured": 7
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "3b827446e46a391de557081dfae88ef3f932929198e514e9be5921a543486365"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "3b827446e46a391de557081dfae88ef3f932929198e514e9be5921a543486365"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-04",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-05",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-06",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "79986afc47491a59a1f24a2acecf15dc262a69a33558758654d89bf8cc2ea4b1"
+          ],
+          "measured": 124
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "79986afc47491a59a1f24a2acecf15dc262a69a33558758654d89bf8cc2ea4b1"
+          ],
+          "measured": 111
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "79986afc47491a59a1f24a2acecf15dc262a69a33558758654d89bf8cc2ea4b1"
+          ],
+          "measured": 124
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "79986afc47491a59a1f24a2acecf15dc262a69a33558758654d89bf8cc2ea4b1"
+          ],
+          "measured": 123
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "79986afc47491a59a1f24a2acecf15dc262a69a33558758654d89bf8cc2ea4b1"
+          ],
+          "measured": 124
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "79986afc47491a59a1f24a2acecf15dc262a69a33558758654d89bf8cc2ea4b1"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "79986afc47491a59a1f24a2acecf15dc262a69a33558758654d89bf8cc2ea4b1"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-07",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "3446f27826f500565fd87afa74a869319b80a021ce93c47a4090b9076895a416"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native solid membership is missing for one or more part definitions.",
+          "artifactHashes": [
+            "3446f27826f500565fd87afa74a869319b80a021ce93c47a4090b9076895a416"
+          ]
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "3446f27826f500565fd87afa74a869319b80a021ce93c47a4090b9076895a416"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "3446f27826f500565fd87afa74a869319b80a021ce93c47a4090b9076895a416"
+          ],
+          "measured": 0
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "3446f27826f500565fd87afa74a869319b80a021ce93c47a4090b9076895a416"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "3446f27826f500565fd87afa74a869319b80a021ce93c47a4090b9076895a416"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "3446f27826f500565fd87afa74a869319b80a021ce93c47a4090b9076895a416"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-08",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ],
+          "measured": 2
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ],
+          "measured": 2
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ],
+          "measured": 2
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-09",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-01",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-02",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-03",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-04",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "a16616b247418207e2d8c0d5d28f48b7bc27cf9bba3eeebefed993a1271a9fbf"
+          ],
+          "measured": 23
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "a16616b247418207e2d8c0d5d28f48b7bc27cf9bba3eeebefed993a1271a9fbf"
+          ],
+          "measured": 21
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "a16616b247418207e2d8c0d5d28f48b7bc27cf9bba3eeebefed993a1271a9fbf"
+          ],
+          "measured": 23
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "a16616b247418207e2d8c0d5d28f48b7bc27cf9bba3eeebefed993a1271a9fbf"
+          ],
+          "measured": 22
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "a16616b247418207e2d8c0d5d28f48b7bc27cf9bba3eeebefed993a1271a9fbf"
+          ],
+          "measured": 23
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "a16616b247418207e2d8c0d5d28f48b7bc27cf9bba3eeebefed993a1271a9fbf"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "a16616b247418207e2d8c0d5d28f48b7bc27cf9bba3eeebefed993a1271a9fbf"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-05",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-06",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-07",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-08",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-09",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-10",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-11",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "2f966e5dd8c5bb84d90887365c61ba1a453c955a6d89c65bc8e554db3689f8fc"
+          ],
+          "measured": 14
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "2f966e5dd8c5bb84d90887365c61ba1a453c955a6d89c65bc8e554db3689f8fc"
+          ],
+          "measured": 12
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "2f966e5dd8c5bb84d90887365c61ba1a453c955a6d89c65bc8e554db3689f8fc"
+          ],
+          "measured": 14
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "2f966e5dd8c5bb84d90887365c61ba1a453c955a6d89c65bc8e554db3689f8fc"
+          ],
+          "measured": 13
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "2f966e5dd8c5bb84d90887365c61ba1a453c955a6d89c65bc8e554db3689f8fc"
+          ],
+          "measured": 14
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "2f966e5dd8c5bb84d90887365c61ba1a453c955a6d89c65bc8e554db3689f8fc"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "2f966e5dd8c5bb84d90887365c61ba1a453c955a6d89c65bc8e554db3689f8fc"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-12",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-13",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-14",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native solid membership is missing for one or more part definitions.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ]
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ],
+          "measured": 0
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "33330d0f2181d2b19baf648b58dcc6e0bbde1e1203371dc288b2166f81acc476"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-15",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "0dd04ea266ee6f1ddf5972579b4a74f82931d2d78dcc81c155c16a2757760d8a"
+          ],
+          "measured": 29
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "0dd04ea266ee6f1ddf5972579b4a74f82931d2d78dcc81c155c16a2757760d8a"
+          ],
+          "measured": 20
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "0dd04ea266ee6f1ddf5972579b4a74f82931d2d78dcc81c155c16a2757760d8a"
+          ],
+          "measured": 29
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "0dd04ea266ee6f1ddf5972579b4a74f82931d2d78dcc81c155c16a2757760d8a"
+          ],
+          "measured": 28
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "0dd04ea266ee6f1ddf5972579b4a74f82931d2d78dcc81c155c16a2757760d8a"
+          ],
+          "measured": 29
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "0dd04ea266ee6f1ddf5972579b4a74f82931d2d78dcc81c155c16a2757760d8a"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "0dd04ea266ee6f1ddf5972579b4a74f82931d2d78dcc81c155c16a2757760d8a"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-16",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-17",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "76b9997f1e9c9af98a43b2181ac7a2e567eae86b64a32afb50af578016b61b03"
+          ],
+          "measured": 70
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "76b9997f1e9c9af98a43b2181ac7a2e567eae86b64a32afb50af578016b61b03"
+          ],
+          "measured": 67
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "76b9997f1e9c9af98a43b2181ac7a2e567eae86b64a32afb50af578016b61b03"
+          ],
+          "measured": 70
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "76b9997f1e9c9af98a43b2181ac7a2e567eae86b64a32afb50af578016b61b03"
+          ],
+          "measured": 69
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "76b9997f1e9c9af98a43b2181ac7a2e567eae86b64a32afb50af578016b61b03"
+          ],
+          "measured": 70
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "76b9997f1e9c9af98a43b2181ac7a2e567eae86b64a32afb50af578016b61b03"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "76b9997f1e9c9af98a43b2181ac7a2e567eae86b64a32afb50af578016b61b03"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-01",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "64dcdd41d6f7bd4a88165fad69bc52b3b04a81b664fcd95f8221ffe2ee31d97f"
+          ],
+          "measured": 2405
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "64dcdd41d6f7bd4a88165fad69bc52b3b04a81b664fcd95f8221ffe2ee31d97f"
+          ],
+          "measured": 1967
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "64dcdd41d6f7bd4a88165fad69bc52b3b04a81b664fcd95f8221ffe2ee31d97f"
+          ],
+          "measured": 2405
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "64dcdd41d6f7bd4a88165fad69bc52b3b04a81b664fcd95f8221ffe2ee31d97f"
+          ],
+          "measured": 2404
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "64dcdd41d6f7bd4a88165fad69bc52b3b04a81b664fcd95f8221ffe2ee31d97f"
+          ],
+          "measured": 2405
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "64dcdd41d6f7bd4a88165fad69bc52b3b04a81b664fcd95f8221ffe2ee31d97f"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "64dcdd41d6f7bd4a88165fad69bc52b3b04a81b664fcd95f8221ffe2ee31d97f"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-02",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-03",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "f5438799f63efe4458acf02c522415990fbdbe6405776457d98fe5893d597df8"
+          ],
+          "measured": 84
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "f5438799f63efe4458acf02c522415990fbdbe6405776457d98fe5893d597df8"
+          ],
+          "measured": 80
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "f5438799f63efe4458acf02c522415990fbdbe6405776457d98fe5893d597df8"
+          ],
+          "measured": 84
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "f5438799f63efe4458acf02c522415990fbdbe6405776457d98fe5893d597df8"
+          ],
+          "measured": 83
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "f5438799f63efe4458acf02c522415990fbdbe6405776457d98fe5893d597df8"
+          ],
+          "measured": 84
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "f5438799f63efe4458acf02c522415990fbdbe6405776457d98fe5893d597df8"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "f5438799f63efe4458acf02c522415990fbdbe6405776457d98fe5893d597df8"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-04",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-05",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-06",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ],
+          "measured": 516
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ],
+          "measured": 513
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ],
+          "measured": 516
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ],
+          "measured": 515
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ],
+          "measured": 516
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "6248e3a7496f8fd33c9fd71070141716c0cfd92d66fe2d6fa04e4649fa4024c2"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-07",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-08",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-09",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "b8cff0d7ec562418c6a4c4f555be8a0a04b896ee66c4d51abc250f69ebb3f93b"
+          ],
+          "measured": 109
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "b8cff0d7ec562418c6a4c4f555be8a0a04b896ee66c4d51abc250f69ebb3f93b"
+          ],
+          "measured": 106
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "b8cff0d7ec562418c6a4c4f555be8a0a04b896ee66c4d51abc250f69ebb3f93b"
+          ],
+          "measured": 109
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "b8cff0d7ec562418c6a4c4f555be8a0a04b896ee66c4d51abc250f69ebb3f93b"
+          ],
+          "measured": 108
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "b8cff0d7ec562418c6a4c4f555be8a0a04b896ee66c4d51abc250f69ebb3f93b"
+          ],
+          "measured": 109
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "b8cff0d7ec562418c6a4c4f555be8a0a04b896ee66c4d51abc250f69ebb3f93b"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "b8cff0d7ec562418c6a4c4f555be8a0a04b896ee66c4d51abc250f69ebb3f93b"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-10",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-11",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-01",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "ebfe2526bb748ab5e752e6546080bfde6204b11904e2e86c35eff1072b9616e6"
+          ],
+          "measured": 686
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "ebfe2526bb748ab5e752e6546080bfde6204b11904e2e86c35eff1072b9616e6"
+          ],
+          "measured": 540
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "ebfe2526bb748ab5e752e6546080bfde6204b11904e2e86c35eff1072b9616e6"
+          ],
+          "measured": 686
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "ebfe2526bb748ab5e752e6546080bfde6204b11904e2e86c35eff1072b9616e6"
+          ],
+          "measured": 685
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "ebfe2526bb748ab5e752e6546080bfde6204b11904e2e86c35eff1072b9616e6"
+          ],
+          "measured": 686
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "ebfe2526bb748ab5e752e6546080bfde6204b11904e2e86c35eff1072b9616e6"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "ebfe2526bb748ab5e752e6546080bfde6204b11904e2e86c35eff1072b9616e6"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-02",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "d66133512094c5fe398762f815a1c5a6ef0ce0a55cdfb4b1b2e0d4d42a3c4299"
+          ],
+          "measured": 7
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "d66133512094c5fe398762f815a1c5a6ef0ce0a55cdfb4b1b2e0d4d42a3c4299"
+          ],
+          "measured": 5
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "d66133512094c5fe398762f815a1c5a6ef0ce0a55cdfb4b1b2e0d4d42a3c4299"
+          ],
+          "measured": 7
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "d66133512094c5fe398762f815a1c5a6ef0ce0a55cdfb4b1b2e0d4d42a3c4299"
+          ],
+          "measured": 6
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "d66133512094c5fe398762f815a1c5a6ef0ce0a55cdfb4b1b2e0d4d42a3c4299"
+          ],
+          "measured": 7
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "d66133512094c5fe398762f815a1c5a6ef0ce0a55cdfb4b1b2e0d4d42a3c4299"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "d66133512094c5fe398762f815a1c5a6ef0ce0a55cdfb4b1b2e0d4d42a3c4299"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-03",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-04",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-05",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "2a0112ad138aa44621d1aa1139ba00c5d4757590c024fa98e7ccb43c2bd3b0b0"
+          ],
+          "measured": 26
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "2a0112ad138aa44621d1aa1139ba00c5d4757590c024fa98e7ccb43c2bd3b0b0"
+          ],
+          "measured": 22
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "2a0112ad138aa44621d1aa1139ba00c5d4757590c024fa98e7ccb43c2bd3b0b0"
+          ],
+          "measured": 26
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "2a0112ad138aa44621d1aa1139ba00c5d4757590c024fa98e7ccb43c2bd3b0b0"
+          ],
+          "measured": 25
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "2a0112ad138aa44621d1aa1139ba00c5d4757590c024fa98e7ccb43c2bd3b0b0"
+          ],
+          "measured": 26
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "2a0112ad138aa44621d1aa1139ba00c5d4757590c024fa98e7ccb43c2bd3b0b0"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "2a0112ad138aa44621d1aa1139ba00c5d4757590c024fa98e7ccb43c2bd3b0b0"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-06",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "40dc6949908bbdc52f453547bb18d0f604ef66727df2b48ba8507d8e8a74c9ad"
+          ],
+          "measured": 145
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "40dc6949908bbdc52f453547bb18d0f604ef66727df2b48ba8507d8e8a74c9ad"
+          ],
+          "measured": 105
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "40dc6949908bbdc52f453547bb18d0f604ef66727df2b48ba8507d8e8a74c9ad"
+          ],
+          "measured": 145
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "40dc6949908bbdc52f453547bb18d0f604ef66727df2b48ba8507d8e8a74c9ad"
+          ],
+          "measured": 144
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "40dc6949908bbdc52f453547bb18d0f604ef66727df2b48ba8507d8e8a74c9ad"
+          ],
+          "measured": 145
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "40dc6949908bbdc52f453547bb18d0f604ef66727df2b48ba8507d8e8a74c9ad"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "40dc6949908bbdc52f453547bb18d0f604ef66727df2b48ba8507d8e8a74c9ad"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-07",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-08",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-09",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "ba8cdc3210a44c2905cbe71d1c4da25914462395c7e4c3d6ae9c0d69cd0cc279"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native solid membership is missing for one or more part definitions.",
+          "artifactHashes": [
+            "ba8cdc3210a44c2905cbe71d1c4da25914462395c7e4c3d6ae9c0d69cd0cc279"
+          ]
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "ba8cdc3210a44c2905cbe71d1c4da25914462395c7e4c3d6ae9c0d69cd0cc279"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "ba8cdc3210a44c2905cbe71d1c4da25914462395c7e4c3d6ae9c0d69cd0cc279"
+          ],
+          "measured": 0
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "ba8cdc3210a44c2905cbe71d1c4da25914462395c7e4c3d6ae9c0d69cd0cc279"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "ba8cdc3210a44c2905cbe71d1c4da25914462395c7e4c3d6ae9c0d69cd0cc279"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "ba8cdc3210a44c2905cbe71d1c4da25914462395c7e4c3d6ae9c0d69cd0cc279"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-10",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "6232342438eb58deb1659363174492031a1b037fef501d320abf508743e49d9c"
+          ],
+          "measured": 802
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "6232342438eb58deb1659363174492031a1b037fef501d320abf508743e49d9c"
+          ],
+          "measured": 795
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "6232342438eb58deb1659363174492031a1b037fef501d320abf508743e49d9c"
+          ],
+          "measured": 802
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "6232342438eb58deb1659363174492031a1b037fef501d320abf508743e49d9c"
+          ],
+          "measured": 801
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "6232342438eb58deb1659363174492031a1b037fef501d320abf508743e49d9c"
+          ],
+          "measured": 802
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "6232342438eb58deb1659363174492031a1b037fef501d320abf508743e49d9c"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "6232342438eb58deb1659363174492031a1b037fef501d320abf508743e49d9c"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-11",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ],
+          "measured": 38
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ],
+          "measured": 34
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ],
+          "measured": 38
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ],
+          "measured": 37
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ],
+          "measured": 38
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-01",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-02",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "5b4662887ace6300d2a985c4c9567f124ba9fbcefe3e154ab4486d3bbac62c36"
+          ],
+          "measured": 1788
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "5b4662887ace6300d2a985c4c9567f124ba9fbcefe3e154ab4486d3bbac62c36"
+          ],
+          "measured": 1369
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "5b4662887ace6300d2a985c4c9567f124ba9fbcefe3e154ab4486d3bbac62c36"
+          ],
+          "measured": 1788
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "5b4662887ace6300d2a985c4c9567f124ba9fbcefe3e154ab4486d3bbac62c36"
+          ],
+          "measured": 1787
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "5b4662887ace6300d2a985c4c9567f124ba9fbcefe3e154ab4486d3bbac62c36"
+          ],
+          "measured": 1788
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "5b4662887ace6300d2a985c4c9567f124ba9fbcefe3e154ab4486d3bbac62c36"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "5b4662887ace6300d2a985c4c9567f124ba9fbcefe3e154ab4486d3bbac62c36"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-03",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-04",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "38054bb90e94f0e9e68b84264939eed1f90a8e5e94102e15044eceac005b414f"
+          ],
+          "measured": 1773
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "38054bb90e94f0e9e68b84264939eed1f90a8e5e94102e15044eceac005b414f"
+          ],
+          "measured": 1152
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "38054bb90e94f0e9e68b84264939eed1f90a8e5e94102e15044eceac005b414f"
+          ],
+          "measured": 1773
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "38054bb90e94f0e9e68b84264939eed1f90a8e5e94102e15044eceac005b414f"
+          ],
+          "measured": 1772
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "38054bb90e94f0e9e68b84264939eed1f90a8e5e94102e15044eceac005b414f"
+          ],
+          "measured": 1773
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "38054bb90e94f0e9e68b84264939eed1f90a8e5e94102e15044eceac005b414f"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "38054bb90e94f0e9e68b84264939eed1f90a8e5e94102e15044eceac005b414f"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-05",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-06",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-07",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-08",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "0f1730e31a7ffcdb36a18800b3d716da3a74f00e6441448955ba6c0e32318732"
+          ],
+          "measured": 324
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "0f1730e31a7ffcdb36a18800b3d716da3a74f00e6441448955ba6c0e32318732"
+          ],
+          "measured": 284
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "0f1730e31a7ffcdb36a18800b3d716da3a74f00e6441448955ba6c0e32318732"
+          ],
+          "measured": 324
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "0f1730e31a7ffcdb36a18800b3d716da3a74f00e6441448955ba6c0e32318732"
+          ],
+          "measured": 323
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "0f1730e31a7ffcdb36a18800b3d716da3a74f00e6441448955ba6c0e32318732"
+          ],
+          "measured": 324
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "0f1730e31a7ffcdb36a18800b3d716da3a74f00e6441448955ba6c0e32318732"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "0f1730e31a7ffcdb36a18800b3d716da3a74f00e6441448955ba6c0e32318732"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-09",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-10",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-11",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-12",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "1f8dfbf39f3ea700f485916d3303c922ead1fa7b6503281ba2264cbe1f847193"
+          ],
+          "measured": 397
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "1f8dfbf39f3ea700f485916d3303c922ead1fa7b6503281ba2264cbe1f847193"
+          ],
+          "measured": 260
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "1f8dfbf39f3ea700f485916d3303c922ead1fa7b6503281ba2264cbe1f847193"
+          ],
+          "measured": 397
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "1f8dfbf39f3ea700f485916d3303c922ead1fa7b6503281ba2264cbe1f847193"
+          ],
+          "measured": 396
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "1f8dfbf39f3ea700f485916d3303c922ead1fa7b6503281ba2264cbe1f847193"
+          ],
+          "measured": 397
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "1f8dfbf39f3ea700f485916d3303c922ead1fa7b6503281ba2264cbe1f847193"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "1f8dfbf39f3ea700f485916d3303c922ead1fa7b6503281ba2264cbe1f847193"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-13",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-14",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-15",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-16",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-17",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "29e1ac9eec439dba75e6e13b38e9d740fc84d87c032a9c993fbc7ee264894ccc"
+          ],
+          "measured": 238
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "29e1ac9eec439dba75e6e13b38e9d740fc84d87c032a9c993fbc7ee264894ccc"
+          ],
+          "measured": 200
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "29e1ac9eec439dba75e6e13b38e9d740fc84d87c032a9c993fbc7ee264894ccc"
+          ],
+          "measured": 238
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "29e1ac9eec439dba75e6e13b38e9d740fc84d87c032a9c993fbc7ee264894ccc"
+          ],
+          "measured": 237
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "29e1ac9eec439dba75e6e13b38e9d740fc84d87c032a9c993fbc7ee264894ccc"
+          ],
+          "measured": 238
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "29e1ac9eec439dba75e6e13b38e9d740fc84d87c032a9c993fbc7ee264894ccc"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "29e1ac9eec439dba75e6e13b38e9d740fc84d87c032a9c993fbc7ee264894ccc"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-18",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-19",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-20",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "cb06f762c83245ffecb11948fc5ec9ef1f101df33c636fe5a9aa0272a71d3270"
+          ],
+          "measured": 16249
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "cb06f762c83245ffecb11948fc5ec9ef1f101df33c636fe5a9aa0272a71d3270"
+          ],
+          "measured": 16164
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "cb06f762c83245ffecb11948fc5ec9ef1f101df33c636fe5a9aa0272a71d3270"
+          ],
+          "measured": 16249
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "cb06f762c83245ffecb11948fc5ec9ef1f101df33c636fe5a9aa0272a71d3270"
+          ],
+          "measured": 16248
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "cb06f762c83245ffecb11948fc5ec9ef1f101df33c636fe5a9aa0272a71d3270"
+          ],
+          "measured": 16249
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "cb06f762c83245ffecb11948fc5ec9ef1f101df33c636fe5a9aa0272a71d3270"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "cb06f762c83245ffecb11948fc5ec9ef1f101df33c636fe5a9aa0272a71d3270"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-01",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-02",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-03",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-04",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-05",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-06",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "a6cf38251392e3660bd3f623b6df4331b70f1de191cb42fa6eca96f48af649b0"
+          ],
+          "measured": 278
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native solid membership is missing for one or more part definitions.",
+          "artifactHashes": [
+            "a6cf38251392e3660bd3f623b6df4331b70f1de191cb42fa6eca96f48af649b0"
+          ]
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "a6cf38251392e3660bd3f623b6df4331b70f1de191cb42fa6eca96f48af649b0"
+          ],
+          "measured": 278
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "a6cf38251392e3660bd3f623b6df4331b70f1de191cb42fa6eca96f48af649b0"
+          ],
+          "measured": 277
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "a6cf38251392e3660bd3f623b6df4331b70f1de191cb42fa6eca96f48af649b0"
+          ],
+          "measured": 278
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "a6cf38251392e3660bd3f623b6df4331b70f1de191cb42fa6eca96f48af649b0"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "a6cf38251392e3660bd3f623b6df4331b70f1de191cb42fa6eca96f48af649b0"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-07",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-08",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-09",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-10",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "4ddcef26faf4b7b929bdc2896a5265998c61175e55f43dd178f2c3ed1fcfc1ea"
+          ],
+          "measured": 224
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native solid membership is missing for one or more part definitions.",
+          "artifactHashes": [
+            "4ddcef26faf4b7b929bdc2896a5265998c61175e55f43dd178f2c3ed1fcfc1ea"
+          ]
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "4ddcef26faf4b7b929bdc2896a5265998c61175e55f43dd178f2c3ed1fcfc1ea"
+          ],
+          "measured": 224
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "4ddcef26faf4b7b929bdc2896a5265998c61175e55f43dd178f2c3ed1fcfc1ea"
+          ],
+          "measured": 223
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "4ddcef26faf4b7b929bdc2896a5265998c61175e55f43dd178f2c3ed1fcfc1ea"
+          ],
+          "measured": 224
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "4ddcef26faf4b7b929bdc2896a5265998c61175e55f43dd178f2c3ed1fcfc1ea"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "4ddcef26faf4b7b929bdc2896a5265998c61175e55f43dd178f2c3ed1fcfc1ea"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-11",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-12",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "ee829babc9ce20669a20e930158c0c31884a7fad94db0228be842bb7503288c7"
+          ],
+          "measured": 1191
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native solid membership is missing for one or more part definitions.",
+          "artifactHashes": [
+            "ee829babc9ce20669a20e930158c0c31884a7fad94db0228be842bb7503288c7"
+          ]
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "ee829babc9ce20669a20e930158c0c31884a7fad94db0228be842bb7503288c7"
+          ],
+          "measured": 1191
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "ee829babc9ce20669a20e930158c0c31884a7fad94db0228be842bb7503288c7"
+          ],
+          "measured": 1190
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "ee829babc9ce20669a20e930158c0c31884a7fad94db0228be842bb7503288c7"
+          ],
+          "measured": 1191
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "ee829babc9ce20669a20e930158c0c31884a7fad94db0228be842bb7503288c7"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "ee829babc9ce20669a20e930158c0c31884a7fad94db0228be842bb7503288c7"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-13",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "4e13b822d4a5c32f4eb64dc73486063534ff8c350de5a780f6fcb1ccd72a196a"
+          ],
+          "measured": 4621
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native solid membership is missing for one or more part definitions.",
+          "artifactHashes": [
+            "4e13b822d4a5c32f4eb64dc73486063534ff8c350de5a780f6fcb1ccd72a196a"
+          ]
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "4e13b822d4a5c32f4eb64dc73486063534ff8c350de5a780f6fcb1ccd72a196a"
+          ],
+          "measured": 4621
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "4e13b822d4a5c32f4eb64dc73486063534ff8c350de5a780f6fcb1ccd72a196a"
+          ],
+          "measured": 4620
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "4e13b822d4a5c32f4eb64dc73486063534ff8c350de5a780f6fcb1ccd72a196a"
+          ],
+          "measured": 4621
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "4e13b822d4a5c32f4eb64dc73486063534ff8c350de5a780f6fcb1ccd72a196a"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "4e13b822d4a5c32f4eb64dc73486063534ff8c350de5a780f6fcb1ccd72a196a"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-14",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-15",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-16",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-17",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-18",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-19",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-20",
+      "status": "not_run",
+      "releaseReady": false,
+      "errors": [],
+      "axes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    }
+  ]
+}

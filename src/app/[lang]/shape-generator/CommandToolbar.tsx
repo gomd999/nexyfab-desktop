@@ -2262,7 +2262,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
       <div className="sg-topbar" style={shellTop}>
         {/* File button (always visible, far left) */}
         <div style={{ position: 'relative', marginRight: 6 }}>
-          <button style={{
+          <button data-testid="command-file-menu" style={{
             ...S.fileBtn,
             background: fileOpen ? C_DARK.hover : 'transparent',
           }}
@@ -2278,6 +2278,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
               boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
             }}>
               <button
+                data-testid="command-import-file"
                 style={S.dropItem}
                 title={fileImportMenuHint}
                 onClick={() => { onImportFile?.(); closeSub(); }}
@@ -2360,6 +2361,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                 <span>{tt.exportHTML}</span>
               </button>
               <button
+                data-testid="export-step"
                 style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'STEP' || !stepExportSupported) ? 0.4 : 1 }}
                 disabled={!hasResult || exportingFormat === 'STEP' || !stepExportSupported}
                 title={!stepExportSupported ? tt.exportSTEPUnsupportedTip : undefined}

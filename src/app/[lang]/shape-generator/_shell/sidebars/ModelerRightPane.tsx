@@ -204,6 +204,8 @@ function InspectorTab({
             <PropRow key={key} label={key}>
               <PropNumber
                 value={value}
+                ariaLabel={`${featureType ?? 'feature'} ${key}`}
+                testId={`inspector-param-${key}`}
                 onChange={(v) => {
                   if (typeof window !== 'undefined') {
                     window.dispatchEvent(new CustomEvent('nexyfab:update-feature-param', {

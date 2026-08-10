@@ -1,0 +1,2528 @@
+{
+  "schema": "nexyfab.native-worker-routing-manifest.v1",
+  "policy": {
+    "sourceHashesRequired": true,
+    "archiveMemberHashesRequired": true,
+    "unsupportedFailsClosed": true,
+    "supportedExtensions": [
+      "asm",
+      "catpart",
+      "catproduct",
+      "dwg",
+      "iam",
+      "ifc",
+      "iges",
+      "igs",
+      "ipt",
+      "prt",
+      "rfa",
+      "rvt",
+      "sldasm",
+      "sldprt",
+      "step",
+      "stp",
+      "x_b",
+      "x_t"
+    ]
+  },
+  "summary": {
+    "requestCases": 88,
+    "routedCases": 88,
+    "unroutedCases": 0,
+    "jobs": 141,
+    "localJobs": 33,
+    "externalRequiredJobs": 108,
+    "byWorker": {
+      "catia-native": 1,
+      "creo-native": 16,
+      "dwg-exact": 16,
+      "freecad-exchange": 29,
+      "ifc-native": 4,
+      "inventor-native": 33,
+      "parasolid-native": 1,
+      "revit-native": 6,
+      "solidworks-native": 35
+    }
+  },
+  "jobs": [
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "42436afabf470e4b40a03143",
+      "caseId": "robot-review-01",
+      "sourceHash": "4efda040359eb9600af0c4a11e1b8b382f57f44891be4bd8c009dbcaab6cda2c",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/epson-c4-a601s-6-axis-robot-arm-1.snapshot.2/Robot c 4 a 601 s.STEP",
+        "sha256": "4efda040359eb9600af0c4a11e1b8b382f57f44891be4bd8c009dbcaab6cda2c",
+        "bytes": 23236392,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "f6542eed1c9f4f206a82c286",
+      "caseId": "robot-review-02",
+      "sourceHash": "fabf997b27909c9ac626892bdc8ff580cdbf21dc601d0ba666a4fa9d69a7f718",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Final Assembly.x_t",
+        "sha256": "fabf997b27909c9ac626892bdc8ff580cdbf21dc601d0ba666a4fa9d69a7f718",
+        "bytes": 13873151,
+        "extension": "x_t"
+      },
+      "workerKind": "parasolid-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "9d9069a72ddf1813d8aaef58",
+      "caseId": "robot-review-03",
+      "sourceHash": "4a3a0286de2990bab162f2f4b69308972b2f49db5c029483ad0d13d0f4a8147b",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/mitsubishi-rv-2f-d1-s16-6-axis-robot-arm-1.snapshot.1/Robot rv.STEP",
+        "sha256": "4a3a0286de2990bab162f2f4b69308972b2f49db5c029483ad0d13d0f4a8147b",
+        "bytes": 8645424,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "f23c29068faa44f02b7c21af",
+      "caseId": "robot-review-04",
+      "sourceHash": "383c2165e393e3a49ad8c65258c4237e64e73403b53822d03a0683c15b62709d",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/mrl-work-dynamixelpro-based-precision-manipulator-1.snapshot.1/New2017_ARM_[At]WorkMRL_V4.4-STY.SLDASM",
+        "sha256": "383c2165e393e3a49ad8c65258c4237e64e73403b53822d03a0683c15b62709d",
+        "bytes": 2579904,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "f5de4ab98a6b1e2494c68fb8",
+      "caseId": "robot-review-05",
+      "sourceHash": "c99aa30f426054651f33f1790f8c6c2e3dcaf228a45bb45b37f362df692f8bb6",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들3/robot-5-dof-1.snapshot.2/Assembly FULL.iam",
+        "sha256": "c99aa30f426054651f33f1790f8c6c2e3dcaf228a45bb45b37f362df692f8bb6",
+        "bytes": 2058240,
+        "extension": "iam"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "4ee755056ee602654e310565",
+      "caseId": "robot-review-06",
+      "sourceHash": "b4a254af13a0e1552b38be11fd3004cf80301c76e3e6a920e031a9c6e04d86e9",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들3/robot-5-dof-2.snapshot.2/Lắp FULL.stp",
+        "sha256": "b4a254af13a0e1552b38be11fd3004cf80301c76e3e6a920e031a9c6e04d86e9",
+        "bytes": 10002080,
+        "extension": "stp"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "cd7a954cd479d88171c6f530",
+      "caseId": "robot-review-07",
+      "sourceHash": "39717c9473cce636f07fc4d5c8054a7c3b44f9f3fbcede613322577b0e1ee2be",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들3/robotic-arm-466.snapshot.3/ROBOTIC ARM.STEP",
+        "sha256": "39717c9473cce636f07fc4d5c8054a7c3b44f9f3fbcede613322577b0e1ee2be",
+        "bytes": 104015,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "ff8cda5954899a716df86819",
+      "caseId": "robot-review-08",
+      "sourceHash": "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/two-wheel-self-balancing-robot-v1-1.snapshot.4/CAD/reference-components/arduino-uno-sensor-shield-1.snapshot.6/Arduino Sensor Board V1.stp",
+        "sha256": "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103",
+        "bytes": 3339756,
+        "extension": "stp"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "eb392b41966995f44e1853ea",
+      "caseId": "robot-review-09",
+      "sourceHash": "c07e39cb9b19f9ae8e23751b2d70d24fedb2acce30b9acefc0684515fa8197b9",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/vacuum-gripper-6.snapshot.3/Epick Vacuum.SLDASM",
+        "sha256": "c07e39cb9b19f9ae8e23751b2d70d24fedb2acce30b9acefc0684515fa8197b9",
+        "bytes": 7907204,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "064a43854adfd9390ec6e4e1",
+      "caseId": "gearbox-review-01",
+      "sourceHash": "34456f5a233bf4ef5b9bc0fa0c5970d8b54aebb8fa3eceeaadf51253a4126e9d",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/3-stage-helical-gear-reducer-design-1.snapshot.4/Montaj bitiş.SLDASM",
+        "sha256": "34456f5a233bf4ef5b9bc0fa0c5970d8b54aebb8fa3eceeaadf51253a4126e9d",
+        "bytes": 2549222,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "f38ff0c295879cccc858684f",
+      "caseId": "gearbox-review-02",
+      "sourceHash": "234a768f45040a1df2ec2d47554fe048f8f9dfe293c0590b0d56476559436104",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/basic-worm-gear-assembly-solidworks-1.snapshot.2/Assem1.SLDASM",
+        "sha256": "234a768f45040a1df2ec2d47554fe048f8f9dfe293c0590b0d56476559436104",
+        "bytes": 1051314,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "bad9c197700fa40a26fbd0be",
+      "caseId": "gearbox-review-03",
+      "sourceHash": "b5aa4955b6e4e441f33e6d67f2b42a1b0c01e5aa5dd2e2810e85265215b71f36",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/cycloidal-gearbox-50-1-for-curtain-lift-canon-pixma-mg5540-motor-1.snapshot.58/cycloidal gearbox 50_1.SLDASM",
+        "sha256": "b5aa4955b6e4e441f33e6d67f2b42a1b0c01e5aa5dd2e2810e85265215b71f36",
+        "bytes": 754765,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "20a6f3ca9076d7d1a2ade23d",
+      "caseId": "gearbox-review-04",
+      "sourceHash": "6a66de0b245fd5f3764358c105f39845922fb9485d5617e6537e39686844d51c",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/differential-109.snapshot.7/DIFFERENTIAL GEAR BOX FILE.STEP",
+        "sha256": "6a66de0b245fd5f3764358c105f39845922fb9485d5617e6537e39686844d51c",
+        "bytes": 13673241,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "b277c3330844b7062d9e187e",
+      "caseId": "gearbox-review-05",
+      "sourceHash": "5e171f9695873a0fb0933dd7d333b30b89809fc7ad8d1e915dad1d9a3d066009",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/differential-gear-box-47.snapshot.7/Assem GB.SLDASM",
+        "sha256": "5e171f9695873a0fb0933dd7d333b30b89809fc7ad8d1e915dad1d9a3d066009",
+        "bytes": 2443139,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "ce0b8dd4d8ee797f568c0071",
+      "caseId": "gearbox-review-06",
+      "sourceHash": "4d17aa98089879f4af6812a9478e12557116a8710ed80487d4c3d4c7ac9e65e3",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/gear-box-142.snapshot.4/Gear Box/MONTAJ.SLDASM",
+        "sha256": "4d17aa98089879f4af6812a9478e12557116a8710ed80487d4c3d4c7ac9e65e3",
+        "bytes": 4123526,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "df5a717114f9c042b7f55170",
+      "caseId": "gearbox-review-07",
+      "sourceHash": "f88f2b80dc74d5b756b5267ff6817107118fa50e0931f5de67f01ce409f7e204",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/gear-box-261.snapshot.1/gearbox/Gear Box & Body Assembely.SLDASM",
+        "sha256": "f88f2b80dc74d5b756b5267ff6817107118fa50e0931f5de67f01ce409f7e204",
+        "bytes": 732569,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "1d1de823a33f6bb5d6fd68b9",
+      "caseId": "gearbox-review-08",
+      "sourceHash": "18f10d7e5fbd68e6eeadf5fcc4e035381157b10387fce110227b8c513bbcc0d9",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/gear-reducer-24.snapshot.2/video2.CATProduct",
+        "sha256": "18f10d7e5fbd68e6eeadf5fcc4e035381157b10387fce110227b8c513bbcc0d9",
+        "bytes": 231229,
+        "extension": "catproduct"
+      },
+      "workerKind": "catia-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "c29630f93cf101b21bd88f39",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Bearing Cap - Gearbox.prt",
+        "sha256": "93a2a0bf8caba24fd63dc681613651c62aa597462b31df0f52b623cf34aa9cf6",
+        "bytes": 219202,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "5d41726b80e3ac290406a1fd",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Countershaft - Gearbox.prt",
+        "sha256": "f5f9301877adaa3cb2cf0e11d66b53656f39a39a52d567b050a6af720b1b5aaf",
+        "bytes": 189029,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "6b286b1f226d2eb1da9e9f1b",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Gearbox - Assembly.prt",
+        "sha256": "4f2a57e9d5c405698187f993dc781802a448b000f92baaa1e20d5c0e292ebd1a",
+        "bytes": 974135,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "47c7dde13af69decfe0d237c",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Gearbox Casing - Gearbox.prt",
+        "sha256": "09608ce784c9c027167c1760967a5cfea6515035b2b9090d88f78f35314989ba",
+        "bytes": 1607158,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "bc51c5be1fb224a2bae9ade6",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Primary Shaft - Gearbox.prt",
+        "sha256": "cc4bea63681c703667a4bf454cda94e5394439a6323d541a71f7d201fcd761e2",
+        "bytes": 256869,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "4322f4cc83fd46790c452725",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Primary Shaft Gear G1 - Gearbox.prt",
+        "sha256": "ab3ff76e8f06a678cb39ab59f56b121e5e31ebb4acea7bfbffbcc75861c47fb6",
+        "bytes": 618060,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "43272b2714eba79b5662fe1d",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Primary Shaft Gear G2 - Gearbox.prt",
+        "sha256": "a987a809db852e333a7e709d675d696755c50dd4d3a36c031ea9a66a9f9dfaf0",
+        "bytes": 676505,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "3e1cee0c209aaad6784de00a",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Primary Shaft Gear G3 - Gearbox.prt",
+        "sha256": "85cb59dd574afcae1125a585b7adc9162020996302ef29573c4a3ff7d2d4d298",
+        "bytes": 772885,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "018c48778afe958d8224a1ae",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Primary Shaft Gear G4 - Gearbox.prt",
+        "sha256": "097bb3c01d8219e3285316b0e5d720211a70449b6d17605caa4783036e240b79",
+        "bytes": 840137,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "1678d80fd26ccb06cfcc62b1",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Secondary Shaft - Gearbox.prt",
+        "sha256": "df4af41753f72115a05ae567d76a2a9abfd614d64b91d01a42a35aa563243d6f",
+        "bytes": 248563,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "88a5ca9f3713655347c64476",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Secondary Shaft Gear G1 - Gearbox.prt",
+        "sha256": "88ca282ba8412766ed5fa817500908f0e59585ba78a9ed234d937f0fbeb7d0ce",
+        "bytes": 517141,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "e63273a295f8d9100ea795ec",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Secondary Shaft Gear G2 - Gearbox.prt",
+        "sha256": "28332afbc9f1613fe6e626c3ae692b3fc459ccf902b1803bdf9750ae6bf0b66f",
+        "bytes": 780858,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "15a0cd7d71636c6105449cf5",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Secondary Shaft Gear G3 - Gearbox.prt",
+        "sha256": "c2fb4153a60998c4e8ed9f3c0ba36017f074a4be22eb2756d3c35b992803862e",
+        "bytes": 729299,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "1ce565b90916a29dbca7d2d2",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Secondary Shaft Gear G4 - Gearbox.prt",
+        "sha256": "febd70522a1696290515bec31d1d19af8c6ef057fbbee987f5b07f1f8720eeb0",
+        "bytes": 731106,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "a89063aa13e8123acb758b58",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/gearbox-109.snapshot.12.zip",
+        "member": "Gearbox/Secondary Shaft Gear G5 - Gearbox.prt",
+        "sha256": "05e748455c425a0f40d7175e301da186af26db41d021c30c96aeb8863d1577f5",
+        "bytes": 675120,
+        "extension": "prt"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "9b9b560cb81af8dedbe53338",
+      "caseId": "gearbox-review-10",
+      "sourceHash": "0b9069caa4d457021df7825d6365183166df6914d86561638fc3002e1fedee04",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/helical-gear-box-ratio-2-5-1.snapshot.2/C9 GB.asm",
+        "sha256": "0b9069caa4d457021df7825d6365183166df6914d86561638fc3002e1fedee04",
+        "bytes": 2125312,
+        "extension": "asm"
+      },
+      "workerKind": "creo-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "2d6854d9a731545bf6e120d1",
+      "caseId": "gearbox-review-11",
+      "sourceHash": "5b0b36d1168a1a3e89627712c774e6ec9f31ef86eb80934e5c7202f224b6807a",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/helical-planetary-gearbox-design-advanced-solidworks-assembly-1.snapshot.1/step/final assemm.STEP",
+        "sha256": "5b0b36d1168a1a3e89627712c774e6ec9f31ef86eb80934e5c7202f224b6807a",
+        "bytes": 22458782,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "11c312a7123fea17e602dce7",
+      "caseId": "gearbox-review-12",
+      "sourceHash": "58c33910be55d7819dba9ba6ab427799c1795abc1f795e05ba6db9b62080352a",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/industrial-gearbox-speed-reducer-full-assembly-parts-1.snapshot.4/Gear Box Assembly.SLDASM",
+        "sha256": "58c33910be55d7819dba9ba6ab427799c1795abc1f795e05ba6db9b62080352a",
+        "bytes": 1297254,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "7588b719fe6e27fe55064b62",
+      "caseId": "gearbox-review-13",
+      "sourceHash": "75815ed5ab9524c34508ffbc6ade7280a4dd64a8f0edf368467b154b1f80fc8a",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/planetary-gearbox-assembly-4.snapshot.5/Planetary Gear/Planetary Gear Assembly.SLDASM",
+        "sha256": "75815ed5ab9524c34508ffbc6ade7280a4dd64a8f0edf368467b154b1f80fc8a",
+        "bytes": 924531,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "15ad7536e3fad364b591cec6",
+      "caseId": "gearbox-review-14",
+      "sourceHash": "36fa5483509d06002a2cc1439a6df6d4f8838b80e4da482c9ad47019e6ec9e7d",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/reductor-de-tornillo-sinfin-gear-reducer-driven-1.snapshot.2/Reductor de tornillo/Reductor de Tornillo Assy.IGS",
+        "sha256": "36fa5483509d06002a2cc1439a6df6d4f8838b80e4da482c9ad47019e6ec9e7d",
+        "bytes": 10197110,
+        "extension": "igs"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "e0eda73ba87df52f56f2735b",
+      "caseId": "gearbox-review-15",
+      "sourceHash": "7dfe9e91c66bc0ed0721b82af6bcbed3130e28cb7aa8a882c398b4f97228d957",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/simple-bevel-gear-reducer-1.snapshot.2/Assieme_riduttore_conico.stp",
+        "sha256": "7dfe9e91c66bc0ed0721b82af6bcbed3130e28cb7aa8a882c398b4f97228d957",
+        "bytes": 2665249,
+        "extension": "stp"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "ac6227915a9fdd0e9ea49322",
+      "caseId": "gearbox-review-16",
+      "sourceHash": "4d0fe353e753d07504e2ab4a1458b348304726cb1f4c9f0be0ca8d35061b0e49",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/single-stage-helical-gear-reducer-solidworks-project-1.snapshot.3/final.SLDASM",
+        "sha256": "4d0fe353e753d07504e2ab4a1458b348304726cb1f4c9f0be0ca8d35061b0e49",
+        "bytes": 1836840,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "7373fa3fff7c9a900155a35a",
+      "caseId": "gearbox-review-17",
+      "sourceHash": "aaa4267e7bb109c4d83d862392407420c215ac3a5c9abc333b08f7becaea87a8",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/single-stage-reduction-helical-gear-box-1.snapshot.1/Single Stage Reduction Helical Gear Box.STEP",
+        "sha256": "aaa4267e7bb109c4d83d862392407420c215ac3a5c9abc333b08f7becaea87a8",
+        "bytes": 33513918,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "c8fc9ff92b46bddcb303fc6a",
+      "caseId": "pressure_vessel-review-01",
+      "sourceHash": "493dff8203ef2ac1b215d398a8cfeee52991c35d61ecd864005f48983e15a946",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/208-x-72-platform-with-dual-asme-tanks-1.snapshot.5/LARGE PLATFORM with ASME TANKS.step",
+        "sha256": "493dff8203ef2ac1b215d398a8cfeee52991c35d61ecd864005f48983e15a946",
+        "bytes": 65054678,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "bea2cd401ace846ad9e4ce60",
+      "caseId": "pressure_vessel-review-02",
+      "sourceHash": "87a60a108fafcb3029952d1adb6bdc6333da3d8c07857fedb1aba58ff6e3bbba",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/3-ton-water-tanker-design-wt-3tn-01-1.snapshot.11.zip",
+        "member": "WT-01-3TN-WATER TANK YM-10.SLDPRT",
+        "sha256": "987404265081e78fbbd92c96f9bd8b509a5823c1498a19686e477587144d51e2",
+        "bytes": 78947,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "aa6294064f74e03b219635e8",
+      "caseId": "pressure_vessel-review-03",
+      "sourceHash": "b2a29a800fccd3cfb24d9e2a02a7064d293db3bb584dc084dbb3cb09c05b455c",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/asme-coded-horizontal-pressure-vessel-design-structural-validation-1.snapshot.3/Pressure Vessel Assembly.STEP",
+        "sha256": "b2a29a800fccd3cfb24d9e2a02a7064d293db3bb584dc084dbb3cb09c05b455c",
+        "bytes": 2574423,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "a2a9643aabd95faf967ddb2d",
+      "caseId": "pressure_vessel-review-04",
+      "sourceHash": "f698142d610dd4270d5213362edba0343fb94392f34e8fa03cb86e73154b7b55",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/intercambiador-de-calor-tubular-shell-tube-heat-exchanger-1.snapshot.2/Intercalor/Ensamble.SLDASM",
+        "sha256": "f698142d610dd4270d5213362edba0343fb94392f34e8fa03cb86e73154b7b55",
+        "bytes": 4263474,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "b9335f736726c99d70e1cf83",
+      "caseId": "pressure_vessel-review-05",
+      "sourceHash": "ff81588922d0eb53ed23b5da73f6577560da3e8f82e9a8223d742fece16e25c9",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/pressure-vessel-149.snapshot.1.zip",
+        "member": "pressure vessel 166.SLDPRT",
+        "sha256": "47f7055e09db3b6b602062c3dc576f70bd8bc1fba311b72ce00eaa93a5a97942",
+        "bytes": 339377,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "fa1407b44fdcd87be61c5280",
+      "caseId": "pressure_vessel-review-06",
+      "sourceHash": "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/shell-and-tube-heat-exchanger-66.snapshot.4/Shell Tube Heat Exchanger.STEP",
+        "sha256": "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3",
+        "bytes": 8747651,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "c6b7d6512bd7954b190ba6cd",
+      "caseId": "pressure_vessel-review-07",
+      "sourceHash": "1403b109c5c5310848054fcd77bbe0010f0e1d3794d3c1c801ce6aacddfaf7da",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/shell-and-tube-heat-exchanger-assembly-1.snapshot.1/Assem1.SLDASM",
+        "sha256": "1403b109c5c5310848054fcd77bbe0010f0e1d3794d3c1c801ce6aacddfaf7da",
+        "bytes": 593899,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "0095b45228a6cce9e79d1d47",
+      "caseId": "pressure_vessel-review-08",
+      "sourceHash": "ffa472e9ccd293416868b95a292d155333e9428a09fcf64dd28d6429a4b22fbb",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/shell-and-tube-heat-exchanger-model-1.snapshot.2/Heat exchanger/Heat Exchanger.SLDASM",
+        "sha256": "ffa472e9ccd293416868b95a292d155333e9428a09fcf64dd28d6429a4b22fbb",
+        "bytes": 1424610,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "b906a6e76b4eb0433efc791f",
+      "caseId": "pressure_vessel-review-09",
+      "sourceHash": "099c5ae609ab7ee6884d52835219905d15cdc3b6bf20ef6c3f13d174109c9009",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/single-pass-tema-ael-shell-and-tube-heat-exchanger-1.snapshot.4/Shell and Tube Heat exchanger.step",
+        "sha256": "099c5ae609ab7ee6884d52835219905d15cdc3b6bf20ef6c3f13d174109c9009",
+        "bytes": 771388,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "8149cfb2cbeb00d82f47c966",
+      "caseId": "pressure_vessel-review-10",
+      "sourceHash": "2673429b360d6d8a518da0448452cc98dcca8da596a52f817c714cab4d68f597",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/spherical-tank-3.snapshot.2/NTC-MSIB7-SPHERICAL TANK/NTC-MSIB7-SPHERICAL TANK.SLDASM",
+        "sha256": "2673429b360d6d8a518da0448452cc98dcca8da596a52f817c714cab4d68f597",
+        "bytes": 1678193,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "1206006079c201b328ea4a4a",
+      "caseId": "pressure_vessel-review-11",
+      "sourceHash": "354c508882ae878120d0bbab94a13ec81e41c826ca859e6d34e76a3ee6f0baee",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/vertical-air-receiver-tank-2000-ltrs-sldprt.snapshot.4.zip",
+        "member": "Vertical Air Receiver Tank 2000 Ltrs.SLDPRT",
+        "sha256": "7402e5dbdd4ca99d1b52220d148c9bc5a951ebeca357b6127c47080fc6721863",
+        "bytes": 837120,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "2a58e42f141eb652bfdf85b0",
+      "caseId": "turbomachinery-review-01",
+      "sourceHash": "a3b31ac6fcd3b4075bcc705e5ab9e926710d7b185ec709203019705690b1e00f",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/8-hp-open-type-heat-pump-grain-dryer-lightweight-model-1.snapshot.5/8HP-粮食烘干机开式总装图-轻量化.STEP",
+        "sha256": "a3b31ac6fcd3b4075bcc705e5ab9e926710d7b185ec709203019705690b1e00f",
+        "bytes": 16470353,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "24a4658ecf5aca8a4e849ef0",
+      "caseId": "turbomachinery-review-02",
+      "sourceHash": "586e39d8d37694d2db53345430eb3012b7fa46eb12ac81dfd376804594d3cb45",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들2/ant-liquid-cpu-cooler-dual-rgb-fan-aio-1.snapshot.1/CPU Liquid Cooler/Liquid Cooler.STEP",
+        "sha256": "586e39d8d37694d2db53345430eb3012b7fa46eb12ac81dfd376804594d3cb45",
+        "bytes": 8833635,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "81126b9f6b493a87b368d130",
+      "caseId": "turbomachinery-review-03",
+      "sourceHash": "50e85725b4d15f7a47a5bc9aae8792dd3bfa07203fc2af5211c0a88587859d7c",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/centrifugal-pump-174.snapshot.8/centrifugal pump version v6.iges",
+        "sha256": "50e85725b4d15f7a47a5bc9aae8792dd3bfa07203fc2af5211c0a88587859d7c",
+        "bytes": 18606456,
+        "extension": "iges"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "05059c3fbd835ffa7cb0502e",
+      "caseId": "turbomachinery-review-04",
+      "sourceHash": "1c8ddd6fcafaff9463f90c5d2e73a166343bca84147097036a11c29a0346cddc",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/centrifugal-pump-93.snapshot.8.zip",
+        "member": "Pump - KSB Etanorm 65-40-250 - emotor 180M.ipt",
+        "sha256": "0d1391aa77510d97211fad4a4818b81b2c9c2e1a6248fdc34d2aeb6623c2e132",
+        "bytes": 8219648,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "8ae66944849bccf8acf34800",
+      "caseId": "turbomachinery-review-04",
+      "sourceHash": "1c8ddd6fcafaff9463f90c5d2e73a166343bca84147097036a11c29a0346cddc",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/centrifugal-pump-93.snapshot.8.zip",
+        "member": "Pump - KSB Etanorm 65-40-250 - emotor 180M.rfa",
+        "sha256": "d7030a96a1e06575f4748c1cc8d90558ab069110d5732be7ca138a034abf968f",
+        "bytes": 2424832,
+        "extension": "rfa"
+      },
+      "workerKind": "revit-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "07e308370b7deef325b330b8",
+      "caseId": "turbomachinery-review-05",
+      "sourceHash": "58cc596957c6818ac6deae5a2d0e2db8be4d35b16563a6c1503f24f494532229",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/erf-2-rs-dokum-govdeli-ciftli-salyangoz-fan-1.snapshot.2/ERF-2-RS DÖKÜM GÖVDELİ ÇİFTLİ SALYANGOZ FAN.STEP",
+        "sha256": "58cc596957c6818ac6deae5a2d0e2db8be4d35b16563a6c1503f24f494532229",
+        "bytes": 38521492,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "7df767da891a12e38f656705",
+      "caseId": "turbomachinery-review-06",
+      "sourceHash": "5551e97fba5b766ca3be25510720ee15f10ba473976035ae434397675968e268",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/fan--64.snapshot.2/56757070_none_asm.igs",
+        "sha256": "5551e97fba5b766ca3be25510720ee15f10ba473976035ae434397675968e268",
+        "bytes": 24003778,
+        "extension": "igs"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "7a42feb6576159f69dd74edb",
+      "caseId": "turbomachinery-review-07",
+      "sourceHash": "ac47f94dec47cfacf52d7cc778389dbb27c15e2396a8961f24124cca79267ed5",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/horizontal-pump-motor-and-flexible-coupling-1.snapshot.6/Assembly_Total.iam",
+        "sha256": "ac47f94dec47cfacf52d7cc778389dbb27c15e2396a8961f24124cca79267ed5",
+        "bytes": 569856,
+        "extension": "iam"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "0713648a10efc8c633c8b655",
+      "caseId": "turbomachinery-review-08",
+      "sourceHash": "2d4ca8f075f65006cc153dd16c5275d0e43ff4bb56741bd64126b2291272f6fc",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/jet-engine-345.snapshot.2/Assem3.SLDASM",
+        "sha256": "2d4ca8f075f65006cc153dd16c5275d0e43ff4bb56741bd64126b2291272f6fc",
+        "bytes": 861007,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "d3e78b95fdba25ddc4886062",
+      "caseId": "turbomachinery-review-09",
+      "sourceHash": "bce0c685bd1c20e7a94e5e56a2707ee57a1dab17897a91cc171f0788caf5d8af",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/jet-engine-assembly-4.snapshot.2/jet_engine_assy_asm.igs",
+        "sha256": "bce0c685bd1c20e7a94e5e56a2707ee57a1dab17897a91cc171f0788caf5d8af",
+        "bytes": 94769696,
+        "extension": "igs"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "47ed2eb10d44b05d2e1e93d2",
+      "caseId": "turbomachinery-review-10",
+      "sourceHash": "630ca7bff17c36d0474c9e1faf8e642cac3d48967b11553351d253fef64c1988",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/noctua-nh-d15-chromax-black-cpu-fan-1.snapshot.4/nh-d15-chromax-black.stp",
+        "sha256": "630ca7bff17c36d0474c9e1faf8e642cac3d48967b11553351d253fef64c1988",
+        "bytes": 51296007,
+        "extension": "stp"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "d6e640a10094e1ccd9717393",
+      "caseId": "turbomachinery-review-11",
+      "sourceHash": "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/osaka-water-pump-1.snapshot.1/Water Pump Osaka/Assy_Water Pump Osaka.STEP",
+        "sha256": "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b",
+        "bytes": 3568600,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "1e0daef7b2c980dfcc23df12",
+      "caseId": "factory_equipment-review-01",
+      "sourceHash": "51065e8b330c411341ea4ac0ac3b25a7819adfca2be3ed8b36a3cc8cdd9f85f3",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/20-ton-excavator-skeleton-bucket-design-solidworks-2023-tutorial-heavy-cad-modelling-1.snapshot.2.zip",
+        "member": "Ton Excavator Skeleton Bucket Heavy Designing.SLDPRT",
+        "sha256": "a2c10d5d87555cb5215acf1295d805633449140e06cb6f855e642cde6c0e1537",
+        "bytes": 666574,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "4750ca542650405112ef8e6b",
+      "caseId": "factory_equipment-review-02",
+      "sourceHash": "be671d888bcd072fd3b2bc6365577cd8624f31836fd377df69710b15578f35c2",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/30-tool-hsk-a63-chain-type-tool-magazine-for-cnc-machining-center-1.snapshot.2/Assembly.stp",
+        "sha256": "be671d888bcd072fd3b2bc6365577cd8624f31836fd377df69710b15578f35c2",
+        "bytes": 16466678,
+        "extension": "stp"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "4f896de7a178ad5866a2ccb4",
+      "caseId": "factory_equipment-review-03",
+      "sourceHash": "6621350c24376a1c26f330d876d433b3ecde213e8672f51239ea527ac2d81805",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/8-deep-pan-conveyor-clinker-silo.snapshot.2/8-Clinker Silo.iges",
+        "sha256": "6621350c24376a1c26f330d876d433b3ecde213e8672f51239ea527ac2d81805",
+        "bytes": 241418004,
+        "extension": "iges"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "37bd50b84b6b2869d533b7a4",
+      "caseId": "factory_equipment-review-04",
+      "sourceHash": "df26ce90dd327d6c525e6c5e4eee4f8b563a92aef2a35fff05cdf124728a159e",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/a-c-axis-tilt-rotary-table-assembly-for-5-axis-cnc-machining-center-1.snapshot.2/tilting rotary table.stp",
+        "sha256": "df26ce90dd327d6c525e6c5e4eee4f8b563a92aef2a35fff05cdf124728a159e",
+        "bytes": 43122236,
+        "extension": "stp"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "5f33df44f395b7f3b090453a",
+      "caseId": "factory_equipment-review-05",
+      "sourceHash": "88912d84be2213989efbadb1581de32e544bf5f6fb32ae432248af21c29101b9",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/automatic-sorting-conveyor-with-pop-up-mechanism-1.snapshot.3/Assembly1.iam",
+        "sha256": "88912d84be2213989efbadb1581de32e544bf5f6fb32ae432248af21c29101b9",
+        "bytes": 624128,
+        "extension": "iam"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "332c7eba002a419f4f55351c",
+      "caseId": "factory_equipment-review-06",
+      "sourceHash": "96e34f6fd9ee85168fc5feab775d2ff942b8cabfd25ce30c59f11d3d11bc542c",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/automatic-wafer-transfer-equipment-machine-1.snapshot.2.zip",
+        "member": "DE-001.05.001.SLDPRT",
+        "sha256": "90c6a60343cdd2916cc644affe0234bb0bf37bc1f98fb84c43895b2d32b103d9",
+        "bytes": 172826,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "caa40bc1f075fdcfab0516a0",
+      "caseId": "factory_equipment-review-06",
+      "sourceHash": "96e34f6fd9ee85168fc5feab775d2ff942b8cabfd25ce30c59f11d3d11bc542c",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/automatic-wafer-transfer-equipment-machine-1.snapshot.2.zip",
+        "member": "DE-001.05.004.SLDPRT",
+        "sha256": "7e1bc7b307c2045623d0a11beba86345bd3f0c2dd10f4ceaf844a2b1c9efed77",
+        "bytes": 95625,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "4e483423b7395d77bab4aa32",
+      "caseId": "factory_equipment-review-06",
+      "sourceHash": "96e34f6fd9ee85168fc5feab775d2ff942b8cabfd25ce30c59f11d3d11bc542c",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/automatic-wafer-transfer-equipment-machine-1.snapshot.2.zip",
+        "member": "DE-001.05.005.SLDPRT",
+        "sha256": "514dc17459585c1a3124060b76c7e09776ce68a85ef36691f4e7b52137f345d6",
+        "bytes": 121903,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "8953e5b1d0f0130e029523fc",
+      "caseId": "factory_equipment-review-06",
+      "sourceHash": "96e34f6fd9ee85168fc5feab775d2ff942b8cabfd25ce30c59f11d3d11bc542c",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/automatic-wafer-transfer-equipment-machine-1.snapshot.2.zip",
+        "member": "DE-001.05.010.SLDPRT",
+        "sha256": "3b8b697143b2112c87ebfcb41196d4f5d031a8e9952834da265ecf7e14374067",
+        "bytes": 123286,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "3b6e4fd40196e94361ecd45f",
+      "caseId": "factory_equipment-review-07",
+      "sourceHash": "561f749936b8aef95df4d623da1046d73852ceebf272768055d1016a43266918",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/automatic-wet-wipes-paper-packaging-laminating-machine-1.snapshot.2.zip",
+        "member": "Ea-Snap-07-01-005.SLDPRT",
+        "sha256": "bf312e64bde089f9950e7c959da87c9e26277efaafe138b8f05b1ddc3fb03fa2",
+        "bytes": 61811,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "0741e27cc889b49016fc5064",
+      "caseId": "factory_equipment-review-07",
+      "sourceHash": "561f749936b8aef95df4d623da1046d73852ceebf272768055d1016a43266918",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/automatic-wet-wipes-paper-packaging-laminating-machine-1.snapshot.2.zip",
+        "member": "Ea-Snap-07-01-011.SLDPRT",
+        "sha256": "94482da272052d2a8899b8c07a788f36b7c0af9dbaa873198fb293784644285d",
+        "bytes": 65416,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "e61fef246d2e3a9677b85515",
+      "caseId": "factory_equipment-review-07",
+      "sourceHash": "561f749936b8aef95df4d623da1046d73852ceebf272768055d1016a43266918",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/automatic-wet-wipes-paper-packaging-laminating-machine-1.snapshot.2.zip",
+        "member": "Ea-Snap-07-01-014.SLDPRT",
+        "sha256": "460217fb14c97c9ebd0a1706dfdb42783809d3c66535d13ada693c1a8632fa23",
+        "bytes": 58308,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "7f94ac07a076e34b42d32cb0",
+      "caseId": "factory_equipment-review-07",
+      "sourceHash": "561f749936b8aef95df4d623da1046d73852ceebf272768055d1016a43266918",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/automatic-wet-wipes-paper-packaging-laminating-machine-1.snapshot.2.zip",
+        "member": "Ea-Snap-07-01-015.SLDPRT",
+        "sha256": "16a63b86933ddee9c4f5c4efda40c120f6e665010059a6d6d70b6fe31d87a836",
+        "bytes": 89247,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "93ac5428889df9c8dac26067",
+      "caseId": "factory_equipment-review-08",
+      "sourceHash": "7e8d0ebe475b2e7f304b419271ae298147609ec675cac3f6468b4519d7bedd96",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들2/cnc-mini-mill-made-out-of-sheet-metal-1.snapshot.2/Mini mill sheet metal.stp",
+        "sha256": "7e8d0ebe475b2e7f304b419271ae298147609ec675cac3f6468b4519d7bedd96",
+        "bytes": 12617865,
+        "extension": "stp"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "f21a570bbac9f33286edba3e",
+      "caseId": "factory_equipment-review-09",
+      "sourceHash": "077edfb8f8b0c1e0dde59121f7269be1efc61f658971a46bd6a76c2ff1b30f3a",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/hbb-30-twinshaft-mixer-1.snapshot.6.zip",
+        "member": "BP30Q.SLDPRT",
+        "sha256": "bb65047745bbc532992743c56bcb28db36b7587df1f234a9137e7f74adf373a5",
+        "bytes": 50956934,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "48883e821b5e666adec8112d",
+      "caseId": "factory_equipment-review-10",
+      "sourceHash": "76f57ce127aa10f77ab70300bc28f25a58c5dfefc0354cb2bf26b94b239b308b",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/helical-gear-for-paper-printing-machine-1.snapshot.1.zip",
+        "member": "helix gear 1.SLDPRT",
+        "sha256": "395bdb83560265e62f2ad813b16f9177c287652b3e222b7baeb8cd311674fa84",
+        "bytes": 11463346,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "1ef6f31eaeb0911c32295110",
+      "caseId": "factory_equipment-review-11",
+      "sourceHash": "30be3ac734504e58ab9344c5208846b8f1782f8f7406e2ed90e141527554ce5c",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-00.sldasm",
+        "sha256": "30be3ac734504e58ab9344c5208846b8f1782f8f7406e2ed90e141527554ce5c",
+        "bytes": 4366680,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "52fa9c3ef09dd36d0fdba222",
+      "caseId": "factory_equipment-review-12",
+      "sourceHash": "c1f82d1b2f963f08383693ef8152be1644afa7e060c4ef8dad9c94af7df39229",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/hsk-a63-motor-spindle-unit-for-5-axis-cnc-machining-center-1.snapshot.1/Spindle.stp",
+        "sha256": "c1f82d1b2f963f08383693ef8152be1644afa7e060c4ef8dad9c94af7df39229",
+        "bytes": 33044947,
+        "extension": "stp"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "4086adef3accf18c731852b7",
+      "caseId": "factory_equipment-review-13",
+      "sourceHash": "92f82d46f6fee897f600d01a5d6c968b3cbb9b37b08f81315ddec434c767714d",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/multipurpose-pepper-grinding-machine-efficient-durable-1.snapshot.1/Pepper Blending Machine.SLDASM",
+        "sha256": "92f82d46f6fee897f600d01a5d6c968b3cbb9b37b08f81315ddec434c767714d",
+        "bytes": 3225014,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "730230ced8f00133ebf23f14",
+      "caseId": "factory_equipment-review-14",
+      "sourceHash": "c6cdb94657144b004f886c52ae3c7f72911c82349be30c08b7183e87ffa4f64b",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들/packaging-and-cutting-tape-1.snapshot.9/Assembly Full.iam",
+        "sha256": "c6cdb94657144b004f886c52ae3c7f72911c82349be30c08b7183e87ffa4f64b",
+        "bytes": 2047488,
+        "extension": "iam"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "cefde8e9edd43d6c91d9fcea",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "brg-hs-of.ipt",
+        "sha256": "90e513710b5e68d4d579c55b1f1c3f9fd866516815eeffb9891748049e13a2b2",
+        "bytes": 179200,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "52161d5fb81f8bb2d884954c",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "brg-jst.ipt",
+        "sha256": "5b86ab262c4aaeb2a07c74951669eb34715de78b0a6ca98a18c33b20674a7360",
+        "bytes": 190464,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "e473b80ebc6b4fc6adefae0a",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "bs-bd-bw-2.ipt",
+        "sha256": "55e5d9f17e4518b09abe8cf83c45eac4ff58b1cdef86004631ce6fbf712821f6",
+        "bytes": 331776,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "1127f7624e6eefd6857a1cb2",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "bs-bd-bw.ipt",
+        "sha256": "9dc728a2ff8ddbf12f3fa14839bf6d21029d01a1ad17ae790346d8a2f775c433",
+        "bytes": 330752,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "1ba8a76dade0bf4d39fbf886",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "bs-bd-kr1.ipt",
+        "sha256": "ebe1731184a5f352076ea18f10aa8dda2442e00c7aaeafa15dd0c66bb6a5cdb7",
+        "bytes": 257536,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "1c6927984f28d5c5cc794618",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "bs-bdy.ipt",
+        "sha256": "530018309467916273de5b5a26560dac80b63108ed5045ab242aa03eb39cd8d1",
+        "bytes": 259072,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "d3693c5612796bd8a57a8353",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "ct-hrz-pt.ipt",
+        "sha256": "77edf1a79ae5f8f357e4e5ba797f83f0e3d04429f5fb1b210c354577418820b0",
+        "bytes": 81408,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "f9d8717d754a18fba03f24cd",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "ct-rt-pt.ipt",
+        "sha256": "6fdc92d34eee976aa55afe4db5d69a583b65c45a8a41352fe10b85285577c33c",
+        "bytes": 87552,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "753826560b5770f426daa26e",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "ct-rt.ipt",
+        "sha256": "df162012051aa0488db32d1e6c0633c62cf345741ee3f3ad4466cefb1e701c79",
+        "bytes": 126464,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "16ce99d6b1bda08b2eda8e50",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "cut hrz-b1.ipt",
+        "sha256": "2741911aec94fd300f40b5f29b4e62964f39ba1d5e32728cc390cc1abd12893c",
+        "bytes": 166912,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "da1fa64600c5a8c8daf0835e",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "cut hrz.ipt",
+        "sha256": "f793c5b1c0cfaf4aef6001977308fbff984b30eb14e774a24cebc6f807071acf",
+        "bytes": 174080,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "af3586eeb8a92b6a6959331a",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "ddk-ct.ipt",
+        "sha256": "2408173237073eb668aaef059765c39f9dbe54875d19aa5ccb905ab8b828dba0",
+        "bytes": 94208,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "0ce42528fb3502b1aba2f382",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "mgz-3.ipt",
+        "sha256": "736e99570a3484e12e3675e32fc0df923c54f8874006a1eccc5f71ac29b0cca1",
+        "bytes": 153600,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "3401ad9d0d38e176a8a58cca",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "mgz-4.ipt",
+        "sha256": "edad52d3c098b9bed01b8de40bdf5f28a314564a64c600d7e57a21ff56997303",
+        "bytes": 103424,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "ea1219018c5607236b6e4a22",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "pld-ct.ipt",
+        "sha256": "e395a64d5a4436c1056e29e9602522d38ddd302a3846cd2474ed8dcfca4d66fc",
+        "bytes": 103424,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "1436c11bbdbc6d5b0556b737",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "rll.ipt",
+        "sha256": "29cb8207dee08bdc49f875098822410cf822a2e802bd309b04bce3c3afd1090c",
+        "bytes": 102912,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "de5e8891ac55cb397d7a6eca",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "shf-ct.ipt",
+        "sha256": "d9def38dcf0ed9ed1465a9f6c372cd197f83dbf1f636f3407e2a9437cd9a8e04",
+        "bytes": 102400,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "b2e0f5bfb583a918cf8c669a",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "shf-ctr-2.ipt",
+        "sha256": "953c66ca199acfe59c716f16442bd1d5005ddac6af2d86b806a9600e64a2859f",
+        "bytes": 215040,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "aa3b61edd33c3ba14b1608e4",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "shf-ctr-21.ipt",
+        "sha256": "52cd511ffb5d63976c46c70071a83c6309b259bd31f88143a13e73ba31288915",
+        "bytes": 186368,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "e3867aea3ff4cea87ec98bed",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "shf-ctr.ipt",
+        "sha256": "61038e08ad58513fabe172c8d0f5795e1519e54ad8d94b8a088a3d805b6bd159",
+        "bytes": 177664,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "7fdb178d15085b70dce0d6c7",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "shf-js.ipt",
+        "sha256": "7c4e25dbf98dd7496e703a9dfae645be6117dbdea731c3d2d100add015231189",
+        "bytes": 129024,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "45212a6b5cadb8e41c7f8cd1",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "shf-stt.ipt",
+        "sha256": "3c327b50db56b5b754750dfba9fbcc4b892aa0cd6fa51e306ead574485305d1c",
+        "bytes": 96768,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "bcf9e2951b661077ea918a91",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "sld-ct.ipt",
+        "sha256": "5d7db30ecf31ecbeb9e76f1d00e115ad0577ced4eea984481b952c45c6cb3d14",
+        "bytes": 139776,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "d67955993e23f497efdd8b9e",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "spc-rg.ipt",
+        "sha256": "cb913af4e438c7e36fb310e06e4e3be70f4d1efd5f6cace8c0fa828fe8853d37",
+        "bytes": 115712,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "e87b42224fca0b7bc3bbf779",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "st-drt-ct.ipt",
+        "sha256": "fd649c763c6b7cb658ccb4b13bbd562359f53195b7c3634118151b9716d11765",
+        "bytes": 122880,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "bfa25136695f347bfb7cff6f",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "stt-h.ipt",
+        "sha256": "c2fc1f0d5987ef741499840686607237b43932a4696c78f77ad6a084dfee495d",
+        "bytes": 99840,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "2f92f3809d896ac6df730fca",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "stt-plt.ipt",
+        "sha256": "971ceaedd76f7023209dcfde256faa8bd65f0fc46e033d213ee5ca879fe7b7ad",
+        "bytes": 126464,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "3136f533a3065fab384fc35d",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+        "member": "ttp-pl.ipt",
+        "sha256": "55ce04ed9882fa5b984c461cd813f71502e009bacb6acd1e06b6fdaf539176af",
+        "bytes": 145920,
+        "extension": "ipt"
+      },
+      "workerKind": "inventor-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "77ca39626a3e567b7278e02c",
+      "caseId": "factory_equipment-review-16",
+      "sourceHash": "d75f089909348a73adf8e9390d85275343b0020eca508fde136b81b8ad44315b",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/pustelga-adaptive-open-source-cnc-by-ariadne-in-process-1.snapshot.9/PUS_low_part.SLDASM",
+        "sha256": "d75f089909348a73adf8e9390d85275343b0020eca508fde136b81b8ad44315b",
+        "bytes": 48183834,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "bc4866ec083171e22a5ae7ff",
+      "caseId": "factory_equipment-review-17",
+      "sourceHash": "4fe8b865f124b0330bcb60252b325c3cc0cbe58e9f15f0720b8e8c5276e0b728",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/roll-forming-machine-3.snapshot.1/rollformmachine.STEP",
+        "sha256": "4fe8b865f124b0330bcb60252b325c3cc0cbe58e9f15f0720b8e8c5276e0b728",
+        "bytes": 29188877,
+        "extension": "step"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "e174da9a8390746418c1bef6",
+      "caseId": "factory_equipment-review-18",
+      "sourceHash": "2a8f7c9d98fe751187425be49c45d5328cc064eafdd8c92bf73bf0cbcae286a4",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/smr-30-3m-feed-mixer-1.snapshot.2.zip",
+        "member": "SMR-30  çeki.SLDPRT",
+        "sha256": "e4116865f80d6dfdfa9aba6a3e4f3f0747163b75137083baddd8c249f518470b",
+        "bytes": 59567,
+        "extension": "sldprt"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "18b7ab326abbb228c716e770",
+      "caseId": "factory_equipment-review-19",
+      "sourceHash": "e8565c6221d06274798e33d292f8334caa04c2079b9c1e551e3f4d7a518106fe",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/tower-crane-12.snapshot.3/Montaj2.SLDASM",
+        "sha256": "e8565c6221d06274798e33d292f8334caa04c2079b9c1e551e3f4d7a518106fe",
+        "bytes": 3418292,
+        "extension": "sldasm"
+      },
+      "workerKind": "solidworks-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "0cf034f97e8f42c217af34f7",
+      "caseId": "factory_equipment-review-20",
+      "sourceHash": "1df6c8c4933697cce90f5c692384457d7a887d29b2fac13b72bac3bad89ae7d9",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/tower-crane-13.snapshot.3/Tower Crane.stp",
+        "sha256": "1df6c8c4933697cce90f5c692384457d7a887d29b2fac13b72bac3bad89ae7d9",
+        "bytes": 82765134,
+        "extension": "stp"
+      },
+      "workerKind": "freecad-exchange",
+      "availability": "local",
+      "nativeSemanticsRequired": false,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "9d0f2bc6032e819017a9361b",
+      "caseId": "interior-review-01",
+      "sourceHash": "65b8b42f41ac9d545c1c695a2f2d0819b7af9dd4136673c36d387baa1259ceb5",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/2bhk-house-plan-1.snapshot.2.zip",
+        "member": "KODI BUILDERS - PROJECT 01.dwg",
+        "sha256": "b9e868b4f9bceb5f1171ddbdbc792c845642ad4ebb18514c9d6186ed1594952a",
+        "bytes": 173881,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "9be22d66f292e9b7d7a3c05d",
+      "caseId": "interior-review-02",
+      "sourceHash": "535ae44a61a2023c77ac45c68039e69f1826de222cf5d75cce7834b5af282bca",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/3-story-100-square-meteres-apartment-revit-1.snapshot.1.zip",
+        "member": "3story 100m villa  (1).dwg",
+        "sha256": "dacc185ebe42cec20b5d4340a34be6fbafedc4210fb70004ff5b7dfe3d49f7ca",
+        "bytes": 313555,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "aa3ecb381a1c84aaa79516e8",
+      "caseId": "interior-review-02",
+      "sourceHash": "535ae44a61a2023c77ac45c68039e69f1826de222cf5d75cce7834b5af282bca",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/3-story-100-square-meteres-apartment-revit-1.snapshot.1.zip",
+        "member": "3story 100m villa  (2).rvt",
+        "sha256": "ca5dcd947d40f83be80134607e77ec564ccbb084a26e793a34a5d5f76792f9a4",
+        "bytes": 67670016,
+        "extension": "rvt"
+      },
+      "workerKind": "revit-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "760456bbc606af0f90346aa5",
+      "caseId": "interior-review-03",
+      "sourceHash": "9623975cea242ed42881d37ea07e67268ac15df03bb8b1f38d0715aab4c2fccc",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/architectural-design-of-villa-1.snapshot.2.zip",
+        "member": "kottar - 3D View - {3D}.dwg",
+        "sha256": "d254bdc3c0dc3d6b0176c05ff2b51e728b521a65c61151cea5c1b6c95623380a",
+        "bytes": 198225,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "dc4a15e1de70eb9134b93c3d",
+      "caseId": "interior-review-04",
+      "sourceHash": "507c01a31e48c1102b1b99b5071eafa8518a8c23bca9341ce400be6c0ffa4774",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/bath-room-interior-1.snapshot.2.zip",
+        "member": "1st flr hall - 3D View - {3D}.dwg",
+        "sha256": "55c528da7c0f63a7713ae610eb4a1d0ce70de27a277040299524d6439d65b0da",
+        "bytes": 341362,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "57986cb4bf3da221959bf66e",
+      "caseId": "interior-review-05",
+      "sourceHash": "d23ba207b032910b352ee1d8146412de3ece8fd4ae6bd92c74970901f2d49dc7",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/bed-room-interior-8.snapshot.3.zip",
+        "member": "master bed - 3D View - {3D}.dwg",
+        "sha256": "c8d50ba8217ead14566359d5b9122e8328c14ab3d3f673d1cd904060a2aa109c",
+        "bytes": 53947,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "ec5beb6e9fe51ecd8d8a8c41",
+      "caseId": "interior-review-06",
+      "sourceHash": "6a51cadae84aef5a1b3c52178dc2dff8da0542d6751c0b53430ff5d5d90ba761",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/block-house-2.snapshot.3/Untitled.ifc",
+        "sha256": "6a51cadae84aef5a1b3c52178dc2dff8da0542d6751c0b53430ff5d5d90ba761",
+        "bytes": 30465272,
+        "extension": "ifc"
+      },
+      "workerKind": "ifc-native",
+      "availability": "local",
+      "nativeSemanticsRequired": true,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "7c9830bed20cbcfa8d553ea4",
+      "caseId": "interior-review-07",
+      "sourceHash": "b9ad0a38dbccd29e040b2af7d81b089f474b55a40242fcbe10fca53e1a8e1a4d",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/exterior-design-of-simple-villa-1.snapshot.2.zip",
+        "member": "GH-PR-36 - 3D View - {3D}.dwg",
+        "sha256": "8bdc9740b841ea70ea3fd5de9876f81091b73d413358de9f21557a088bcf0fa2",
+        "bytes": 374051,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "e5ed4e5820356ae3d6169217",
+      "caseId": "interior-review-08",
+      "sourceHash": "0ec25f41c7a231268f97544543f4cdd9ba33b2dc4d490cdce4d64b51c6d91605",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/familiy-house-obiteljska-kuca-1.snapshot.2.zip",
+        "member": "Glavni projekt-bs - kopija.dwg",
+        "sha256": "ca218ef96d46132a9c518d2f641a0a176d04258caf43e85ad333603600987c88",
+        "bytes": 808672,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "344632be156eabaec9c24968",
+      "caseId": "interior-review-09",
+      "sourceHash": "ea6f7406331edf8c878dad6d21a8e47265e385e34e884c1ca7a9020ea508d756",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들2/half-story-house-a01-1.snapshot.1.zip",
+        "member": "Half-story house A01/3D Model Half-story house A01.dwg",
+        "sha256": "5bd868f6c8c0e12029133c1cdc9b2e910ebf88c6958c1a6eeda62105073598f8",
+        "bytes": 99615344,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "cd62c2a4726aa9b8c16f37aa",
+      "caseId": "interior-review-10",
+      "sourceHash": "e1ec815456cf6888b15b3687d5c1cc8e191bca2ded08f16003c87f7751852e82",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/hillside-house-2.snapshot.7/Untitled.ifc",
+        "sha256": "e1ec815456cf6888b15b3687d5c1cc8e191bca2ded08f16003c87f7751852e82",
+        "bytes": 23512457,
+        "extension": "ifc"
+      },
+      "workerKind": "ifc-native",
+      "availability": "local",
+      "nativeSemanticsRequired": true,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "06427cc581898b44152a994a",
+      "caseId": "interior-review-11",
+      "sourceHash": "d4909667dbfa24d8271d6b374390885748352015e67afcc8d6791541e9262159",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/hotel-azulejo-1.snapshot.2.zip",
+        "member": "rar/1111111.dwg",
+        "sha256": "0577eb8dadc3d614dbf252327f73886fb04bceb3a822e57e0f35f1097aa6e8b9",
+        "bytes": 34922675,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "ce4da1a72a41bf64a84bcb67",
+      "caseId": "interior-review-12",
+      "sourceHash": "0db228be732b7561b428eb54bad301b0726b7610a1022b7874761e6a549ed562",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/hotel-design-1.snapshot.3/Untitled.ifc",
+        "sha256": "0db228be732b7561b428eb54bad301b0726b7610a1022b7874761e6a549ed562",
+        "bytes": 45263391,
+        "extension": "ifc"
+      },
+      "workerKind": "ifc-native",
+      "availability": "local",
+      "nativeSemanticsRequired": true,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "dd0148c26df391cf2244fc13",
+      "caseId": "interior-review-13",
+      "sourceHash": "3b6e080753b2bd3da2f5753c772fc820e84e322033b64913cdac5dd6933e28fe",
+      "source": {
+        "kind": "direct",
+        "locator": "참고파일들4/hotel-design-3d-2.snapshot.2/Untitled.ifc",
+        "sha256": "3b6e080753b2bd3da2f5753c772fc820e84e322033b64913cdac5dd6933e28fe",
+        "bytes": 282201994,
+        "extension": "ifc"
+      },
+      "workerKind": "ifc-native",
+      "availability": "local",
+      "nativeSemanticsRequired": true,
+      "status": "locally-routable"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "53044257b1b96384f1d83b11",
+      "caseId": "interior-review-14",
+      "sourceHash": "3688c0fa32236469bf72173ced8ce4e476dfd384cb3ed8aded797fbfb1db77d3",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/house-4x15m-1.snapshot.3 (1).zip",
+        "member": "3D.dwg",
+        "sha256": "d7d92ad6870112a0db265373eaf44ca48102d3e3df2845f55886126cdb47805f",
+        "bytes": 570400,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "fb58417cab60793e13b7112b",
+      "caseId": "interior-review-14",
+      "sourceHash": "3688c0fa32236469bf72173ced8ce4e476dfd384cb3ed8aded797fbfb1db77d3",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/house-4x15m-1.snapshot.3 (1).zip",
+        "member": "4x15.rvt",
+        "sha256": "dc8fd649e4b035a23c98801b0ab8049359b2e78fc4bdfb121a9d5df829a2b976",
+        "bytes": 20369408,
+        "extension": "rvt"
+      },
+      "workerKind": "revit-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "d9e106904d4ab9ee5223b88b",
+      "caseId": "interior-review-15",
+      "sourceHash": "35b28cb1c4e8bb5ee00624aa7b53be232563a99eb90273690ea1d5be36d21166",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/house-plan-23.snapshot.3.zip",
+        "member": "ARASU HOUSE.dwg",
+        "sha256": "b067e3d7d4041fab9326cd699357930d03c23a8e2d52ab9c61cdd5e3d2cfa3d5",
+        "bytes": 46351,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "50b43841c013992f84ddf56e",
+      "caseId": "interior-review-15",
+      "sourceHash": "35b28cb1c4e8bb5ee00624aa7b53be232563a99eb90273690ea1d5be36d21166",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/house-plan-23.snapshot.3.zip",
+        "member": "ARASU HOUSE.rvt",
+        "sha256": "89d0b567d1edfc47d4d00756e9325c7221d54439576f0ab59d751eb4ff98dc16",
+        "bytes": 17469440,
+        "extension": "rvt"
+      },
+      "workerKind": "revit-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "406a3a74d31ce683d907c229",
+      "caseId": "interior-review-16",
+      "sourceHash": "6edbd4f915ae9704fad91124af4d79940101512d01c68908f0f994260e5113bb",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/house-planning-of-3bkh-1.snapshot.1.zip",
+        "member": "House Planning Of 3BKH/Autocad 2016 Files.dwg",
+        "sha256": "f18dfa49be0282d50bff2a34aa4bfeeae7e621be93ba545556b5afe6bde6365d",
+        "bytes": 2252000,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "c126111c38147b631b3826cf",
+      "caseId": "interior-review-16",
+      "sourceHash": "6edbd4f915ae9704fad91124af4d79940101512d01c68908f0f994260e5113bb",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/house-planning-of-3bkh-1.snapshot.1.zip",
+        "member": "House Planning Of 3BKH/Revit 2009 Files.rvt",
+        "sha256": "a257167f774921dae4590d1e5958cf9cdf0c55cbab3346753685a8c18253d248",
+        "bytes": 9023488,
+        "extension": "rvt"
+      },
+      "workerKind": "revit-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "e1d3167d4aa5ddebce33f73c",
+      "caseId": "interior-review-17",
+      "sourceHash": "7bc3bdaaa41b0fe390efb70a45d89608b652adde99bd04731ac8f0f2d87d4b24",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/house-villa-1.snapshot.2.zip",
+        "member": "Project1.rvt",
+        "sha256": "f392c49d9cbb5360fa7037daae8f2e799bda8021184a367976699c9f5ba61dd2",
+        "bytes": 30244864,
+        "extension": "rvt"
+      },
+      "workerKind": "revit-native",
+      "availability": "external-required",
+      "nativeSemanticsRequired": true,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "ea4ea574231edf60603db232",
+      "caseId": "interior-review-17",
+      "sourceHash": "7bc3bdaaa41b0fe390efb70a45d89608b652adde99bd04731ac8f0f2d87d4b24",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/house-villa-1.snapshot.2.zip",
+        "member": "villa.dwg",
+        "sha256": "3c0dd3ae8c2d5f6c55c9a9466f5146eb18cabae9008e214f87a23655349ddd6f",
+        "bytes": 2524288,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "39be750eb7425e8db4402c06",
+      "caseId": "interior-review-18",
+      "sourceHash": "ef04a38466fbfb4a4b8e540a2abd2ee1d973663edb9ea5b359dba535862299f1",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/independent-house-1.snapshot.1.zip",
+        "member": "Nibedita Roy (Basu).dwg",
+        "sha256": "26f1413eaeb9d5a1a6b01c648d33ddea5b6a8281c10d6e0dad717fe0e7485346",
+        "bytes": 846117,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "08a9b8a17f50bafdda8a4d28",
+      "caseId": "interior-review-19",
+      "sourceHash": "89bd6ed1cbca2f2023320bdb8060278a502c83cd024fc5bd60bafb00e609f52b",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/indian-3d-house-model-3.snapshot.3.zip",
+        "member": "binod ground.dwg",
+        "sha256": "a7db52a0af486db9a99e0864eb3fba57bef09244e5edcbadd7f7700f1999c7e9",
+        "bytes": 102336,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    },
+    {
+      "schema": "nexyfab.native-worker-routing-job.v1",
+      "jobId": "abea564e76f7c6bdc88b5949",
+      "caseId": "interior-review-20",
+      "sourceHash": "2f0ddfee466206c959faf0b5398ac200738b13791ea6ac202ab8e1c6a3cac997",
+      "source": {
+        "kind": "zip-member",
+        "locator": "참고파일들4/indian-3d-house-model-5.snapshot.2.zip",
+        "member": "Madhu Ghosh & Sadagar Sarkar.dwg",
+        "sha256": "9f51c9766b1d20d0a476589977ee45a932642ceb4ef7bf9b3b2ff55040d440d3",
+        "bytes": 135136,
+        "extension": "dwg"
+      },
+      "workerKind": "dwg-exact",
+      "availability": "external-required",
+      "nativeSemanticsRequired": false,
+      "status": "not_run"
+    }
+  ],
+  "unrouted": []
+}

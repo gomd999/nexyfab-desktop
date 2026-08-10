@@ -78,6 +78,17 @@ import {
 } from './checkpointDiff';
 import { searchBosl2 } from './bosl2Index';
 import { effectiveScadSource } from './composeSource';
+import { validateScadExecutionSource } from '../../openscad-render/sourceSecurity';
+
+function validateAgentScad(source: string): ToolResult | null {
+  const security = validateScadExecutionSource(source, { hasImportStl: false });
+  if (security.ok) return null;
+  return {
+    ok: false,
+    error: `SCAD source blocked by execution policy: ${security.reason} (${security.detail})`,
+    code: 'UNSAFE_SOURCE',
+  };
+}
 
 // ─── Host adapters (DI) ─────────────────────────────────────────────────────
 
@@ -291,6 +302,8 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     if (a.code.length > 100_000) {
       return { ok: false, error: 'SCAD source exceeds 100KB cap', code: 'TOO_LARGE' };
     }
+    const unsafe = validateAgentScad(a.code);
+    if (unsafe) return unsafe;
     session.scadSource = a.code;
     // Invalidate render — caller must render again to get fresh stats.
     session.render = { ok: null, errors: [] };
@@ -312,6 +325,11 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     }
     try {
       const next = applyUnifiedDiff(session.scadSource, a.diff);
+      if (next.length > 100_000) {
+        return { ok: false, error: 'SCAD source exceeds 100KB cap', code: 'TOO_LARGE' };
+      }
+      const unsafe = validateAgentScad(next);
+      if (unsafe) return unsafe;
       session.scadSource = next;
       session.render = { ok: null, errors: [] };
       session.geometry = {};
@@ -1250,6 +1268,8 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     const trimmed = a.code.trim();
     const declaresModule = new RegExp(`module\\s+${a.name}\\s*\\(`).test(trimmed);
     const body = declaresModule ? trimmed : `module ${a.name}() {\n${trimmed}\n}`;
+    const unsafe = validateAgentScad(body);
+    if (unsafe) return unsafe;
     session.modules[a.name] = body;
     // Invalidate render — caller must render again to verify.
     session.render = { ok: null, errors: [] };
@@ -1339,7 +1359,10 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       if (lines.length > 0) lines.push('');
     }
     for (const p of a.parts) lines.push(emitPlacement(p));
-    session.composition = lines.join('\n');
+    const composition = lines.join('\n');
+    const unsafe = validateAgentScad(composition);
+    if (unsafe) return unsafe;
+    session.composition = composition;
     // Retain structured placements (keyed by moduleName) so solve_mates has
     // real anchors. Arrays keep the base instance position; cylinder-like
     // modules are flagged from their brep entry kind when known.

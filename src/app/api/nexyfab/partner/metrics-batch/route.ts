@@ -11,6 +11,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPartnerMetrics } from '@/lib/partner-metrics';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { checkOrigin } from '@/lib/csrf';
+import { getTrustedClientIp } from '@/lib/client-ip';
+import { rateLimitAsync, rateLimitHeaders } from '@/lib/rate-limit';
+import { checkPlan } from '@/lib/plan-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,13 +30,26 @@ interface FactoryPublicRow {
 }
 
 export async function POST(req: NextRequest) {
+  if (!checkOrigin(req)) return NextResponse.json({ error: 'forbidden origin' }, { status: 403 });
+  const plan = await checkPlan(req, 'free');
+  if (!plan.ok) return plan.response;
+  const limit = await rateLimitAsync(
+    `partner-metrics:${getTrustedClientIp(req.headers)}`, 60, 60 * 1000,
+  );
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'too many requests' },
+      { status: 429, headers: rateLimitHeaders(limit, 60) },
+    );
+  }
   const body = await req.json().catch(() => ({})) as { emails?: unknown; windowDays?: unknown };
   if (!Array.isArray(body.emails) || body.emails.length === 0) {
     return NextResponse.json({ error: 'emails array required' }, { status: 400 });
   }
 
   const emails = body.emails
-    .filter((e): e is string => typeof e === 'string' && e.includes('@'))
+    .filter((e): e is string => typeof e === 'string' && e.length <= 254 && e.includes('@'))
+    .map((email) => email.trim().toLowerCase())
     .slice(0, MAX_EMAILS);
 
   if (emails.length === 0) {

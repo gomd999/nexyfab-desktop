@@ -328,4 +328,13 @@ describe('geometryResolver — registry sanity', () => {
     expect(reg.get('x_axis')?.kind).toBe('axis');
     expect(reg.get('xy_plane')?.kind).toBe('plane');
   });
+
+  it('exposes stable bottom and top axes for an extruded part', () => {
+    const tree: FeatureTree = { nodes: [{ id: 'body', name: 'body', dependencies: [], payload: { kind: 'extrude', loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], depth: 25, direction: 'one_sided', mode: 'add' } }] };
+    const resolver = featureTreeGeometryResolver(new Map([['p', tree]]));
+    const bottom = resolver(ref('p', 'bbox_axis_z_min', 'axis'), part('p', { position: vec3(1, 2, 3) }));
+    const top = resolver(ref('p', 'bbox_axis_z_max', 'axis'), part('p', { position: vec3(1, 2, 3) }));
+    expect(bottom?.kind === 'axis' ? bottom.world.origin : null).toEqual({ x: 1, y: 2, z: 3 });
+    expect(top?.kind === 'axis' ? top.world.origin : null).toEqual({ x: 1, y: 2, z: 28 });
+  });
 });

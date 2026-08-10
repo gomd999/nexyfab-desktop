@@ -1,0 +1,746 @@
+[
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-modular_conveyor_line-01",
+    "domain": "mechanical",
+    "sourceHash": "958fcb1a3851c47acc132893a2ba6dbae2c34a1b432d7329c34b63314b975f6e",
+    "sourceKind": "internal-template",
+    "templateId": "modular_conveyor_line",
+    "parameters": {
+      "modules": 3.2,
+      "moduleLen": 1600,
+      "width": 480,
+      "rollerPitch": 200
+    },
+    "artifactHash": "059e6036f5a066076df155fa02c2fa538ff575ad58b0349edf1f4ee635cf0c5b",
+    "artifactSummary": {
+      "name": "conveyor_line_3m",
+      "partCount": 39,
+      "pipeCount": 0,
+      "roles": [
+        "drive",
+        "leg",
+        "rail",
+        "roller"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        5200,
+        480,
+        880
+      ],
+      "holeTotal": 0,
+      "occCount": 39
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-desk_stand-01",
+    "domain": "mechanical",
+    "sourceHash": "3d5a3762f7f2b7badfcf6d73b515024b99e3f076c954530f30d6c942d1119199",
+    "sourceKind": "internal-template",
+    "templateId": "desk_stand",
+    "parameters": {
+      "baseW": 208,
+      "baseD": 176,
+      "baseT": 4.8,
+      "plateW": 224,
+      "plateD": 192,
+      "plateT": 3.2,
+      "postH": 128,
+      "sliderH": 136,
+      "ventW": 144,
+      "ventD": 104,
+      "lipH": 12.8
+    },
+    "artifactHash": "3a183f27abc95562c0a6b21a5000e3665a17926526be98c3f1799eb5024b95b8",
+    "artifactSummary": {
+      "name": "데스크 거치대 208x176 (높이조절·각도조절)",
+      "partCount": 25,
+      "pipeCount": 0,
+      "roles": [
+        "deck",
+        "fastener",
+        "frame",
+        "mount",
+        "pad",
+        "stop"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        224,
+        192,
+        259.8
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-tower_crane-01",
+    "domain": "mechanical",
+    "sourceHash": "95199255d60c8f8c06e2de8996bf5b85f50d1d4e202984692c85cfa8c015e80c",
+    "sourceKind": "internal-template",
+    "templateId": "tower_crane",
+    "parameters": {
+      "mastH": 24000,
+      "jibLen": 28000,
+      "mastW": 1280,
+      "hookDrop": 6400
+    },
+    "artifactHash": "c2e87f87de428ef2d4eb561de5ca57c1590d492ab3a92c4eafd371f763dd4344",
+    "artifactSummary": {
+      "name": "타워 크레인 H24m·지브 28m",
+      "partCount": 94,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "cab",
+        "cable",
+        "chord",
+        "counterweight",
+        "deck",
+        "diagonal",
+        "hook",
+        "joint",
+        "stay",
+        "trolley",
+        "vertical"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        37800,
+        2816,
+        31920
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-pump_unit-01",
+    "domain": "mechanical",
+    "sourceHash": "c92c08d2ad13380f103cbac7eabce98439d63661eaee91a5d714f2a7ae01d33a",
+    "sourceKind": "internal-template",
+    "templateId": "pump_unit",
+    "parameters": {
+      "suctionDia": 120,
+      "dischargeDia": 80,
+      "motorDia": 280
+    },
+    "artifactHash": "e8512b0ea035b3460888193266b9c4fa5307a743547ba71d6c177fe61f89987a",
+    "artifactSummary": {
+      "name": "원심 펌프 유닛 120/80",
+      "partCount": 9,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "guard",
+        "inlet",
+        "motor",
+        "outlet",
+        "pump"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        1484,
+        584,
+        774
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-gate_valve-01",
+    "domain": "mechanical",
+    "sourceHash": "fad3d91cc5da88955505ae65cc6f01fb87307a0043ca2923559bfe5ac9d486a5",
+    "sourceKind": "internal-template",
+    "templateId": "gate_valve",
+    "parameters": {
+      "dn": 120,
+      "standH": 400
+    },
+    "artifactHash": "13bdf3a70346283a25ccdd3ef0a403035910f0b28a9c0e056a07df9305db0f8e",
+    "artifactSummary": {
+      "name": "게이트 밸브 DN120(전시 스탠드)",
+      "partCount": 9,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "joint",
+        "shaft",
+        "valve"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        492,
+        250,
+        848
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-tank_silo-01",
+    "domain": "mechanical",
+    "sourceHash": "fc5ef0264af5071ca1913555c40e057989e7f086b9aa146583eff3ea1a334c72",
+    "sourceKind": "internal-template",
+    "templateId": "tank_silo",
+    "parameters": {
+      "diameter": 2400,
+      "shellH": 4800,
+      "hopper": "yes",
+      "wallThk": 4.8,
+      "legH": 2160
+    },
+    "artifactHash": "67801dd54419d1005e2c56ae7dee3656ceb253c4578c2ed5f1495fbf4e111618",
+    "artifactSummary": {
+      "name": "사일로 D2.4m+호퍼",
+      "partCount": 7,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "roof",
+        "shell"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        2400,
+        2400,
+        7396.8
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-pressure_vessel-01",
+    "domain": "mechanical",
+    "sourceHash": "f8081122c34d112e5fa908731e73412324f4d9be05a221370c23786cba5b152d",
+    "sourceKind": "internal-template",
+    "templateId": "pressure_vessel",
+    "parameters": {
+      "diameter": 1280,
+      "shellLen": 3200,
+      "wallThk": 9.6,
+      "saddleH": 480
+    },
+    "artifactHash": "3f51e895dbeec89cfcc78b46921e964516d2e54cf1bdc1d6628dfe3a4fa03763",
+    "artifactSummary": {
+      "name": "압력용기 D1280×L3200",
+      "partCount": 7,
+      "pipeCount": 0,
+      "roles": [
+        "head",
+        "nozzle",
+        "saddle_sup",
+        "shell"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        1280,
+        3840,
+        2110
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-motor_mount-01",
+    "domain": "mechanical",
+    "sourceHash": "de019ed771fd465daf1b571498ea2646538b53736840ac369464d2ebdd608f87",
+    "sourceKind": "internal-template",
+    "templateId": "motor_mount",
+    "parameters": {
+      "baseW": 160,
+      "baseD": 112,
+      "baseT": 11.2,
+      "webH": 128,
+      "webT": 9.6,
+      "ribT": 8,
+      "filletR": 9.6,
+      "anchorDia": 11.2,
+      "anchorCbDia": 20.8,
+      "anchorCbDepth": 6.4,
+      "motorBcd": 72,
+      "motorHoleD": 7.2,
+      "motorBolts": 3.2,
+      "edgeDist": 32
+    },
+    "artifactHash": "5eee821f7f034b46dd12f7a12436a9a47c7dc8213b68ab8688565d467241d26a",
+    "artifactSummary": {
+      "name": "모터 마운트 브래킷 (복합·필렛·카운터보어·볼트패턴)",
+      "partCount": 1,
+      "pipeCount": 0,
+      "roles": [
+        "plate"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        160,
+        112,
+        139.2
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-gusset_bracket-01",
+    "domain": "mechanical",
+    "sourceHash": "605247ea97724023f9beadcd73057824fa6141ba3ebef7e3d570f72d8e45d050",
+    "sourceKind": "internal-template",
+    "templateId": "gusset_bracket",
+    "parameters": {
+      "legA": 240,
+      "legB": 192,
+      "thickness": 9.6,
+      "chamfer": 32,
+      "boltDia": 14.4,
+      "edgeDist": 44,
+      "boltRows": 1.6,
+      "boltSpan": 0.4
+    },
+    "artifactHash": "accbe2823082bb00ec65f05bcf178f61c7c52d97419c43bfe8003d3a91831b31",
+    "artifactSummary": {
+      "name": "거셋 브래킷 판 (240×192×t9.6 · chamfer 32)",
+      "partCount": 1,
+      "pipeCount": 0,
+      "roles": [
+        "plate"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        240,
+        192,
+        9.6
+      ],
+      "holeTotal": 3,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-mold_cavity-01",
+    "domain": "mechanical",
+    "sourceHash": "0549359e15ed7ee584812e9d928f47ee1f9defefea3e35c5da1ebff750711352",
+    "sourceKind": "internal-template",
+    "templateId": "mold_cavity",
+    "parameters": {
+      "blockW": 240,
+      "blockD": 200,
+      "blockH": 96,
+      "cavityDia": 128
+    },
+    "artifactHash": "aed9fbcf469d551b0a76259b45a844bfdfc5aaecda15a91ef3a5db4c72ce3a8c",
+    "artifactSummary": {
+      "name": "금형 캐비티 240×200×96",
+      "partCount": 1,
+      "pipeCount": 0,
+      "roles": [
+        "mold"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        240,
+        200,
+        96
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-gear_train-01",
+    "domain": "mechanical",
+    "sourceHash": "bd7ae07c6fcb5c8be26d43b2a1525346f88f5bdff58e0681354113b8e46a4c88",
+    "sourceKind": "internal-template",
+    "templateId": "gear_train",
+    "parameters": {
+      "module": 2.4,
+      "thickness": 20,
+      "shaftDia": 12
+    },
+    "artifactHash": "f934fc7b7d162b211e5e4c2c9e98db1a13cb6690e116fca4cc128b04141d9a2c",
+    "artifactSummary": {
+      "name": "기어 트레인 20-40-20-60 (m2.4)",
+      "partCount": 9,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "gear",
+        "shaft"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        380.8,
+        188.8,
+        75
+      ],
+      "holeTotal": 4,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-four_bar-01",
+    "domain": "mechanical",
+    "sourceHash": "70e6d2661ea389079eda171f236edc1a872d8e24f7070a6008436130a0e6e52b",
+    "sourceKind": "internal-template",
+    "templateId": "four_bar",
+    "parameters": {
+      "ground": 320,
+      "crank": 96,
+      "coupler": 280,
+      "rocker": 200,
+      "inputDeg": 48
+    },
+    "artifactHash": "10ea4bff222e33db175ace670b8e63efe352191e7ab37b81efa4382a205c5a0f",
+    "artifactSummary": {
+      "name": "4절 링크 g320/a96/b280/c200 @48°",
+      "partCount": 8,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "joint",
+        "link"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        368.934141,
+        255.071901,
+        53
+      ],
+      "holeTotal": 8,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-flanged_fitting-01",
+    "domain": "mechanical",
+    "sourceHash": "133e739ca01dfa1628983484e97d76c182d3dc069d16719bbce401016b702045",
+    "sourceKind": "internal-template",
+    "templateId": "flanged_fitting",
+    "parameters": {
+      "kind": "elbow90",
+      "od": 91.44,
+      "bendR": 136,
+      "wallThk": 4.8
+    },
+    "artifactHash": "8bd96ec5a50c0d36554db03ef74101cadf7d81c7177f49f57277acd25db93181",
+    "artifactSummary": {
+      "name": "플랜지 90° 엘보 OD91.44",
+      "partCount": 3,
+      "pipeCount": 0,
+      "roles": [
+        "mount",
+        "pipe"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        245.22,
+        245.22,
+        186.44
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-heat_exchanger-01",
+    "domain": "mechanical",
+    "sourceHash": "9bf825652596800718166d2ed0bb8b789e8826bcff300334439a83c7b4ff67ca",
+    "sourceKind": "internal-template",
+    "templateId": "heat_exchanger",
+    "parameters": {
+      "shellID": 480,
+      "tubeLen": 2400,
+      "tubeOD": 15.2,
+      "baffles": 3.2,
+      "nozzleOD": 91.44
+    },
+    "artifactHash": "5d46ca7c0caebc61c94b947f53ec42648cc4bbb11a7c32453fb443e84ffad389",
+    "artifactSummary": {
+      "name": "셸튜브 열교환기 TEMA AEL 480×2400",
+      "partCount": 47,
+      "pipeCount": 0,
+      "roles": [
+        "mount",
+        "pipe",
+        "support",
+        "vessel"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        2790,
+        500,
+        740
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-robot_arm-01",
+    "domain": "mechanical",
+    "sourceHash": "dd17f8012b8a35f86acd2aa0a4df7053b47e473104a69384fb1345d02a207363",
+    "sourceKind": "internal-template",
+    "templateId": "robot_arm",
+    "parameters": {
+      "upperArmLen": 560,
+      "forearmLen": 480,
+      "shoulderDeg": 28,
+      "elbowDeg": 44,
+      "linkW": 96
+    },
+    "artifactHash": "b39a1b0ba60f323d3deabc31dbadc0578b2c7e142923b72c058f517ce69ba509",
+    "artifactSummary": {
+      "name": "로봇 암 5-DOF (28°/44°)",
+      "partCount": 11,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "gripper",
+        "joint",
+        "link"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        979.411203,
+        340,
+        1062.778809
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-machine_line-01",
+    "domain": "mechanical",
+    "sourceHash": "cbcd35684b30f958d313d43cfabb015bb2c9a367a882455ce593918bad7e485a",
+    "sourceKind": "internal-template",
+    "templateId": "machine_line",
+    "parameters": {
+      "stations": 3.2,
+      "stationPitch": 1200,
+      "conveyorW": 400,
+      "frameH": 720,
+      "guard": "yes"
+    },
+    "artifactHash": "bdbde0d6ea9df102496c8bbd8bc6eb807e23048a0115d85baef09d1c8c480b22",
+    "artifactSummary": {
+      "name": "산업기계 라인 3스테이션",
+      "partCount": 30,
+      "pipeCount": 0,
+      "roles": [
+        "conveyor",
+        "fence",
+        "frame",
+        "head",
+        "panel",
+        "station"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": null,
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-conveyor-01",
+    "domain": "mechanical",
+    "sourceHash": "b86622408bb0c58f9f7e4b1fd6f53d0a843241de72e90ac68415c7be85d90c6a",
+    "sourceKind": "internal-template",
+    "templateId": "conveyor",
+    "parameters": {
+      "kind": "belt",
+      "length": 4800,
+      "width": 480,
+      "frameH": 600,
+      "legPitch": 1200,
+      "rollerPitch": 240
+    },
+    "artifactHash": "4499e28b2eb9873c565596c798d9e5ecc3863d45b925c06915c826dedca5926e",
+    "artifactSummary": {
+      "name": "벨트 컨베이어 4.8m",
+      "partCount": 41,
+      "pipeCount": 0,
+      "roles": [
+        "conveyor",
+        "frame",
+        "motor",
+        "mount"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        4800,
+        950,
+        645
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-transmission_tower-01",
+    "domain": "mechanical",
+    "sourceHash": "107ae1d4ef44e246413d2637bf91035bff885d37dfe17a3aca54c1b29106e019",
+    "sourceKind": "internal-template",
+    "templateId": "transmission_tower",
+    "parameters": {
+      "height": 24000,
+      "baseW": 4800,
+      "topW": 1200,
+      "panels": 4.8,
+      "legSize": 96,
+      "braceSize": 60,
+      "armLen": 2000
+    },
+    "artifactHash": "ac8722c60d73076f3d2efd42322d4f3aa58be26dea604b2746faddfbce819ee8",
+    "artifactSummary": {
+      "name": "송전탑 24m×5패널",
+      "partCount": 83,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "brace",
+        "column"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        5070.771712,
+        5920,
+        25500
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-excavator_bucket-01",
+    "domain": "mechanical",
+    "sourceHash": "ad0d4cedd6b6d7cee08ac0aa4372ee6affc74f368b7611450a3a0fe32feffb8b",
+    "sourceKind": "internal-template",
+    "templateId": "excavator_bucket",
+    "parameters": {
+      "width": 1200,
+      "depth": 960,
+      "height": 880,
+      "teeth": 4,
+      "shellThk": 20
+    },
+    "artifactHash": "62123da65ccf32d177c260cbcca9b101fe261416f5c34180d7722a4de54090d1",
+    "artifactSummary": {
+      "name": "굴착기 버킷 1.2m",
+      "partCount": 13,
+      "pipeCount": 0,
+      "roles": [
+        "boss",
+        "edge",
+        "shell",
+        "sideplate",
+        "tooth"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        1360,
+        1200,
+        880
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-mechanical-modular_conveyor_line-02",
+    "domain": "mechanical",
+    "sourceHash": "e9b147f47b463ee3353975fcb6ed9b1a03d43114ec95b6f6111bec5b6d85efe2",
+    "sourceKind": "internal-template",
+    "templateId": "modular_conveyor_line",
+    "parameters": {
+      "modules": 3.36,
+      "moduleLen": 1680,
+      "width": 504,
+      "rollerPitch": 210
+    },
+    "artifactHash": "0f23686e596dcd8287162bd229edc367093e9b07e481105f4934c74c7ad7c902",
+    "artifactSummary": {
+      "name": "conveyor_line_3m",
+      "partCount": 39,
+      "pipeCount": 0,
+      "roles": [
+        "drive",
+        "leg",
+        "rail",
+        "roller"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        5440,
+        504,
+        880
+      ],
+      "holeTotal": 0,
+      "occCount": 39
+    },
+    "split": "candidate"
+  }
+]

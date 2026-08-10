@@ -4,10 +4,12 @@
  * HTTP: `POST /api/nexyfab/brep/step-import`, poll `GET …/brep/step-import/job/[id]`.
  * Multi-instance queue: `REDIS_URL` → Redis keys `nf:brep:queue`, `nf:brep:job:{id}` (same pattern as OpenSCAD jobs).
  * Optional tessellation: set `BREP_WORKER_URL`; worker must expose `POST {url}/tessellate` with JSON
- * `{ filename, base64, jobId }` and optional JSON body `{ previewMeshBase64?, artifactUrl?, brepSessionToken?, error? }`.
+ * `{ filename, jobId, base64 }` for small jobs or
+ * `{ filename, jobId, sourceUrl, sourceBytes }` for large private-object jobs,
+ * and optional JSON body `{ previewMeshBase64?, artifactUrl?, brepSessionToken?, error? }`.
  */
 
-export type BrepStepJobStatus = 'queued' | 'processing' | 'complete' | 'failed';
+export type BrepStepJobStatus = 'queued' | 'processing' | 'complete' | 'failed' | 'cancelled';
 
 /** Input reference: inline base64 (dev) or object-store key (prod). */
 export type BrepStepInput =

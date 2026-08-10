@@ -24,7 +24,22 @@ const request = async (id, pathname, init = {}, acceptedStatuses = null) => {
     if (contentType.includes('application/json')) {
       try {
         const body = JSON.parse(text);
-        summary = { status: body.status ?? null, build: body.build ?? null, code: body.code ?? null, error: body.error ?? null, dbStatus: body.db?.status ?? null };
+        const safeCheck = value => value && typeof value === 'object' ? {
+          ok: value.ok === true,
+          ms: Number.isFinite(value.ms) ? value.ms : null,
+          detail: typeof value.detail === 'string' ? value.detail.slice(0, 300) : null,
+          error: typeof value.error === 'string' ? value.error.slice(0, 500) : null,
+        } : null;
+        summary = {
+          status: body.status ?? null,
+          build: body.build ?? null,
+          code: body.code ?? null,
+          error: body.error ?? null,
+          dbStatus: body.db?.status ?? null,
+          checks: body.binary || body.bosl2 || body.render ? {
+            binary: safeCheck(body.binary), bosl2: safeCheck(body.bosl2), render: safeCheck(body.render),
+          } : null,
+        };
       } catch { summary = { parseError: true }; }
     } else if (contentType.includes('text/event-stream')) {
       const events = text.split(/\n\n+/).filter(Boolean).map(block => block.match(/^data:\s*(.*)$/m)?.[1]).filter(Boolean);

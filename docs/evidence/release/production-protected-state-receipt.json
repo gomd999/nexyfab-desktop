@@ -1,0 +1,263 @@
+{
+  "schema": "nexyfab.production-protected-state-compare.v1",
+  "generatedAt": "2026-08-10T07:15:48.673Z",
+  "ok": true,
+  "policy": "Every pre-release protected row and stable field must remain present and unchanged; volatile login/session telemetry is excluded while credential hashes remain protected.",
+  "protectedTableCount": 23,
+  "tables": {
+    "nf_comments": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 9,
+      "stableColumnSetSha256": "c2793e267a238d4cd61afcf2f9478b062af78b8462e439c53983fd02089f4f22"
+    },
+    "nf_contracts": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 28,
+      "stableColumnSetSha256": "838315864983e80b857925c479a9d3f2b3f30c3ae41f6019604fa98caf2cca65"
+    },
+    "nf_document_locks": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 4,
+      "stableColumnSetSha256": "55fbee161867338cfb4870e8665ed194e3983bd2ecb2451b10a10b7e1159dbeb"
+    },
+    "nf_document_permissions": {
+      "baselineRows": 1,
+      "candidateRows": 1,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 2,
+      "stableColumnCount": 5,
+      "stableColumnSetSha256": "aae34988c16e77cf16e160e35b92c4f7a48a69bc6b03dad52accc2f9b8f49141"
+    },
+    "nf_document_versions": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 14,
+      "stableColumnSetSha256": "f6264b99ccf8b4e9409f54e2e90622e2ec4fbc14a6bb9cee8fd0fd24fecba437"
+    },
+    "nf_documents": {
+      "baselineRows": 1,
+      "candidateRows": 1,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 15,
+      "stableColumnSetSha256": "feac63f0d912d73cd4280e0ab556de59971b03764d289b0416707f052b3d8ccb"
+    },
+    "nf_files": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 14,
+      "stableColumnSetSha256": "540604e51419ca978d7da9704f494b460225c33ec94509a2d8ba8286adb17b5b"
+    },
+    "nf_orders": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 26,
+      "stableColumnSetSha256": "c8d8801b88382516bb13870977d94ca0a3f8a8e8c2376f2ec03a35866940454e"
+    },
+    "nf_org_members": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 5,
+      "stableColumnSetSha256": "ced9e744e9d2f1dcbaa4b75673d93b4622e384415ba250d9d31c7a7d2c10a820"
+    },
+    "nf_orgs": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 8,
+      "stableColumnSetSha256": "c64ed3e9b84b2bdae5af95e5281dcc048724d9639bc039007816be409045ec13"
+    },
+    "nf_partner_invites": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 18,
+      "stableColumnSetSha256": "a7a4242ee5ad32302aed309f216deb36e30e800bf4bd3e7c25c5de8942ce1f6b"
+    },
+    "nf_partner_sessions": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 3,
+      "stableColumnSetSha256": "f4c722737ad1173db9d631e58323dcb247f4dc39802c6e99e2401bedac642ffe"
+    },
+    "nf_partner_tokens": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 6,
+      "stableColumnSetSha256": "46775e7b973a1dfcdbe67d216a3243b6af76637714514ee7b8c0aec3dfc09eb0"
+    },
+    "nf_projects": {
+      "baselineRows": 30,
+      "candidateRows": 30,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 10,
+      "stableColumnSetSha256": "31ad589013af22c94fdc38e6d9292128944271f1a2ee7c23249968337847076a"
+    },
+    "nf_quotes": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 24,
+      "stableColumnSetSha256": "f6a8c79a0ac684bd1ec78f552ba1f384c083283e2b843ad35b09ad095cff6bf0"
+    },
+    "nf_rfqs": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 32,
+      "stableColumnSetSha256": "d030fcc65d6315514dffe2df2e78bd46ae82de8b07394bce2c69db8b27351113"
+    },
+    "nf_shares": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 8,
+      "stableColumnSetSha256": "6116c116c1caca9475f05f7e3f847d51c0ac286a1fa141d3bff1f5ffcfbcbfb7"
+    },
+    "nf_team_members": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 8,
+      "stableColumnSetSha256": "b029976a1733b9cc9a626b5f64e254c4446fea39efdda87989018d084790d9c3"
+    },
+    "nf_teams": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 5,
+      "stableColumnSetSha256": "9e7e8b57bcb490ab575c2cabf2f6340c151a50da8f0ca9febe9c966f8d943bcc"
+    },
+    "nf_users": {
+      "baselineRows": 17,
+      "candidateRows": 17,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 56,
+      "stableColumnSetSha256": "81692b0b5b95d8c878a4761445daa291c35cbc8121fdfe08c9892bc2e0c6a091"
+    },
+    "nf_workspace_members": {
+      "baselineRows": 1,
+      "candidateRows": 1,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 2,
+      "stableColumnCount": 5,
+      "stableColumnSetSha256": "c896ee6054eba9d9021b4959d008171c461db0c4122108476f2bf29566b93f37"
+    },
+    "nf_workspaces": {
+      "baselineRows": 1,
+      "candidateRows": 1,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 5,
+      "stableColumnSetSha256": "568dc0f635a98d6fa1434425958e14bb27f79398b3bda96ea44285a73901dea1"
+    },
+    "partner_applications": {
+      "baselineRows": 0,
+      "candidateRows": 0,
+      "newRows": 0,
+      "missingRows": 0,
+      "changedExistingRows": 0,
+      "changedColumns": {},
+      "primaryKeyColumns": 1,
+      "stableColumnCount": 19,
+      "stableColumnSetSha256": "a7780e58969f3fb810cdb5e17f96573266952dd2f0f546d7fdc6e422c8b391ca"
+    }
+  },
+  "blockers": []
+}

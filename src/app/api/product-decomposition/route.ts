@@ -3,6 +3,7 @@ import { chatCompletion } from '@/lib/ai';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
 import { handleProductDecomposition } from './handler';
+import { guardStudioAi } from '@/lib/studio-ai-guard';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, code: 'RATE_LIMIT', message: 'Too many product generation requests' }, { status: 429 });
   }
   const body = await req.json().catch(() => ({}));
+  const planGuard = await guardStudioAi(req);
+  if (planGuard) return planGuard;
   const result = await handleProductDecomposition(body, async (prompt, signal) => {
     const completion = await chatCompletion({
       messages: [{ role: 'user', content: prompt }],

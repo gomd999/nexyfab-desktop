@@ -45,7 +45,7 @@ RUN npm install --legacy-peer-deps --no-audit --no-fund
 # Cache-bust: buildkit occasionally reuses a stale `COPY . .` layer on Railway
 # (2026-07-12: shipped old scripts/drawing-to-3d despite changed files). Bump this
 # value to force the copy + build to re-run from fresh source.
-ARG CACHEBUST=20260802-208
+ARG CACHEBUST=20260810-001
 RUN echo "cachebust ${CACHEBUST}"
 COPY . .
 
@@ -90,7 +90,7 @@ FROM node:22-slim AS runner
 #   물려받지 않고, Railway 가 인자를 주입하지 않으면 기본값이 쓰인다.
 #   → 빌드 스테이지와 **같은 기본값**을 둔다. 인자가 오면 그것이 이긴다.
 #   ⚠ 두 곳을 함께 올려야 한다 — 갈리면 표시가 실제와 달라진다.
-ARG CACHEBUST=20260802-208
+ARG CACHEBUST=20260810-001
 ENV NEXYFAB_BUILD_TAG=${CACHEBUST}
 WORKDIR /app
 
@@ -147,6 +147,7 @@ COPY --from=builder /app/node_modules/file-uri-to-path ./node_modules/file-uri-t
 # tracer can't see them — copy explicitly. NOT scripts/knowledge-crawler (323MB data).
 COPY --from=builder /app/scripts/drawing-to-3d ./scripts/drawing-to-3d
 COPY --from=builder /app/scripts/engineering-core ./scripts/engineering-core
+COPY --from=builder /app/services/openscad-worker ./services/openscad-worker
 # export_step(to-step.mjs) uses replicad/OCCT via DYNAMIC import (occtEngine also
 # dynamic-imports it), so the tracer omits the whole subtree — copy the closure
 # (computed from package.json deps: replicad→flatbush/flatqueue/opentype.js/…).
@@ -173,6 +174,18 @@ COPY --from=builder /app/node_modules/flatqueue ./node_modules/flatqueue
 COPY --from=builder /app/node_modules/opentype.js ./node_modules/opentype.js
 COPY --from=builder /app/node_modules/string.prototype.codepointat ./node_modules/string.prototype.codepointat
 COPY --from=builder /app/node_modules/tiny-inflate ./node_modules/tiny-inflate
+# Isolated OpenSCAD worker uses Redis directly and starts from the same image.
+COPY --from=builder /app/node_modules/ioredis ./node_modules/ioredis
+COPY --from=builder /app/node_modules/@ioredis ./node_modules/@ioredis
+COPY --from=builder /app/node_modules/cluster-key-slot ./node_modules/cluster-key-slot
+COPY --from=builder /app/node_modules/debug ./node_modules/debug
+COPY --from=builder /app/node_modules/denque ./node_modules/denque
+COPY --from=builder /app/node_modules/lodash.defaults ./node_modules/lodash.defaults
+COPY --from=builder /app/node_modules/lodash.isarguments ./node_modules/lodash.isarguments
+COPY --from=builder /app/node_modules/redis-errors ./node_modules/redis-errors
+COPY --from=builder /app/node_modules/redis-parser ./node_modules/redis-parser
+COPY --from=builder /app/node_modules/standard-as-callback ./node_modules/standard-as-callback
+COPY --from=builder /app/node_modules/ms ./node_modules/ms
 
 # Data directory for SQLite (Railway volume mount 이후에도 writable하도록 root로 실행)
 RUN mkdir -p /app/data /app/adminlink

@@ -1,0 +1,152 @@
+{
+  "schema": "nexyfab.aihub239-four-track-probe.v1",
+  "generatedAt": "2026-08-09T15:16:27.669Z",
+  "sourcePolicy": {
+    "readOnly": true,
+    "extracted": false,
+    "copiedPayload": false,
+    "trainingAuthorized": false,
+    "commercialEvidenceAuthorized": false
+  },
+  "summary": {
+    "candidateCount": 7,
+    "adapterCleanCount": 7,
+    "graphCleanCount": 7,
+    "validationFourTrackCandidateCount": 0
+  },
+  "cases": [
+    {
+      "drawingKey": "APT_FP_TRACK_105904300",
+      "trackCount": 4,
+      "annotationCounts": {
+        "STR": 23,
+        "SPA": 15,
+        "OBJ": 9,
+        "OCR": 14
+      },
+      "adapterIssueCount": 0,
+      "adapterIssueSamples": [],
+      "graphGateStatus": {
+        "input-integrity": "passed",
+        "quarantine": "passed",
+        "confidence": "passed"
+      },
+      "graphIssueCount": 0,
+      "eligibleForAuthoritativeScaleReview": true
+    },
+    {
+      "drawingKey": "APT_FP_TRACK_105905000",
+      "trackCount": 4,
+      "annotationCounts": {
+        "STR": 40,
+        "SPA": 21,
+        "OBJ": 6,
+        "OCR": 18
+      },
+      "adapterIssueCount": 0,
+      "adapterIssueSamples": [],
+      "graphGateStatus": {
+        "input-integrity": "passed",
+        "quarantine": "passed",
+        "confidence": "passed"
+      },
+      "graphIssueCount": 0,
+      "eligibleForAuthoritativeScaleReview": true
+    },
+    {
+      "drawingKey": "APT_FP_TRACK_114100200",
+      "trackCount": 4,
+      "annotationCounts": {
+        "STR": 50,
+        "SPA": 21,
+        "OBJ": 7,
+        "OCR": 14
+      },
+      "adapterIssueCount": 0,
+      "adapterIssueSamples": [],
+      "graphGateStatus": {
+        "input-integrity": "passed",
+        "quarantine": "passed",
+        "confidence": "passed"
+      },
+      "graphIssueCount": 0,
+      "eligibleForAuthoritativeScaleReview": true
+    },
+    {
+      "drawingKey": "APT_FP_TRACK_114100400",
+      "trackCount": 4,
+      "annotationCounts": {
+        "STR": 52,
+        "SPA": 17,
+        "OBJ": 7,
+        "OCR": 14
+      },
+      "adapterIssueCount": 0,
+      "adapterIssueSamples": [],
+      "graphGateStatus": {
+        "input-integrity": "passed",
+        "quarantine": "passed",
+        "confidence": "passed"
+      },
+      "graphIssueCount": 0,
+      "eligibleForAuthoritativeScaleReview": true
+    },
+    {
+      "drawingKey": "APT_FP_TRACK_114100700",
+      "trackCount": 4,
+      "annotationCounts": {
+        "STR": 69,
+        "SPA": 20,
+        "OBJ": 7,
+        "OCR": 16
+      },
+      "adapterIssueCount": 0,
+      "adapterIssueSamples": [],
+      "graphGateStatus": {
+        "input-integrity": "passed",
+        "quarantine": "passed",
+        "confidence": "passed"
+      },
+      "graphIssueCount": 0,
+      "eligibleForAuthoritativeScaleReview": true
+    },
+    {
+      "drawingKey": "APT_FP_TRACK_114100800",
+      "trackCount": 4,
+      "annotationCounts": {
+        "STR": 56,
+        "SPA": 19,
+        "OBJ": 7,
+        "OCR": 15
+      },
+      "adapterIssueCount": 0,
+      "adapterIssueSamples": [],
+      "graphGateStatus": {
+        "input-integrity": "passed",
+        "quarantine": "passed",
+        "confidence": "passed"
+      },
+      "graphIssueCount": 0,
+      "eligibleForAuthoritativeScaleReview": true
+    },
+    {
+      "drawingKey": "APT_FP_TRACK_500100500",
+      "trackCount": 4,
+      "annotationCounts": {
+        "STR": 52,
+        "SPA": 17,
+        "OBJ": 7,
+        "OCR": 13
+      },
+      "adapterIssueCount": 0,
+      "adapterIssueSamples": [],
+      "graphGateStatus": {
+        "input-integrity": "passed",
+        "quarantine": "passed",
+        "confidence": "passed"
+      },
+      "graphIssueCount": 0,
+      "eligibleForAuthoritativeScaleReview": true
+    }
+  ]
+}

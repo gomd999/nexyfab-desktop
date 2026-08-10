@@ -1,0 +1,414 @@
+{
+  "evidence": {
+    "domain": "interior",
+    "approvedCases": 20,
+    "independentReviewers": 2,
+    "campaigns": 3,
+    "minimumRepeatsPerCase": 15,
+    "minimumRepeatsPerCampaign": 5,
+    "requiredGateRuns": 300,
+    "requiredGatePasses": 300,
+    "falseVerified": 0,
+    "falseClear": 0,
+    "destructivePartMerge": 0,
+    "axes": [
+      {
+        "axis": "requirements",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "coordinate_units",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "semantic_objects",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "geometry",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "relationships",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "provenance",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "revision_integrity",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "output_consistency",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "field_measurement",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "space_closure",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "hosts_openings",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "circulation",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "door_swing",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "egress",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "accessibility",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "furniture_clearance",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "ceiling_mep",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "finishes",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "millwork",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "lighting",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "acoustics",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "schedules_quantities",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "drawing_consistency",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "repair",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      }
+    ]
+  },
+  "assessment": {
+    "domain": "interior",
+    "eligible": false,
+    "axes": [
+      {
+        "axis": "requirements",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "coordinate_units",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "semantic_objects",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "geometry",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "relationships",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "provenance",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "revision_integrity",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "output_consistency",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "field_measurement",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "space_closure",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "hosts_openings",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "circulation",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "door_swing",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "egress",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "accessibility",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "furniture_clearance",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "ceiling_mep",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "finishes",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "millwork",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "lighting",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "acoustics",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "schedules_quantities",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "drawing_consistency",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "repair",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      }
+    ],
+    "blockers": [
+      "accuracy:coordinate_units",
+      "coverage:coordinate_units",
+      "accuracy:provenance",
+      "coverage:provenance",
+      "accuracy:revision_integrity",
+      "coverage:revision_integrity",
+      "accuracy:field_measurement",
+      "coverage:field_measurement",
+      "accuracy:space_closure",
+      "coverage:space_closure",
+      "accuracy:hosts_openings",
+      "coverage:hosts_openings",
+      "accuracy:circulation",
+      "coverage:circulation",
+      "accuracy:door_swing",
+      "coverage:door_swing",
+      "accuracy:egress",
+      "coverage:egress",
+      "accuracy:accessibility",
+      "coverage:accessibility",
+      "accuracy:furniture_clearance",
+      "coverage:furniture_clearance",
+      "accuracy:ceiling_mep",
+      "coverage:ceiling_mep",
+      "accuracy:finishes",
+      "coverage:finishes",
+      "accuracy:millwork",
+      "coverage:millwork",
+      "accuracy:lighting",
+      "coverage:lighting",
+      "accuracy:acoustics",
+      "coverage:acoustics",
+      "accuracy:schedules_quantities",
+      "coverage:schedules_quantities",
+      "accuracy:drawing_consistency",
+      "coverage:drawing_consistency",
+      "accuracy:ifc_roundtrip",
+      "coverage:ifc_roundtrip"
+    ]
+  },
+  "issues": []
+}

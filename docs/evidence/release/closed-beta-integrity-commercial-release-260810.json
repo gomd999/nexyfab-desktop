@@ -1,0 +1,14 @@
+{
+  "schema": "nexyfab.closed-beta-release-comparison.v1",
+  "generatedAt": "2026-08-10T03:05:00.000Z",
+  "baseline": "validation-reports/closed-beta-integrity-260810-active-master-wp20-final.json",
+  "candidate": "validation-reports/closed-beta-integrity-260810-commercial-release-baseline.json",
+  "ok": true,
+  "differences": [],
+  "summary": {
+    "protectedTableCount": 17,
+    "protectedRowCount": 13,
+    "protectedFileCount": 15,
+    "protectedFileBytes": 15429420
+  }
+}

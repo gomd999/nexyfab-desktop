@@ -3,6 +3,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { type Seg, segmentsToDxf, segmentsToSvg } from '@/lib/papercraft/netDxf';
 import { chatCompletion } from '@/lib/ai';
+import { guardStudioAi } from '@/lib/studio-ai-guard';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,6 +35,8 @@ export async function POST(req: NextRequest) {
   let aiFlanges: Flange[] | undefined;
   let usedPrompt = false;
   if (b.prompt && b.width == null) {
+    const planGuard = await guardStudioAi(req);
+    if (planGuard) return planGuard;
     try {
       const r = await chatCompletion({
         messages: [

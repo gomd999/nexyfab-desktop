@@ -4,6 +4,7 @@ import React, { useState, Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import { richText } from '@/lib/richText';
+import { executeRecaptchaV3 } from '@/lib/recaptcha-client';
 
 const dict = {
   ko: {
@@ -341,16 +342,7 @@ function ComponentOrderContent() {
 
     try {
       // reCAPTCHA v3
-      const captchaToken = await new Promise<string>((resolve, reject) => {
-        const g = window.grecaptcha;
-        if (!g) {
-          reject(new Error('reCAPTCHA unavailable'));
-          return;
-        }
-        g.ready(() => {
-          void g.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!, { action: 'submit' }).then(resolve).catch(reject);
-        });
-      });
+      const captchaToken = await executeRecaptchaV3('submit');
       formData.append('g-recaptcha-response', captchaToken);
 
       const res = await fetch('/api/send-mail', {

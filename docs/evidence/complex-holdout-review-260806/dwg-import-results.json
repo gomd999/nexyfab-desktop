@@ -1,0 +1,607 @@
+{
+  "schema": "nexyfab.dwg-import-evidence.v1",
+  "generatedAt": "2026-08-06T14:43:38.912Z",
+  "scoreEligible": false,
+  "releaseReady": false,
+  "sourceBytesEmbedded": false,
+  "accuracyBoundary": {
+    "nativeAssemblySemanticsRecovered": false,
+    "bodyMembershipAsserted": false,
+    "revitFallbackCountsAsRevitNative": false,
+    "exact3dRequires": "classification=brep-polyhedron and no approximate parts"
+  },
+  "summary": {
+    "requested": 16,
+    "completed": 16,
+    "notRun": 0,
+    "exact3d": 0,
+    "classifications": {
+      "2d-drawing": 8,
+      "aabb-approximation": 8
+    }
+  },
+  "attempts": [
+    {
+      "caseId": "interior-review-01",
+      "route": "dwg-primary",
+      "status": "pass",
+      "classification": "2d-drawing",
+      "reason": "DWG contains supported 2D drawing entities, not a manufacturing 3D assembly.",
+      "sourceMember": {
+        "path": "KODI BUILDERS - PROJECT 01.dwg",
+        "sha256": "b9e868b4f9bceb5f1171ddbdbc792c845642ad4ebb18514c9d6186ed1594952a",
+        "bytes": 173881
+      },
+      "twoD": {
+        "emitted": 1449,
+        "truncated": false,
+        "stats": {
+          "emitted": 1449,
+          "entityCounts": {
+            "LINE": 1142,
+            "DIMENSION": 26,
+            "LWPOLYLINE": 84,
+            "CIRCLE": 41,
+            "ARC": 16,
+            "TEXT": 140
+          },
+          "skipped": {
+            "HATCH": 116,
+            "LEADER": 11,
+            "VIEWPORT": 2
+          },
+          "approximatedSplines": 36,
+          "tessellated": 12,
+          "blockInserts": 0,
+          "layers": [
+            "0"
+          ],
+          "truncated": false
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-02",
+      "route": "revit-dwg-fallback",
+      "status": "pass",
+      "classification": "2d-drawing",
+      "reason": "DWG fallback contains supported 2D drawing entities; native Revit semantics were not evaluated.",
+      "sourceMember": {
+        "path": "3story 100m villa  (1).dwg",
+        "sha256": "dacc185ebe42cec20b5d4340a34be6fbafedc4210fb70004ff5b7dfe3d49f7ca",
+        "bytes": 313555
+      },
+      "twoD": {
+        "emitted": 10225,
+        "truncated": false,
+        "stats": {
+          "emitted": 10225,
+          "entityCounts": {
+            "LINE": 7336,
+            "ARC": 1568,
+            "LWPOLYLINE": 843,
+            "TEXT": 225,
+            "CIRCLE": 209,
+            "DIMENSION": 44
+          },
+          "skipped": {
+            "HATCH": 194,
+            "POINT": 4
+          },
+          "approximatedSplines": 0,
+          "tessellated": 378,
+          "blockInserts": 187,
+          "layers": [
+            "Layer1",
+            "DOOR",
+            "Layer2",
+            "2",
+            "6",
+            "DIM",
+            "0",
+            "Layer3",
+            "FUR",
+            "SITE",
+            "30",
+            "4",
+            "3",
+            "1",
+            "Layer6",
+            "GRID",
+            "Layer4",
+            "EL2",
+            "01"
+          ],
+          "truncated": false
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-04",
+      "route": "dwg-primary",
+      "status": "pass",
+      "classification": "aabb-approximation",
+      "reason": "DWG geometry imported.",
+      "sourceMember": {
+        "path": "kottar - 3D View - {3D}.dwg",
+        "sha256": "d254bdc3c0dc3d6b0176c05ff2b51e728b521a65c61151cea5c1b6c95623380a",
+        "bytes": 198225
+      },
+      "threeD": {
+        "fidelity": "aabb-approximation",
+        "parts": 600,
+        "exactPolyParts": 0,
+        "approximateParts": 600,
+        "representative": true,
+        "stats": {
+          "pfaces": 752,
+          "blocks": 25,
+          "inserts": 27,
+          "parts": 600,
+          "skippedNestedInserts": 0,
+          "unit": "inch→mm",
+          "representative": true
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-05",
+      "route": "dwg-primary",
+      "status": "pass",
+      "classification": "aabb-approximation",
+      "reason": "DWG geometry imported.",
+      "sourceMember": {
+        "path": "1st flr hall - 3D View - {3D}.dwg",
+        "sha256": "55c528da7c0f63a7713ae610eb4a1d0ce70de27a277040299524d6439d65b0da",
+        "bytes": 341362
+      },
+      "threeD": {
+        "fidelity": "aabb-approximation",
+        "parts": 600,
+        "exactPolyParts": 0,
+        "approximateParts": 600,
+        "representative": true,
+        "stats": {
+          "pfaces": 1583,
+          "blocks": 69,
+          "inserts": 102,
+          "parts": 600,
+          "skippedNestedInserts": 2,
+          "unit": "inch→mm",
+          "representative": true
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-06",
+      "route": "dwg-primary",
+      "status": "pass",
+      "classification": "aabb-approximation",
+      "reason": "DWG geometry imported.",
+      "sourceMember": {
+        "path": "master bed - 3D View - {3D}.dwg",
+        "sha256": "c8d50ba8217ead14566359d5b9122e8328c14ab3d3f673d1cd904060a2aa109c",
+        "bytes": 53947
+      },
+      "threeD": {
+        "fidelity": "aabb-approximation",
+        "parts": 220,
+        "exactPolyParts": 0,
+        "approximateParts": 220,
+        "representative": false,
+        "stats": {
+          "pfaces": 220,
+          "blocks": 19,
+          "inserts": 26,
+          "parts": 220,
+          "skippedNestedInserts": 0,
+          "unit": "inch→mm"
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-08",
+      "route": "dwg-primary",
+      "status": "pass",
+      "classification": "aabb-approximation",
+      "reason": "DWG geometry imported.",
+      "sourceMember": {
+        "path": "GH-PR-36 - 3D View - {3D}.dwg",
+        "sha256": "8bdc9740b841ea70ea3fd5de9876f81091b73d413358de9f21557a088bcf0fa2",
+        "bytes": 374051
+      },
+      "threeD": {
+        "fidelity": "aabb-approximation",
+        "parts": 600,
+        "exactPolyParts": 0,
+        "approximateParts": 600,
+        "representative": true,
+        "stats": {
+          "pfaces": 1176,
+          "blocks": 58,
+          "inserts": 148,
+          "parts": 600,
+          "skippedNestedInserts": 0,
+          "unit": "inch→mm",
+          "representative": true
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-09",
+      "route": "dwg-primary",
+      "status": "pass",
+      "classification": "2d-drawing",
+      "reason": "DWG contains supported 2D drawing entities, not a manufacturing 3D assembly.",
+      "sourceMember": {
+        "path": "Glavni projekt-bs - kopija.dwg",
+        "sha256": "ca218ef96d46132a9c518d2f641a0a176d04258caf43e85ad333603600987c88",
+        "bytes": 808672
+      },
+      "twoD": {
+        "emitted": 7638,
+        "truncated": false,
+        "stats": {
+          "emitted": 7638,
+          "entityCounts": {
+            "LINE": 5867,
+            "CIRCLE": 93,
+            "LWPOLYLINE": 44,
+            "ARC": 175,
+            "DIMENSION": 1077,
+            "TEXT": 382
+          },
+          "skipped": {
+            "HATCH": 268,
+            "MULTILEADER": 33
+          },
+          "approximatedSplines": 1,
+          "tessellated": 7,
+          "blockInserts": 0,
+          "layers": [
+            "Pregrade",
+            "Konstrukcija",
+            "Pogled",
+            "Otvori",
+            "Nevidljivo",
+            "presjek grede",
+            "Oprema i instalacije",
+            "Daska u pogledu",
+            "0",
+            "Daska u presjeku",
+            "cigla",
+            "1",
+            "2",
+            "Otvori u pogledu",
+            "Ograda",
+            "Kote",
+            "Tekst",
+            "Šrafura"
+          ],
+          "truncated": false
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-10",
+      "route": "dwg-primary",
+      "status": "pass",
+      "classification": "2d-drawing",
+      "reason": "DWG contains supported 2D drawing entities, not a manufacturing 3D assembly.",
+      "sourceMember": {
+        "path": "Half-story house A01/3D Model Half-story house A01.dwg",
+        "sha256": "5bd868f6c8c0e12029133c1cdc9b2e910ebf88c6958c1a6eeda62105073598f8",
+        "bytes": 99615344
+      },
+      "twoD": {
+        "emitted": 1,
+        "truncated": false,
+        "stats": {
+          "emitted": 1,
+          "entityCounts": {
+            "LINE": 1
+          },
+          "skipped": {
+            "HATCH": 1,
+            "3DSOLID": 3065,
+            "INSERT": 18
+          },
+          "approximatedSplines": 0,
+          "tessellated": 0,
+          "blockInserts": 79,
+          "layers": [
+            "ฝ้าภายใน 01"
+          ],
+          "truncated": false
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-12",
+      "route": "dwg-primary",
+      "status": "pass",
+      "classification": "aabb-approximation",
+      "reason": "DWG geometry imported.",
+      "sourceMember": {
+        "path": "rar/1111111.dwg",
+        "sha256": "0577eb8dadc3d614dbf252327f73886fb04bceb3a822e57e0f35f1097aa6e8b9",
+        "bytes": 34922675
+      },
+      "threeD": {
+        "fidelity": "aabb-approximation",
+        "parts": 600,
+        "exactPolyParts": 0,
+        "approximateParts": 600,
+        "representative": true,
+        "stats": {
+          "pfaces": 2069,
+          "blocks": 1115,
+          "inserts": 1115,
+          "parts": 600,
+          "skippedNestedInserts": 0,
+          "unit": "mm",
+          "representative": true
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-14",
+      "route": "revit-dwg-fallback",
+      "status": "pass",
+      "classification": "aabb-approximation",
+      "reason": "DWG fallback geometry imported; native Revit semantics were not evaluated.",
+      "sourceMember": {
+        "path": "3D.dwg",
+        "sha256": "d7d92ad6870112a0db265373eaf44ca48102d3e3df2845f55886126cdb47805f",
+        "bytes": 570400
+      },
+      "threeD": {
+        "fidelity": "aabb-approximation",
+        "parts": 600,
+        "exactPolyParts": 0,
+        "approximateParts": 600,
+        "representative": true,
+        "stats": {
+          "pfaces": 2071,
+          "blocks": 121,
+          "inserts": 150,
+          "parts": 600,
+          "skippedNestedInserts": 22,
+          "unit": "mm",
+          "representative": true
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-15",
+      "route": "revit-dwg-fallback",
+      "status": "pass",
+      "classification": "2d-drawing",
+      "reason": "DWG fallback contains supported 2D drawing entities; native Revit semantics were not evaluated.",
+      "sourceMember": {
+        "path": "ARASU HOUSE.dwg",
+        "sha256": "b067e3d7d4041fab9326cd699357930d03c23a8e2d52ab9c61cdd5e3d2cfa3d5",
+        "bytes": 46351
+      },
+      "twoD": {
+        "emitted": 80,
+        "truncated": false,
+        "stats": {
+          "emitted": 80,
+          "entityCounts": {
+            "LWPOLYLINE": 7,
+            "DIMENSION": 14,
+            "LINE": 55,
+            "ARC": 4
+          },
+          "skipped": {
+            "HATCH": 3
+          },
+          "approximatedSplines": 0,
+          "tessellated": 0,
+          "blockInserts": 0,
+          "layers": [
+            "0"
+          ],
+          "truncated": false
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-16",
+      "route": "revit-dwg-fallback",
+      "status": "pass",
+      "classification": "aabb-approximation",
+      "reason": "DWG fallback geometry imported; native Revit semantics were not evaluated.",
+      "sourceMember": {
+        "path": "House Planning Of 3BKH/Autocad 2016 Files.dwg",
+        "sha256": "f18dfa49be0282d50bff2a34aa4bfeeae7e621be93ba545556b5afe6bde6365d",
+        "bytes": 2252000
+      },
+      "threeD": {
+        "fidelity": "aabb-approximation",
+        "parts": 600,
+        "exactPolyParts": 0,
+        "approximateParts": 600,
+        "representative": true,
+        "stats": {
+          "pfaces": 10152,
+          "blocks": 34,
+          "inserts": 89,
+          "parts": 600,
+          "skippedNestedInserts": 0,
+          "unit": "inch→mm",
+          "representative": true
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-17",
+      "route": "revit-dwg-fallback",
+      "status": "pass",
+      "classification": "aabb-approximation",
+      "reason": "DWG fallback geometry imported; native Revit semantics were not evaluated.",
+      "sourceMember": {
+        "path": "villa.dwg",
+        "sha256": "3c0dd3ae8c2d5f6c55c9a9466f5146eb18cabae9008e214f87a23655349ddd6f",
+        "bytes": 2524288
+      },
+      "threeD": {
+        "fidelity": "aabb-approximation",
+        "parts": 600,
+        "exactPolyParts": 0,
+        "approximateParts": 600,
+        "representative": true,
+        "stats": {
+          "pfaces": 9279,
+          "blocks": 261,
+          "inserts": 405,
+          "parts": 600,
+          "skippedNestedInserts": 6,
+          "unit": "mm",
+          "representative": true
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-18",
+      "route": "dwg-primary",
+      "status": "pass",
+      "classification": "2d-drawing",
+      "reason": "DWG contains supported 2D drawing entities, not a manufacturing 3D assembly.",
+      "sourceMember": {
+        "path": "Nibedita Roy (Basu).dwg",
+        "sha256": "26f1413eaeb9d5a1a6b01c648d33ddea5b6a8281c10d6e0dad717fe0e7485346",
+        "bytes": 846117
+      },
+      "twoD": {
+        "emitted": 10518,
+        "truncated": false,
+        "stats": {
+          "emitted": 10518,
+          "entityCounts": {
+            "LINE": 8664,
+            "DIMENSION": 739,
+            "TEXT": 142,
+            "ARC": 326,
+            "LWPOLYLINE": 451,
+            "CIRCLE": 196
+          },
+          "skipped": {
+            "INSERT": 9,
+            "HATCH": 423,
+            "LEADER": 18,
+            "POINT": 89,
+            "SOLID": 67
+          },
+          "approximatedSplines": 28,
+          "tessellated": 84,
+          "blockInserts": 275,
+          "layers": [
+            "Boun",
+            "staircase",
+            "Dim",
+            "wall",
+            "text",
+            "dotl.",
+            "door",
+            "window",
+            "COLUMN",
+            "elc",
+            "dot line",
+            "0",
+            "LINE"
+          ],
+          "truncated": false
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-19",
+      "route": "dwg-primary",
+      "status": "pass",
+      "classification": "2d-drawing",
+      "reason": "DWG contains supported 2D drawing entities, not a manufacturing 3D assembly.",
+      "sourceMember": {
+        "path": "binod ground.dwg",
+        "sha256": "a7db52a0af486db9a99e0864eb3fba57bef09244e5edcbadd7f7700f1999c7e9",
+        "bytes": 102336
+      },
+      "twoD": {
+        "emitted": 913,
+        "truncated": false,
+        "stats": {
+          "emitted": 913,
+          "entityCounts": {
+            "TEXT": 51,
+            "LINE": 694,
+            "CIRCLE": 5,
+            "DIMENSION": 94,
+            "LWPOLYLINE": 37,
+            "ARC": 32
+          },
+          "skipped": {
+            "HATCH": 26
+          },
+          "approximatedSplines": 0,
+          "tessellated": 7,
+          "blockInserts": 33,
+          "layers": [
+            "text",
+            "wall",
+            "Boun",
+            "Road",
+            "dotl.",
+            "Dim",
+            "COLUMN",
+            "window",
+            "door"
+          ],
+          "truncated": false
+        }
+      }
+    },
+    {
+      "caseId": "interior-review-20",
+      "route": "dwg-primary",
+      "status": "pass",
+      "classification": "2d-drawing",
+      "reason": "DWG contains supported 2D drawing entities, not a manufacturing 3D assembly.",
+      "sourceMember": {
+        "path": "Madhu Ghosh & Sadagar Sarkar.dwg",
+        "sha256": "9f51c9766b1d20d0a476589977ee45a932642ceb4ef7bf9b3b2ff55040d440d3",
+        "bytes": 135136
+      },
+      "twoD": {
+        "emitted": 437,
+        "truncated": false,
+        "stats": {
+          "emitted": 437,
+          "entityCounts": {
+            "TEXT": 23,
+            "LINE": 308,
+            "DIMENSION": 78,
+            "LWPOLYLINE": 25,
+            "ARC": 3
+          },
+          "skipped": {
+            "INSERT": 9,
+            "HATCH": 22
+          },
+          "approximatedSplines": 0,
+          "tessellated": 3,
+          "blockInserts": 6,
+          "layers": [
+            "text",
+            "Boun",
+            "Dim",
+            "wall",
+            "COLUMN",
+            "door"
+          ],
+          "truncated": false
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "schema": "nexyfab.native-extraction-remediation-report.v1",
+  "policy": {
+    "deterministicInputsOnly": true,
+    "maximumSameExtractorRetries": 1,
+    "partialImportsForbidden": true,
+    "inferredJointsDoNotCountAsNative": true
+  },
+  "summary": {
+    "cases": 3,
+    "recovered": 1,
+    "notRun": 2,
+    "fail": 0
+  },
+  "cases": [
+    {
+      "caseId": "pressure_vessel-review-01",
+      "format": "step",
+      "initialReason": "spawnSync C:\\Program Files\\FreeCAD 1.1\\bin\\FreeCADCmd.exe ETIMEDOUT",
+      "remediation": "retry_same_extractor_timeout_600000",
+      "status": "recovered",
+      "artifactHash": "64dcdd41d6f7bd4a88165fad69bc52b3b04a81b664fcd95f8221ffe2ee31d97f",
+      "nextRoute": "native_validation"
+    },
+    {
+      "caseId": "factory_equipment-review-03",
+      "format": "iges",
+      "initialReason": "spawnSync C:\\Program Files\\FreeCAD 1.1\\bin\\FreeCADCmd.exe ETIMEDOUT",
+      "remediation": "retry_same_extractor_timeout_600000",
+      "status": "not_run",
+      "artifactHash": null,
+      "finalReason": "spawnSync C:\\Program Files\\FreeCAD 1.1\\bin\\FreeCADCmd.exe ETIMEDOUT",
+      "nextRoute": "large_iges_worker"
+    },
+    {
+      "caseId": "turbomachinery-review-03",
+      "format": "iges",
+      "initialReason": "freecad_result_missing:Exception while processing file: C:/Users/gomd9/Downloads/nexysys_1/nexyfab.com/new/scripts/reference/freecad-extract-step.py [Moving with scaling transformation is forbidden]\n:FreeCAD 1.1.3, Libs: 1.1.3R20260725 (Git shallow)\n(C) 2001-2026 FreeCAD contributors\nFreeCAD is free and open-source software licensed under the terms of LGPL2+ license.\n\nTotal number of loaded entities 22039.\n\nTotal number of loaded entities 22039.\n\n",
+      "remediation": "no_partial_import_promotion",
+      "status": "not_run",
+      "artifactHash": null,
+      "nextRoute": "iges_non_rigid_transform_worker"
+    }
+  ]
+}

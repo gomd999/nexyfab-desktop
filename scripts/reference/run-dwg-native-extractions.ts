@@ -18,7 +18,9 @@ type Attempt = {
 };
 
 const reviewRoot = path.resolve(process.argv[2] ?? 'docs/evidence/complex-holdout-review-260806');
-const corpusRoot = path.resolve(process.argv[3] ?? 'C:/Users/gomd9/Downloads/참고파일들');
+const corpusRootInput = process.argv[3] ?? process.env.NEXYFAB_REFERENCE_CORPUS_ROOT?.trim();
+if (!corpusRootInput) throw new Error('reference_corpus_root_required');
+const corpusRoot = path.resolve(corpusRootInput);
 const output = path.resolve(process.argv[4] ?? path.join(reviewRoot, 'dwg-import-results.json'));
 const triagePath = path.resolve(process.argv[5] ?? 'docs/evidence/external-step-structure-coverage-260806/unsupported-archive-triage-run-1.json');
 const repair = (value: string) => {

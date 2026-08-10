@@ -1,0 +1,12 @@
+{
+  "schema": "nexyfab.openscad-http-smoke.v1",
+  "generatedAt": "2026-08-10T07:11:08.499Z",
+  "startedAt": "2026-08-10T07:11:07.623Z",
+  "target": "https://nexyfab.com",
+  "ok": true,
+  "mode": "async",
+  "format": "stl",
+  "outputBytes": 1575,
+  "outputSha256": "89373698d468b4896a41aa75e7db01915ecc28c8654f1896d40650b0b474b7d3",
+  "durationMs": 875
+}

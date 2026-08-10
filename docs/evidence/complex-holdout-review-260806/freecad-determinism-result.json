@@ -1,0 +1,5256 @@
+{
+  "schema": "nexyfab.complex-native-extraction-result-batch.v1",
+  "extractorCapability": {
+    "formats": [
+      "step",
+      "stp"
+    ],
+    "jointSemanticsComplete": false,
+    "nativeSolidWorksOrInventor": false
+  },
+  "results": [
+    {
+      "schema": "nexyfab.complex-native-extraction-result.v1",
+      "caseId": "gearbox-review-05",
+      "sourceHash": "7dfe9e91c66bc0ed0721b82af6bcbed3130e28cb7aa8a882c398b4f97228d957",
+      "artifactHash": "fadb2b95806131c68bca81daa89902a11b81645cfafdad9b1dc9de7351b02dc9",
+      "extractor": {
+        "name": "nexyfab-freecad-step-document",
+        "version": "1",
+        "cadSystem": "FreeCAD 1.1.3"
+      },
+      "units": {
+        "angle": "deg",
+        "length": "mm"
+      },
+      "definitions": [
+        {
+          "id": "freecad-root-definition",
+          "kind": "assembly",
+          "name": "Assieme_riduttore_conico.stp"
+        },
+        {
+          "id": "freecad-definition:Part__Feature",
+          "kind": "part",
+          "name": "Ingranaggio conico12"
+        },
+        {
+          "id": "freecad-definition:Part__Feature001",
+          "kind": "part",
+          "name": "Ingranaggio conico001"
+        },
+        {
+          "id": "freecad-definition:Ingranaggio_conico12",
+          "kind": "assembly",
+          "name": "Ingranaggio conico002"
+        },
+        {
+          "id": "freecad-definition:X_Axis",
+          "kind": "part",
+          "name": "X-axis"
+        },
+        {
+          "id": "freecad-definition:Y_Axis",
+          "kind": "part",
+          "name": "Y-axis"
+        },
+        {
+          "id": "freecad-definition:Z_Axis",
+          "kind": "part",
+          "name": "Z-axis"
+        },
+        {
+          "id": "freecad-definition:XY_Plane",
+          "kind": "part",
+          "name": "XY-plane"
+        },
+        {
+          "id": "freecad-definition:XZ_Plane",
+          "kind": "part",
+          "name": "XZ-plane"
+        },
+        {
+          "id": "freecad-definition:YZ_Plane",
+          "kind": "part",
+          "name": "YZ-plane"
+        },
+        {
+          "id": "freecad-definition:Origin001",
+          "kind": "part",
+          "name": "Origin001"
+        },
+        {
+          "id": "freecad-definition:Part__Feature002",
+          "kind": "part",
+          "name": "Ingranaggio conico22"
+        },
+        {
+          "id": "freecad-definition:Part__Feature003",
+          "kind": "part",
+          "name": "Ingranaggio conico003"
+        },
+        {
+          "id": "freecad-definition:Ingranaggio_conico22",
+          "kind": "assembly",
+          "name": "Ingranaggio conico004"
+        },
+        {
+          "id": "freecad-definition:X_Axis001",
+          "kind": "part",
+          "name": "X-axis001"
+        },
+        {
+          "id": "freecad-definition:Y_Axis001",
+          "kind": "part",
+          "name": "Y-axis001"
+        },
+        {
+          "id": "freecad-definition:Z_Axis001",
+          "kind": "part",
+          "name": "Z-axis001"
+        },
+        {
+          "id": "freecad-definition:XY_Plane001",
+          "kind": "part",
+          "name": "XY-plane001"
+        },
+        {
+          "id": "freecad-definition:XZ_Plane001",
+          "kind": "part",
+          "name": "XZ-plane001"
+        },
+        {
+          "id": "freecad-definition:YZ_Plane001",
+          "kind": "part",
+          "name": "YZ-plane001"
+        },
+        {
+          "id": "freecad-definition:Origin003",
+          "kind": "part",
+          "name": "Origin003"
+        },
+        {
+          "id": "freecad-definition:Ingranaggi_conici2",
+          "kind": "assembly",
+          "name": "Ingranaggi conici2"
+        },
+        {
+          "id": "freecad-definition:X_Axis002",
+          "kind": "part",
+          "name": "X-axis002"
+        },
+        {
+          "id": "freecad-definition:Y_Axis002",
+          "kind": "part",
+          "name": "Y-axis002"
+        },
+        {
+          "id": "freecad-definition:Z_Axis002",
+          "kind": "part",
+          "name": "Z-axis002"
+        },
+        {
+          "id": "freecad-definition:XY_Plane002",
+          "kind": "part",
+          "name": "XY-plane002"
+        },
+        {
+          "id": "freecad-definition:XZ_Plane002",
+          "kind": "part",
+          "name": "XZ-plane002"
+        },
+        {
+          "id": "freecad-definition:YZ_Plane002",
+          "kind": "part",
+          "name": "YZ-plane002"
+        },
+        {
+          "id": "freecad-definition:Origin005",
+          "kind": "part",
+          "name": "Origin006"
+        },
+        {
+          "id": "freecad-definition:Part__Feature004",
+          "kind": "part",
+          "name": "DIN 720 - 33109 - 45 x 80 x 26"
+        },
+        {
+          "id": "freecad-definition:Part__Feature005",
+          "kind": "part",
+          "name": "DIN 720 - 33109 - 45 x 80 x 001"
+        },
+        {
+          "id": "freecad-definition:DIN_720___33109___45_x_80_x_26",
+          "kind": "assembly",
+          "name": "DIN 720 - 33109 - 45 x 80 x 002"
+        },
+        {
+          "id": "freecad-definition:X_Axis003",
+          "kind": "part",
+          "name": "X-axis003"
+        },
+        {
+          "id": "freecad-definition:Y_Axis003",
+          "kind": "part",
+          "name": "Y-axis003"
+        },
+        {
+          "id": "freecad-definition:Z_Axis003",
+          "kind": "part",
+          "name": "Z-axis003"
+        },
+        {
+          "id": "freecad-definition:XY_Plane003",
+          "kind": "part",
+          "name": "XY-plane003"
+        },
+        {
+          "id": "freecad-definition:XZ_Plane003",
+          "kind": "part",
+          "name": "XZ-plane003"
+        },
+        {
+          "id": "freecad-definition:YZ_Plane003",
+          "kind": "part",
+          "name": "YZ-plane003"
+        },
+        {
+          "id": "freecad-definition:Origin007",
+          "kind": "part",
+          "name": "Origin009"
+        },
+        {
+          "id": "freecad-definition:Part__Feature006",
+          "kind": "part",
+          "name": "DIN 720 - 33109 - 45 x 80 x 003"
+        },
+        {
+          "id": "freecad-definition:Part__Feature007",
+          "kind": "part",
+          "name": "DIN 720 - 33109 - 45 x 80 x 004"
+        },
+        {
+          "id": "freecad-definition:DIN_720___33109___45_x_80_x_001",
+          "kind": "assembly",
+          "name": "DIN 720 - 33109 - 45 x 80 x 005"
+        },
+        {
+          "id": "freecad-definition:X_Axis004",
+          "kind": "part",
+          "name": "X-axis004"
+        },
+        {
+          "id": "freecad-definition:Y_Axis004",
+          "kind": "part",
+          "name": "Y-axis004"
+        },
+        {
+          "id": "freecad-definition:Z_Axis004",
+          "kind": "part",
+          "name": "Z-axis004"
+        },
+        {
+          "id": "freecad-definition:XY_Plane004",
+          "kind": "part",
+          "name": "XY-plane004"
+        },
+        {
+          "id": "freecad-definition:XZ_Plane004",
+          "kind": "part",
+          "name": "XZ-plane004"
+        },
+        {
+          "id": "freecad-definition:YZ_Plane004",
+          "kind": "part",
+          "name": "YZ-plane004"
+        },
+        {
+          "id": "freecad-definition:Origin009",
+          "kind": "part",
+          "name": "Origin011"
+        },
+        {
+          "id": "freecad-definition:Part__Feature008",
+          "kind": "part",
+          "name": "DIN 981 - KM 9"
+        },
+        {
+          "id": "freecad-definition:Part__Feature009",
+          "kind": "part",
+          "name": "ISO 2982-2 - 45 x 56"
+        },
+        {
+          "id": "freecad-definition:Part__Feature010",
+          "kind": "part",
+          "name": "albero_corona"
+        },
+        {
+          "id": "freecad-definition:Part__Feature011",
+          "kind": "part",
+          "name": "DIN 720 - 33210 - 50 x 90 x 32"
+        },
+        {
+          "id": "freecad-definition:Part__Feature012",
+          "kind": "part",
+          "name": "DIN 720 - 33210 - 50 x 90 x 001"
+        },
+        {
+          "id": "freecad-definition:DIN_720___33210___50_x_90_x_32",
+          "kind": "assembly",
+          "name": "DIN 720 - 33210 - 50 x 90 x 002"
+        },
+        {
+          "id": "freecad-definition:X_Axis005",
+          "kind": "part",
+          "name": "X-axis005"
+        },
+        {
+          "id": "freecad-definition:Y_Axis005",
+          "kind": "part",
+          "name": "Y-axis005"
+        },
+        {
+          "id": "freecad-definition:Z_Axis005",
+          "kind": "part",
+          "name": "Z-axis005"
+        },
+        {
+          "id": "freecad-definition:XY_Plane005",
+          "kind": "part",
+          "name": "XY-plane005"
+        },
+        {
+          "id": "freecad-definition:XZ_Plane005",
+          "kind": "part",
+          "name": "XZ-plane005"
+        },
+        {
+          "id": "freecad-definition:YZ_Plane005",
+          "kind": "part",
+          "name": "YZ-plane005"
+        },
+        {
+          "id": "freecad-definition:Origin011",
+          "kind": "part",
+          "name": "Origin014"
+        },
+        {
+          "id": "freecad-definition:Part__Feature013",
+          "kind": "part",
+          "name": "DIN 720 - 33210 - 50 x 90 x 003"
+        },
+        {
+          "id": "freecad-definition:Part__Feature014",
+          "kind": "part",
+          "name": "DIN 720 - 33210 - 50 x 90 x 004"
+        },
+        {
+          "id": "freecad-definition:DIN_720___33210___50_x_90_x_001",
+          "kind": "assembly",
+          "name": "DIN 720 - 33210 - 50 x 90 x 005"
+        },
+        {
+          "id": "freecad-definition:X_Axis006",
+          "kind": "part",
+          "name": "X-axis006"
+        },
+        {
+          "id": "freecad-definition:Y_Axis006",
+          "kind": "part",
+          "name": "Y-axis006"
+        },
+        {
+          "id": "freecad-definition:Z_Axis006",
+          "kind": "part",
+          "name": "Z-axis006"
+        },
+        {
+          "id": "freecad-definition:XY_Plane006",
+          "kind": "part",
+          "name": "XY-plane006"
+        },
+        {
+          "id": "freecad-definition:XZ_Plane006",
+          "kind": "part",
+          "name": "XZ-plane006"
+        },
+        {
+          "id": "freecad-definition:YZ_Plane006",
+          "kind": "part",
+          "name": "YZ-plane006"
+        },
+        {
+          "id": "freecad-definition:Origin013",
+          "kind": "part",
+          "name": "Origin017"
+        },
+        {
+          "id": "freecad-definition:Part__Feature015",
+          "kind": "part",
+          "name": "DIN 988 - 70 x 90 x 2"
+        },
+        {
+          "id": "freecad-definition:Part__Feature016",
+          "kind": "part",
+          "name": "DIN 988 - 70 x 90 x 001"
+        },
+        {
+          "id": "freecad-definition:Part__Feature017",
+          "kind": "part",
+          "name": "distanziale_corona"
+        },
+        {
+          "id": "freecad-definition:Part__Feature018",
+          "kind": "part",
+          "name": "carter_a"
+        },
+        {
+          "id": "freecad-definition:Part__Feature019",
+          "kind": "part",
+          "name": "carter_a_MIR"
+        },
+        {
+          "id": "freecad-definition:Part__Feature020",
+          "kind": "part",
+          "name": "blocchi_albero_carter_chiuso"
+        },
+        {
+          "id": "freecad-definition:Part__Feature021",
+          "kind": "part",
+          "name": "blocchi_albero_carter"
+        },
+        {
+          "id": "freecad-definition:Assieme_riduttore_conico",
+          "kind": "assembly",
+          "name": "Assieme_riduttore_conico"
+        },
+        {
+          "id": "freecad-definition:X_Axis007",
+          "kind": "part",
+          "name": "X-axis007"
+        },
+        {
+          "id": "freecad-definition:Y_Axis007",
+          "kind": "part",
+          "name": "Y-axis007"
+        },
+        {
+          "id": "freecad-definition:Z_Axis007",
+          "kind": "part",
+          "name": "Z-axis007"
+        },
+        {
+          "id": "freecad-definition:XY_Plane007",
+          "kind": "part",
+          "name": "XY-plane007"
+        },
+        {
+          "id": "freecad-definition:XZ_Plane007",
+          "kind": "part",
+          "name": "XZ-plane007"
+        },
+        {
+          "id": "freecad-definition:YZ_Plane007",
+          "kind": "part",
+          "name": "YZ-plane007"
+        },
+        {
+          "id": "freecad-definition:Origin015",
+          "kind": "part",
+          "name": "Origin020"
+        },
+        {
+          "id": "freecad-definition:Part__Feature022",
+          "kind": "part",
+          "name": "View"
+        },
+        {
+          "id": "freecad-definition:Part__Feature023",
+          "kind": "part",
+          "name": "View001"
+        },
+        {
+          "id": "freecad-definition:Part__Feature024",
+          "kind": "part",
+          "name": "View002"
+        },
+        {
+          "id": "freecad-definition:Part__Feature025",
+          "kind": "part",
+          "name": "View003"
+        },
+        {
+          "id": "freecad-definition:Part__Feature026",
+          "kind": "part",
+          "name": "View004"
+        },
+        {
+          "id": "freecad-definition:Part__Feature027",
+          "kind": "part",
+          "name": "View005"
+        },
+        {
+          "id": "freecad-definition:Part__Feature028",
+          "kind": "part",
+          "name": "View006"
+        },
+        {
+          "id": "freecad-definition:Part__Feature029",
+          "kind": "part",
+          "name": "View007"
+        },
+        {
+          "id": "freecad-definition:Part__Feature030",
+          "kind": "part",
+          "name": "View008"
+        },
+        {
+          "id": "freecad-definition:Part__Feature031",
+          "kind": "part",
+          "name": "View009"
+        },
+        {
+          "id": "freecad-definition:Part__Feature032",
+          "kind": "part",
+          "name": "View010"
+        },
+        {
+          "id": "freecad-definition:Part__Feature033",
+          "kind": "part",
+          "name": "View011"
+        },
+        {
+          "id": "freecad-definition:Part__Feature034",
+          "kind": "part",
+          "name": "View012"
+        },
+        {
+          "id": "freecad-definition:Part__Feature035",
+          "kind": "part",
+          "name": "View013"
+        },
+        {
+          "id": "freecad-definition:Part__Feature036",
+          "kind": "part",
+          "name": "View014"
+        },
+        {
+          "id": "freecad-definition:Part__Feature037",
+          "kind": "part",
+          "name": "View015"
+        },
+        {
+          "id": "freecad-definition:Part__Feature038",
+          "kind": "part",
+          "name": "View016"
+        },
+        {
+          "id": "freecad-definition:Part__Feature039",
+          "kind": "part",
+          "name": "View017"
+        },
+        {
+          "id": "freecad-definition:Part__Feature040",
+          "kind": "part",
+          "name": "View018"
+        },
+        {
+          "id": "freecad-definition:Part__Feature041",
+          "kind": "part",
+          "name": "View019"
+        },
+        {
+          "id": "freecad-definition:Part__Feature042",
+          "kind": "part",
+          "name": "View020"
+        },
+        {
+          "id": "freecad-definition:Part__Feature043",
+          "kind": "part",
+          "name": "View021"
+        },
+        {
+          "id": "freecad-definition:Part__Feature044",
+          "kind": "part",
+          "name": "View022"
+        },
+        {
+          "id": "freecad-definition:Part__Feature045",
+          "kind": "part",
+          "name": "View023"
+        },
+        {
+          "id": "freecad-definition:Part__Feature046",
+          "kind": "part",
+          "name": "View024"
+        },
+        {
+          "id": "freecad-definition:Part__Feature047",
+          "kind": "part",
+          "name": "View025"
+        },
+        {
+          "id": "freecad-definition:Part__Feature048",
+          "kind": "part",
+          "name": "View026"
+        },
+        {
+          "id": "freecad-definition:Part__Feature049",
+          "kind": "part",
+          "name": "View027"
+        },
+        {
+          "id": "freecad-definition:Part__Feature050",
+          "kind": "part",
+          "name": "View028"
+        },
+        {
+          "id": "freecad-definition:Part__Feature051",
+          "kind": "part",
+          "name": "View029"
+        },
+        {
+          "id": "freecad-definition:Part__Feature052",
+          "kind": "part",
+          "name": "View030"
+        },
+        {
+          "id": "freecad-definition:Part__Feature053",
+          "kind": "part",
+          "name": "View031"
+        },
+        {
+          "id": "freecad-definition:Part__Feature054",
+          "kind": "part",
+          "name": "View032"
+        },
+        {
+          "id": "freecad-definition:Part__Feature055",
+          "kind": "part",
+          "name": "View033"
+        },
+        {
+          "id": "freecad-definition:Part__Feature056",
+          "kind": "part",
+          "name": "View034"
+        },
+        {
+          "id": "freecad-definition:Part__Feature057",
+          "kind": "part",
+          "name": "View035"
+        },
+        {
+          "id": "freecad-definition:Part__Feature058",
+          "kind": "part",
+          "name": "View036"
+        },
+        {
+          "id": "freecad-definition:Part__Feature059",
+          "kind": "part",
+          "name": "View037"
+        },
+        {
+          "id": "freecad-definition:Part__Feature060",
+          "kind": "part",
+          "name": "View038"
+        },
+        {
+          "id": "freecad-definition:Part__Feature061",
+          "kind": "part",
+          "name": "View039"
+        },
+        {
+          "id": "freecad-definition:Part__Feature062",
+          "kind": "part",
+          "name": "View040"
+        },
+        {
+          "id": "freecad-definition:Part__Feature063",
+          "kind": "part",
+          "name": "View041"
+        },
+        {
+          "id": "freecad-definition:Part__Feature064",
+          "kind": "part",
+          "name": "View042"
+        },
+        {
+          "id": "freecad-definition:Part__Feature065",
+          "kind": "part",
+          "name": "View043"
+        },
+        {
+          "id": "freecad-definition:Part__Feature066",
+          "kind": "part",
+          "name": "View044"
+        },
+        {
+          "id": "freecad-definition:Part__Feature067",
+          "kind": "part",
+          "name": "View045"
+        },
+        {
+          "id": "freecad-definition:Part__Feature068",
+          "kind": "part",
+          "name": "View046"
+        },
+        {
+          "id": "freecad-definition:Part__Feature069",
+          "kind": "part",
+          "name": "View047"
+        },
+        {
+          "id": "freecad-definition:Part__Feature070",
+          "kind": "part",
+          "name": "View048"
+        },
+        {
+          "id": "freecad-definition:Part__Feature071",
+          "kind": "part",
+          "name": "View049"
+        },
+        {
+          "id": "freecad-definition:Part__Feature072",
+          "kind": "part",
+          "name": "View050"
+        },
+        {
+          "id": "freecad-definition:Part__Feature073",
+          "kind": "part",
+          "name": "View051"
+        },
+        {
+          "id": "freecad-definition:Part__Feature074",
+          "kind": "part",
+          "name": "View052"
+        },
+        {
+          "id": "freecad-definition:Part__Feature075",
+          "kind": "part",
+          "name": "View053"
+        },
+        {
+          "id": "freecad-definition:Part__Feature076",
+          "kind": "part",
+          "name": "View054"
+        },
+        {
+          "id": "freecad-definition:Part__Feature077",
+          "kind": "part",
+          "name": "View055"
+        },
+        {
+          "id": "freecad-definition:Part__Feature078",
+          "kind": "part",
+          "name": "View056"
+        },
+        {
+          "id": "freecad-definition:Part__Feature079",
+          "kind": "part",
+          "name": "View057"
+        },
+        {
+          "id": "freecad-definition:Part__Feature080",
+          "kind": "part",
+          "name": "View058"
+        },
+        {
+          "id": "freecad-definition:Part__Feature081",
+          "kind": "part",
+          "name": "View059"
+        },
+        {
+          "id": "freecad-definition:Part__Feature082",
+          "kind": "part",
+          "name": "View060"
+        },
+        {
+          "id": "freecad-definition:Part__Feature083",
+          "kind": "part",
+          "name": "View061"
+        },
+        {
+          "id": "freecad-definition:Part__Feature084",
+          "kind": "part",
+          "name": "View062"
+        },
+        {
+          "id": "freecad-definition:Part__Feature085",
+          "kind": "part",
+          "name": "View063"
+        },
+        {
+          "id": "freecad-definition:Part__Feature086",
+          "kind": "part",
+          "name": "View064"
+        },
+        {
+          "id": "freecad-definition:Part__Feature087",
+          "kind": "part",
+          "name": "View065"
+        },
+        {
+          "id": "freecad-definition:Part__Feature088",
+          "kind": "part",
+          "name": "View066"
+        },
+        {
+          "id": "freecad-definition:Part__Feature089",
+          "kind": "part",
+          "name": "View067"
+        },
+        {
+          "id": "freecad-definition:Part__Feature090",
+          "kind": "part",
+          "name": "View068"
+        },
+        {
+          "id": "freecad-definition:Part__Feature091",
+          "kind": "part",
+          "name": "View069"
+        },
+        {
+          "id": "freecad-definition:Part__Feature092",
+          "kind": "part",
+          "name": "View070"
+        },
+        {
+          "id": "freecad-definition:Part__Feature093",
+          "kind": "part",
+          "name": "View071"
+        },
+        {
+          "id": "freecad-definition:Part__Feature094",
+          "kind": "part",
+          "name": "View072"
+        },
+        {
+          "id": "freecad-definition:Part__Feature095",
+          "kind": "part",
+          "name": "View073"
+        },
+        {
+          "id": "freecad-definition:Part__Feature096",
+          "kind": "part",
+          "name": "View074"
+        },
+        {
+          "id": "freecad-definition:Part__Feature097",
+          "kind": "part",
+          "name": "View075"
+        },
+        {
+          "id": "freecad-definition:Part__Feature098",
+          "kind": "part",
+          "name": "View076"
+        },
+        {
+          "id": "freecad-definition:Part__Feature099",
+          "kind": "part",
+          "name": "View077"
+        },
+        {
+          "id": "freecad-definition:Part__Feature100",
+          "kind": "part",
+          "name": "View078"
+        },
+        {
+          "id": "freecad-definition:Part__Feature101",
+          "kind": "part",
+          "name": "View079"
+        },
+        {
+          "id": "freecad-definition:Part__Feature102",
+          "kind": "part",
+          "name": "View080"
+        },
+        {
+          "id": "freecad-definition:Part__Feature103",
+          "kind": "part",
+          "name": "View081"
+        },
+        {
+          "id": "freecad-definition:Part__Feature104",
+          "kind": "part",
+          "name": "View082"
+        },
+        {
+          "id": "freecad-definition:Part__Feature105",
+          "kind": "part",
+          "name": "View083"
+        },
+        {
+          "id": "freecad-definition:Part__Feature106",
+          "kind": "part",
+          "name": "View084"
+        },
+        {
+          "id": "freecad-definition:Part__Feature107",
+          "kind": "part",
+          "name": "View085"
+        },
+        {
+          "id": "freecad-definition:Part__Feature108",
+          "kind": "part",
+          "name": "View086"
+        },
+        {
+          "id": "freecad-definition:Part__Feature109",
+          "kind": "part",
+          "name": "View087"
+        },
+        {
+          "id": "freecad-definition:Part__Feature110",
+          "kind": "part",
+          "name": "View088"
+        },
+        {
+          "id": "freecad-definition:Part__Feature111",
+          "kind": "part",
+          "name": "View089"
+        },
+        {
+          "id": "freecad-definition:Part__Feature112",
+          "kind": "part",
+          "name": "View090"
+        },
+        {
+          "id": "freecad-definition:Part__Feature113",
+          "kind": "part",
+          "name": "View091"
+        },
+        {
+          "id": "freecad-definition:Part__Feature114",
+          "kind": "part",
+          "name": "View092"
+        }
+      ],
+      "occurrences": [
+        {
+          "definitionId": "freecad-root-definition",
+          "id": "freecad-root",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": null,
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature",
+          "id": "freecad-occurrence:Part__Feature",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Ingranaggio_conico12",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature001",
+          "id": "freecad-occurrence:Part__Feature001",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Ingranaggio_conico12",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Ingranaggio_conico12",
+          "id": "freecad-occurrence:Ingranaggio_conico12",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Ingranaggi_conici2",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:X_Axis",
+          "id": "freecad-occurrence:X_Axis",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Y_Axis",
+          "id": "freecad-occurrence:Y_Axis",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Z_Axis",
+          "id": "freecad-occurrence:Z_Axis",
+          "localToParent": [
+            0,
+            -1,
+            -1.1102230246251565e-16,
+            0,
+            1.1102230246251565e-16,
+            0,
+            -1,
+            0,
+            1,
+            1.1102230246251565e-16,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XY_Plane",
+          "id": "freecad-occurrence:XY_Plane",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XZ_Plane",
+          "id": "freecad-occurrence:XZ_Plane",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            -2.220446049250313e-16,
+            -1.0000000000000002,
+            0,
+            0,
+            1.0000000000000002,
+            -2.220446049250313e-16,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:YZ_Plane",
+          "id": "freecad-occurrence:YZ_Plane",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Origin001",
+          "id": "freecad-occurrence:Origin001",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature002",
+          "id": "freecad-occurrence:Part__Feature002",
+          "localToParent": [
+            -0.9983081582712683,
+            0.058144828910475926,
+            -3.469446951953614e-18,
+            0,
+            -3.469446951953614e-18,
+            -2.220446049250313e-16,
+            -1,
+            0,
+            -0.058144828910475926,
+            -0.9983081582712683,
+            1.1102230246251565e-16,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Ingranaggio_conico22",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature003",
+          "id": "freecad-occurrence:Part__Feature003",
+          "localToParent": [
+            -0.9983081582712683,
+            0.058144828910475926,
+            -3.469446951953614e-18,
+            0,
+            -3.469446951953614e-18,
+            -2.220446049250313e-16,
+            -1,
+            0,
+            -0.058144828910475926,
+            -0.9983081582712683,
+            1.1102230246251565e-16,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Ingranaggio_conico22",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Ingranaggio_conico22",
+          "id": "freecad-occurrence:Ingranaggio_conico22",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Ingranaggi_conici2",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:X_Axis001",
+          "id": "freecad-occurrence:X_Axis001",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Y_Axis001",
+          "id": "freecad-occurrence:Y_Axis001",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Z_Axis001",
+          "id": "freecad-occurrence:Z_Axis001",
+          "localToParent": [
+            0,
+            -1,
+            -1.1102230246251565e-16,
+            0,
+            1.1102230246251565e-16,
+            0,
+            -1,
+            0,
+            1,
+            1.1102230246251565e-16,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XY_Plane001",
+          "id": "freecad-occurrence:XY_Plane001",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XZ_Plane001",
+          "id": "freecad-occurrence:XZ_Plane001",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            -2.220446049250313e-16,
+            -1.0000000000000002,
+            0,
+            0,
+            1.0000000000000002,
+            -2.220446049250313e-16,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:YZ_Plane001",
+          "id": "freecad-occurrence:YZ_Plane001",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Origin003",
+          "id": "freecad-occurrence:Origin003",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Ingranaggi_conici2",
+          "id": "freecad-occurrence:Ingranaggi_conici2",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:X_Axis002",
+          "id": "freecad-occurrence:X_Axis002",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Y_Axis002",
+          "id": "freecad-occurrence:Y_Axis002",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Z_Axis002",
+          "id": "freecad-occurrence:Z_Axis002",
+          "localToParent": [
+            0,
+            -1,
+            -1.1102230246251565e-16,
+            0,
+            1.1102230246251565e-16,
+            0,
+            -1,
+            0,
+            1,
+            1.1102230246251565e-16,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XY_Plane002",
+          "id": "freecad-occurrence:XY_Plane002",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XZ_Plane002",
+          "id": "freecad-occurrence:XZ_Plane002",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            -2.220446049250313e-16,
+            -1.0000000000000002,
+            0,
+            0,
+            1.0000000000000002,
+            -2.220446049250313e-16,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:YZ_Plane002",
+          "id": "freecad-occurrence:YZ_Plane002",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Origin005",
+          "id": "freecad-occurrence:Origin005",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature004",
+          "id": "freecad-occurrence:Part__Feature004",
+          "localToParent": [
+            0,
+            -0.9335141459689041,
+            0.358540568521817,
+            0,
+            0,
+            0.3585405685218169,
+            0.9335141459689041,
+            0,
+            -1,
+            0,
+            0,
+            -25,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33109___45_x_80_x_26",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature005",
+          "id": "freecad-occurrence:Part__Feature005",
+          "localToParent": [
+            0,
+            -0.9335141459689041,
+            0.358540568521817,
+            0,
+            0,
+            0.3585405685218169,
+            0.9335141459689041,
+            0,
+            -1,
+            0,
+            0,
+            -25,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33109___45_x_80_x_26",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:DIN_720___33109___45_x_80_x_26",
+          "id": "freecad-occurrence:DIN_720___33109___45_x_80_x_26",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:X_Axis003",
+          "id": "freecad-occurrence:X_Axis003",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Y_Axis003",
+          "id": "freecad-occurrence:Y_Axis003",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Z_Axis003",
+          "id": "freecad-occurrence:Z_Axis003",
+          "localToParent": [
+            0,
+            -1,
+            -1.1102230246251565e-16,
+            0,
+            1.1102230246251565e-16,
+            0,
+            -1,
+            0,
+            1,
+            1.1102230246251565e-16,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XY_Plane003",
+          "id": "freecad-occurrence:XY_Plane003",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XZ_Plane003",
+          "id": "freecad-occurrence:XZ_Plane003",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            -2.220446049250313e-16,
+            -1.0000000000000002,
+            0,
+            0,
+            1.0000000000000002,
+            -2.220446049250313e-16,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:YZ_Plane003",
+          "id": "freecad-occurrence:YZ_Plane003",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Origin007",
+          "id": "freecad-occurrence:Origin007",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature006",
+          "id": "freecad-occurrence:Part__Feature006",
+          "localToParent": [
+            -2.220446049250313e-16,
+            -0.3895831006928542,
+            0.9209913179039972,
+            0,
+            2.7755575615628914e-17,
+            -0.9209913179039972,
+            -0.3895831006928542,
+            0,
+            1.0000000000000002,
+            -2.7755575615628914e-17,
+            0,
+            -112,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33109___45_x_80_x_001",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature007",
+          "id": "freecad-occurrence:Part__Feature007",
+          "localToParent": [
+            -2.220446049250313e-16,
+            -0.3895831006928542,
+            0.9209913179039972,
+            0,
+            2.7755575615628914e-17,
+            -0.9209913179039972,
+            -0.3895831006928542,
+            0,
+            1.0000000000000002,
+            -2.7755575615628914e-17,
+            0,
+            -112,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33109___45_x_80_x_001",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:DIN_720___33109___45_x_80_x_001",
+          "id": "freecad-occurrence:DIN_720___33109___45_x_80_x_001",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:X_Axis004",
+          "id": "freecad-occurrence:X_Axis004",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Y_Axis004",
+          "id": "freecad-occurrence:Y_Axis004",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Z_Axis004",
+          "id": "freecad-occurrence:Z_Axis004",
+          "localToParent": [
+            0,
+            -1,
+            -1.1102230246251565e-16,
+            0,
+            1.1102230246251565e-16,
+            0,
+            -1,
+            0,
+            1,
+            1.1102230246251565e-16,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XY_Plane004",
+          "id": "freecad-occurrence:XY_Plane004",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XZ_Plane004",
+          "id": "freecad-occurrence:XZ_Plane004",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            -2.220446049250313e-16,
+            -1.0000000000000002,
+            0,
+            0,
+            1.0000000000000002,
+            -2.220446049250313e-16,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:YZ_Plane004",
+          "id": "freecad-occurrence:YZ_Plane004",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Origin009",
+          "id": "freecad-occurrence:Origin009",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature008",
+          "id": "freecad-occurrence:Part__Feature008",
+          "localToParent": [
+            0,
+            0.03934964163732253,
+            0.9992255029286503,
+            -4.9023197493614e-33,
+            0,
+            0.9992255029286504,
+            -0.03934964163732253,
+            -1.24487103649415e-31,
+            -1,
+            0,
+            0,
+            -113.25,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature009",
+          "id": "freecad-occurrence:Part__Feature009",
+          "localToParent": [
+            -2.220446049250313e-16,
+            -0.46634865963141786,
+            -0.8846009991289746,
+            0,
+            5.551115123125783e-17,
+            -0.8846009991289745,
+            0.46634865963141786,
+            0,
+            -1,
+            5.551115123125783e-17,
+            1.1102230246251565e-16,
+            -112,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature010",
+          "id": "freecad-occurrence:Part__Feature010",
+          "localToParent": [
+            1,
+            2.98653311974443e-15,
+            0,
+            0,
+            -2.98653311974443e-15,
+            1,
+            0,
+            -120.133153150974,
+            0,
+            0,
+            1,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature011",
+          "id": "freecad-occurrence:Part__Feature011",
+          "localToParent": [
+            -2.220446049250313e-16,
+            0.9843601240863754,
+            -0.17616794858502394,
+            -2.18318426863702e-15,
+            -1,
+            -2.220446049250313e-16,
+            1.3877787807814457e-17,
+            -84.1331531509742,
+            -1.3877787807814457e-17,
+            0.17616794858502394,
+            0.9843601240863754,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33210___50_x_90_x_32",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature012",
+          "id": "freecad-occurrence:Part__Feature012",
+          "localToParent": [
+            -2.220446049250313e-16,
+            0.9843601240863754,
+            -0.17616794858502394,
+            -2.18318426863702e-15,
+            -1,
+            -2.220446049250313e-16,
+            1.3877787807814457e-17,
+            -84.1331531509742,
+            -1.3877787807814457e-17,
+            0.17616794858502394,
+            0.9843601240863754,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33210___50_x_90_x_32",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:DIN_720___33210___50_x_90_x_32",
+          "id": "freecad-occurrence:DIN_720___33210___50_x_90_x_32",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:X_Axis005",
+          "id": "freecad-occurrence:X_Axis005",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Y_Axis005",
+          "id": "freecad-occurrence:Y_Axis005",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Z_Axis005",
+          "id": "freecad-occurrence:Z_Axis005",
+          "localToParent": [
+            0,
+            -1,
+            -1.1102230246251565e-16,
+            0,
+            1.1102230246251565e-16,
+            0,
+            -1,
+            0,
+            1,
+            1.1102230246251565e-16,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XY_Plane005",
+          "id": "freecad-occurrence:XY_Plane005",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XZ_Plane005",
+          "id": "freecad-occurrence:XZ_Plane005",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            -2.220446049250313e-16,
+            -1.0000000000000002,
+            0,
+            0,
+            1.0000000000000002,
+            -2.220446049250313e-16,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:YZ_Plane005",
+          "id": "freecad-occurrence:YZ_Plane005",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Origin011",
+          "id": "freecad-occurrence:Origin011",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature013",
+          "id": "freecad-occurrence:Part__Feature013",
+          "localToParent": [
+            2.220446049250313e-16,
+            -0.968664930384611,
+            -0.248371199302529,
+            0,
+            0.9999999999999999,
+            2.220446049250313e-16,
+            1.3877787807814457e-17,
+            85.5536798289513,
+            1.3877787807814457e-17,
+            -0.248371199302529,
+            0.9686649303846111,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33210___50_x_90_x_001",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature014",
+          "id": "freecad-occurrence:Part__Feature014",
+          "localToParent": [
+            2.220446049250313e-16,
+            -0.968664930384611,
+            -0.248371199302529,
+            0,
+            0.9999999999999999,
+            2.220446049250313e-16,
+            1.3877787807814457e-17,
+            85.5536798289513,
+            1.3877787807814457e-17,
+            -0.248371199302529,
+            0.9686649303846111,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33210___50_x_90_x_001",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:DIN_720___33210___50_x_90_x_001",
+          "id": "freecad-occurrence:DIN_720___33210___50_x_90_x_001",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:X_Axis006",
+          "id": "freecad-occurrence:X_Axis006",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Y_Axis006",
+          "id": "freecad-occurrence:Y_Axis006",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Z_Axis006",
+          "id": "freecad-occurrence:Z_Axis006",
+          "localToParent": [
+            0,
+            -1,
+            -1.1102230246251565e-16,
+            0,
+            1.1102230246251565e-16,
+            0,
+            -1,
+            0,
+            1,
+            1.1102230246251565e-16,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XY_Plane006",
+          "id": "freecad-occurrence:XY_Plane006",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XZ_Plane006",
+          "id": "freecad-occurrence:XZ_Plane006",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            -2.220446049250313e-16,
+            -1.0000000000000002,
+            0,
+            0,
+            1.0000000000000002,
+            -2.220446049250313e-16,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:YZ_Plane006",
+          "id": "freecad-occurrence:YZ_Plane006",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Origin013",
+          "id": "freecad-occurrence:Origin013",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature015",
+          "id": "freecad-occurrence:Part__Feature015",
+          "localToParent": [
+            -0.6408250285099268,
+            -0.7676869693014541,
+            5.551115123125783e-17,
+            -2.84946827663905e-15,
+            1.6653345369377348e-16,
+            0,
+            1,
+            -118.133153150974,
+            -0.7676869693014541,
+            0.6408250285099268,
+            1.1102230246251565e-16,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature016",
+          "id": "freecad-occurrence:Part__Feature016",
+          "localToParent": [
+            -0.850712499058051,
+            -0.5256312813621409,
+            0,
+            -7.68936808458925e-15,
+            0,
+            -2.220446049250313e-16,
+            1.0000000000000002,
+            117.553679828951,
+            -0.5256312813621409,
+            0.8507124990580509,
+            -2.220446049250313e-16,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature017",
+          "id": "freecad-occurrence:Part__Feature017",
+          "localToParent": [
+            0.8673021776586238,
+            0,
+            0.4977820131629999,
+            -2.18318426863702e-15,
+            0,
+            1,
+            0,
+            -84.1331531509742,
+            -0.4977820131629999,
+            0,
+            0.8673021776586238,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature018",
+          "id": "freecad-occurrence:Part__Feature018",
+          "localToParent": [
+            0,
+            0,
+            -1,
+            -4.56209766679112e-15,
+            -1,
+            0,
+            0,
+            8.75811540203011e-46,
+            0,
+            1,
+            0,
+            1.77635683940025e-14,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature019",
+          "id": "freecad-occurrence:Part__Feature019",
+          "localToParent": [
+            0,
+            0,
+            -1,
+            1.21205568290494e-16,
+            -1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature020",
+          "id": "freecad-occurrence:Part__Feature020",
+          "localToParent": [
+            0,
+            -1,
+            0,
+            37.4999999999999,
+            0,
+            0,
+            -1,
+            -123.133153150974,
+            1,
+            0,
+            0,
+            109.517893279916,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature021",
+          "id": "freecad-occurrence:Part__Feature021",
+          "localToParent": [
+            0.8655811181163097,
+            -0.500768737003938,
+            -5.551115123125783e-17,
+            18.7788276376483,
+            -5.551115123125783e-17,
+            -2.220446049250313e-16,
+            1.0000000000000002,
+            124.553679828952,
+            -0.500768737003938,
+            -0.8655811181163099,
+            -2.220446049250313e-16,
+            141.977185209276,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Assieme_riduttore_conico",
+          "id": "freecad-occurrence:Assieme_riduttore_conico",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:X_Axis007",
+          "id": "freecad-occurrence:X_Axis007",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Y_Axis007",
+          "id": "freecad-occurrence:Y_Axis007",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Z_Axis007",
+          "id": "freecad-occurrence:Z_Axis007",
+          "localToParent": [
+            0,
+            -1,
+            -1.1102230246251565e-16,
+            0,
+            1.1102230246251565e-16,
+            0,
+            -1,
+            0,
+            1,
+            1.1102230246251565e-16,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XY_Plane007",
+          "id": "freecad-occurrence:XY_Plane007",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:XZ_Plane007",
+          "id": "freecad-occurrence:XZ_Plane007",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            -2.220446049250313e-16,
+            -1.0000000000000002,
+            0,
+            0,
+            1.0000000000000002,
+            -2.220446049250313e-16,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:YZ_Plane007",
+          "id": "freecad-occurrence:YZ_Plane007",
+          "localToParent": [
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            1,
+            0,
+            -1.1102230246251565e-16,
+            0,
+            -1.1102230246251565e-16,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Origin015",
+          "id": "freecad-occurrence:Origin015",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature022",
+          "id": "freecad-occurrence:Part__Feature022",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature023",
+          "id": "freecad-occurrence:Part__Feature023",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature024",
+          "id": "freecad-occurrence:Part__Feature024",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature025",
+          "id": "freecad-occurrence:Part__Feature025",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature026",
+          "id": "freecad-occurrence:Part__Feature026",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature027",
+          "id": "freecad-occurrence:Part__Feature027",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature028",
+          "id": "freecad-occurrence:Part__Feature028",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature029",
+          "id": "freecad-occurrence:Part__Feature029",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature030",
+          "id": "freecad-occurrence:Part__Feature030",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature031",
+          "id": "freecad-occurrence:Part__Feature031",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature032",
+          "id": "freecad-occurrence:Part__Feature032",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature033",
+          "id": "freecad-occurrence:Part__Feature033",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature034",
+          "id": "freecad-occurrence:Part__Feature034",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature035",
+          "id": "freecad-occurrence:Part__Feature035",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature036",
+          "id": "freecad-occurrence:Part__Feature036",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature037",
+          "id": "freecad-occurrence:Part__Feature037",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature038",
+          "id": "freecad-occurrence:Part__Feature038",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature039",
+          "id": "freecad-occurrence:Part__Feature039",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature040",
+          "id": "freecad-occurrence:Part__Feature040",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature041",
+          "id": "freecad-occurrence:Part__Feature041",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature042",
+          "id": "freecad-occurrence:Part__Feature042",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature043",
+          "id": "freecad-occurrence:Part__Feature043",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature044",
+          "id": "freecad-occurrence:Part__Feature044",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature045",
+          "id": "freecad-occurrence:Part__Feature045",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature046",
+          "id": "freecad-occurrence:Part__Feature046",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature047",
+          "id": "freecad-occurrence:Part__Feature047",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature048",
+          "id": "freecad-occurrence:Part__Feature048",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature049",
+          "id": "freecad-occurrence:Part__Feature049",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature050",
+          "id": "freecad-occurrence:Part__Feature050",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature051",
+          "id": "freecad-occurrence:Part__Feature051",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature052",
+          "id": "freecad-occurrence:Part__Feature052",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature053",
+          "id": "freecad-occurrence:Part__Feature053",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature054",
+          "id": "freecad-occurrence:Part__Feature054",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature055",
+          "id": "freecad-occurrence:Part__Feature055",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature056",
+          "id": "freecad-occurrence:Part__Feature056",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature057",
+          "id": "freecad-occurrence:Part__Feature057",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature058",
+          "id": "freecad-occurrence:Part__Feature058",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature059",
+          "id": "freecad-occurrence:Part__Feature059",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature060",
+          "id": "freecad-occurrence:Part__Feature060",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature061",
+          "id": "freecad-occurrence:Part__Feature061",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature062",
+          "id": "freecad-occurrence:Part__Feature062",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature063",
+          "id": "freecad-occurrence:Part__Feature063",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature064",
+          "id": "freecad-occurrence:Part__Feature064",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature065",
+          "id": "freecad-occurrence:Part__Feature065",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature066",
+          "id": "freecad-occurrence:Part__Feature066",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature067",
+          "id": "freecad-occurrence:Part__Feature067",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature068",
+          "id": "freecad-occurrence:Part__Feature068",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature069",
+          "id": "freecad-occurrence:Part__Feature069",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature070",
+          "id": "freecad-occurrence:Part__Feature070",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature071",
+          "id": "freecad-occurrence:Part__Feature071",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature072",
+          "id": "freecad-occurrence:Part__Feature072",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature073",
+          "id": "freecad-occurrence:Part__Feature073",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature074",
+          "id": "freecad-occurrence:Part__Feature074",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature075",
+          "id": "freecad-occurrence:Part__Feature075",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature076",
+          "id": "freecad-occurrence:Part__Feature076",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature077",
+          "id": "freecad-occurrence:Part__Feature077",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature078",
+          "id": "freecad-occurrence:Part__Feature078",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature079",
+          "id": "freecad-occurrence:Part__Feature079",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature080",
+          "id": "freecad-occurrence:Part__Feature080",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature081",
+          "id": "freecad-occurrence:Part__Feature081",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature082",
+          "id": "freecad-occurrence:Part__Feature082",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature083",
+          "id": "freecad-occurrence:Part__Feature083",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature084",
+          "id": "freecad-occurrence:Part__Feature084",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature085",
+          "id": "freecad-occurrence:Part__Feature085",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature086",
+          "id": "freecad-occurrence:Part__Feature086",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature087",
+          "id": "freecad-occurrence:Part__Feature087",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature088",
+          "id": "freecad-occurrence:Part__Feature088",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature089",
+          "id": "freecad-occurrence:Part__Feature089",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature090",
+          "id": "freecad-occurrence:Part__Feature090",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature091",
+          "id": "freecad-occurrence:Part__Feature091",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature092",
+          "id": "freecad-occurrence:Part__Feature092",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature093",
+          "id": "freecad-occurrence:Part__Feature093",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature094",
+          "id": "freecad-occurrence:Part__Feature094",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature095",
+          "id": "freecad-occurrence:Part__Feature095",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature096",
+          "id": "freecad-occurrence:Part__Feature096",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature097",
+          "id": "freecad-occurrence:Part__Feature097",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature098",
+          "id": "freecad-occurrence:Part__Feature098",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature099",
+          "id": "freecad-occurrence:Part__Feature099",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature100",
+          "id": "freecad-occurrence:Part__Feature100",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature101",
+          "id": "freecad-occurrence:Part__Feature101",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature102",
+          "id": "freecad-occurrence:Part__Feature102",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature103",
+          "id": "freecad-occurrence:Part__Feature103",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature104",
+          "id": "freecad-occurrence:Part__Feature104",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature105",
+          "id": "freecad-occurrence:Part__Feature105",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature106",
+          "id": "freecad-occurrence:Part__Feature106",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature107",
+          "id": "freecad-occurrence:Part__Feature107",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature108",
+          "id": "freecad-occurrence:Part__Feature108",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature109",
+          "id": "freecad-occurrence:Part__Feature109",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature110",
+          "id": "freecad-occurrence:Part__Feature110",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature111",
+          "id": "freecad-occurrence:Part__Feature111",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature112",
+          "id": "freecad-occurrence:Part__Feature112",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature113",
+          "id": "freecad-occurrence:Part__Feature113",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature114",
+          "id": "freecad-occurrence:Part__Feature114",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        }
+      ],
+      "joints": [],
+      "jointSemanticsComplete": false
+    }
+  ],
+  "skipped": [],
+  "failures": []
+}

@@ -1,0 +1,42 @@
+{
+  "schema": "nexyfab.railway-resource-baseline.v1",
+  "capturedAt": "2026-08-10T03:19:48.007Z",
+  "service": "nexyfab.com",
+  "environment": "production",
+  "windowHours": 6,
+  "deploymentId": "2073b676-3d0a-4167-afd2-d465dca9009b",
+  "cpu": {
+    "averageVcpu": 0.0007367151892890117,
+    "currentVcpu": 0.002664116666666667,
+    "maxVcpu": 0.06069875,
+    "limitVcpu": 8
+  },
+  "memory": {
+    "averageMb": 419.9992975019615,
+    "currentMb": 159.65618176,
+    "maxMb": 488.823062528,
+    "limitMb": 8192
+  },
+  "http": {
+    "total": 654,
+    "responses2xx": 406,
+    "responses3xx": 224,
+    "responses4xx": 17,
+    "responses5xx": 7,
+    "errorRatePercent": 1.0703363914373087,
+    "p50Ms": 21,
+    "p90Ms": 153,
+    "p95Ms": 157,
+    "p99Ms": 178
+  },
+  "assessment": {
+    "memoryHeavy": false,
+    "runtimeMemoryTargetMb": 768,
+    "currentMaxWithinTarget": true,
+    "sevenDayBaselineRequired": true,
+    "notes": [
+      "The six-hour sample is operational evidence, not a seven-day capacity certificate.",
+      "The observed 5xx set includes the intentionally fail-closed OpenSCAD production isolation diagnostic."
+    ]
+  }
+}

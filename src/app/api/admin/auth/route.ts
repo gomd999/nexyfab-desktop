@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { checkOrigin } from '@/lib/csrf';
 import { createAdminSession, verifyAdmin } from '@/lib/admin-auth';
 import { getTrustedClientIp } from '@/lib/client-ip';
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
   // Rate limit: 5 attempts per minute per IP
   const ip = getTrustedClientIp(req.headers);
-  const rl = rateLimit(`admin-auth:${ip}`, 5, 60_000);
+  const rl = await rateLimitAsync(`admin-auth:${ip}`, 5, 60_000);
   if (!rl.allowed) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
   }

@@ -1,0 +1,42 @@
+{
+  "schema": "nexyfab.complex-holdout-review-summary.v1",
+  "root": "C:\\Users\\gomd9\\Downloads\\참고파일들",
+  "policy": {
+    "sourceBytesCopied": false,
+    "selectedDoesNotMeanApproved": true,
+    "scoreEligible": false,
+    "requiredApprovedCasesPerFamily": 20
+  },
+  "counts": {
+    "robot": {
+      "candidates": 49,
+      "selected": 20,
+      "shortfall": 0
+    },
+    "gearbox": {
+      "candidates": 46,
+      "selected": 20,
+      "shortfall": 0
+    },
+    "pressure_vessel": {
+      "candidates": 24,
+      "selected": 20,
+      "shortfall": 0
+    },
+    "turbomachinery": {
+      "candidates": 19,
+      "selected": 15,
+      "shortfall": 5
+    },
+    "factory_equipment": {
+      "candidates": 35,
+      "selected": 20,
+      "shortfall": 0
+    },
+    "interior": {
+      "candidates": 68,
+      "selected": 20,
+      "shortfall": 0
+    }
+  }
+}

@@ -1,0 +1,33 @@
+import { describe, expect, it } from 'vitest';
+import { buildFederatedProjectReleaseCertificate, type BoundFederatedEvidence, type FederatedAxisEvidence, type FederatedDomainCertificatesEvidence, type FederatedProjectReleaseCertificateInput } from './federatedProjectReleaseCertificate';
+import type { ArchitectureDocument, InteriorDocument } from './architectureInteriorDocuments';
+import type { CivilDocument } from './civilDocument';
+import type { LandscapeDocument } from './landscapeDocument';
+import type { UnifiedDesignProject } from './unifiedDesignProject';
+import { hashCadPayload } from '@/lib/cad/workspaceRevisionStore';
+
+const hash = (value: string) => value.repeat(64);
+function project(): UnifiedDesignProject {
+  const architecture: ArchitectureDocument = { schema: 'nexyfab.architecture.v1', revision: 0, storeys: [], spaces: [], walls: [], slabs: [], ceilings: [], openings: [] };
+  const civil: CivilDocument = { schema: 'nexyfab.civil.v1', revision: 0, coordinateSystemId: 'site', crs: { epsg: 5186, horizontalDatum: 'Korea 2000', verticalDatum: 'KVD2002', units: 'm' }, sourceEvidence: [{ id: 'survey', kind: 'survey', sourceRef: 'survey:verified', capturedAt: '2026-08-01T00:00:00Z' }], surveyControls: [], points: [{ id: 'p1', positionM: [0, 0, 0] }, { id: 'p2', positionM: [10, 0, 0] }, { id: 'p3', positionM: [0, 10, 0] }], surfaces: [{ id: 'terrain', kind: 'existing', pointIds: ['p1', 'p2', 'p3'], triangles: [['p1', 'p2', 'p3']], sourceEvidenceIds: ['survey'] }], alignments: [], profiles: [], crossSections: [], corridors: [], drainageNodes: [], drainageLinks: [], catchments: [], structures: [], stages: [] };
+  const landscape: LandscapeDocument = { schema: 'nexyfab.landscape.v1', revision: 0, coordinateSystemId: 'site', terrain: { civilDocumentId: 'civil', surfaceId: 'terrain', civilRevision: 0 }, sourceEvidence: [], siteBoundaryM: [[0, 0], [10, 0], [0, 10]], plants: [], plantingZones: [], hardscapes: [{ id: 'path', kind: 'path', boundaryM: [[0, 0], [2, 0], [0, 2]], material: 'stone', slopePercent: 1, accessible: true }], soilVolumes: [], irrigationNodes: [], irrigationPipes: [], irrigationZones: [], drainagePaths: [], maintenanceZones: [] };
+  const interior: InteriorDocument = { schema: 'nexyfab.interior.v1', revision: 0, architectureDocumentId: 'building', lights: [], furniture: [], finishes: [] };
+  return { schema: 'nexyfab.unified-design-project.v1', id: 'federated', revision: 0, coordinateSystems: [{ id: 'site', kind: 'site', epsg: 5186, units: 'm', origin: [0, 0, 0], rotationDeg: [0, 0, 0] }, { id: 'local', kind: 'building', parentId: 'site', units: 'mm', origin: [0, 0, 0], rotationDeg: [0, 0, 0] }], documents: [
+    { id: 'mechanical', domain: 'mechanical', profileId: 'mechanical', profileVersion: 1, schema: 'nexyfab.feature-tree.v1', revision: 0, coordinateSystemId: 'local', representations: ['brep'], objectIds: ['machine'], payload: { schema: 'nexyfab.feature-tree.v1' } },
+    { id: 'building', domain: 'architecture', profileId: 'building', profileVersion: 1, schema: architecture.schema, revision: 0, coordinateSystemId: 'local', representations: ['bim'], objectIds: [], payload: architecture },
+    { id: 'civil', domain: 'civil', profileId: 'civil', profileVersion: 1, schema: civil.schema, revision: 0, coordinateSystemId: 'site', representations: ['tin'], objectIds: ['survey', 'p1', 'p2', 'p3', 'terrain'], payload: civil },
+    { id: 'landscape', domain: 'landscape', profileId: 'landscape', profileVersion: 1, schema: landscape.schema, revision: 0, coordinateSystemId: 'site', representations: ['surface'], objectIds: ['path'], payload: landscape },
+    { id: 'interior', domain: 'interior', profileId: 'interior', profileVersion: 1, schema: interior.schema, revision: 0, coordinateSystemId: 'local', representations: ['bim'], objectIds: [], payload: interior },
+  ], references: [{ id: 'terrain-follow', sourceObjectId: 'path', targetObjectId: 'terrain', relation: 'FOLLOWS_TERRAIN', updatePolicy: 'notify' }] };
+}
+const axis = (): FederatedAxisEvidence => ({ status: 'pass', expected: 3, checked: 3, issues: [], artifactHashes: [hash('a')] });
+function bound<T>(projectValue: UnifiedDesignProject, payload: T): BoundFederatedEvidence<T> { const projectContentHash = hashCadPayload(projectValue); return { projectRevision: projectValue.revision, projectContentHash, contentHash: hashCadPayload(payload), payload }; }
+function input(): FederatedProjectReleaseCertificateInput { const model = project(); const certificates: FederatedDomainCertificatesEvidence = { ...axis(), certificates: model.documents.map(document => { const domain = document.profileId!; const certificate = { schema: `nexyfab.${domain}-release-certificate.v1`, workspaceRevision: document.revision, modelContentHash: hash('b'), status: 'pass' as const, releaseReady: true, assertions: [{ axis: 'requirements', status: 'pass' }], issues: [] }; return { domain, documentId: document.id, documentRevision: document.revision, documentContentHash: hashCadPayload(document.payload), certificateContentHash: hashCadPayload(certificate), certificate }; }) };
+  return { project: model, projectContentHash: hashCadPayload(model), coordinates: bound(model, { ...axis(), coordinateSystemIds: ['site', 'local'], transformPathsChecked: 2, unitConversionsChecked: 1 }), domainCertificates: bound(model, certificates), references: bound(model, { ...axis(), referenceCount: 1, revisionPinnedCount: 1 }), changePropagation: bound(model, axis()), clashClearance: bound(model, axis()), quantities: bound(model, axis()), permissions: bound(model, axis()), recoveryPerformance: bound(model, axis()) };
+}
+
+describe('federated project release certificate', () => {
+  it('passes all ten federation gates only with five exact domain certificates', () => { const certificate = buildFederatedProjectReleaseCertificate(input()); expect(certificate.gates).toHaveLength(10); expect(certificate.gates.every(item => item.status === 'pass')).toBe(true); expect(certificate.releaseReady).toBe(true); });
+  it('fails a detached project hash', () => { const value = input(); value.projectContentHash = hash('f'); expect(buildFederatedProjectReleaseCertificate(value)).toMatchObject({ status: 'fail', releaseReady: false }); });
+  it('fails when one domain certificate is missing', () => { const value = input(), payload = value.domainCertificates!.payload; payload.certificates.pop(); value.domainCertificates!.contentHash = hashCadPayload(payload); const certificate = buildFederatedProjectReleaseCertificate(value); expect(certificate.gates.find(item => item.id === 'domain_certificates')).toMatchObject({ status: 'fail' }); });
+});

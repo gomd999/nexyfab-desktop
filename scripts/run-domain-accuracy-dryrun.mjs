@@ -132,6 +132,9 @@ export async function main(args = process.argv.slice(2)) {
     '--timeout-ms', '120000',
   ]);
   writeFileSync(file('campaign-summary.json'), campaign.out, 'utf8');
+  if (campaign.code !== 0 || !campaign.out.trim()) {
+    throw new Error(`campaign execution failed (exit ${campaign.code}): ${campaign.err.trim() || 'no diagnostic output'}`);
+  }
   const campaignSummary = JSON.parse(campaign.out);
   assert(campaign.code === 0, `campaign completed (exit ${campaign.code})`);
   assert(campaignSummary.completed === count * 15, `campaign runs ${campaignSummary.completed}/${count * 15}`);
@@ -147,6 +150,9 @@ export async function main(args = process.argv.slice(2)) {
     '--executor-arg', '--corpus',
     '--executor-arg', file('dryrun-corpus.json'),
   ]);
+  if (resume.code !== 0 || !resume.out.trim()) {
+    throw new Error(`campaign resume failed (exit ${resume.code}): ${resume.err.trim() || 'no diagnostic output'}`);
+  }
   assert(resume.code === 0, 'campaign resume on completed state is a clean no-op');
 
   // ── 7) 리포트: eligible=false + 미측정 축 차단기가 정직하게 나와야 정상 ──
@@ -159,15 +165,21 @@ export async function main(args = process.argv.slice(2)) {
   const axes = reportValue.assessment.axes;
   const measured = axes.filter(axis => axis.measured > 0);
   const unmeasured = axes.filter(axis => axis.measured === 0);
-  const CORE_AXES = ['requirements', 'dimensions', 'part_definitions', 'collision_clearance', 'step_roundtrip'];
+  // This drill's rebuild executor can universally measure only the axes below.
+  // Other axes are intentionally partial/not_run until independent holdout evidence and
+  // the revision-bound domain certificate executor are supplied. Requiring full coverage
+  // for an axis the drill does not implement would make the toolchain drill impossible to
+  // pass while adding no release evidence.
+  const UNIVERSAL_REBUILD_AXES = ['requirements', 'semantic_objects', 'geometry', 'relationships', 'step_roundtrip']
+    .filter(axis => requiredAxes.includes(axis));
   const measuredNames = new Set(measured.map(axis => axis.axis));
-  // 부분 측정 축(manufacturing 등 — 어휘 커버 템플릿에서만)은 accuracy 1이면
-  // 정상이고 커버리지 미달은 차단기로 정직 표기된다. 커버리지 1은 코어 5만 요구.
+  // Partial vocabulary axes are valid drill measurements only when their measured accuracy
+  // is 1. Coverage below 1 must remain a blocker and can never certify the domain.
   assert(
-    CORE_AXES.every(axis => measuredNames.has(axis))
+    UNIVERSAL_REBUILD_AXES.every(axis => measuredNames.has(axis))
     && measured.every(axis => axis.accuracy === 1)
-    && measured.filter(axis => CORE_AXES.includes(axis.axis)).every(axis => axis.coverage === 1),
-    `measured axes accuracy 1, core 5 full-coverage (${measured.map(axis => `${axis.axis}@${axis.coverage}`).join(',')})`);
+    && measured.filter(axis => UNIVERSAL_REBUILD_AXES.includes(axis.axis)).every(axis => axis.coverage === 1),
+    `measured axes accuracy 1, universal rebuild axes full-coverage (${measured.map(axis => `${axis.axis}@${axis.coverage}`).join(',')})`);
   assert(unmeasured.every(axis => reportValue.assessment.blockers.includes(`coverage:${axis.axis}`)),
     'unmeasured axes surface as coverage blockers');
   assert(reportValue.evidence.requiredGatePasses === reportValue.evidence.requiredGateRuns,

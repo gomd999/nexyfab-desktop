@@ -2,7 +2,7 @@ export type RobotJointSpec = {
   aMm: number; alphaDeg: number; dMm: number; thetaOffsetDeg?: number;
   minDeg: number; maxDeg: number; motorTorqueNm: number; gearRatio: number; efficiency: number;
   linkMassKg: number; cableDiameterMm: number; routingRadiusMm: number; maxCableTwistDeg: number;
-  requiredOutputRpm?: number; radialLoadN?: number; minShaftDiameterMm?: number;
+  requiredOutputTorqueNm?: number; requiredOutputRpm?: number; radialLoadN?: number; minShaftDiameterMm?: number;
   maxVelocityDegS?: number; maxAccelerationDegS2?: number; maxJerkDegS3?: number;
 };
 export type RobotEngineeringSpec = { joints: RobotJointSpec[]; payloadKg: number; samples?: number };
@@ -30,7 +30,11 @@ export function verifyRobotEngineering(spec: RobotEngineeringSpec): RobotEnginee
     if (hasSelfCollision(points[poseIndex]!)) { collisions += 1; firstPose ??= poseIndex; }
     for (let j = 0; j < 6; j += 1) required[j] = Math.max(required[j]!, Math.abs(gravityTorque(spec, pose, j)));
   });
-  const torque = spec.joints.map((joint, index) => ({ joint: index + 1, requiredNm: required[index]!, availableNm: joint.motorTorqueNm * joint.gearRatio * joint.efficiency, passed: required[index]! <= joint.motorTorqueNm * joint.gearRatio * joint.efficiency }));
+  const torque = spec.joints.map((joint, index) => {
+    const requiredNm = Math.max(required[index]!, joint.requiredOutputTorqueNm ?? 0);
+    const availableNm = joint.motorTorqueNm * joint.gearRatio * joint.efficiency;
+    return { joint: index + 1, requiredNm, availableNm, passed: requiredNm <= availableNm };
+  });
   const cables = spec.joints.map((joint, index) => ({ joint: index + 1, bendPassed: joint.routingRadiusMm >= joint.cableDiameterMm * 6, twistPassed: joint.maxDeg - joint.minDeg <= joint.maxCableTwistDeg, requiredBendRadiusMm: joint.cableDiameterMm * 6 }));
   const errors = [
     ...(collisions ? [`Self-collision found in ${collisions} sampled pose(s).`] : []),

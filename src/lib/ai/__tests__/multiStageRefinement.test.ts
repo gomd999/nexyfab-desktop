@@ -1,5 +1,26 @@
 import { describe, expect, it, vi } from 'vitest';
 import { REFINEMENT_STAGES, refinementPromptContract, runMultiStageRefinement } from '../multiStageRefinement';
+import type { ProductDecompositionPlan } from '../productDecomposition';
+import { geometryNumericParameters } from '../productDecompositionAccuracy';
+
+const solidTree = (id: string, size: number, depth: number): ProductDecompositionPlan['definitions'][number]['featureTree'] => ({ nodes: [{
+  id: `${id}-solid`, name: id, dependencies: [], payload: { kind: 'extrude', loop: [{ x: 0, y: 0 }, { x: size, y: 0 }, { x: size, y: size }, { x: 0, y: size }], depth, direction: 'one_sided', mode: 'add' },
+}] });
+const evidence = (tree: ProductDecompositionPlan['definitions'][number]['featureTree']) => geometryNumericParameters(tree).map(parameter => ({
+  ...parameter, unit: 'mm' as const, tolerance: 0.01, status: 'confirmed' as const, sourceRef: 'user:prompt', locked: true,
+}));
+
+const finalPlan = (): ProductDecompositionPlan => ({
+  version: 1, units: 'mm', productName: 'Connected product',
+  requirements: [{ id: 'r1', text: 'Transmit rotation', category: 'motion', source: 'user', sourceRef: 'user:prompt', acceptance: '360 degree rotation without collision' }],
+  definitions: [
+    { id: 'base', name: 'Base', responsibility: 'Anchor product', makeOrBuy: 'make', featureTree: solidTree('base', 20, 10), metadata: { partNumber: 'B1', revision: 'A', material: 'AL6061', process: 'CNC milling', source: 'confirmed' }, requirementIds: ['r1'], parameterEvidence: evidence(solidTree('base', 20, 10)) },
+    { id: 'shaft', name: 'Shaft', responsibility: 'Transmit rotation', makeOrBuy: 'make', featureTree: solidTree('shaft', 5, 20), metadata: { partNumber: 'S1', revision: 'A', material: 'S45C', process: 'CNC turning', source: 'confirmed' }, requirementIds: ['r1'], parameterEvidence: evidence(solidTree('shaft', 5, 20)) },
+  ],
+  instances: [{ id: 'base-1', definitionId: 'base', positionMm: [0, 0, 0], fixed: true }, { id: 'shaft-1', definitionId: 'shaft', positionMm: [0, 0, 0] }],
+  mates: [{ id: 'm1', kind: 'concentric', a: { partId: 'base-1', refId: 'axis', refKind: 'axis' }, b: { partId: 'shaft-1', refId: 'axis', refKind: 'axis' } }],
+  subassemblies: [], observations: [], assumptions: [], unresolved: [],
+});
 
 describe('multi-stage AI refinement', () => {
   it('refines a weak draft in-place then advances through immutable checkpoints', async () => {
@@ -8,10 +29,10 @@ describe('multi-stage AI refinement', () => {
       calls.push({ stage: context.stage, attempt: context.attempt, prior: Object.keys(context.priorOutputs) });
       const weak = context.stage === 'decomposition' && context.attempt === 1;
       return {
-        stage: context.stage, output: { stage: context.stage, revision: context.attempt },
+        stage: context.stage, output: context.stage === 'part_programs' ? finalPlan() : { stage: context.stage, revision: context.attempt },
         completeness: weak ? 0.8 : 1, confidence: weak ? 0.7 : 0.99,
         unresolved: [], conflicts: [], affectedPartIds: context.stage === 'part_programs' ? ['p1'] : [],
-        evidenceRefs: [`e:${context.stage}`],
+        evidenceRefs: ['user:prompt'],
       };
     });
     const result = await runMultiStageRefinement({ runId: 'complex-1', request: 'robot arm', generate });
@@ -46,5 +67,14 @@ describe('multi-stage AI refinement', () => {
     expect(prompt).toContain('Change only fields required');
     expect(prompt).toContain('never invent a manufacturing dimension');
     expect(prompt).toContain('not one merged body');
+    expect(prompt).toContain('evidenceRefs may contain only');
+  });
+
+  it('rejects an evidence reference invented by the model', async () => {
+    const result = await runMultiStageRefinement({ runId: 'invented-evidence', request: 'gearbox', maxAttemptsPerStage: 1, generate: async stage => ({
+      stage: stage.stage, output: {}, completeness: 1, confidence: 1, unresolved: [], conflicts: [], affectedPartIds: [], evidenceRefs: ['web:made-up-source'],
+    }) });
+    expect(result).toMatchObject({ status: 'stopped', stoppedAt: 'intent' });
+    expect(result.reasons.join(' ')).toContain('Untrusted evidence references');
   });
 });

@@ -1,0 +1,329 @@
+{
+  "schema": "nexyfab.ground-truth-review-form.v1",
+  "caseId": "turbomachinery-review-11",
+  "family": "turbomachinery",
+  "tier": "T1",
+  "immutableTarget": {
+    "source": {
+      "hash": "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b",
+      "locator": "참고파일들4/osaka-water-pump-1.snapshot.1/Water Pump Osaka/Assy_Water Pump Osaka.STEP",
+      "extension": "step",
+      "bytes": 3568600,
+      "holdoutGroup": "turbomachinery:osaka-water-pump-1",
+      "hashPassed": true
+    },
+    "artifactSetHash": "00bf6f66b22daee354a5cae283ff4c28d0037a2db6a40b130eacec07b5afdc77",
+    "requiredAssertionIds": [
+      "requirements:source-intent",
+      "part-definitions:count",
+      "occurrences:count",
+      "hierarchy:structure",
+      "dimensions:governed",
+      "features:required",
+      "step-roundtrip:preservation"
+    ],
+    "evidence": {
+      "automaticPasses": 3,
+      "reviewerRequired": 4,
+      "assertions": [
+        {
+          "assertionId": "requirements:source-intent",
+          "axis": "requirements",
+          "artifactHashes": [
+            "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "axis": "part_definitions",
+          "artifactHashes": [
+            "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b"
+          ],
+          "tolerancePolicy": "exact-count",
+          "automaticEvidence": {
+            "axis": "part_definitions",
+            "status": "pass",
+            "reason": "STEP product definitions measured.",
+            "measured": {
+              "definitions": 11,
+              "solids": 13
+            }
+          },
+          "reviewerRequired": false,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "occurrences:count",
+          "axis": "occurrences",
+          "artifactHashes": [
+            "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b"
+          ],
+          "tolerancePolicy": "exact-count",
+          "automaticEvidence": {
+            "axis": "occurrences",
+            "status": "pass",
+            "reason": "STEP assembly occurrences measured.",
+            "measured": 31
+          },
+          "reviewerRequired": false,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "axis": "hierarchy",
+          "artifactHashes": [
+            "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": {
+            "axis": "hierarchy",
+            "status": "pass",
+            "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+            "measured": 31
+          },
+          "reviewerRequired": false,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "axis": "dimensions",
+          "artifactHashes": [
+            "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b"
+          ],
+          "tolerancePolicy": "reviewed-linear-tolerance-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "features:required",
+          "axis": "features",
+          "artifactHashes": [
+            "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "axis": "step_roundtrip",
+          "artifactHashes": [
+            "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        }
+      ],
+      "nativeStatus": "not_run",
+      "nativeReleaseReady": false,
+      "nativeAxes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ],
+          "measured": 38
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ],
+          "measured": 34
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ],
+          "measured": 38
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ],
+          "measured": 37
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ],
+          "measured": 38
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "399756dac764718c913de297c3bce2e75014a18f1258e32e045c1da2f61e03d7"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    }
+  },
+  "instructions": {
+    "decisions": [
+      "approved",
+      "rejected",
+      "changes_requested"
+    ],
+    "reviewerIdsMustBeRealAndNonEmpty": true,
+    "notesMustBeNonEmpty": true,
+    "timestampsMustBeIso8601": true,
+    "independentReviewerMustDiffer": true,
+    "independentReviewerMustNotAuthorAssertionReviews": true
+  },
+  "submission": {
+    "revision": 1,
+    "licenseReview": {
+      "decision": null,
+      "reviewerId": null,
+      "note": null,
+      "reviewedAt": null
+    },
+    "holdoutIsolationReview": {
+      "decision": null,
+      "reviewerId": null,
+      "note": null,
+      "reviewedAt": null
+    },
+    "assertionReviews": [
+      {
+        "assertionId": "requirements:source-intent",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "part-definitions:count",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "occurrences:count",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "hierarchy:structure",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "dimensions:governed",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "features:required",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "step-roundtrip:preservation",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      }
+    ],
+    "signoffs": [
+      {
+        "role": "domain-reviewer",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null,
+        "artifactSetHash": "00bf6f66b22daee354a5cae283ff4c28d0037a2db6a40b130eacec07b5afdc77",
+        "reviewedAssertionIds": [
+          "requirements:source-intent",
+          "part-definitions:count",
+          "occurrences:count",
+          "hierarchy:structure",
+          "dimensions:governed",
+          "features:required",
+          "step-roundtrip:preservation"
+        ]
+      },
+      {
+        "role": "independent-reviewer",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null,
+        "artifactSetHash": "00bf6f66b22daee354a5cae283ff4c28d0037a2db6a40b130eacec07b5afdc77",
+        "reviewedAssertionIds": [
+          "requirements:source-intent",
+          "part-definitions:count",
+          "occurrences:count",
+          "hierarchy:structure",
+          "dimensions:governed",
+          "features:required",
+          "step-roundtrip:preservation"
+        ]
+      }
+    ]
+  },
+  "checklist": [
+    "provenance_and_commercial_license",
+    "lineage_independence",
+    "native_definition_occurrence_counts",
+    "units_and_coordinate_system",
+    "assertion_graph_and_tolerance",
+    "prompt_and_holdout_isolation"
+  ]
+}

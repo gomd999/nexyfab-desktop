@@ -1,0 +1,918 @@
+{
+  "schema": "nexyfab.complex-native-extraction-result-batch.v1",
+  "extractorCapability": {
+    "formats": [
+      "step",
+      "stp",
+      "zip-contained-step"
+    ],
+    "jointSemanticsComplete": false,
+    "nativeSolidWorksOrInventor": false
+  },
+  "results": [
+    {
+      "schema": "nexyfab.complex-native-extraction-result.v1",
+      "caseId": "gearbox-review-05",
+      "sourceHash": "7dfe9e91c66bc0ed0721b82af6bcbed3130e28cb7aa8a882c398b4f97228d957",
+      "artifactHash": "ed1e23515e327ebbf624794f854575e9d182651af310ecc27847a619870c76e8",
+      "extractor": {
+        "name": "nexyfab-freecad-step-document",
+        "version": "2",
+        "cadSystem": "FreeCAD 1.1.3"
+      },
+      "units": {
+        "angle": "deg",
+        "length": "mm"
+      },
+      "definitions": [
+        {
+          "id": "freecad-root-definition",
+          "kind": "assembly",
+          "name": "Assieme_riduttore_conico.stp"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature",
+          "kind": "part",
+          "name": "Ingranaggio conico12"
+        },
+        {
+          "id": "freecad-definition:Ingranaggio_conico12",
+          "kind": "assembly",
+          "name": "Ingranaggio conico002"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature002",
+          "kind": "part",
+          "name": "Ingranaggio conico22"
+        },
+        {
+          "id": "freecad-definition:Ingranaggio_conico22",
+          "kind": "assembly",
+          "name": "Ingranaggio conico004"
+        },
+        {
+          "id": "freecad-definition:Ingranaggi_conici2",
+          "kind": "assembly",
+          "name": "Ingranaggi conici2"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature004",
+          "kind": "part",
+          "name": "DIN 720 - 33109 - 45 x 80 x 26"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature005",
+          "kind": "part",
+          "name": "DIN 720 - 33109 - 45 x 80 x 001"
+        },
+        {
+          "id": "freecad-definition:DIN_720___33109___45_x_80_x_26",
+          "kind": "assembly",
+          "name": "DIN 720 - 33109 - 45 x 80 x 002"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature006",
+          "kind": "part",
+          "name": "DIN 720 - 33109 - 45 x 80 x 003"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature007",
+          "kind": "part",
+          "name": "DIN 720 - 33109 - 45 x 80 x 004"
+        },
+        {
+          "id": "freecad-definition:DIN_720___33109___45_x_80_x_001",
+          "kind": "assembly",
+          "name": "DIN 720 - 33109 - 45 x 80 x 005"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature008",
+          "kind": "part",
+          "name": "DIN 981 - KM 9"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature009",
+          "kind": "part",
+          "name": "ISO 2982-2 - 45 x 56"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature010",
+          "kind": "part",
+          "name": "albero_corona"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature011",
+          "kind": "part",
+          "name": "DIN 720 - 33210 - 50 x 90 x 32"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature012",
+          "kind": "part",
+          "name": "DIN 720 - 33210 - 50 x 90 x 001"
+        },
+        {
+          "id": "freecad-definition:DIN_720___33210___50_x_90_x_32",
+          "kind": "assembly",
+          "name": "DIN 720 - 33210 - 50 x 90 x 002"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature013",
+          "kind": "part",
+          "name": "DIN 720 - 33210 - 50 x 90 x 003"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature014",
+          "kind": "part",
+          "name": "DIN 720 - 33210 - 50 x 90 x 004"
+        },
+        {
+          "id": "freecad-definition:DIN_720___33210___50_x_90_x_001",
+          "kind": "assembly",
+          "name": "DIN 720 - 33210 - 50 x 90 x 005"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature015",
+          "kind": "part",
+          "name": "DIN 988 - 70 x 90 x 2"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature016",
+          "kind": "part",
+          "name": "DIN 988 - 70 x 90 x 001"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature017",
+          "kind": "part",
+          "name": "distanziale_corona"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature018",
+          "kind": "part",
+          "name": "carter_a"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature019",
+          "kind": "part",
+          "name": "carter_a_MIR"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature020",
+          "kind": "part",
+          "name": "blocchi_albero_carter_chiuso"
+        },
+        {
+          "bodyCount": 1,
+          "bodyCountSource": "native_shape_solids",
+          "id": "freecad-definition:Part__Feature021",
+          "kind": "part",
+          "name": "blocchi_albero_carter"
+        },
+        {
+          "id": "freecad-definition:Assieme_riduttore_conico",
+          "kind": "assembly",
+          "name": "Assieme_riduttore_conico"
+        }
+      ],
+      "occurrences": [
+        {
+          "definitionId": "freecad-root-definition",
+          "id": "freecad-root",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": null,
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature",
+          "id": "freecad-occurrence:Part__Feature",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Ingranaggio_conico12",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Ingranaggio_conico12",
+          "id": "freecad-occurrence:Ingranaggio_conico12",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Ingranaggi_conici2",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature002",
+          "id": "freecad-occurrence:Part__Feature002",
+          "localToParent": [
+            -0.9983081582712683,
+            0.058144828910475926,
+            -3.469446951953614e-18,
+            0,
+            -3.469446951953614e-18,
+            -2.220446049250313e-16,
+            -1,
+            0,
+            -0.058144828910475926,
+            -0.9983081582712683,
+            1.1102230246251565e-16,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Ingranaggio_conico22",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Ingranaggio_conico22",
+          "id": "freecad-occurrence:Ingranaggio_conico22",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Ingranaggi_conici2",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Ingranaggi_conici2",
+          "id": "freecad-occurrence:Ingranaggi_conici2",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature004",
+          "id": "freecad-occurrence:Part__Feature004",
+          "localToParent": [
+            0,
+            -0.9335141459689041,
+            0.358540568521817,
+            0,
+            0,
+            0.3585405685218169,
+            0.9335141459689041,
+            0,
+            -1,
+            0,
+            0,
+            -25,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33109___45_x_80_x_26",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature005",
+          "id": "freecad-occurrence:Part__Feature005",
+          "localToParent": [
+            0,
+            -0.9335141459689041,
+            0.358540568521817,
+            0,
+            0,
+            0.3585405685218169,
+            0.9335141459689041,
+            0,
+            -1,
+            0,
+            0,
+            -25,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33109___45_x_80_x_26",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:DIN_720___33109___45_x_80_x_26",
+          "id": "freecad-occurrence:DIN_720___33109___45_x_80_x_26",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature006",
+          "id": "freecad-occurrence:Part__Feature006",
+          "localToParent": [
+            -2.220446049250313e-16,
+            -0.3895831006928542,
+            0.9209913179039972,
+            0,
+            2.7755575615628914e-17,
+            -0.9209913179039972,
+            -0.3895831006928542,
+            0,
+            1.0000000000000002,
+            -2.7755575615628914e-17,
+            0,
+            -112,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33109___45_x_80_x_001",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature007",
+          "id": "freecad-occurrence:Part__Feature007",
+          "localToParent": [
+            -2.220446049250313e-16,
+            -0.3895831006928542,
+            0.9209913179039972,
+            0,
+            2.7755575615628914e-17,
+            -0.9209913179039972,
+            -0.3895831006928542,
+            0,
+            1.0000000000000002,
+            -2.7755575615628914e-17,
+            0,
+            -112,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33109___45_x_80_x_001",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:DIN_720___33109___45_x_80_x_001",
+          "id": "freecad-occurrence:DIN_720___33109___45_x_80_x_001",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature008",
+          "id": "freecad-occurrence:Part__Feature008",
+          "localToParent": [
+            0,
+            0.03934964163732253,
+            0.9992255029286503,
+            -4.9023197493614e-33,
+            0,
+            0.9992255029286504,
+            -0.03934964163732253,
+            -1.24487103649415e-31,
+            -1,
+            0,
+            0,
+            -113.25,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature009",
+          "id": "freecad-occurrence:Part__Feature009",
+          "localToParent": [
+            -2.220446049250313e-16,
+            -0.46634865963141786,
+            -0.8846009991289746,
+            0,
+            5.551115123125783e-17,
+            -0.8846009991289745,
+            0.46634865963141786,
+            0,
+            -1,
+            5.551115123125783e-17,
+            1.1102230246251565e-16,
+            -112,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature010",
+          "id": "freecad-occurrence:Part__Feature010",
+          "localToParent": [
+            1,
+            2.98653311974443e-15,
+            0,
+            0,
+            -2.98653311974443e-15,
+            1,
+            0,
+            -120.133153150974,
+            0,
+            0,
+            1,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature011",
+          "id": "freecad-occurrence:Part__Feature011",
+          "localToParent": [
+            -2.220446049250313e-16,
+            0.9843601240863754,
+            -0.17616794858502394,
+            -2.18318426863702e-15,
+            -1,
+            -2.220446049250313e-16,
+            1.3877787807814457e-17,
+            -84.1331531509742,
+            -1.3877787807814457e-17,
+            0.17616794858502394,
+            0.9843601240863754,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33210___50_x_90_x_32",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature012",
+          "id": "freecad-occurrence:Part__Feature012",
+          "localToParent": [
+            -2.220446049250313e-16,
+            0.9843601240863754,
+            -0.17616794858502394,
+            -2.18318426863702e-15,
+            -1,
+            -2.220446049250313e-16,
+            1.3877787807814457e-17,
+            -84.1331531509742,
+            -1.3877787807814457e-17,
+            0.17616794858502394,
+            0.9843601240863754,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33210___50_x_90_x_32",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:DIN_720___33210___50_x_90_x_32",
+          "id": "freecad-occurrence:DIN_720___33210___50_x_90_x_32",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature013",
+          "id": "freecad-occurrence:Part__Feature013",
+          "localToParent": [
+            2.220446049250313e-16,
+            -0.968664930384611,
+            -0.248371199302529,
+            0,
+            0.9999999999999999,
+            2.220446049250313e-16,
+            1.3877787807814457e-17,
+            85.5536798289513,
+            1.3877787807814457e-17,
+            -0.248371199302529,
+            0.9686649303846111,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33210___50_x_90_x_001",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature014",
+          "id": "freecad-occurrence:Part__Feature014",
+          "localToParent": [
+            2.220446049250313e-16,
+            -0.968664930384611,
+            -0.248371199302529,
+            0,
+            0.9999999999999999,
+            2.220446049250313e-16,
+            1.3877787807814457e-17,
+            85.5536798289513,
+            1.3877787807814457e-17,
+            -0.248371199302529,
+            0.9686649303846111,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:DIN_720___33210___50_x_90_x_001",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:DIN_720___33210___50_x_90_x_001",
+          "id": "freecad-occurrence:DIN_720___33210___50_x_90_x_001",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature015",
+          "id": "freecad-occurrence:Part__Feature015",
+          "localToParent": [
+            -0.6408250285099268,
+            -0.7676869693014541,
+            5.551115123125783e-17,
+            -2.84946827663905e-15,
+            1.6653345369377348e-16,
+            0,
+            1,
+            -118.133153150974,
+            -0.7676869693014541,
+            0.6408250285099268,
+            1.1102230246251565e-16,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature016",
+          "id": "freecad-occurrence:Part__Feature016",
+          "localToParent": [
+            -0.850712499058051,
+            -0.5256312813621409,
+            0,
+            -7.68936808458925e-15,
+            0,
+            -2.220446049250313e-16,
+            1.0000000000000002,
+            117.553679828951,
+            -0.5256312813621409,
+            0.8507124990580509,
+            -2.220446049250313e-16,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature017",
+          "id": "freecad-occurrence:Part__Feature017",
+          "localToParent": [
+            0.8673021776586238,
+            0,
+            0.4977820131629999,
+            -2.18318426863702e-15,
+            0,
+            1,
+            0,
+            -84.1331531509742,
+            -0.4977820131629999,
+            0,
+            0.8673021776586238,
+            109.517893279915,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature018",
+          "id": "freecad-occurrence:Part__Feature018",
+          "localToParent": [
+            0,
+            0,
+            -1,
+            -4.56209766679112e-15,
+            -1,
+            0,
+            0,
+            8.75811540203011e-46,
+            0,
+            1,
+            0,
+            1.77635683940025e-14,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature019",
+          "id": "freecad-occurrence:Part__Feature019",
+          "localToParent": [
+            0,
+            0,
+            -1,
+            1.21205568290494e-16,
+            -1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature020",
+          "id": "freecad-occurrence:Part__Feature020",
+          "localToParent": [
+            0,
+            -1,
+            0,
+            37.4999999999999,
+            0,
+            0,
+            -1,
+            -123.133153150974,
+            1,
+            0,
+            0,
+            109.517893279916,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Part__Feature021",
+          "id": "freecad-occurrence:Part__Feature021",
+          "localToParent": [
+            0.8655811181163097,
+            -0.500768737003938,
+            -5.551115123125783e-17,
+            18.7788276376483,
+            -5.551115123125783e-17,
+            -2.220446049250313e-16,
+            1.0000000000000002,
+            124.553679828952,
+            -0.500768737003938,
+            -0.8655811181163099,
+            -2.220446049250313e-16,
+            141.977185209276,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-occurrence:Assieme_riduttore_conico",
+          "suppressed": false
+        },
+        {
+          "definitionId": "freecad-definition:Assieme_riduttore_conico",
+          "id": "freecad-occurrence:Assieme_riduttore_conico",
+          "localToParent": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "parentOccurrenceId": "freecad-root",
+          "suppressed": false
+        }
+      ],
+      "joints": [],
+      "jointSemanticsComplete": false
+    }
+  ],
+  "skipped": [],
+  "failures": []
+}

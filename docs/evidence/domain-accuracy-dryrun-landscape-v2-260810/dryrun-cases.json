@@ -1,0 +1,3442 @@
+[
+  {
+    "caseId": "dryrun-landscape-apartment_complex-01",
+    "domain": "landscape",
+    "sourceHash": "8d442a2faf43ace76447f767a1c0fcacad61921f22412bd757e2959ac9fce8a8",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-pergola-01",
+    "domain": "landscape",
+    "sourceHash": "9aae3774b800b1ef27c671ccf382ffb712803052dc1f0616c90fa17e1ae57ba8",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-timber_deck-01",
+    "domain": "landscape",
+    "sourceHash": "bcdee2fc272b5b278cbd345162c0edde1c15656abb9da416e4680055b11a7386",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-fence_run-01",
+    "domain": "landscape",
+    "sourceHash": "d039fc745f2a6e141f70e4f1f9cc3ee0a064d511ad1f8dda43dd8f2d985f7e42",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-planter_wall-01",
+    "domain": "landscape",
+    "sourceHash": "ad53a600ac8dd9d8b2d9edef8d0a04be473d86783c6180fc03233ce7ae8dfd24",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-parking_pavement-01",
+    "domain": "landscape",
+    "sourceHash": "7a3f8bcbdc1662f8522410ed98285ffdf2a0725eb76b09e4a5ece462afc5640f",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-pavilion-01",
+    "domain": "landscape",
+    "sourceHash": "ed31fb602e4f00b5344a3b7c317deddce36cf115400b348d826fa944bf9d960e",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-tree_planting-01",
+    "domain": "landscape",
+    "sourceHash": "cbeba791b2764d8a34550ae62eb6d3e29dac9dd51406a87cbaee0392420caac5",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-apartment_complex-02",
+    "domain": "landscape",
+    "sourceHash": "e3d5f315bde73c58dbeb66d2d9e66602afc099704a51ee7e8a0dd2230114f4dc",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-pergola-02",
+    "domain": "landscape",
+    "sourceHash": "cdcec073737f17eb62d32770cf213c0bcd8f8c7d52b75c1d7c508f88f866b536",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-timber_deck-02",
+    "domain": "landscape",
+    "sourceHash": "c0e2029d320469181d499773371033ece38a0a918c2b90b2cf07d95324c8f160",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-fence_run-02",
+    "domain": "landscape",
+    "sourceHash": "f89f826d19a5d3c0e400d47adabc2e9ace474eb2bc80936bd935fe8de3f8a13e",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-planter_wall-02",
+    "domain": "landscape",
+    "sourceHash": "900956152bfd0defb95bc88858936a734fcb4e04275d1a6a3ea4a51c1f725df3",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-parking_pavement-02",
+    "domain": "landscape",
+    "sourceHash": "473f26ebd192fe2580174f8e856490d2d93bc57309ece96e32e403315665d6e4",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-pavilion-02",
+    "domain": "landscape",
+    "sourceHash": "c2a7f7751320d81649457dbf119cc9a924f1a0179ce35dc53b2eb6360fff1bd8",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-tree_planting-02",
+    "domain": "landscape",
+    "sourceHash": "12045c86ea6c2bc36f84c578b9df936947ed172b1037012fbd5d46dfe013d23c",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-apartment_complex-03",
+    "domain": "landscape",
+    "sourceHash": "d8ea0d349ac2155e25256f9d11759186e693d78cf0310ac4cb8ec210dc9dba2e",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-pergola-03",
+    "domain": "landscape",
+    "sourceHash": "efb93be96f1ea8d3ac45ed7dcea014d445d28848c1982e5a021ac28c0f09cb15",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-timber_deck-03",
+    "domain": "landscape",
+    "sourceHash": "385242c67aaf0d7bebc4232704f3e1905adc545aaea99c1688c33312f84b0315",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-fence_run-03",
+    "domain": "landscape",
+    "sourceHash": "5de4205e6803a54b8fa9edcc70cc0963706ccf20e879f667ff836f534f1d50cd",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "existing_conditions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "terrain_grading",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "surface_flow",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "planting_data",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "mature_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "soil_volume",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "hardscape",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "irrigation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "maintenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db"
+        ]
+      }
+    ]
+  }
+]

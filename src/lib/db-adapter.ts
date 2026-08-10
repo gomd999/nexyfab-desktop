@@ -431,6 +431,38 @@ export async function initPostgresSchema(): Promise<void> {
   console.log('[db-adapter] PostgreSQL schema initialized');
 }
 
+export const POSTGRES_REQUIRED_TABLES = [
+  'nf_schema_migrations',
+  'nf_users',
+  'nf_projects',
+  'nf_files',
+  'nf_cad_workspace_revisions',
+  'partner_applications',
+] as const;
+
+export function missingPostgresSchemaObjects(existingTables: readonly string[]): string[] {
+  const existing = new Set(existingTables.map(value => value.toLowerCase()));
+  return POSTGRES_REQUIRED_TABLES.filter(table => !existing.has(table));
+}
+
+/**
+ * Read-only production startup check. Schema mutations belong to the explicit
+ * migration command so a web replica can never race another replica on DDL.
+ */
+export async function verifyPostgresSchema(): Promise<void> {
+  const adapter = getDbAdapter();
+  if (adapter.backend !== 'postgres') return;
+  const rows = await adapter.queryAll<{ table_name: string }>(`
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name IN (${POSTGRES_REQUIRED_TABLES.map(() => '?').join(', ')})
+  `, ...POSTGRES_REQUIRED_TABLES);
+  const missing = missingPostgresSchemaObjects(rows.map(row => row.table_name));
+  if (missing.length) throw new Error(`[db-adapter] PostgreSQL schema is not ready; missing: ${missing.join(', ')}`);
+  console.log('[db-adapter] PostgreSQL schema verified');
+}
+
 /** Reset adapter (useful in tests). */
 export function resetDbAdapter(): void {
   _adapter = null;

@@ -1,0 +1,2431 @@
+{
+  "schema": "nexyfab.cad-mesh-occurrence-evidence.v1",
+  "lineageId": "참고파일들4/mearm-robotic-arm-1.snapshot.10",
+  "status": "not_run",
+  "summary": {
+    "total": 93,
+    "pass": 87,
+    "fail": 0,
+    "notRun": 6
+  },
+  "records": [
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 01-2.STL",
+      "sourceSha256": "2d87a7f3980c20fcad8151617b090ea2f9852bacadac418c8f9df4eea00a8bab",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 2088,
+      "volumeMm3": 1286.57,
+      "areaMm2": 1357.62,
+      "aabbMm": {
+        "min": [
+          202.124,
+          25.359,
+          110.241
+        ],
+        "max": [
+          245.484,
+          49.03,
+          113.247
+        ]
+      },
+      "centroidMm": [
+        221.062,
+        36.654,
+        111.743
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 02-2.STL",
+      "sourceSha256": "64d00caa7f136aef66c410ac3de8f87fa11eaef20c1e9fe2497f8dc408bd3837",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 2036,
+      "volumeMm3": 1309.96,
+      "areaMm2": 1343.3,
+      "aabbMm": {
+        "min": [
+          199.839,
+          10.223,
+          110.241
+        ],
+        "max": [
+          245.37,
+          31.086,
+          113.247
+        ]
+      },
+      "centroidMm": [
+        219.023,
+        20.396,
+        111.743
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 03 - Right Hand Side-1.STL",
+      "sourceSha256": "41597db9d5178f80c1699466758264f575a622ee73d1caac7e81f0cfd280a875",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 1624,
+      "volumeMm3": 7520.22,
+      "areaMm2": 6372.06,
+      "aabbMm": {
+        "min": [
+          66.285,
+          19.26,
+          28.474
+        ],
+        "max": [
+          126.183,
+          29.776,
+          82.38
+        ]
+      },
+      "centroidMm": [
+        94.595,
+        24.726,
+        53.026
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-1.STL",
+      "sourceSha256": "b2637c059973a0fb6e85b8772514586bc37e9856eab2b0db1d11e8c8616ffb71",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 392,
+      "volumeMm3": 212.65,
+      "areaMm2": 265.16,
+      "aabbMm": {
+        "min": [
+          105.629,
+          23.583,
+          136.473
+        ],
+        "max": [
+          115.926,
+          27.816,
+          146.472
+        ]
+      },
+      "centroidMm": [
+        110.777,
+        25.7,
+        141.473
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-4.STL",
+      "sourceSha256": "002765864cc860107bff81b1a77d9dc7fd4e278e21b6a280cef97439dfe75d24",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 392,
+      "volumeMm3": 212.65,
+      "areaMm2": 265.16,
+      "aabbMm": {
+        "min": [
+          217.465,
+          32.349,
+          104.193
+        ],
+        "max": [
+          227.462,
+          42.346,
+          107.194
+        ]
+      },
+      "centroidMm": [
+        222.464,
+        37.347,
+        105.694
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-5.STL",
+      "sourceSha256": "8a14f87f017844712d6d78d5d781ddbbe92f56ff894c779869e0efbb67303cea",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 392,
+      "volumeMm3": 212.65,
+      "areaMm2": 265.16,
+      "aabbMm": {
+        "min": [
+          217.468,
+          32.353,
+          107.193
+        ],
+        "max": [
+          227.458,
+          42.342,
+          110.194
+        ]
+      },
+      "centroidMm": [
+        222.463,
+        37.347,
+        108.694
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-6.STL",
+      "sourceSha256": "0bf48a74dac107be67b98b928da9c7281ecbde0f6cc68b00bfa6a86c3b444c16",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 392,
+      "volumeMm3": 212.65,
+      "areaMm2": 265.16,
+      "aabbMm": {
+        "min": [
+          191.657,
+          15.709,
+          129.863
+        ],
+        "max": [
+          201.951,
+          19.941,
+          139.859
+        ]
+      },
+      "centroidMm": [
+        196.804,
+        17.825,
+        134.861
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-7.STL",
+      "sourceSha256": "db949578fa516efb60bb39035751ef070d7854dc355e7d64ece6cc8cd7b4ba61",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 392,
+      "volumeMm3": 212.65,
+      "areaMm2": 265.16,
+      "aabbMm": {
+        "min": [
+          192.032,
+          18.685,
+          129.861
+        ],
+        "max": [
+          202.329,
+          22.918,
+          139.861
+        ]
+      },
+      "centroidMm": [
+        197.181,
+        20.801,
+        134.861
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 05 - Rectangular Side Part-1.STL",
+      "sourceSha256": "370a981d9fd6371743aed47c446b4e214155dc6c9165cd263bb6c335d8c6b280",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 1388,
+      "volumeMm3": 6682.25,
+      "areaMm2": 5837.4,
+      "aabbMm": {
+        "min": [
+          71.961,
+          66.47,
+          28.473
+        ],
+        "max": [
+          131.862,
+          76.988,
+          73.473
+        ]
+      },
+      "centroidMm": [
+        100.661,
+        71.887,
+        50.535
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 06-1.STL",
+      "sourceSha256": "fe8214a8791f7ca93794c5666dfc40a06ab1662db768ccdd39d3a154e343f954",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 720,
+      "volumeMm3": 3091.16,
+      "areaMm2": 2910.82,
+      "aabbMm": {
+        "min": [
+          77.311,
+          43.933,
+          113.328
+        ],
+        "max": [
+          194.385,
+          61.694,
+          156.032
+        ]
+      },
+      "centroidMm": [
+        135.067,
+        52.913,
+        134.939
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 07-1.STL",
+      "sourceSha256": "d2f4bbc439c4e329f53f6062dc7960c5ec5fbb5b7b51dfc34e5599b01fe4bf26",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 504,
+      "volumeMm3": 2331.82,
+      "areaMm2": 2187.17,
+      "aabbMm": {
+        "min": [
+          105.025,
+          17.141,
+          113.544
+        ],
+        "max": [
+          191.045,
+          30.967,
+          147.468
+        ]
+      },
+      "centroidMm": [
+        146.059,
+        24.304,
+        130.449
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 08 - Long Servo Mounting Arm-1.STL",
+      "sourceSha256": "84b78cba4c767329b88cf25439094de768b9aab4736b1919efe40c95491bdf9a",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 684,
+      "volumeMm3": 952.92,
+      "areaMm2": 1081.55,
+      "aabbMm": {
+        "min": [
+          77.808,
+          58.699,
+          55.481
+        ],
+        "max": [
+          121.196,
+          67.125,
+          76.037
+        ]
+      },
+      "centroidMm": [
+        99.111,
+        62.961,
+        66.563
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 10 - the Pig-1.STL",
+      "sourceSha256": "22acfbb403c73e1a912c12531f87089c2e13f2504a19f4988c1095eba3c59c3e",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 340,
+      "volumeMm3": 3560.62,
+      "areaMm2": 2921.73,
+      "aabbMm": {
+        "min": [
+          72.36,
+          46.548,
+          31.473
+        ],
+        "max": [
+          126.011,
+          56.273,
+          67.473
+        ]
+      },
+      "centroidMm": [
+        101.615,
+        51.103,
+        46.261
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 11 - Central Section Of Central Lever-1.STL",
+      "sourceSha256": "ae9858ef7630d78653fb822462175373bf404ebe648f7cbf534629d51358bb67",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 568,
+      "volumeMm3": 2575.94,
+      "areaMm2": 2597.87,
+      "aabbMm": {
+        "min": [
+          109.876,
+          30.014,
+          71.47
+        ],
+        "max": [
+          115.957,
+          54.21,
+          131.475
+        ]
+      },
+      "centroidMm": [
+        112.961,
+        42.451,
+        100.687
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 12 - Cradle Ends-1.STL",
+      "sourceSha256": "c6cc376ff052e51906679245da9dafd6bc0c3e0dfd782908d5b09bee7a6b5c38",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 160,
+      "volumeMm3": 2439.9,
+      "areaMm2": 2289,
+      "aabbMm": {
+        "min": [
+          69.03,
+          26.63,
+          31.473
+        ],
+        "max": [
+          78.29,
+          76.611,
+          50.473
+        ]
+      },
+      "centroidMm": [
+        73.646,
+        51.511,
+        40.973
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 12 - Cradle Ends-2.STL",
+      "sourceSha256": "8a9120b495f43a799a30e01a46b7bd6b640be7c3e8fd6fd193f843dd4b20728f",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 160,
+      "volumeMm3": 2439.9,
+      "areaMm2": 2289,
+      "aabbMm": {
+        "min": [
+          119.625,
+          20.22,
+          31.473
+        ],
+        "max": [
+          128.886,
+          70.201,
+          50.473
+        ]
+      },
+      "centroidMm": [
+        124.241,
+        45.101,
+        40.973
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 13 - Cradle Base-1.STL",
+      "sourceSha256": "c147031f560dc5d0eb19fc7a4593497e1bf5ad511601adce5b6d1dfabccdb318",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 560,
+      "volumeMm3": 6036.08,
+      "areaMm2": 4889.79,
+      "aabbMm": {
+        "min": [
+          73.494,
+          20.786,
+          31.473
+        ],
+        "max": [
+          124.421,
+          76.045,
+          34.473
+        ]
+      },
+      "centroidMm": [
+        98.951,
+        48.412,
+        32.973
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 14-1.STL",
+      "sourceSha256": "63b23271267795d6a516cd17ee6e6a8032935387fc9276c275f406548c494415",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 808,
+      "volumeMm3": 1850.92,
+      "areaMm2": 1713.93,
+      "aabbMm": {
+        "min": [
+          70.279,
+          19.476,
+          137.476
+        ],
+        "max": [
+          124.472,
+          29.27,
+          162.794
+        ]
+      },
+      "centroidMm": [
+        100.766,
+        23.944,
+        153.15
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 15-2.STL",
+      "sourceSha256": "a7a374db782b42462a8889141e96069e2d07a43e3d52478dfbeeeed3c39c8f3a",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 200,
+      "volumeMm3": 372.95,
+      "areaMm2": 467.51,
+      "aabbMm": {
+        "min": [
+          177.436,
+          36.968,
+          113.338
+        ],
+        "max": [
+          201.624,
+          42.961,
+          121.74
+        ]
+      },
+      "centroidMm": [
+        189.532,
+        39.964,
+        117.548
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 16-2.STL",
+      "sourceSha256": "53ccc7ee04123a2cc581d53ec12b15845daf3545e1d983570ff9099bdc5ff29b",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 468,
+      "volumeMm3": 345.49,
+      "areaMm2": 444.97,
+      "aabbMm": {
+        "min": [
+          210.565,
+          19.895,
+          101.192
+        ],
+        "max": [
+          225.442,
+          40.329,
+          104.194
+        ]
+      },
+      "centroidMm": [
+        218.004,
+        30.112,
+        102.693
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 17 - Base-1.STL",
+      "sourceSha256": "06a2b2716e863b7a6e7f2e6cf52560dd4c77cc5065c016b98b6e484f3686f65d",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 1836,
+      "volumeMm3": 33412.65,
+      "areaMm2": 24477.62,
+      "aabbMm": {
+        "min": [
+          0.85,
+          0.944,
+          5.157
+        ],
+        "max": [
+          145.851,
+          95.945,
+          8.157
+        ]
+      },
+      "centroidMm": [
+        66.553,
+        48.447,
+        6.657
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 18 - Square Servo Mount-1.STL",
+      "sourceSha256": "4d57a5e638b40de78712088b40a75c6b657320f16d1d9ed0b500516d995f294c",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 1296,
+      "volumeMm3": 6539,
+      "areaMm2": 5301.86,
+      "aabbMm": {
+        "min": [
+          78.845,
+          23.441,
+          22.423
+        ],
+        "max": [
+          128.845,
+          73.445,
+          25.423
+        ]
+      },
+      "centroidMm": [
+        103.845,
+        48.443,
+        23.923
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 19 - Collar-1.STL",
+      "sourceSha256": "3fc2dba49937d7d826cac65bd05af3c4bde17cd8440419aa52444845ad2b0fe4",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 568,
+      "volumeMm3": 1605.29,
+      "areaMm2": 1669.36,
+      "aabbMm": {
+        "min": [
+          84.378,
+          35.912,
+          16.923
+        ],
+        "max": [
+          123.338,
+          60.935,
+          19.923
+        ]
+      },
+      "centroidMm": [
+        104.091,
+        48.424,
+        18.423
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 19 - Collar-2.STL",
+      "sourceSha256": "8afd9b34fdb869c9c20f566d68874c89835760379ffd62d1e91ae3c2e97e6742",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 568,
+      "volumeMm3": 1605.29,
+      "areaMm2": 1669.36,
+      "aabbMm": {
+        "min": [
+          85.453,
+          13.932,
+          48.973
+        ],
+        "max": [
+          124.479,
+          21.804,
+          73.973
+        ]
+      },
+      "centroidMm": [
+        104.734,
+        17.897,
+        61.473
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 19 - Collar-3.STL",
+      "sourceSha256": "c3b76efeb883400466ece0bff5ac2121665a4eab39c00994c68b9be795d0bd45",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 568,
+      "volumeMm3": 1605.29,
+      "areaMm2": 1669.36,
+      "aabbMm": {
+        "min": [
+          92.514,
+          72.055,
+          48.973
+        ],
+        "max": [
+          131.54,
+          79.928,
+          73.973
+        ]
+      },
+      "centroidMm": [
+        111.795,
+        76.021,
+        61.473
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 20-2.STL",
+      "sourceSha256": "31fbfbfb7a59d5baf808370df13e2ea8ddff056acc880d48c6419e0495c26104",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 892,
+      "volumeMm3": 1176.26,
+      "areaMm2": 1475.55,
+      "aabbMm": {
+        "min": [
+          171.107,
+          18.702,
+          118.737
+        ],
+        "max": [
+          206.085,
+          45.419,
+          121.741
+        ]
+      },
+      "centroidMm": [
+        188.591,
+        32.322,
+        120.239
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 21-2.STL",
+      "sourceSha256": "4707f71f3b65ba5935e2934c34625a3123757bf8262f4e3213712d3d5169061c",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 1284,
+      "volumeMm3": 1861.77,
+      "areaMm2": 2021.89,
+      "aabbMm": {
+        "min": [
+          171.132,
+          17.706,
+          113.237
+        ],
+        "max": [
+          215.535,
+          45.617,
+          116.243
+        ]
+      },
+      "centroidMm": [
+        195.92,
+        31.595,
+        114.74
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 22-2.STL",
+      "sourceSha256": "04a56f5172c3496a6078c211a66e22f20f4fc53f8ed8b4c6d0e5847d9dbd337e",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 580,
+      "volumeMm3": 708.08,
+      "areaMm2": 826.83,
+      "aabbMm": {
+        "min": [
+          175.527,
+          21.638,
+          113.338
+        ],
+        "max": [
+          201.693,
+          27.881,
+          138.85
+        ]
+      },
+      "centroidMm": [
+        190.518,
+        24.518,
+        123.509
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 24 - Central lever RHS-1.STL",
+      "sourceSha256": "a7deac46aea6ac57f22423c2cec9356d1ad9f556349fea83ee757fca5a9e3614",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 968,
+      "volumeMm3": 2907.61,
+      "areaMm2": 2814.12,
+      "aabbMm": {
+        "min": [
+          105.397,
+          29.444,
+          55.493
+        ],
+        "max": [
+          117.797,
+          33.944,
+          147.453
+        ]
+      },
+      "centroidMm": [
+        111.595,
+        31.694,
+        102.831
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 25 - Left Hand Central lever-1.STL",
+      "sourceSha256": "57aa8104f5cfe82da4807c52ae4dfe02c2d8793ee79edee6b09bea7dd8f0b42b",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 692,
+      "volumeMm3": 3052.4,
+      "areaMm2": 2816.1,
+      "aabbMm": {
+        "min": [
+          108.036,
+          50.278,
+          55.493
+        ],
+        "max": [
+          120.436,
+          54.777,
+          147.453
+        ]
+      },
+      "centroidMm": [
+        114.236,
+        52.528,
+        101.592
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 26 - Straight Lever-1.STL",
+      "sourceSha256": "55999aed3ea2972c3819308b855040b44fbde1b34e87836e7e9d623471c229f6",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 468,
+      "volumeMm3": 2024.98,
+      "areaMm2": 1963.66,
+      "aabbMm": {
+        "min": [
+          77.424,
+          60.143,
+          68.051
+        ],
+        "max": [
+          85.93,
+          64.149,
+          156.024
+        ]
+      },
+      "centroidMm": [
+        81.677,
+        62.146,
+        112.038
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 26 - Straight Lever-2.STL",
+      "sourceSha256": "af9cb8415c679b6e6bb16a3604d91097de775d6384dfceb1a300f87b42236df7",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 468,
+      "volumeMm3": 2024.98,
+      "areaMm2": 1963.66,
+      "aabbMm": {
+        "min": [
+          69.9,
+          22.222,
+          74.388
+        ],
+        "max": [
+          78.928,
+          26.295,
+          162.362
+        ]
+      },
+      "centroidMm": [
+        74.414,
+        24.258,
+        118.375
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 26 - Straight Lever-3.STL",
+      "sourceSha256": "d7f3c798f63baa4523f9c5fb646fba1a812bf4b7e85f9a15fdc99fb78d31a8fa",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 468,
+      "volumeMm3": 2024.98,
+      "areaMm2": 1963.66,
+      "aabbMm": {
+        "min": [
+          116.545,
+          12.859,
+          130.862
+        ],
+        "max": [
+          200.577,
+          26.433,
+          162.793
+        ]
+      },
+      "centroidMm": [
+        158.561,
+        19.646,
+        146.827
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-1.STL",
+      "sourceSha256": "0e1f0fa4847af5c772090109381f991e6aabdad070ebf00f302beedd05862a89",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 556,
+      "volumeMm3": 245.46,
+      "areaMm2": 306.67,
+      "aabbMm": {
+        "min": [
+          132.089,
+          5.443,
+          0.157
+        ],
+        "max": [
+          142.089,
+          15.44,
+          5.157
+        ]
+      },
+      "centroidMm": [
+        137.089,
+        10.441,
+        2.109
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-2.STL",
+      "sourceSha256": "ba014b0c845b05e763e0e5d88ac6999048ddd78f832b5ae748fcaad4460e6ec5",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 556,
+      "volumeMm3": 245.46,
+      "areaMm2": 306.67,
+      "aabbMm": {
+        "min": [
+          4.898,
+          81.681,
+          0.157
+        ],
+        "max": [
+          14.898,
+          91.677,
+          5.157
+        ]
+      },
+      "centroidMm": [
+        9.898,
+        86.679,
+        2.109
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-3.STL",
+      "sourceSha256": "d8caf87e7063bcea9bbe68b3c9930780e5dd11a4b9389014852d498285a8b700",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 556,
+      "volumeMm3": 245.46,
+      "areaMm2": 306.67,
+      "aabbMm": {
+        "min": [
+          4.89,
+          5.431,
+          0.157
+        ],
+        "max": [
+          14.89,
+          15.428,
+          5.157
+        ]
+      },
+      "centroidMm": [
+        9.89,
+        10.429,
+        2.109
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-4.STL",
+      "sourceSha256": "3bd1cfc29332c4197fa92a771193e609250b286892ab0080aba1053013c1035e",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 556,
+      "volumeMm3": 245.46,
+      "areaMm2": 306.67,
+      "aabbMm": {
+        "min": [
+          132.099,
+          81.684,
+          0.157
+        ],
+        "max": [
+          142.099,
+          91.68,
+          5.157
+        ]
+      },
+      "centroidMm": [
+        137.098,
+        86.682,
+        2.109
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-1.STL",
+      "sourceSha256": "7d4b73bcacb6d52b827b57dd6b511a9ed58a9a3e5d609706aad7e930c77afb36",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 3046,
+      "volumeMm3": 36.39,
+      "areaMm2": 94.6,
+      "aabbMm": {
+        "min": [
+          122.817,
+          23.348,
+          8.157
+        ],
+        "max": [
+          128.881,
+          29.543,
+          9.957
+        ]
+      },
+      "centroidMm": [
+        125.849,
+        26.445,
+        9.057
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-2.STL",
+      "sourceSha256": "286c056591f2bf0a6b79f71d2d667f6be303678e5f3c82ffda7a6f2a76c1b8a9",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 3046,
+      "volumeMm3": 36.39,
+      "areaMm2": 94.6,
+      "aabbMm": {
+        "min": [
+          122.975,
+          67.281,
+          8.157
+        ],
+        "max": [
+          128.723,
+          73.609,
+          9.957
+        ]
+      },
+      "centroidMm": [
+        125.849,
+        70.445,
+        9.057
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-3.STL",
+      "sourceSha256": "41e02837f3450111e84df58531f5993aa317b6c410d00b540668513d9e06ecd1",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 3046,
+      "volumeMm3": 36.39,
+      "areaMm2": 94.6,
+      "aabbMm": {
+        "min": [
+          78.891,
+          23.306,
+          8.157
+        ],
+        "max": [
+          84.807,
+          29.584,
+          9.957
+        ]
+      },
+      "centroidMm": [
+        81.849,
+        26.445,
+        9.057
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-4.STL",
+      "sourceSha256": "a9a91889e56dbc3d80250c8110ab3de7db7f16c439449c145d9f514d6867be53",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 3046,
+      "volumeMm3": 36.39,
+      "areaMm2": 94.6,
+      "aabbMm": {
+        "min": [
+          78.71,
+          67.486,
+          8.157
+        ],
+        "max": [
+          84.988,
+          73.404,
+          9.957
+        ]
+      },
+      "centroidMm": [
+        81.849,
+        70.445,
+        9.057
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-5.STL",
+      "sourceSha256": "a9e67c10105376951c8fecf3ca47937b97fb80853b77654a9b724ef7ccee5dda",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 3046,
+      "volumeMm3": 36.39,
+      "areaMm2": 94.6,
+      "aabbMm": {
+        "min": [
+          68.639,
+          33.38,
+          37.966
+        ],
+        "max": [
+          74.985,
+          35.856,
+          43.977
+        ]
+      },
+      "centroidMm": [
+        71.812,
+        34.618,
+        40.972
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-6.STL",
+      "sourceSha256": "73f368f90d613128448ec10e70ba767956f2b8fc3bf7f40c85a2d90f672377df",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 3046,
+      "volumeMm3": 36.39,
+      "areaMm2": 94.6,
+      "aabbMm": {
+        "min": [
+          119.172,
+          26.97,
+          38.184
+        ],
+        "max": [
+          125.635,
+          29.447,
+          43.762
+        ]
+      },
+      "centroidMm": [
+        122.404,
+        28.208,
+        40.973
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-7.STL",
+      "sourceSha256": "7d615a4908ddcd65118a9be986d1c133baac300f43628453b15954acb84dc5eb",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 3046,
+      "volumeMm3": 36.39,
+      "areaMm2": 94.6,
+      "aabbMm": {
+        "min": [
+          72.607,
+          67.346,
+          38.029
+        ],
+        "max": [
+          79.011,
+          69.823,
+          43.917
+        ]
+      },
+      "centroidMm": [
+        75.809,
+        68.585,
+        40.973
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-8.STL",
+      "sourceSha256": "bfbb47a70ed3ecdccf42270a8f767d8011cd4c29e31d610156719f61bb69ddbf",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 3046,
+      "volumeMm3": 36.39,
+      "areaMm2": 94.6,
+      "aabbMm": {
+        "min": [
+          123.35,
+          60.936,
+          37.852
+        ],
+        "max": [
+          129.459,
+          63.413,
+          44.094
+        ]
+      },
+      "centroidMm": [
+        126.405,
+        62.175,
+        40.973
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-1.STL",
+      "sourceSha256": "ede27f7edfdd71ab253c17a6d37084c55dd2a77af64ca21fdc3a1b6feec0f3e9",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9834,
+      "volumeMm3": 94.23,
+      "areaMm2": 191.55,
+      "aabbMm": {
+        "min": [
+          101.073,
+          36.123,
+          14.569
+        ],
+        "max": [
+          106.673,
+          41.722,
+          24.923
+        ]
+      },
+      "centroidMm": [
+        103.873,
+        38.923,
+        18.539
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-10.STL",
+      "sourceSha256": "6b7b6e61e68c80adf2027d1e60d70ebfe4c1202829c35b913acc27fa24a93612",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9834,
+      "volumeMm3": 94.23,
+      "areaMm2": 191.55,
+      "aabbMm": {
+        "min": [
+          101.824,
+          13.959,
+          49.173
+        ],
+        "max": [
+          107.555,
+          24.469,
+          54.772
+        ]
+      },
+      "centroidMm": [
+        104.98,
+        17.983,
+        51.973
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-11.STL",
+      "sourceSha256": "a84af56654c6e01027d317e304ccbd22b7e872c328663da209add5699719e752",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 8238,
+      "volumeMm3": 82.08,
+      "areaMm2": 164.17,
+      "aabbMm": {
+        "min": [
+          71.628,
+          20.305,
+          75.579
+        ],
+        "max": [
+          77.361,
+          28.83,
+          81.177
+        ]
+      },
+      "centroidMm": [
+        74.686,
+        23.536,
+        78.377
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-12.STL",
+      "sourceSha256": "2767835dc6d85547fbc76317f57af53296f00912278be7ff6aed5232cc1e8a22",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 8238,
+      "volumeMm3": 82.08,
+      "areaMm2": 164.17,
+      "aabbMm": {
+        "min": [
+          110.774,
+          45.649,
+          58.674
+        ],
+        "max": [
+          116.507,
+          54.161,
+          64.272
+        ]
+      },
+      "centroidMm": [
+        113.832,
+        48.867,
+        61.473
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-13.STL",
+      "sourceSha256": "479b9b7f803ba2908b6f18501855de1b5c6ce19173560c7b74c3d451fdb9fcdd",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 13020,
+      "volumeMm3": 118.54,
+      "areaMm2": 246.29,
+      "aabbMm": {
+        "min": [
+          73.83,
+          64.364,
+          38.173
+        ],
+        "max": [
+          79.757,
+          78.829,
+          43.773
+        ]
+      },
+      "centroidMm": [
+        76.382,
+        73.111,
+        40.973
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-14.STL",
+      "sourceSha256": "a85b78f3b297b9e329913a893d07ab914b17919f5fde9cc9e34765dfe4b91dda",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9834,
+      "volumeMm3": 94.23,
+      "areaMm2": 191.55,
+      "aabbMm": {
+        "min": [
+          109.442,
+          69.39,
+          68.173
+        ],
+        "max": [
+          115.17,
+          79.895,
+          73.77
+        ]
+      },
+      "centroidMm": [
+        112.013,
+        75.877,
+        70.973
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-15.STL",
+      "sourceSha256": "2b875541ec0a2096df0da912c3bd86873f41f90297fa86be8df4eb53d7e41ddf",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9834,
+      "volumeMm3": 94.23,
+      "areaMm2": 191.55,
+      "aabbMm": {
+        "min": [
+          109.438,
+          69.39,
+          49.174
+        ],
+        "max": [
+          115.171,
+          79.9,
+          54.772
+        ]
+      },
+      "centroidMm": [
+        112.013,
+        75.877,
+        51.973
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-16.STL",
+      "sourceSha256": "e1a330303fcf63572315637d3726d13170edb2202b5c51fe77c5d1ffda991cb9",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 13020,
+      "volumeMm3": 118.54,
+      "areaMm2": 246.29,
+      "aabbMm": {
+        "min": [
+          124.426,
+          57.955,
+          38.173
+        ],
+        "max": [
+          130.353,
+          72.419,
+          43.773
+        ]
+      },
+      "centroidMm": [
+        126.978,
+        66.701,
+        40.973
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-17.STL",
+      "sourceSha256": "ccb82f5fd37b61f979e41bb5ff3c374791a5d7ae598e663a2e2bac22d1e602db",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 8238,
+      "volumeMm3": 82.08,
+      "areaMm2": 164.17,
+      "aabbMm": {
+        "min": [
+          78.437,
+          58.264,
+          69.238
+        ],
+        "max": [
+          84.17,
+          66.776,
+          74.837
+        ]
+      },
+      "centroidMm": [
+        81.495,
+        61.481,
+        72.038
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-18.STL",
+      "sourceSha256": "269ac214b62007c9e4e711f4e2dfd43345c0dd7d4f588bb58d13eeeecec88c92",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 8238,
+      "volumeMm3": 82.08,
+      "areaMm2": 164.17,
+      "aabbMm": {
+        "min": [
+          79.187,
+          57.517,
+          149.237
+        ],
+        "max": [
+          84.916,
+          66.042,
+          154.837
+        ]
+      },
+      "centroidMm": [
+        81.859,
+        62.811,
+        152.037
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-19.STL",
+      "sourceSha256": "c001f34b78dbda55f04aef0879801a154bbb914b2228f655f611942510822d47",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 8238,
+      "volumeMm3": 82.08,
+      "areaMm2": 164.17,
+      "aabbMm": {
+        "min": [
+          111.968,
+          50.894,
+          138.673
+        ],
+        "max": [
+          117.696,
+          59.407,
+          144.272
+        ]
+      },
+      "centroidMm": [
+        114.64,
+        56.189,
+        141.473
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-2.STL",
+      "sourceSha256": "dd73967fcb96a8d216069014f3add8c666b8a0e5bdb8124ab376203bd37d7a4a",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 19622,
+      "volumeMm3": 167.15,
+      "areaMm2": 355.77,
+      "aabbMm": {
+        "min": [
+          79.049,
+          23.648,
+          2.802
+        ],
+        "max": [
+          84.649,
+          29.243,
+          25.157
+        ]
+      },
+      "centroidMm": [
+        81.849,
+        26.445,
+        12.183
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-20.STL",
+      "sourceSha256": "b54f58582953cf5bcc5da034ac8aa7a24f28e784f144be937c6a41393ece966a",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 8238,
+      "volumeMm3": 82.08,
+      "areaMm2": 164.17,
+      "aabbMm": {
+        "min": [
+          70.913,
+          20.395,
+          155.574
+        ],
+        "max": [
+          76.643,
+          28.921,
+          161.173
+        ]
+      },
+      "centroidMm": [
+        73.97,
+        23.626,
+        158.373
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-21.STL",
+      "sourceSha256": "ba3793d510e0b563f15b671e63114643ec97cf2ccc7a307729f6d14a5b161720",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 13020,
+      "volumeMm3": 118.54,
+      "areaMm2": 246.29,
+      "aabbMm": {
+        "min": [
+          107.256,
+          18.818,
+          138.673
+        ],
+        "max": [
+          113.183,
+          33.293,
+          144.273
+        ]
+      },
+      "centroidMm": [
+        110.631,
+        24.546,
+        141.473
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-22.STL",
+      "sourceSha256": "26d6e0c012f60eb78d8939918c7fe318211b322e171f131c055c06c5ecf59e6a",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 8238,
+      "volumeMm3": 82.08,
+      "areaMm2": 164.17,
+      "aabbMm": {
+        "min": [
+          118.108,
+          19.826,
+          155.995
+        ],
+        "max": [
+          123.839,
+          28.349,
+          161.594
+        ]
+      },
+      "centroidMm": [
+        120.782,
+        25.12,
+        158.794
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-3.STL",
+      "sourceSha256": "7fd40a213d9f5fbdc738cbe57990a0635caf918633587a536e19944e5614bb6c",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 19622,
+      "volumeMm3": 167.15,
+      "areaMm2": 355.77,
+      "aabbMm": {
+        "min": [
+          123.049,
+          67.651,
+          2.802
+        ],
+        "max": [
+          128.649,
+          73.245,
+          25.157
+        ]
+      },
+      "centroidMm": [
+        125.849,
+        70.445,
+        12.183
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-31.STL",
+      "sourceSha256": "fbf2d88dde5f5e961f961648995f0ee49eba8b4342f0ab1e2109080827d878b2",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9834,
+      "volumeMm3": 94.23,
+      "areaMm2": 191.55,
+      "aabbMm": {
+        "min": [
+          171.103,
+          22.815,
+          113.737
+        ],
+        "max": [
+          176.702,
+          28.414,
+          124.091
+        ]
+      },
+      "centroidMm": [
+        173.902,
+        25.615,
+        120.121
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-32.STL",
+      "sourceSha256": "520012746a4ca0aef31b8185c287d7b97a075ab4179570a385db67f7cf5cf8ae",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9834,
+      "volumeMm3": 94.23,
+      "areaMm2": 191.55,
+      "aabbMm": {
+        "min": [
+          200.223,
+          36.262,
+          113.741
+        ],
+        "max": [
+          205.823,
+          41.861,
+          124.095
+        ]
+      },
+      "centroidMm": [
+        203.023,
+        39.062,
+        120.125
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-33.STL",
+      "sourceSha256": "35be187632956424b7fc2e235a6d844e538de89df1574d530ace21bd3755a47c",
+      "status": "not_run",
+      "fidelity": "mesh-open-approximation",
+      "triangleCount": 9834,
+      "volumeMm3": 94.23,
+      "areaMm2": 191.55,
+      "aabbMm": {
+        "min": [
+          198.087,
+          19.397,
+          113.741
+        ],
+        "max": [
+          203.686,
+          24.996,
+          124.095
+        ]
+      },
+      "centroidMm": [
+        200.886,
+        22.196,
+        120.125
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-34.STL",
+      "sourceSha256": "b2b664e344da74cad7c1614829f04b4b2e6e33cadd89fec141dba0b7bdb01a51",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9834,
+      "volumeMm3": 94.23,
+      "areaMm2": 191.55,
+      "aabbMm": {
+        "min": [
+          173.239,
+          39.68,
+          113.737
+        ],
+        "max": [
+          178.837,
+          45.28,
+          124.091
+        ]
+      },
+      "centroidMm": [
+        176.039,
+        42.48,
+        120.121
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-35.STL",
+      "sourceSha256": "b125792a6760782bb49d4667837dfa302524e3d2d4537edf6f7f671977df5d81",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 8238,
+      "volumeMm3": 82.08,
+      "areaMm2": 164.17,
+      "aabbMm": {
+        "min": [
+          210.744,
+          20.076,
+          98.838
+        ],
+        "max": [
+          216.342,
+          25.674,
+          107.193
+        ]
+      },
+      "centroidMm": [
+        213.543,
+        22.876,
+        102.01
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-36.STL",
+      "sourceSha256": "0879f61575febcec0859d1ab0fa47f42cdb6347254cd6e6aa2b83313b597cb23",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 13020,
+      "volumeMm3": 118.54,
+      "areaMm2": 246.29,
+      "aabbMm": {
+        "min": [
+          219.665,
+          34.548,
+          98.839
+        ],
+        "max": [
+          225.264,
+          40.146,
+          113.194
+        ]
+      },
+      "centroidMm": [
+        222.464,
+        37.347,
+        104.531
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-37.STL",
+      "sourceSha256": "37a19b0e35857cf897d081dd755bab67b6ef3542fc542e17a1001fd383bfce82",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 8238,
+      "volumeMm3": 82.08,
+      "areaMm2": 164.17,
+      "aabbMm": {
+        "min": [
+          209.743,
+          35.812,
+          110.242
+        ],
+        "max": [
+          215.341,
+          41.411,
+          118.596
+        ]
+      },
+      "centroidMm": [
+        212.543,
+        38.611,
+        115.425
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-38.STL",
+      "sourceSha256": "85f97dee3a73dee5416a092dfd655d45b05fe18f49fc5a9b225480987787d8e9",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 8238,
+      "volumeMm3": 82.08,
+      "areaMm2": 164.17,
+      "aabbMm": {
+        "min": [
+          207.468,
+          17.855,
+          110.242
+        ],
+        "max": [
+          213.067,
+          23.455,
+          118.596
+        ]
+      },
+      "centroidMm": [
+        210.268,
+        20.655,
+        115.425
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-4.STL",
+      "sourceSha256": "af556a82228dd1f13215303c1fdb31fd50c3de00127d89bb7a52013be75d3bfb",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9834,
+      "volumeMm3": 94.23,
+      "areaMm2": 191.55,
+      "aabbMm": {
+        "min": [
+          101.043,
+          55.123,
+          14.569
+        ],
+        "max": [
+          106.642,
+          60.723,
+          24.923
+        ]
+      },
+      "centroidMm": [
+        103.842,
+        57.923,
+        18.539
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-40.STL",
+      "sourceSha256": "36913d438969b39e455edb72ad6bd768be7dfdcbcc040a7fd993b7272e797b4f",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 13020,
+      "volumeMm3": 118.54,
+      "areaMm2": 246.29,
+      "aabbMm": {
+        "min": [
+          193.283,
+          10.949,
+          132.061
+        ],
+        "max": [
+          199.21,
+          25.418,
+          137.66
+        ]
+      },
+      "centroidMm": [
+        196.657,
+        16.672,
+        134.861
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-42.STL",
+      "sourceSha256": "6daa374fd44c59ff21b7798303f2f720741be0d7d15e69eb8a8a19c68dc952b3",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9834,
+      "volumeMm3": 94.23,
+      "areaMm2": 191.55,
+      "aabbMm": {
+        "min": [
+          183.748,
+          15.236,
+          114.742
+        ],
+        "max": [
+          189.479,
+          25.732,
+          120.339
+        ]
+      },
+      "centroidMm": [
+        186.906,
+        19.246,
+        117.539
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-45.STL",
+      "sourceSha256": "55291ce72831c37746f8bc4a76bf6f82b1065f904e3d6c8fd880e19a7def5b3c",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9834,
+      "volumeMm3": 94.23,
+      "areaMm2": 191.55,
+      "aabbMm": {
+        "min": [
+          187.645,
+          39.322,
+          114.523
+        ],
+        "max": [
+          193.374,
+          49.832,
+          120.121
+        ]
+      },
+      "centroidMm": [
+        190.217,
+        45.809,
+        117.323
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-5.STL",
+      "sourceSha256": "6e4d7f46725df2baf2727f8edc3b2cf4f08047ca9fb14466c20248847f43547f",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 19622,
+      "volumeMm3": 167.15,
+      "areaMm2": 355.77,
+      "aabbMm": {
+        "min": [
+          79.05,
+          67.645,
+          2.802
+        ],
+        "max": [
+          84.645,
+          73.245,
+          25.157
+        ]
+      },
+      "centroidMm": [
+        81.849,
+        70.445,
+        12.183
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-6.STL",
+      "sourceSha256": "f542850f85734b356ed1bffd4e4b0cf655bb220f392ea2d238a50ebcf30f4290",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 19622,
+      "volumeMm3": 167.15,
+      "areaMm2": 355.77,
+      "aabbMm": {
+        "min": [
+          123.049,
+          23.646,
+          2.802
+        ],
+        "max": [
+          128.649,
+          29.242,
+          25.157
+        ]
+      },
+      "centroidMm": [
+        125.849,
+        26.445,
+        12.183
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-7.STL",
+      "sourceSha256": "777d082230ccf0553921aaf10d1aa92142d12e7a1f483db333ec7dd91baf2bbd",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 13020,
+      "volumeMm3": 118.54,
+      "areaMm2": 246.29,
+      "aabbMm": {
+        "min": [
+          67.795,
+          23.817,
+          38.172
+        ],
+        "max": [
+          73.719,
+          38.293,
+          43.772
+        ]
+      },
+      "centroidMm": [
+        71.169,
+        29.546,
+        40.972
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-8.STL",
+      "sourceSha256": "fbe3afae16467a9e48dedcf0609f4484c749a65ffd974329b3f044d67d060337",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 13020,
+      "volumeMm3": 118.54,
+      "areaMm2": 246.29,
+      "aabbMm": {
+        "min": [
+          118.39,
+          17.405,
+          38.174
+        ],
+        "max": [
+          124.313,
+          31.883,
+          43.773
+        ]
+      },
+      "centroidMm": [
+        121.761,
+        23.136,
+        40.973
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-9.STL",
+      "sourceSha256": "e3f558c4cd020bca5fba420b0d86842283cf46c53fca97773bb90078851426b5",
+      "status": "not_run",
+      "fidelity": "mesh-open-approximation",
+      "triangleCount": 9834,
+      "volumeMm3": 94.23,
+      "areaMm2": 191.55,
+      "aabbMm": {
+        "min": [
+          101.823,
+          13.973,
+          68.176
+        ],
+        "max": [
+          107.554,
+          24.469,
+          73.773
+        ]
+      },
+      "centroidMm": [
+        104.98,
+        17.983,
+        70.973
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-1.STL",
+      "sourceSha256": "662a42bb86d91edcb032d3d2e8ca4a970f366b6379f96d25e073f620ccde355b",
+      "status": "not_run",
+      "fidelity": "mesh-open-approximation",
+      "triangleCount": 30162,
+      "volumeMm3": 7044.76,
+      "areaMm2": 4938.44,
+      "aabbMm": {
+        "min": [
+          88.049,
+          42.21,
+          4.123
+        ],
+        "max": [
+          120.166,
+          54.638,
+          34.073
+        ]
+      },
+      "centroidMm": [
+        103.721,
+        48.423,
+        16.8
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-2.STL",
+      "sourceSha256": "bc7fdcf1f375b1f8b8d543975a7aaefee0b44a31dec391fa546bb5bb53373568",
+      "status": "not_run",
+      "fidelity": "mesh-open-approximation",
+      "triangleCount": 30162,
+      "volumeMm3": 7044.76,
+      "areaMm2": 4938.44,
+      "aabbMm": {
+        "min": [
+          95.354,
+          59.567,
+          55.273
+        ],
+        "max": [
+          127.513,
+          91.512,
+          67.673
+        ]
+      },
+      "centroidMm": [
+        112.367,
+        77.584,
+        61.473
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-3.STL",
+      "sourceSha256": "7c354dc9a20212b67048e74bfe1f71b6d55ebfd71b2d19055b4d9b8b85849b59",
+      "status": "not_run",
+      "fidelity": "mesh-open-approximation",
+      "triangleCount": 30162,
+      "volumeMm3": 7044.76,
+      "areaMm2": 4938.44,
+      "aabbMm": {
+        "min": [
+          88.984,
+          2.41,
+          55.273
+        ],
+        "max": [
+          121.143,
+          33.06,
+          67.673
+        ]
+      },
+      "centroidMm": [
+        104.897,
+        16.24,
+        61.473
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-5.STL",
+      "sourceSha256": "23aef422268e9893847e0f51b773bb321324352636d57dba10a7eebb8796ff08",
+      "status": "not_run",
+      "fidelity": "mesh-open-approximation",
+      "triangleCount": 30162,
+      "volumeMm3": 7044.76,
+      "areaMm2": 4938.44,
+      "aabbMm": {
+        "min": [
+          171.738,
+          24.488,
+          104.589
+        ],
+        "max": [
+          204.916,
+          40.425,
+          134.54
+        ]
+      },
+      "centroidMm": [
+        188.71,
+        32.408,
+        121.862
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.2-1.STL",
+      "sourceSha256": "5153635043b9899a5c18b838a0a372e30059472de419249a39be086bfca8aeeb",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 2268,
+      "volumeMm3": 155.07,
+      "areaMm2": 375.76,
+      "aabbMm": {
+        "min": [
+          99.423,
+          57.631,
+          58.023
+        ],
+        "max": [
+          118.588,
+          62.266,
+          67.705
+        ]
+      },
+      "centroidMm": [
+        111.017,
+        59.84,
+        62.698
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.2-2.STL",
+      "sourceSha256": "4fe780fbb9f4adce376f50ee1b5b052b3f53e51ba47f7085019c2a1f8b544e5d",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 2268,
+      "volumeMm3": 155.07,
+      "areaMm2": 375.76,
+      "aabbMm": {
+        "min": [
+          108.12,
+          30.36,
+          58.032
+        ],
+        "max": [
+          115.443,
+          34.997,
+          77.523
+        ]
+      },
+      "centroidMm": [
+        111.851,
+        33.275,
+        65.535
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.2-4.STL",
+      "sourceSha256": "8d1ad135684dd98379b399eab52478c3d307ea5e22f305780e8f0e0cafa12e37",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 2268,
+      "volumeMm3": 155.07,
+      "areaMm2": 375.76,
+      "aabbMm": {
+        "min": [
+          189.99,
+          24.152,
+          102.789
+        ],
+        "max": [
+          208.293,
+          35.257,
+          106.59
+        ]
+      },
+      "centroidMm": [
+        197.156,
+        30.173,
+        104.089
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.3-1.STL",
+      "sourceSha256": "b84e20399874f1877afeea571975ab05b1396a3662aa4c856ae8143146437ea4",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 3318,
+      "volumeMm3": 225.05,
+      "areaMm2": 541.01,
+      "aabbMm": {
+        "min": [
+          95.199,
+          32.478,
+          32.073
+        ],
+        "max": [
+          102.716,
+          64.352,
+          35.873
+        ]
+      },
+      "centroidMm": [
+        98.958,
+        48.415,
+        34.761
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-1.STL",
+      "sourceSha256": "e4b7c3545161439cc481cf46a7295a117b1f38a883139d65cc50753f7b36fa97",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9924,
+      "volumeMm3": 36.54,
+      "areaMm2": 115.42,
+      "aabbMm": {
+        "min": [
+          109.005,
+          28.587,
+          73.524
+        ],
+        "max": [
+          113.826,
+          38.175,
+          78.322
+        ]
+      },
+      "centroidMm": [
+        111.656,
+        31.85,
+        75.923
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-2.STL",
+      "sourceSha256": "0b8278c16b8cff5d052f5e53d009c916f740814fcba61acfbfbae12bc1f9bcef",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9924,
+      "volumeMm3": 36.54,
+      "areaMm2": 115.42,
+      "aabbMm": {
+        "min": [
+          97.875,
+          56.383,
+          29.904
+        ],
+        "max": [
+          102.664,
+          61.183,
+          39.473
+        ]
+      },
+      "centroidMm": [
+        100.269,
+        58.783,
+        33.135
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-3.STL",
+      "sourceSha256": "71827acc875c3717e8ad4bb46ad6081bff854738c8e0c864aca595c04aad2c9f",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9924,
+      "volumeMm3": 36.54,
+      "areaMm2": 115.42,
+      "aabbMm": {
+        "min": [
+          95.249,
+          35.648,
+          29.904
+        ],
+        "max": [
+          100.043,
+          40.448,
+          39.473
+        ]
+      },
+      "centroidMm": [
+        97.646,
+        38.048,
+        33.135
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-4.STL",
+      "sourceSha256": "6c7957f6c74bf89e0a29578ea7d748225d65326bb03ff6460a9f106dbb30021a",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 9924,
+      "volumeMm3": 36.54,
+      "areaMm2": 115.42,
+      "aabbMm": {
+        "min": [
+          99.201,
+          56.186,
+          63.434
+        ],
+        "max": [
+          104.024,
+          65.773,
+          68.231
+        ]
+      },
+      "centroidMm": [
+        101.372,
+        62.511,
+        65.833
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.6-1.STL",
+      "sourceSha256": "d603812d9daa8a0a6f7537dfa799892e34e60ec3bf89a2da373ac1de0cc5df0c",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 8990,
+      "volumeMm3": 17.8,
+      "areaMm2": 62.49,
+      "aabbMm": {
+        "min": [
+          110.379,
+          29.506,
+          59.924
+        ],
+        "max": [
+          113.521,
+          34.9,
+          63.023
+        ]
+      },
+      "centroidMm": [
+        111.774,
+        32.617,
+        61.473
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.6-2.STL",
+      "sourceSha256": "28ee87f284cd24fb184278ca91504f82af88702847382fe231bc18cc2d6ff4e1",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 8990,
+      "volumeMm3": 17.8,
+      "areaMm2": 62.49,
+      "aabbMm": {
+        "min": [
+          113.194,
+          57.73,
+          59.923
+        ],
+        "max": [
+          116.336,
+          63.121,
+          63.023
+        ]
+      },
+      "centroidMm": [
+        114.942,
+        60.011,
+        61.473
+      ]
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.6-3.STL",
+      "sourceSha256": "1bfaf6df6c79085689a155698a546122934c79e9bb0fc2d56cabecb60cd46ec0",
+      "status": "pass",
+      "fidelity": "mesh-exact",
+      "triangleCount": 8990,
+      "volumeMm3": 17.8,
+      "areaMm2": 62.49,
+      "aabbMm": {
+        "min": [
+          97.408,
+          46.865,
+          30.873
+        ],
+        "max": [
+          100.507,
+          49.964,
+          36.152
+        ]
+      },
+      "centroidMm": [
+        98.958,
+        48.415,
+        33.911
+      ]
+    }
+  ]
+}

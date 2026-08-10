@@ -1,0 +1,83 @@
+{
+  "schema": "nexyfab.domain-accuracy-dryrun.v1",
+  "kind": "DRYRUN — toolchain drill, NOT certification evidence",
+  "domain": "civil",
+  "reviewers": [
+    "DRYRUN-virtual-reviewer-1",
+    "DRYRUN-virtual-reviewer-2"
+  ],
+  "subject": "template-engine cross-process rebuild determinism (no AI subject)",
+  "checks": [
+    {
+      "ok": true,
+      "label": "candidates generated 20/20"
+    },
+    {
+      "ok": true,
+      "label": "every review packet flags independent_holdout_source_required"
+    },
+    {
+      "ok": true,
+      "label": "promote refuses certification path (exit 1)"
+    },
+    {
+      "ok": true,
+      "label": "promote scoreEligible=0 (internal-template locked out)"
+    },
+    {
+      "ok": true,
+      "label": "promote emits zero benchmark cases"
+    },
+    {
+      "ok": true,
+      "label": "required axes discovered from packets (10)"
+    },
+    {
+      "ok": true,
+      "label": "campaign completed (exit 0)"
+    },
+    {
+      "ok": true,
+      "label": "campaign runs 300/300"
+    },
+    {
+      "ok": true,
+      "label": "campaign resume on completed state is a clean no-op"
+    },
+    {
+      "ok": true,
+      "label": "report refuses eligibility (DRYRUN must not certify)"
+    },
+    {
+      "ok": true,
+      "label": "evidence integrity issues: 0"
+    },
+    {
+      "ok": true,
+      "label": "measured axes accuracy 1, core 5 full-coverage (requirements@1,dimensions@1,part_definitions@1,transforms@1,collision_clearance@1,manufacturing@0.35,step_roundtrip@1,repair@1)"
+    },
+    {
+      "ok": true,
+      "label": "unmeasured axes surface as coverage blockers"
+    },
+    {
+      "ok": true,
+      "label": "gate passes 300/300"
+    }
+  ],
+  "passed": "14/14",
+  "campaign": {
+    "domain": "civil",
+    "suiteHash": "6d6f4405ccdc8738c523e7a1c940d57b799fd7c04290d74f1c1a7330da9b00c5",
+    "slots": 300,
+    "completed": 300,
+    "failed": 0
+  },
+  "blockers": [
+    "accuracy:features",
+    "coverage:features",
+    "accuracy:hierarchy",
+    "coverage:hierarchy",
+    "coverage:manufacturing"
+  ]
+}

@@ -47,7 +47,7 @@ export async function PATCH(
 
   const newStatus = body.action === 'approve' ? 'approved' : 'rejected';
   await db.execute(
-    'UPDATE partner_applications SET status = ? WHERE id = ?',
+    'UPDATE partner_applications SET status = ?, active_key = NULL WHERE id = ?',
     newStatus,
     id,
   );

@@ -1,0 +1,436 @@
+{
+  "schema": "nexyfab.complex-holdout-review.v1",
+  "family": "robot",
+  "policy": {
+    "selectedDoesNotMeanApproved": true,
+    "scoreEligible": false,
+    "oneCasePerLineage": true,
+    "requiredApprovedCases": 20
+  },
+  "candidates": 49,
+  "selected": 20,
+  "shortfall": 0,
+  "structurallyRejected": [],
+  "items": [
+    {
+      "caseId": "robot-review-01",
+      "family": "robot",
+      "tierCandidate": "T1",
+      "holdoutGroup": "robot:18650-lipo-battery",
+      "sourceHash": "50b18803427d0f5d4998cbab3cffae3c63dd83ee4ecb4883cd90fd07fcaf8008",
+      "bytes": 24532,
+      "extension": "step",
+      "localLocator": "참고파일들4/two-wheel-self-balancing-robot-v1-1.snapshot.4/CAD/reference-components/18650-lipo-battery-and-holder-1.snapshot.3/18650 Lipo Battery.step",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-02",
+      "family": "robot",
+      "tierCandidate": "T1",
+      "holdoutGroup": "robot:3-battery-holder",
+      "sourceHash": "c96a6c7c34e5bd26d14d3315ae47d2f5e1cf1c0e165392826f9a9e0a584ac0ae",
+      "bytes": 632677,
+      "extension": "step",
+      "localLocator": "참고파일들4/two-wheel-self-balancing-robot-v1-1.snapshot.4/CAD/reference-components/18650-lipo-battery-and-holder-1.snapshot.3/3 Battery Holder.step",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-03",
+      "family": "robot",
+      "tierCandidate": "T1",
+      "holdoutGroup": "robot:3-battery-holder-with-batteries",
+      "sourceHash": "ae100a589cdf84d92f2bd529d1f703c9d9ac174026d0d6687533494901dce02e",
+      "bytes": 853821,
+      "extension": "step",
+      "localLocator": "참고파일들4/two-wheel-self-balancing-robot-v1-1.snapshot.4/CAD/reference-components/18650-lipo-battery-and-holder-1.snapshot.3/3 Battery Holder With Batteries.step",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-04",
+      "family": "robot",
+      "tierCandidate": "T1",
+      "holdoutGroup": "robot:4-battery-holder",
+      "sourceHash": "480325e9e9e249186ca5f79a2b42af9884bd81e06604a06970b522c7c962601a",
+      "bytes": 825557,
+      "extension": "step",
+      "localLocator": "참고파일들4/two-wheel-self-balancing-robot-v1-1.snapshot.4/CAD/reference-components/18650-lipo-battery-and-holder-1.snapshot.3/4 Battery Holder.step",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-05",
+      "family": "robot",
+      "tierCandidate": "T1",
+      "holdoutGroup": "robot:4-battery-holder-with-batteries",
+      "sourceHash": "f2912108234ba40d3e9938621bab4c804d7511aa02816a74179dde5e8c9d039f",
+      "bytes": 1117615,
+      "extension": "step",
+      "localLocator": "참고파일들4/two-wheel-self-balancing-robot-v1-1.snapshot.4/CAD/reference-components/18650-lipo-battery-and-holder-1.snapshot.3/4 Battery Holder With Batteries.step",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-06",
+      "family": "robot",
+      "tierCandidate": "T1",
+      "holdoutGroup": "robot:arduino-sensor-board-v1",
+      "sourceHash": "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103",
+      "bytes": 3339756,
+      "extension": "stp",
+      "localLocator": "참고파일들4/two-wheel-self-balancing-robot-v1-1.snapshot.4/CAD/reference-components/arduino-uno-sensor-shield-1.snapshot.6/Arduino Sensor Board V1.stp",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-07",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:assembly-full",
+      "sourceHash": "c99aa30f426054651f33f1790f8c6c2e3dcaf228a45bb45b37f362df692f8bb6",
+      "bytes": 2058240,
+      "extension": "iam",
+      "localLocator": "참고파일들3/robot-5-dof-1.snapshot.2/Assembly FULL.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-08",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:dynamixelpro-yaw-new",
+      "sourceHash": "242f6dd6f3096246d010eaf282b8a01b6dcdabb56a919e1d502fff411253edea",
+      "bytes": 858792,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/mrl-work-dynamixelpro-based-precision-manipulator-1.snapshot.1/DynamixelPro_Yaw_New.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-09",
+      "family": "robot",
+      "tierCandidate": "T3",
+      "holdoutGroup": "robot:epson-c4-a601s-6-axis-robot-arm-1",
+      "sourceHash": "d2665fa621d78a78d97ab7e7cf999f2dee3c4ace1f1199552db8a2156ab29bfb",
+      "bytes": 89423805,
+      "extension": "zip",
+      "localLocator": "참고파일들4/epson-c4-a601s-6-axis-robot-arm-1.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-10",
+      "family": "robot",
+      "tierCandidate": "T1",
+      "holdoutGroup": "robot:final",
+      "sourceHash": "fabf997b27909c9ac626892bdc8ff580cdbf21dc601d0ba666a4fa9d69a7f718",
+      "bytes": 13873151,
+      "extension": "x_t",
+      "localLocator": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Final Assembly.x_t",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-11",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:frp42-i110ks",
+      "sourceHash": "3a448eaf9fe1f096d31590ef69530f5485ae3619f68b7e3dd6ba34ff3ec9b5ce",
+      "bytes": 120192,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/mrl-work-dynamixelpro-based-precision-manipulator-1.snapshot.1/FRP42-I110KS.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-12",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:hingdynamixelpro20w",
+      "sourceHash": "fe4e8bbeb6d68b82527150b7d4189e7feca4c3dfa550dc5415f8c168ff06db12",
+      "bytes": 118952,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/mrl-work-dynamixelpro-based-precision-manipulator-1.snapshot.1/HINGDynamixelPRo20W.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-13",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:k-1",
+      "sourceHash": "711852bca8789e99e51127d188c5f9ed3e845594addfaf61fddef550e5db7406",
+      "bytes": 140800,
+      "extension": "iam",
+      "localLocator": "참고파일들3/robot-5-dof-1.snapshot.2/K 1.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-14",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:k-2",
+      "sourceHash": "4b1218a57eb44eea1462aba62353bac910df7686dfc2c1b91d48ee1f3f0f8d84",
+      "bytes": 206848,
+      "extension": "iam",
+      "localLocator": "참고파일들3/robot-5-dof-1.snapshot.2/K 2.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-15",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:k-3",
+      "sourceHash": "64b89e40cd89485402c65af37b9226f396005b2ec0b453928272454edda44261",
+      "bytes": 183296,
+      "extension": "iam",
+      "localLocator": "참고파일들3/robot-5-dof-1.snapshot.2/k 3.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-16",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:k-4",
+      "sourceHash": "87bc26b5bbbd02758a22e9df62bedbe371998dc177fff82b45a4877a7dda67ea",
+      "bytes": 194048,
+      "extension": "iam",
+      "localLocator": "참고파일들3/robot-5-dof-1.snapshot.2/K 4.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-17",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:k-5",
+      "sourceHash": "51483ceb79c161549fe8b9c44460f0693f6e68a161027691c4c7475f1b8b61b4",
+      "bytes": 549376,
+      "extension": "iam",
+      "localLocator": "참고파일들3/robot-5-dof-1.snapshot.2/K 5.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-18",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:k1",
+      "sourceHash": "0744a05761aab09adad9405d4dc230fa6f752d5a0533b0283890b43614f3da2b",
+      "bytes": 599040,
+      "extension": "iam",
+      "localLocator": "참고파일들3/robot-5-dof-2.snapshot.2/K1.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-19",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:k2",
+      "sourceHash": "aa82052666e16e22ba919acc68e1a276d9c68e668b460b864221c8a65819b84b",
+      "bytes": 209920,
+      "extension": "iam",
+      "localLocator": "참고파일들3/robot-5-dof-2.snapshot.2/k2.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-20",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:k3",
+      "sourceHash": "15746a0ef71d3caf7fcc55c2cc8f0a1d62133e2a8e18c89bc4b13ea73af9e838",
+      "bytes": 227328,
+      "extension": "iam",
+      "localLocator": "참고파일들3/robot-5-dof-2.snapshot.2/K3.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    }
+  ]
+}

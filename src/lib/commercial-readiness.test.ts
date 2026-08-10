@@ -4,6 +4,9 @@ import { commercialReadinessIssues } from './commercial-readiness';
 const base = {
   DATABASE_URL: 'postgres://db',
   REDIS_URL: 'redis://cache',
+  UPSTASH_REDIS_REST_URL: 'https://redis.example.com',
+  UPSTASH_REDIS_REST_TOKEN: 'redis-rest-token',
+  NEXYFAB_CAD_INDEPENDENT_MODE: '1',
   S3_BUCKET: 'cad-private',
   S3_ACCESS_KEY_ID: 'key',
   S3_SECRET_ACCESS_KEY: 'secret',
@@ -30,6 +33,28 @@ describe('commercialReadinessIssues', () => {
       'rate_limit.redis_required',
       'observability.sentry_required',
     ]));
+  });
+
+  it('requires fail-closed distributed CAD account quotas', () => {
+    const issues = commercialReadinessIssues({
+      ...base,
+      REDIS_URL: '',
+      UPSTASH_REDIS_REST_URL: '',
+      UPSTASH_REDIS_REST_TOKEN: undefined,
+      NEXYFAB_CAD_INDEPENDENT_MODE: '0',
+    });
+    expect(issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
+      'rate_limit.redis_required',
+      'cad_mode.independent_required',
+    ]));
+  });
+
+  it('accepts direct Railway Redis without Upstash REST credentials', () => {
+    expect(commercialReadinessIssues({
+      ...base,
+      UPSTASH_REDIS_REST_URL: undefined,
+      UPSTASH_REDIS_REST_TOKEN: undefined,
+    })).toEqual([]);
   });
 
   it('does not accept a payment API key without webhook verification', () => {

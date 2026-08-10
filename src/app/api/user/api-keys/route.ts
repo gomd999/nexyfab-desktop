@@ -19,9 +19,10 @@ const VALID_SCOPES = [
   'read:contracts', 'write:contracts',
   'read:quotes', 'write:quotes',
   'read:projects',
+  'write:projects',
   'read:bom', 'write:bom',
   'webhooks:manage',
-];
+] as const;
 
 // GET — list API keys (never expose full key)
 export async function GET(req: NextRequest) {
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
   const schema = z.object({
 
     name: z.string().min(1).max(100),
-    scopes: z.array(z.string()).max(20).default([]),
+    scopes: z.array(z.enum(VALID_SCOPES)).max(20).default([]),
     ipWhitelist: z.array(z.string().regex(/^(\d{1,3}\.){3}\d{1,3}$|^[0-9a-fA-F:]+$/, 'Invalid IP')).max(20).default([]),
     expiresInDays: z.number().int().min(1).max(365).optional(),
   });

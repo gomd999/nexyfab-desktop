@@ -1,7 +1,8 @@
 // Unit tests for file-validation
 import { describe, it, expect } from 'vitest';
-import { validateUploadedFile, sanitizeFileName } from './file-validation';
+import { validateUploadedFile, validateZipArchive, sanitizeFileName } from './file-validation';
 import type { FileValidationOptions } from './file-validation';
+import { strToU8, zipSync } from 'fflate';
 
 // ---------------------------------------------------------------------------
 // Magic byte constants
@@ -162,6 +163,44 @@ describe('validateUploadedFile', () => {
     };
     const result = await validateUploadedFile(file, opts);
     expect(result.valid).toBe(true);
+  });
+});
+
+describe('validateZipArchive', () => {
+  const zipFile = (entries: Record<string, Uint8Array>) => makeFile('assembly.zip', zipSync(entries));
+
+  it('accepts a bounded CAD assembly ZIP without inflating it in the validator', async () => {
+    const result = await validateZipArchive(zipFile({
+      'assembly/root.step': strToU8('ISO-10303-21;DATA;ENDSEC;END-ISO-10303-21;'),
+      'assembly/readme.txt': strToU8('manifest'),
+    }));
+    expect(result.valid).toBe(true);
+  });
+
+  it('rejects path traversal entries', async () => {
+    const result = await validateZipArchive(zipFile({ '../outside.step': strToU8('data') }));
+    expect(result).toMatchObject({ valid: false, error: expect.stringMatching(/unsafe path/i) });
+  });
+
+  it('rejects nested archives', async () => {
+    const result = await validateZipArchive(zipFile({ 'parts/nested.zip': strToU8('PK') }));
+    expect(result).toMatchObject({ valid: false, error: expect.stringMatching(/nested archive/i) });
+  });
+
+  it('rejects excessive compression ratios before extraction', async () => {
+    const result = await validateZipArchive(zipFile({ 'huge.step': new Uint8Array(1024 * 1024) }));
+    expect(result).toMatchObject({ valid: false, error: expect.stringMatching(/compression ratio/i) });
+  });
+
+  it('enforces entry-count policy', async () => {
+    const file = zipFile({ 'a.step': strToU8('a'), 'b.step': strToU8('b') });
+    const result = await validateZipArchive(file, {
+      maxEntries: 1,
+      maxPathDepth: 16,
+      maxUncompressedBytes: 1024,
+      maxCompressionRatio: 100,
+    });
+    expect(result).toMatchObject({ valid: false, error: expect.stringMatching(/too many entries/i) });
   });
 });
 

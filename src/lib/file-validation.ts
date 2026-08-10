@@ -12,6 +12,10 @@ const FILE_SIGNATURES: Record<string, { bytes: number[]; offset: number }[]> = {
     { bytes: Array.from('IGES').map(c => c.charCodeAt(0)), offset: 0 },
   ],
   'model/stl-binary': [{ bytes: [], offset: 0 }], // STL has no magic bytes - use size check
+  'application/zip': [
+    { bytes: [0x50, 0x4B, 0x03, 0x04], offset: 0 },
+    { bytes: [0x50, 0x4B, 0x05, 0x06], offset: 0 },
+  ],
 };
 
 const EXTENSION_TO_MIME: Record<string, string> = {
@@ -27,6 +31,7 @@ const EXTENSION_TO_MIME: Record<string, string> = {
   '.stl': 'model/stl-binary',
   '.dxf': 'model/dxf',
   '.dwg': 'model/dwg',
+  '.zip': 'application/zip',
 };
 
 export interface FileValidationOptions {
@@ -38,6 +43,118 @@ export interface FileValidationOptions {
 export interface FileValidationResult {
   valid: boolean;
   error?: string;
+}
+
+export interface ZipArchivePolicy {
+  maxEntries: number;
+  maxPathDepth: number;
+  maxUncompressedBytes: number;
+  maxCompressionRatio: number;
+}
+
+export const DEFAULT_ZIP_ARCHIVE_POLICY: ZipArchivePolicy = {
+  maxEntries: 2_000,
+  maxPathDepth: 16,
+  maxUncompressedBytes: 1024 * 1024 * 1024,
+  maxCompressionRatio: 100,
+};
+
+const readU16 = (view: DataView, offset: number) => view.getUint16(offset, true);
+const readU32 = (view: DataView, offset: number) => view.getUint32(offset, true);
+
+/** Inspect the ZIP central directory without inflating attacker-controlled data. */
+export async function validateZipArchive(
+  file: File,
+  policy: ZipArchivePolicy = DEFAULT_ZIP_ARCHIVE_POLICY,
+): Promise<FileValidationResult> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const minimumEocd = 22;
+  if (bytes.byteLength < minimumEocd) return { valid: false, error: 'Invalid ZIP archive.' };
+
+  const searchStart = Math.max(0, bytes.byteLength - 65_557);
+  let eocd = -1;
+  for (let offset = bytes.byteLength - minimumEocd; offset >= searchStart; offset -= 1) {
+    if (readU32(view, offset) === 0x06054B50) { eocd = offset; break; }
+  }
+  if (eocd < 0) return { valid: false, error: 'Invalid ZIP central directory.' };
+
+  const disk = readU16(view, eocd + 4);
+  const centralDisk = readU16(view, eocd + 6);
+  const entries = readU16(view, eocd + 10);
+  const centralSize = readU32(view, eocd + 12);
+  const centralOffset = readU32(view, eocd + 16);
+  if (disk !== 0 || centralDisk !== 0) return { valid: false, error: 'Multi-disk ZIP archives are not supported.' };
+  if (entries === 0xFFFF || centralSize === 0xFFFFFFFF || centralOffset === 0xFFFFFFFF) {
+    return { valid: false, error: 'ZIP64 archives require the isolated archive ingestion path.' };
+  }
+  if (entries > policy.maxEntries) return { valid: false, error: `ZIP contains too many entries (max ${policy.maxEntries}).` };
+  if (centralOffset + centralSize > eocd || centralOffset + centralSize > bytes.byteLength) {
+    return { valid: false, error: 'Invalid ZIP central directory bounds.' };
+  }
+
+  const decoder = new TextDecoder('utf-8', { fatal: false });
+  let offset = centralOffset;
+  let parsedEntries = 0;
+  let totalCompressed = 0;
+  let totalUncompressed = 0;
+  while (offset < centralOffset + centralSize && parsedEntries < entries) {
+    if (offset + 46 > bytes.byteLength || readU32(view, offset) !== 0x02014B50) {
+      return { valid: false, error: 'Invalid ZIP entry directory.' };
+    }
+    const flags = readU16(view, offset + 8);
+    const method = readU16(view, offset + 10);
+    const compressed = readU32(view, offset + 20);
+    const uncompressed = readU32(view, offset + 24);
+    const nameLength = readU16(view, offset + 28);
+    const extraLength = readU16(view, offset + 30);
+    const commentLength = readU16(view, offset + 32);
+    const externalAttributes = readU32(view, offset + 38);
+    const nextOffset = offset + 46 + nameLength + extraLength + commentLength;
+    if (nextOffset > bytes.byteLength || nextOffset > centralOffset + centralSize) {
+      return { valid: false, error: 'Invalid ZIP entry bounds.' };
+    }
+    if ((flags & 0x1) !== 0) return { valid: false, error: 'Encrypted ZIP entries are not supported.' };
+    if (method !== 0 && method !== 8) return { valid: false, error: 'Unsupported ZIP compression method.' };
+
+    const name = decoder.decode(bytes.subarray(offset + 46, offset + 46 + nameLength));
+    const normalized = name.replaceAll('\\', '/');
+    const segments = normalized.split('/').filter(Boolean);
+    if (!normalized || normalized.includes('\0') || normalized.startsWith('/')
+      || /^[A-Za-z]:\//.test(normalized) || segments.includes('..') || segments.includes('.')) {
+      return { valid: false, error: 'Unsafe path in ZIP archive.' };
+    }
+    if (segments.length > policy.maxPathDepth) {
+      return { valid: false, error: `ZIP path nesting is too deep (max ${policy.maxPathDepth}).` };
+    }
+    if (/\.(?:zip|rar|7z|tar|tgz|gz|bz2|xz)$/i.test(normalized)) {
+      return { valid: false, error: 'Nested archives are not allowed.' };
+    }
+    const unixMode = (externalAttributes >>> 16) & 0xFFFF;
+    if ((unixMode & 0o170000) === 0o120000) {
+      return { valid: false, error: 'Symbolic links are not allowed in ZIP archives.' };
+    }
+
+    totalCompressed += compressed;
+    totalUncompressed += uncompressed;
+    if (totalUncompressed > policy.maxUncompressedBytes) {
+      return { valid: false, error: 'ZIP uncompressed size exceeds the safety limit.' };
+    }
+    const entryRatio = uncompressed === 0 ? 1 : uncompressed / Math.max(1, compressed);
+    if (entryRatio > policy.maxCompressionRatio) {
+      return { valid: false, error: 'ZIP compression ratio exceeds the safety limit.' };
+    }
+    parsedEntries += 1;
+    offset = nextOffset;
+  }
+  if (parsedEntries !== entries || offset !== centralOffset + centralSize) {
+    return { valid: false, error: 'ZIP entry count does not match its directory.' };
+  }
+  const totalRatio = totalUncompressed === 0 ? 1 : totalUncompressed / Math.max(1, totalCompressed);
+  if (totalRatio > policy.maxCompressionRatio) {
+    return { valid: false, error: 'ZIP total compression ratio exceeds the safety limit.' };
+  }
+  return { valid: true };
 }
 
 export async function validateUploadedFile(
@@ -86,6 +203,8 @@ export async function validateUploadedFile(
       }
     }
   }
+
+  if (ext === '.zip') return validateZipArchive(file);
 
   return { valid: true };
 }

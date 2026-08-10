@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan, consumeMonthlyMetricSlot } from '@/lib/plan-guard';
 import { checkUserBudget } from '@/lib/ai/userBudget';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 
 export async function guardStudioAi(req: NextRequest): Promise<NextResponse | null> {
@@ -20,7 +20,7 @@ export async function guardStudioAi(req: NextRequest): Promise<NextResponse | nu
   if (!planCheck.ok) {
     // 익명 — 스튜디오 AI 전체 합산 10/min (개별 라우트 리밋은 그대로 추가 적용)
     const ip = getTrustedClientIp(req.headers);
-    const rl = rateLimit(`studio-ai-anon:${ip}`, 10, 60_000);
+    const rl = await rateLimitAsync(`studio-ai-anon:${ip}`, 10, 60_000);
     if (!rl.allowed) {
       return NextResponse.json(
         { ok: false, error: '게스트 AI 사용량을 잠시 초과했습니다. 가입(무료)하면 더 여유있게 쓸 수 있어요.' },

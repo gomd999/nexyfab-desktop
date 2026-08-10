@@ -1,0 +1,1012 @@
+{
+  "schema": "nexyfab.complex-ground-truth-approval-validation.v1",
+  "generatedAt": "2026-08-06T15:28:56.532Z",
+  "sourceBytesEmbedded": false,
+  "summary": {
+    "cases": 88,
+    "records": 0,
+    "approved": 0,
+    "pending": 88,
+    "invalid": 0,
+    "rejected": 0,
+    "changesRequested": 0
+  },
+  "duplicates": [],
+  "unknown": [],
+  "byFamily": {
+    "robot": {
+      "cases": 9,
+      "approved": 0
+    },
+    "gearbox": {
+      "cases": 17,
+      "approved": 0
+    },
+    "pressure_vessel": {
+      "cases": 11,
+      "approved": 0
+    },
+    "turbomachinery": {
+      "cases": 11,
+      "approved": 0
+    },
+    "factory_equipment": {
+      "cases": 20,
+      "approved": 0
+    },
+    "interior": {
+      "cases": 20,
+      "approved": 0
+    }
+  },
+  "results": [
+    {
+      "caseId": "robot-review-01",
+      "family": "robot",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "4257208b49c6d181f94bd56fc86536cc14a91fa38c99ca85019edce421f2cec2"
+    },
+    {
+      "caseId": "robot-review-02",
+      "family": "robot",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "ce17ab96e19042af9b9ba73f571f99d80b5b74efd0e460cc29e8945cea994a7a"
+    },
+    {
+      "caseId": "robot-review-03",
+      "family": "robot",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "e6a7c362772efbc7f0364cdc0ae104744815c40571429675dd58545e92d185f1"
+    },
+    {
+      "caseId": "robot-review-04",
+      "family": "robot",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "a61340f2b5cefa292b03195bdd8ca278a0273a3f24cedd739ec8ce5e564d7aec"
+    },
+    {
+      "caseId": "robot-review-05",
+      "family": "robot",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "b21f049d66ba0528f6f5184dfc42e2d353d9b374b5e8993e63eddaf115fad5eb"
+    },
+    {
+      "caseId": "robot-review-06",
+      "family": "robot",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "b557254dac9a3a9a34331561ce706ae1a7fb3f56912cae2934a3cd730f6bf3fa"
+    },
+    {
+      "caseId": "robot-review-07",
+      "family": "robot",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "619ce220b2ba058489e09723cb9989952a9f3c08a03e8be8072523f4d324135a"
+    },
+    {
+      "caseId": "robot-review-08",
+      "family": "robot",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "6d54fe84570c0de7a8bb2f7e38c213dd3a211380e0dcad998edad2e0db8d8325"
+    },
+    {
+      "caseId": "robot-review-09",
+      "family": "robot",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "2b0000d7d7f641c10f77afcabb8ff2df34b9e6a27a1aeb5f0fccac2c0d1df5bd"
+    },
+    {
+      "caseId": "gearbox-review-01",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "08031c70179beb0e275c76fc7e8a639fc6368d227f3b9635f584acfdb6dba161"
+    },
+    {
+      "caseId": "gearbox-review-02",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "1705f9538f28db6ea071b7b40f760d5240779415928ac7339e19ce23761d9453"
+    },
+    {
+      "caseId": "gearbox-review-03",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "23ebd38d6d7695a472b260357de1f83e79e87c65f8a955f8b65b07f5c326c3ed"
+    },
+    {
+      "caseId": "gearbox-review-04",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "15298fea9d71685fbf86bd894ffe85f820b7d0b228fe403b8900e97307305f7f"
+    },
+    {
+      "caseId": "gearbox-review-05",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "4b0968614041714ce0b6c4fd1baa01a8235634cf45c710171ce31fd65f0480f0"
+    },
+    {
+      "caseId": "gearbox-review-06",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "36265097d5c1b9ff74fb4680f652c09f9596878b3992a70247bc1bede72e7ac1"
+    },
+    {
+      "caseId": "gearbox-review-07",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "a7202555e331a39731c293b90ec6eafc757d336283f838768ccac9406386954b"
+    },
+    {
+      "caseId": "gearbox-review-08",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "59ee2659f9e4626c27473ae0a182dd2363033974ae4234c1511401d0ae8211c8"
+    },
+    {
+      "caseId": "gearbox-review-09",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "cce33276c7e696ebc0b50989edc1e03fa2727c7fb6347fac6099c4fc07201c09"
+    },
+    {
+      "caseId": "gearbox-review-10",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "b07ae5d23e05b8bea2152ace3da1ecd0f555f52c7a6520f987847a1c4e9644cb"
+    },
+    {
+      "caseId": "gearbox-review-11",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "d46b59e36ae8e5c2c6adf54d28bca7b77a20f0544b2e63a4daf9a14abdb3ade5"
+    },
+    {
+      "caseId": "gearbox-review-12",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "0e3e23115fb41c7012b858a12d7b89c5db7e6695035bd59acf9b3fabe1f87ffa"
+    },
+    {
+      "caseId": "gearbox-review-13",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "b827cb2d1e7380b260c071d2c2f1df214c2a49f31fb7186412675ff0538b13fa"
+    },
+    {
+      "caseId": "gearbox-review-14",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "570d6c77aa95017fde499dbdab8724aa967a1339baf7ade7048e3e0f5d1bd4d9"
+    },
+    {
+      "caseId": "gearbox-review-15",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "51b9d741dbbc7b3ada5fa085f8041474d2cc23156a253901a1d4818667299dcc"
+    },
+    {
+      "caseId": "gearbox-review-16",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "b73d3976c2676aec24bf33513ba1fa815776bc37d721fce8cfd46d2403ca0602"
+    },
+    {
+      "caseId": "gearbox-review-17",
+      "family": "gearbox",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "28e7be9fd8dff7e1f5e0577a47f46d5d4d1839514421383b8086160b45bbb86b"
+    },
+    {
+      "caseId": "pressure_vessel-review-01",
+      "family": "pressure_vessel",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "4dee1325cef606193666743122e78789de4b65f08379661938d8aca2cd910211"
+    },
+    {
+      "caseId": "pressure_vessel-review-02",
+      "family": "pressure_vessel",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "c0e54be21e8d6dfed3cb046961721feadae5dbc47551b61674be6277928ab671"
+    },
+    {
+      "caseId": "pressure_vessel-review-03",
+      "family": "pressure_vessel",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "55629372ae6b9f01e02f712b1d1d09b1bb0dd0cd21183bd234cf7226f25503c3"
+    },
+    {
+      "caseId": "pressure_vessel-review-04",
+      "family": "pressure_vessel",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "ad6fe56825d212931cc34ef6c24e38296c7157e7f3665233d557113ee01de941"
+    },
+    {
+      "caseId": "pressure_vessel-review-05",
+      "family": "pressure_vessel",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "75096325ba78acca682f0f87150496425b8b0b819aa2e8fa8d7bf437a3af20e0"
+    },
+    {
+      "caseId": "pressure_vessel-review-06",
+      "family": "pressure_vessel",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "4e468e00a735d7d764a60b3a16fe204517a2bcd35fcf777d4163b584e6198c90"
+    },
+    {
+      "caseId": "pressure_vessel-review-07",
+      "family": "pressure_vessel",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "265a038a9f15c811b8cdbb7ce9e2654b07e397c1a184ab34d758060802a0173d"
+    },
+    {
+      "caseId": "pressure_vessel-review-08",
+      "family": "pressure_vessel",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "a47fe973aa7d9eb942c3b70464bb082561faeae7018cb3bfcacddbf6e0bcce55"
+    },
+    {
+      "caseId": "pressure_vessel-review-09",
+      "family": "pressure_vessel",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "109d7db9f929a0a6be4cf9a145e6f10bc3a0ff0ab0fa355b5b588938692acdb4"
+    },
+    {
+      "caseId": "pressure_vessel-review-10",
+      "family": "pressure_vessel",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "bbad4b9e840ceacb32fe6a705654dd73650bc56a7a4e683e5883ba3f51a1126a"
+    },
+    {
+      "caseId": "pressure_vessel-review-11",
+      "family": "pressure_vessel",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "771f300af2a3de02d3a8c616d07bc0d984d088550e31ff609f9f69340e0c8734"
+    },
+    {
+      "caseId": "turbomachinery-review-01",
+      "family": "turbomachinery",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "3b58bbc5ce0cfd69e87dd75cdb36dfeaf92c4298fc04b1b544e79ab47977e013"
+    },
+    {
+      "caseId": "turbomachinery-review-02",
+      "family": "turbomachinery",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "e02978f38ccaf5b246d4e682bc00767581e5bca38c3f6857e18b61a657ca44bd"
+    },
+    {
+      "caseId": "turbomachinery-review-03",
+      "family": "turbomachinery",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "02ff9f9bb8cba2fde177ecbfa0472c198301220cf686e104d4a1c1210ecd0365"
+    },
+    {
+      "caseId": "turbomachinery-review-04",
+      "family": "turbomachinery",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "e46bed67960890af263c3976f0fd9790fb4edeb9c5dbe86f897244b45921b245"
+    },
+    {
+      "caseId": "turbomachinery-review-05",
+      "family": "turbomachinery",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "be2c9925a9ea2e8689febadae26d086c3505113e2fc904ae07274ecc318b4d88"
+    },
+    {
+      "caseId": "turbomachinery-review-06",
+      "family": "turbomachinery",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "043c77f17f89c187d7a9d4c3f4a42f22597afcb186b42e439dd415d8f496801b"
+    },
+    {
+      "caseId": "turbomachinery-review-07",
+      "family": "turbomachinery",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "557f7e6c8a81f19dd33e1b3a001f990b3a8e2be65f04bb4591f27f977bbeea88"
+    },
+    {
+      "caseId": "turbomachinery-review-08",
+      "family": "turbomachinery",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "144babceaeb5b43d6bd0185d9842dd37e558563fcca90df5700464e84a4769b3"
+    },
+    {
+      "caseId": "turbomachinery-review-09",
+      "family": "turbomachinery",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "07ab7acbeedb0e1552a71202fd1202b6b5e5a97d664df06251663b09ef14c355"
+    },
+    {
+      "caseId": "turbomachinery-review-10",
+      "family": "turbomachinery",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "65c896ad849dad437e1b6a7195f63daa78d3097e49f97210710386426d7766d6"
+    },
+    {
+      "caseId": "turbomachinery-review-11",
+      "family": "turbomachinery",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "00bf6f66b22daee354a5cae283ff4c28d0037a2db6a40b130eacec07b5afdc77"
+    },
+    {
+      "caseId": "factory_equipment-review-01",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "2dc7334c257d8334ddf6feba9fa1b71058fbf461643c17707626e202bc76b755"
+    },
+    {
+      "caseId": "factory_equipment-review-02",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "c62f14c5b22f322322f187605352bc953c69b30662ca1ca78b90485c1e01a506"
+    },
+    {
+      "caseId": "factory_equipment-review-03",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "11fd082b3ded65f60df4dcdf73ba32b93c118858f6dfddd6c5ed223320707f27"
+    },
+    {
+      "caseId": "factory_equipment-review-04",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "b8c76bea436b851346aa54bccdb99c11fd26694409b2299dcf49c924836db3b2"
+    },
+    {
+      "caseId": "factory_equipment-review-05",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "014b1869fde2acc1be8d4fe5e87eab246fde17773811916a1afe7285267a9b3a"
+    },
+    {
+      "caseId": "factory_equipment-review-06",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "ab4901f9b80eef158ba885efc4d901930ca6260b3f6a4f486e47125516081cfc"
+    },
+    {
+      "caseId": "factory_equipment-review-07",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "932d39bdd4eafd9b6ae803ada57819d6b2eeedd754e85c784fb37f7e0049580b"
+    },
+    {
+      "caseId": "factory_equipment-review-08",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "74e53a3b9e07fef982623eb6b423e146510d9a0a5d7420b07c38e7a4ab66370e"
+    },
+    {
+      "caseId": "factory_equipment-review-09",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "4da55afaf219ab0b15efbdfe1cbb437613803eeb55ae2ff0388a6281dda9bc26"
+    },
+    {
+      "caseId": "factory_equipment-review-10",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "e81f5dc2c85cc87782fa313520bf36e7b60a7fe94306d9c23c3f5f930110de69"
+    },
+    {
+      "caseId": "factory_equipment-review-11",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "f593ad06c6260e0111de68cb25ef4b32379af8835d925a64c2c452e7d37d0813"
+    },
+    {
+      "caseId": "factory_equipment-review-12",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "e598c839510d56b8382f0de6e045c4112379e448b46a340c9cfcc817825a8afa"
+    },
+    {
+      "caseId": "factory_equipment-review-13",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "f2e6c5b064c3b7c98c7518cbb17d37c8939a76a4a0960e9a958921502f153ac9"
+    },
+    {
+      "caseId": "factory_equipment-review-14",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "ea40fd6eec55efd128a3d6b0759f1653958c5ab7bc236790d05f166e57be7891"
+    },
+    {
+      "caseId": "factory_equipment-review-15",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "4ebce981add11fdaaba76c4e4bc7903020486582562b8d993444c67048a20419"
+    },
+    {
+      "caseId": "factory_equipment-review-16",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "eeeba1bde4b5cb6cf480889cd49c0bf1c2ebde9770bc619718c003e505ea4ea0"
+    },
+    {
+      "caseId": "factory_equipment-review-17",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "777cc9f441baee5e07390e22e5d7ec31af610d6621f37ed8b4dc2c19ba805016"
+    },
+    {
+      "caseId": "factory_equipment-review-18",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "519db266c7588a97cb1413a19402b1c35a8c0b917e0d1cf36a6d68fd853e1255"
+    },
+    {
+      "caseId": "factory_equipment-review-19",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "4b80d554c16e964aa8ca8e58221f20f5c126757ccf87c1dbca5ed34f655c9934"
+    },
+    {
+      "caseId": "factory_equipment-review-20",
+      "family": "factory_equipment",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "f0b3755b2fcc07386507c095981331db272eaff1b90217b1668c56f70ea54b19"
+    },
+    {
+      "caseId": "interior-review-01",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "cbbd044d9be7dc4d1de4125f8d53a50ad95eee423b0d0de1115d10e57ef80d2f"
+    },
+    {
+      "caseId": "interior-review-02",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "b4cdcaffd8b6ef0762f54763416ee04e09adbef3655717895202cec5f321c2e5"
+    },
+    {
+      "caseId": "interior-review-03",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "cf6c27c489ed9f6ae856de4359a30d1a7f7db58ccf86a6f86baed072ae7db539"
+    },
+    {
+      "caseId": "interior-review-04",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "5498b28ca03125ca1cb66e64bbec9423cac70c96668180ac4efab2f848b43c3c"
+    },
+    {
+      "caseId": "interior-review-05",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "5906d27da2dc5d09b3e9314a3f2060c6ce1af8a5923aa65d22a9148487050b2c"
+    },
+    {
+      "caseId": "interior-review-06",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "debaea565b467ea19897942e53c1306d8f7a626397b691332dcde5d8a3a8638c"
+    },
+    {
+      "caseId": "interior-review-07",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "6658b04b3609e0dbb75a89a602657f84681adda0ef7911f6b21bd44681044bfe"
+    },
+    {
+      "caseId": "interior-review-08",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "617d4a4f31da0da4bcc75409d9dcb9329b21e754aca5f044f09726a05503cd0d"
+    },
+    {
+      "caseId": "interior-review-09",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "d3f15e83d0242e4ddcd6bea6135997ba1b093ba00a35f6b91eec31ef872fc385"
+    },
+    {
+      "caseId": "interior-review-10",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "c5be7bccd3adccc3fea1ee15ab1153286765acc979a115b049494707a4162704"
+    },
+    {
+      "caseId": "interior-review-11",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "bc8d22660744faf9e73fd364dd63968ca5e2bdc698a1414d72efe631cc677350"
+    },
+    {
+      "caseId": "interior-review-12",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "49270590ec14da8d9836b6771d84d7c02f44ab659b187fa72febc672708e1a56"
+    },
+    {
+      "caseId": "interior-review-13",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "fa1ae6bfb3e7de5e9b06b9a52899049f85ef5c155b9472950afe53093904d351"
+    },
+    {
+      "caseId": "interior-review-14",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "84d5606188fbe5b57adeabeb5f73f9711bffb7c7db9a8ef9ae3c18880ae7025e"
+    },
+    {
+      "caseId": "interior-review-15",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "0f2cfd786c222f4045af4b9a17f43e9ffd99b04ab4cabf908a35a6247611e640"
+    },
+    {
+      "caseId": "interior-review-16",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "27a325d8179d8c6b96be624043f0cd1f34345f58870ec55845a0261499ddf7c3"
+    },
+    {
+      "caseId": "interior-review-17",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "cd52b93044b0c7b10b121c3b5fb40b93f308aa68844473875e4ac1e18510dbb9"
+    },
+    {
+      "caseId": "interior-review-18",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "7a73cccfa6252cd0f3d32dc4e35ed1c9803374a9a3f0bfaadceac06d75baaa2e"
+    },
+    {
+      "caseId": "interior-review-19",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "e7092d27351209658a243238cb115748e71e743e22e79c477ce1ab8dc39effec"
+    },
+    {
+      "caseId": "interior-review-20",
+      "family": "interior",
+      "status": "pending",
+      "scoreEligible": false,
+      "issues": [
+        "ground_truth_approval_missing"
+      ],
+      "approvedAssertionIds": [],
+      "artifactSetHash": "5543ab8fb94d4e1db83c25b53ff7d6effe85cba19fe45546fc935b82884cd6e5"
+    }
+  ]
+}

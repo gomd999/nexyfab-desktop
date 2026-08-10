@@ -1,0 +1,51 @@
+{
+  "schema": "nexyfab.railway-operations-sample.v1",
+  "capturedAt": "2026-08-10T05:28:18.235Z",
+  "service": "web",
+  "sourceService": "nexyfab.com",
+  "environment": "production",
+  "window": {
+    "since": "2026-08-10T04:28:16.045410700+00:00",
+    "until": "2026-08-10T05:28:17.893483400+00:00"
+  },
+  "deploymentIds": [
+    "7b4e384f-aa68-4565-a469-99263152cbc4"
+  ],
+  "cpu": {
+    "average": 0.0024291482093663917,
+    "current": 0.0000063,
+    "limit": 8,
+    "max": 0.0837505,
+    "unit": "vCPU",
+    "utilization_pct": 0
+  },
+  "memory": {
+    "average_mb": 164.69298624528912,
+    "current_mb": 146.142134272,
+    "limit_mb": 8192,
+    "max_mb": 190.329126912,
+    "utilization_pct": 1.8
+  },
+  "http": {
+    "2xx": 182,
+    "3xx": 64,
+    "4xx": 7,
+    "5xx": 2,
+    "error_rate": 0.7843137254901961,
+    "p50_ms": 18,
+    "p90_ms": 19,
+    "p95_ms": 19,
+    "p99_ms": 19,
+    "total": 255
+  },
+  "volumes": [
+    {
+      "average_mb": 321.6483482023145,
+      "current_mb": 324.328751104,
+      "limit_mb": 5000,
+      "max_mb": 324.328751104,
+      "mount_path": "/app/data",
+      "name": "nexyfab.com-volume"
+    }
+  ]
+}

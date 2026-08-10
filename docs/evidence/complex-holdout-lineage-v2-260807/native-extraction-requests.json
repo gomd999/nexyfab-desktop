@@ -1,0 +1,1415 @@
+{
+  "schema": "nexyfab.complex-native-extraction-request-batch.v1",
+  "localOnly": true,
+  "sourceBytesEmbedded": false,
+  "requests": [
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "robot-review-01",
+      "sourceHash": "4efda040359eb9600af0c4a11e1b8b382f57f44891be4bd8c009dbcaab6cda2c",
+      "format": "step",
+      "localLocator": "참고파일들4/epson-c4-a601s-6-axis-robot-arm-1.snapshot.2/Robot c 4 a 601 s.STEP",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "robot-review-02",
+      "sourceHash": "fabf997b27909c9ac626892bdc8ff580cdbf21dc601d0ba666a4fa9d69a7f718",
+      "format": "x_t",
+      "localLocator": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Final Assembly.x_t",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "robot-review-03",
+      "sourceHash": "4a3a0286de2990bab162f2f4b69308972b2f49db5c029483ad0d13d0f4a8147b",
+      "format": "step",
+      "localLocator": "참고파일들4/mitsubishi-rv-2f-d1-s16-6-axis-robot-arm-1.snapshot.1/Robot rv.STEP",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "robot-review-04",
+      "sourceHash": "383c2165e393e3a49ad8c65258c4237e64e73403b53822d03a0683c15b62709d",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/mrl-work-dynamixelpro-based-precision-manipulator-1.snapshot.1/New2017_ARM_[At]WorkMRL_V4.4-STY.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "robot-review-05",
+      "sourceHash": "c99aa30f426054651f33f1790f8c6c2e3dcaf228a45bb45b37f362df692f8bb6",
+      "format": "iam",
+      "localLocator": "참고파일들3/robot-5-dof-1.snapshot.2/Assembly FULL.iam",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "robot-review-06",
+      "sourceHash": "b4a254af13a0e1552b38be11fd3004cf80301c76e3e6a920e031a9c6e04d86e9",
+      "format": "stp",
+      "localLocator": "참고파일들3/robot-5-dof-2.snapshot.2/Lắp FULL.stp",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "robot-review-07",
+      "sourceHash": "39717c9473cce636f07fc4d5c8054a7c3b44f9f3fbcede613322577b0e1ee2be",
+      "format": "step",
+      "localLocator": "참고파일들3/robotic-arm-466.snapshot.3/ROBOTIC ARM.STEP",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "robot-review-08",
+      "sourceHash": "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103",
+      "format": "stp",
+      "localLocator": "참고파일들4/two-wheel-self-balancing-robot-v1-1.snapshot.4/CAD/reference-components/arduino-uno-sensor-shield-1.snapshot.6/Arduino Sensor Board V1.stp",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "robot-review-09",
+      "sourceHash": "c07e39cb9b19f9ae8e23751b2d70d24fedb2acce30b9acefc0684515fa8197b9",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/vacuum-gripper-6.snapshot.3/Epick Vacuum.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-01",
+      "sourceHash": "34456f5a233bf4ef5b9bc0fa0c5970d8b54aebb8fa3eceeaadf51253a4126e9d",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/3-stage-helical-gear-reducer-design-1.snapshot.4/Montaj bitiş.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-02",
+      "sourceHash": "234a768f45040a1df2ec2d47554fe048f8f9dfe293c0590b0d56476559436104",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/basic-worm-gear-assembly-solidworks-1.snapshot.2/Assem1.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-03",
+      "sourceHash": "b5aa4955b6e4e441f33e6d67f2b42a1b0c01e5aa5dd2e2810e85265215b71f36",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/cycloidal-gearbox-50-1-for-curtain-lift-canon-pixma-mg5540-motor-1.snapshot.58/cycloidal gearbox 50_1.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-04",
+      "sourceHash": "6a66de0b245fd5f3764358c105f39845922fb9485d5617e6537e39686844d51c",
+      "format": "step",
+      "localLocator": "참고파일들4/differential-109.snapshot.7/DIFFERENTIAL GEAR BOX FILE.STEP",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-05",
+      "sourceHash": "5e171f9695873a0fb0933dd7d333b30b89809fc7ad8d1e915dad1d9a3d066009",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/differential-gear-box-47.snapshot.7/Assem GB.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-06",
+      "sourceHash": "4d17aa98089879f4af6812a9478e12557116a8710ed80487d4c3d4c7ac9e65e3",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/gear-box-142.snapshot.4/Gear Box/MONTAJ.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-07",
+      "sourceHash": "f88f2b80dc74d5b756b5267ff6817107118fa50e0931f5de67f01ce409f7e204",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/gear-box-261.snapshot.1/gearbox/Gear Box & Body Assembely.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-08",
+      "sourceHash": "18f10d7e5fbd68e6eeadf5fcc4e035381157b10387fce110227b8c513bbcc0d9",
+      "format": "catproduct",
+      "localLocator": "참고파일들4/gear-reducer-24.snapshot.2/video2.CATProduct",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-09",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "format": "zip",
+      "localLocator": "참고파일들4/gearbox-109.snapshot.12.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-10",
+      "sourceHash": "0b9069caa4d457021df7825d6365183166df6914d86561638fc3002e1fedee04",
+      "format": "asm",
+      "localLocator": "참고파일들4/helical-gear-box-ratio-2-5-1.snapshot.2/C9 GB.asm",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-11",
+      "sourceHash": "5b0b36d1168a1a3e89627712c774e6ec9f31ef86eb80934e5c7202f224b6807a",
+      "format": "step",
+      "localLocator": "참고파일들4/helical-planetary-gearbox-design-advanced-solidworks-assembly-1.snapshot.1/step/final assemm.STEP",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-12",
+      "sourceHash": "58c33910be55d7819dba9ba6ab427799c1795abc1f795e05ba6db9b62080352a",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/industrial-gearbox-speed-reducer-full-assembly-parts-1.snapshot.4/Gear Box Assembly.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-13",
+      "sourceHash": "75815ed5ab9524c34508ffbc6ade7280a4dd64a8f0edf368467b154b1f80fc8a",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/planetary-gearbox-assembly-4.snapshot.5/Planetary Gear/Planetary Gear Assembly.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-14",
+      "sourceHash": "36fa5483509d06002a2cc1439a6df6d4f8838b80e4da482c9ad47019e6ec9e7d",
+      "format": "igs",
+      "localLocator": "참고파일들4/reductor-de-tornillo-sinfin-gear-reducer-driven-1.snapshot.2/Reductor de tornillo/Reductor de Tornillo Assy.IGS",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-15",
+      "sourceHash": "7dfe9e91c66bc0ed0721b82af6bcbed3130e28cb7aa8a882c398b4f97228d957",
+      "format": "stp",
+      "localLocator": "참고파일들4/simple-bevel-gear-reducer-1.snapshot.2/Assieme_riduttore_conico.stp",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-16",
+      "sourceHash": "4d0fe353e753d07504e2ab4a1458b348304726cb1f4c9f0be0ca8d35061b0e49",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/single-stage-helical-gear-reducer-solidworks-project-1.snapshot.3/final.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "gearbox-review-17",
+      "sourceHash": "aaa4267e7bb109c4d83d862392407420c215ac3a5c9abc333b08f7becaea87a8",
+      "format": "step",
+      "localLocator": "참고파일들4/single-stage-reduction-helical-gear-box-1.snapshot.1/Single Stage Reduction Helical Gear Box.STEP",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "pressure_vessel-review-01",
+      "sourceHash": "493dff8203ef2ac1b215d398a8cfeee52991c35d61ecd864005f48983e15a946",
+      "format": "step",
+      "localLocator": "참고파일들4/208-x-72-platform-with-dual-asme-tanks-1.snapshot.5/LARGE PLATFORM with ASME TANKS.step",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "pressure_vessel-review-02",
+      "sourceHash": "87a60a108fafcb3029952d1adb6bdc6333da3d8c07857fedb1aba58ff6e3bbba",
+      "format": "zip",
+      "localLocator": "참고파일들4/3-ton-water-tanker-design-wt-3tn-01-1.snapshot.11.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "pressure_vessel-review-03",
+      "sourceHash": "b2a29a800fccd3cfb24d9e2a02a7064d293db3bb584dc084dbb3cb09c05b455c",
+      "format": "step",
+      "localLocator": "참고파일들4/asme-coded-horizontal-pressure-vessel-design-structural-validation-1.snapshot.3/Pressure Vessel Assembly.STEP",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "pressure_vessel-review-04",
+      "sourceHash": "f698142d610dd4270d5213362edba0343fb94392f34e8fa03cb86e73154b7b55",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/intercambiador-de-calor-tubular-shell-tube-heat-exchanger-1.snapshot.2/Intercalor/Ensamble.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "pressure_vessel-review-05",
+      "sourceHash": "ff81588922d0eb53ed23b5da73f6577560da3e8f82e9a8223d742fece16e25c9",
+      "format": "zip",
+      "localLocator": "참고파일들4/pressure-vessel-149.snapshot.1.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "pressure_vessel-review-06",
+      "sourceHash": "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3",
+      "format": "step",
+      "localLocator": "참고파일들4/shell-and-tube-heat-exchanger-66.snapshot.4/Shell Tube Heat Exchanger.STEP",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "pressure_vessel-review-07",
+      "sourceHash": "1403b109c5c5310848054fcd77bbe0010f0e1d3794d3c1c801ce6aacddfaf7da",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/shell-and-tube-heat-exchanger-assembly-1.snapshot.1/Assem1.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "pressure_vessel-review-08",
+      "sourceHash": "ffa472e9ccd293416868b95a292d155333e9428a09fcf64dd28d6429a4b22fbb",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/shell-and-tube-heat-exchanger-model-1.snapshot.2/Heat exchanger/Heat Exchanger.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "pressure_vessel-review-09",
+      "sourceHash": "099c5ae609ab7ee6884d52835219905d15cdc3b6bf20ef6c3f13d174109c9009",
+      "format": "step",
+      "localLocator": "참고파일들4/single-pass-tema-ael-shell-and-tube-heat-exchanger-1.snapshot.4/Shell and Tube Heat exchanger.step",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "pressure_vessel-review-10",
+      "sourceHash": "2673429b360d6d8a518da0448452cc98dcca8da596a52f817c714cab4d68f597",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/spherical-tank-3.snapshot.2/NTC-MSIB7-SPHERICAL TANK/NTC-MSIB7-SPHERICAL TANK.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "pressure_vessel-review-11",
+      "sourceHash": "354c508882ae878120d0bbab94a13ec81e41c826ca859e6d34e76a3ee6f0baee",
+      "format": "zip",
+      "localLocator": "참고파일들4/vertical-air-receiver-tank-2000-ltrs-sldprt.snapshot.4.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "turbomachinery-review-01",
+      "sourceHash": "a3b31ac6fcd3b4075bcc705e5ab9e926710d7b185ec709203019705690b1e00f",
+      "format": "step",
+      "localLocator": "참고파일들4/8-hp-open-type-heat-pump-grain-dryer-lightweight-model-1.snapshot.5/8HP-粮食烘干机开式总装图-轻量化.STEP",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "turbomachinery-review-02",
+      "sourceHash": "586e39d8d37694d2db53345430eb3012b7fa46eb12ac81dfd376804594d3cb45",
+      "format": "step",
+      "localLocator": "참고파일들2/ant-liquid-cpu-cooler-dual-rgb-fan-aio-1.snapshot.1/CPU Liquid Cooler/Liquid Cooler.STEP",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "turbomachinery-review-03",
+      "sourceHash": "50e85725b4d15f7a47a5bc9aae8792dd3bfa07203fc2af5211c0a88587859d7c",
+      "format": "iges",
+      "localLocator": "참고파일들4/centrifugal-pump-174.snapshot.8/centrifugal pump version v6.iges",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "turbomachinery-review-04",
+      "sourceHash": "1c8ddd6fcafaff9463f90c5d2e73a166343bca84147097036a11c29a0346cddc",
+      "format": "zip",
+      "localLocator": "참고파일들4/centrifugal-pump-93.snapshot.8.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "turbomachinery-review-05",
+      "sourceHash": "58cc596957c6818ac6deae5a2d0e2db8be4d35b16563a6c1503f24f494532229",
+      "format": "step",
+      "localLocator": "참고파일들4/erf-2-rs-dokum-govdeli-ciftli-salyangoz-fan-1.snapshot.2/ERF-2-RS DÖKÜM GÖVDELİ ÇİFTLİ SALYANGOZ FAN.STEP",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "turbomachinery-review-06",
+      "sourceHash": "5551e97fba5b766ca3be25510720ee15f10ba473976035ae434397675968e268",
+      "format": "igs",
+      "localLocator": "참고파일들4/fan--64.snapshot.2/56757070_none_asm.igs",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "turbomachinery-review-07",
+      "sourceHash": "ac47f94dec47cfacf52d7cc778389dbb27c15e2396a8961f24124cca79267ed5",
+      "format": "iam",
+      "localLocator": "참고파일들4/horizontal-pump-motor-and-flexible-coupling-1.snapshot.6/Assembly_Total.iam",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "turbomachinery-review-08",
+      "sourceHash": "2d4ca8f075f65006cc153dd16c5275d0e43ff4bb56741bd64126b2291272f6fc",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/jet-engine-345.snapshot.2/Assem3.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "turbomachinery-review-09",
+      "sourceHash": "bce0c685bd1c20e7a94e5e56a2707ee57a1dab17897a91cc171f0788caf5d8af",
+      "format": "igs",
+      "localLocator": "참고파일들4/jet-engine-assembly-4.snapshot.2/jet_engine_assy_asm.igs",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "turbomachinery-review-10",
+      "sourceHash": "630ca7bff17c36d0474c9e1faf8e642cac3d48967b11553351d253fef64c1988",
+      "format": "stp",
+      "localLocator": "참고파일들4/noctua-nh-d15-chromax-black-cpu-fan-1.snapshot.4/nh-d15-chromax-black.stp",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "turbomachinery-review-11",
+      "sourceHash": "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b",
+      "format": "step",
+      "localLocator": "참고파일들4/osaka-water-pump-1.snapshot.1/Water Pump Osaka/Assy_Water Pump Osaka.STEP",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-01",
+      "sourceHash": "51065e8b330c411341ea4ac0ac3b25a7819adfca2be3ed8b36a3cc8cdd9f85f3",
+      "format": "zip",
+      "localLocator": "참고파일들2/20-ton-excavator-skeleton-bucket-design-solidworks-2023-tutorial-heavy-cad-modelling-1.snapshot.2.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-02",
+      "sourceHash": "be671d888bcd072fd3b2bc6365577cd8624f31836fd377df69710b15578f35c2",
+      "format": "stp",
+      "localLocator": "참고파일들4/30-tool-hsk-a63-chain-type-tool-magazine-for-cnc-machining-center-1.snapshot.2/Assembly.stp",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-03",
+      "sourceHash": "6621350c24376a1c26f330d876d433b3ecde213e8672f51239ea527ac2d81805",
+      "format": "iges",
+      "localLocator": "참고파일들4/8-deep-pan-conveyor-clinker-silo.snapshot.2/8-Clinker Silo.iges",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-04",
+      "sourceHash": "df26ce90dd327d6c525e6c5e4eee4f8b563a92aef2a35fff05cdf124728a159e",
+      "format": "stp",
+      "localLocator": "참고파일들4/a-c-axis-tilt-rotary-table-assembly-for-5-axis-cnc-machining-center-1.snapshot.2/tilting rotary table.stp",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-05",
+      "sourceHash": "88912d84be2213989efbadb1581de32e544bf5f6fb32ae432248af21c29101b9",
+      "format": "iam",
+      "localLocator": "참고파일들4/automatic-sorting-conveyor-with-pop-up-mechanism-1.snapshot.3/Assembly1.iam",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-06",
+      "sourceHash": "96e34f6fd9ee85168fc5feab775d2ff942b8cabfd25ce30c59f11d3d11bc542c",
+      "format": "zip",
+      "localLocator": "참고파일들4/automatic-wafer-transfer-equipment-machine-1.snapshot.2.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-07",
+      "sourceHash": "561f749936b8aef95df4d623da1046d73852ceebf272768055d1016a43266918",
+      "format": "zip",
+      "localLocator": "참고파일들4/automatic-wet-wipes-paper-packaging-laminating-machine-1.snapshot.2.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-08",
+      "sourceHash": "7e8d0ebe475b2e7f304b419271ae298147609ec675cac3f6468b4519d7bedd96",
+      "format": "stp",
+      "localLocator": "참고파일들2/cnc-mini-mill-made-out-of-sheet-metal-1.snapshot.2/Mini mill sheet metal.stp",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-09",
+      "sourceHash": "077edfb8f8b0c1e0dde59121f7269be1efc61f658971a46bd6a76c2ff1b30f3a",
+      "format": "zip",
+      "localLocator": "참고파일들4/hbb-30-twinshaft-mixer-1.snapshot.6.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-10",
+      "sourceHash": "76f57ce127aa10f77ab70300bc28f25a58c5dfefc0354cb2bf26b94b239b308b",
+      "format": "zip",
+      "localLocator": "참고파일들4/helical-gear-for-paper-printing-machine-1.snapshot.1.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-11",
+      "sourceHash": "30be3ac734504e58ab9344c5208846b8f1782f8f7406e2ed90e141527554ce5c",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-00.sldasm",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-12",
+      "sourceHash": "c1f82d1b2f963f08383693ef8152be1644afa7e060c4ef8dad9c94af7df39229",
+      "format": "stp",
+      "localLocator": "참고파일들4/hsk-a63-motor-spindle-unit-for-5-axis-cnc-machining-center-1.snapshot.1/Spindle.stp",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-13",
+      "sourceHash": "92f82d46f6fee897f600d01a5d6c968b3cbb9b37b08f81315ddec434c767714d",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/multipurpose-pepper-grinding-machine-efficient-durable-1.snapshot.1/Pepper Blending Machine.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-14",
+      "sourceHash": "c6cdb94657144b004f886c52ae3c7f72911c82349be30c08b7183e87ffa4f64b",
+      "format": "iam",
+      "localLocator": "참고파일들/packaging-and-cutting-tape-1.snapshot.9/Assembly Full.iam",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-15",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "format": "zip",
+      "localLocator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-16",
+      "sourceHash": "d75f089909348a73adf8e9390d85275343b0020eca508fde136b81b8ad44315b",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/pustelga-adaptive-open-source-cnc-by-ariadne-in-process-1.snapshot.9/PUS_low_part.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-17",
+      "sourceHash": "4fe8b865f124b0330bcb60252b325c3cc0cbe58e9f15f0720b8e8c5276e0b728",
+      "format": "step",
+      "localLocator": "참고파일들4/roll-forming-machine-3.snapshot.1/rollformmachine.STEP",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-18",
+      "sourceHash": "2a8f7c9d98fe751187425be49c45d5328cc064eafdd8c92bf73bf0cbcae286a4",
+      "format": "zip",
+      "localLocator": "참고파일들4/smr-30-3m-feed-mixer-1.snapshot.2.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-19",
+      "sourceHash": "e8565c6221d06274798e33d292f8334caa04c2079b9c1e551e3f4d7a518106fe",
+      "format": "sldasm",
+      "localLocator": "참고파일들4/tower-crane-12.snapshot.3/Montaj2.SLDASM",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "factory_equipment-review-20",
+      "sourceHash": "1df6c8c4933697cce90f5c692384457d7a887d29b2fac13b72bac3bad89ae7d9",
+      "format": "stp",
+      "localLocator": "참고파일들4/tower-crane-13.snapshot.3/Tower Crane.stp",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-01",
+      "sourceHash": "65b8b42f41ac9d545c1c695a2f2d0819b7af9dd4136673c36d387baa1259ceb5",
+      "format": "zip",
+      "localLocator": "참고파일들4/2bhk-house-plan-1.snapshot.2.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-02",
+      "sourceHash": "535ae44a61a2023c77ac45c68039e69f1826de222cf5d75cce7834b5af282bca",
+      "format": "zip",
+      "localLocator": "참고파일들4/3-story-100-square-meteres-apartment-revit-1.snapshot.1.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-03",
+      "sourceHash": "9623975cea242ed42881d37ea07e67268ac15df03bb8b1f38d0715aab4c2fccc",
+      "format": "zip",
+      "localLocator": "참고파일들4/architectural-design-of-villa-1.snapshot.2.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-04",
+      "sourceHash": "507c01a31e48c1102b1b99b5071eafa8518a8c23bca9341ce400be6c0ffa4774",
+      "format": "zip",
+      "localLocator": "참고파일들4/bath-room-interior-1.snapshot.2.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-05",
+      "sourceHash": "d23ba207b032910b352ee1d8146412de3ece8fd4ae6bd92c74970901f2d49dc7",
+      "format": "zip",
+      "localLocator": "참고파일들4/bed-room-interior-8.snapshot.3.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-06",
+      "sourceHash": "6a51cadae84aef5a1b3c52178dc2dff8da0542d6751c0b53430ff5d5d90ba761",
+      "format": "ifc",
+      "localLocator": "참고파일들4/block-house-2.snapshot.3/Untitled.ifc",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-07",
+      "sourceHash": "b9ad0a38dbccd29e040b2af7d81b089f474b55a40242fcbe10fca53e1a8e1a4d",
+      "format": "zip",
+      "localLocator": "참고파일들4/exterior-design-of-simple-villa-1.snapshot.2.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-08",
+      "sourceHash": "0ec25f41c7a231268f97544543f4cdd9ba33b2dc4d490cdce4d64b51c6d91605",
+      "format": "zip",
+      "localLocator": "참고파일들4/familiy-house-obiteljska-kuca-1.snapshot.2.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-09",
+      "sourceHash": "ea6f7406331edf8c878dad6d21a8e47265e385e34e884c1ca7a9020ea508d756",
+      "format": "zip",
+      "localLocator": "참고파일들2/half-story-house-a01-1.snapshot.1.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-10",
+      "sourceHash": "e1ec815456cf6888b15b3687d5c1cc8e191bca2ded08f16003c87f7751852e82",
+      "format": "ifc",
+      "localLocator": "참고파일들4/hillside-house-2.snapshot.7/Untitled.ifc",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-11",
+      "sourceHash": "d4909667dbfa24d8271d6b374390885748352015e67afcc8d6791541e9262159",
+      "format": "zip",
+      "localLocator": "참고파일들4/hotel-azulejo-1.snapshot.2.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-12",
+      "sourceHash": "0db228be732b7561b428eb54bad301b0726b7610a1022b7874761e6a549ed562",
+      "format": "ifc",
+      "localLocator": "참고파일들4/hotel-design-1.snapshot.3/Untitled.ifc",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-13",
+      "sourceHash": "3b6e080753b2bd3da2f5753c772fc820e84e322033b64913cdac5dd6933e28fe",
+      "format": "ifc",
+      "localLocator": "참고파일들4/hotel-design-3d-2.snapshot.2/Untitled.ifc",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-14",
+      "sourceHash": "3688c0fa32236469bf72173ced8ce4e476dfd384cb3ed8aded797fbfb1db77d3",
+      "format": "zip",
+      "localLocator": "참고파일들4/house-4x15m-1.snapshot.3 (1).zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-15",
+      "sourceHash": "35b28cb1c4e8bb5ee00624aa7b53be232563a99eb90273690ea1d5be36d21166",
+      "format": "zip",
+      "localLocator": "참고파일들4/house-plan-23.snapshot.3.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-16",
+      "sourceHash": "6edbd4f915ae9704fad91124af4d79940101512d01c68908f0f994260e5113bb",
+      "format": "zip",
+      "localLocator": "참고파일들4/house-planning-of-3bkh-1.snapshot.1.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-17",
+      "sourceHash": "7bc3bdaaa41b0fe390efb70a45d89608b652adde99bd04731ac8f0f2d87d4b24",
+      "format": "zip",
+      "localLocator": "참고파일들4/house-villa-1.snapshot.2.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-18",
+      "sourceHash": "ef04a38466fbfb4a4b8e540a2abd2ee1d973663edb9ea5b359dba535862299f1",
+      "format": "zip",
+      "localLocator": "참고파일들4/independent-house-1.snapshot.1.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-19",
+      "sourceHash": "89bd6ed1cbca2f2023320bdb8060278a502c83cd024fc5bd60bafb00e609f52b",
+      "format": "zip",
+      "localLocator": "참고파일들4/indian-3d-house-model-3.snapshot.3.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    },
+    {
+      "schema": "nexyfab.complex-native-extraction-request.v1",
+      "caseId": "interior-review-20",
+      "sourceHash": "2f0ddfee466206c959faf0b5398ac200738b13791ea6ac202ab8e1c6a3cac997",
+      "format": "zip",
+      "localLocator": "참고파일들4/indian-3d-house-model-5.snapshot.2.zip",
+      "requiredAxes": [
+        "part_definitions",
+        "body_membership",
+        "occurrences",
+        "hierarchy",
+        "transforms",
+        "joints",
+        "units"
+      ]
+    }
+  ]
+}

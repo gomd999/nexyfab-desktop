@@ -21,7 +21,7 @@ import { useSessionKeepalive } from '@/hooks/useSessionKeepalive';
 import StudioSidebar from './StudioSidebar';
 import { listDesigns, saveDesign, getDesign, deleteDesign, titleFromMessages, setDesignScope, type StudioDesign, type StudioChatMsg } from './studioDesigns';
 import { parseScadColors, isolateColorScad, defaultColorCss } from './scadColors';
-import { emitScadFromProgram, type FeatureProgram } from './emitScadFromProgram';
+import { applyFeatureProgramCustomizerValue, emitScadFromProgram, type FeatureProgram } from './emitScadFromProgram';
 import { CODEGEN_MODELS, DEFAULT_CODEGEN_MODEL } from '@/lib/ai/codegenModels';
 import { renderScadWasm, wasmAvailable } from './wasmRender';
 import { captureMultiView } from './multiViewCapture';
@@ -148,7 +148,7 @@ function parseTargetLargestMm(prompt: string): number | null {
   return valid.length ? Math.max(...valid) : null;
 }
 
-export default function StudioInner({ onExpert, initialPrecise = false }: { onExpert?: () => void; initialPrecise?: boolean } = {}) {
+export default function StudioInner({ onExpert, initialPrecise = true }: { onExpert?: () => void; initialPrecise?: boolean } = {}) {
   const params = useParams();
   const router = useRouter();
   const lang = (Array.isArray(params?.lang) ? params.lang[0] : params?.lang) ?? 'en';
@@ -158,6 +158,8 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const userId = useAuthStore(s => s.user?.id ?? null);
 
   const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
   const [input, setInput] = useState('');
   useSessionKeepalive(); // keep the 15-min access token fresh during long sessions
   const [image, setImage] = useState<string | null>(null);
@@ -207,8 +209,13 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const lastThumbRef = useRef<string | null>(null);
   const importStlRef = useRef<string | null>(null); // base64 of an attached STL the SCAD imports
   const lastGeoRef = useRef<THREE.BufferGeometry | null>(null); // newest rendered mesh (for multi-view capture)
-  const [precise, setPrecise] = useState(initialPrecise); // expert: NL → exact B-rep feature program
+  // General users stay in an AI-guided experience. The default path lets AI
+  // build an exact B-rep feature program and transparently falls back only when
+  // the requested geometry is not representable by the governed exact path.
+  const [precise, setPrecise] = useState(initialPrecise);
   const programRef = useRef<FeatureProgram | null>(null); // last precise feature program (for refine)
+  const [lockedParams, setLockedParams] = useState<Set<string>>(() => new Set());
+  const lockedParamValuesRef = useRef<Map<string, number | boolean | string>>(new Map());
   const clarificationContextRef = useRef<string | null>(null);
   const [modelId, setModelId] = useState(DEFAULT_CODEGEN_MODEL); // user-picked codegen model
   useEffect(() => { try { const m = localStorage.getItem('nexyfab:studio-model'); if (m && CODEGEN_MODELS.some(x => x.id === m)) setModelId(m); } catch { /* ignore */ } }, []);
@@ -221,6 +228,13 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const customizer = useMemo(() => (scad ? parseCustomizerParams(scad) : []), [scad]);
+  const applyLockedValues = useCallback((source: string): string => {
+    let next = source;
+    for (const [name, value] of lockedParamValuesRef.current) {
+      next = applyCustomizerValue(next, name, value);
+    }
+    return next;
+  }, []);
   const grouped = useMemo(() => {
     const out: { name: string | null; params: typeof customizer }[] = [];
     for (const p of customizer) {
@@ -378,7 +392,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     setMessages(m => [...m, userMsg, { id: aiId, role: 'assistant', text: sentImage ? T('이미지 분석 중…', 'Reading the image…') : precise ? T('정밀 피처 설계 중…', 'Planning precise features…') : T('설계 중…', 'Designing…'), status: 'thinking' }]);
     setInput(''); setImage(null); setImageName(null); setBusy(true);
 
-    // ── PRECISE (expert) path: NL → exact feature program → solid ───────────
+    // ── AI-managed precision path: NL → exact feature program → solid ──────
     // On any failure (unsupported features / render error / exception) we DON'T
     // dead-end — we fall through to the free-form path so the user still gets a
     // model. This makes "OpenSCAD-style" requests work even if sent in Precise.
@@ -410,14 +424,22 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
           return;
         }
         if (res.ok && Array.isArray(data.features) && data.features.length > 0) {
-          const program = {
+          let program = {
             part: data.part,
             features: data.features,
             verificationContext: data.verificationContext,
           } as FeatureProgram;
+          // Explicit user locks outrank later AI rewrites. Update the structured
+          // feature program too, so expert handoff preserves the exact manual
+          // dimensions instead of rebuilding the pre-adjustment program.
+          for (const [name, value] of lockedParamValuesRef.current) {
+            if (typeof value !== 'number') continue;
+            const applied = applyFeatureProgramCustomizerValue(program, name, value);
+            if (applied.updated) program = applied.program;
+          }
           programRef.current = program;
           clarificationContextRef.current = null;
-          const code = emitScadFromProgram(program);
+          const code = applyLockedValues(emitScadFromProgram(program));
           setAiMsg(aiId, T('렌더링…', 'Rendering…'), 'thinking');
           setScad(code); setColoredObject(null); setMobileTab('3d'); setGenCount(c => c + 1);
           const r = await renderScad(code);
@@ -492,7 +514,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         return;
       }
       if (!res?.ok) throw new Error((data as { reason?: string; error?: string }).reason ?? (data as { error?: string }).error ?? `server ${res?.status ?? 'error'}`);
-      let code: string = (data as { scad?: string }).scad ?? '';
+      let code: string = applyLockedValues((data as { scad?: string }).scad ?? '');
       if (!code) throw new Error(T('코드 생성 실패', 'no code returned'));
       setAiMsg(aiId, T('렌더링…', 'Rendering…'), 'thinking');
       setScad(code);
@@ -526,7 +548,8 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
             body: JSON.stringify({ prompt: fixPrompt, freeform: true, previousScad: code, repair: true, modelId: 'deepseek-reasoner' }),
           });
           const fixData = await fixRes.json().catch(() => ({}));
-          const fixed = (fixData as { scad?: string }).scad;
+          const fixedRaw = (fixData as { scad?: string }).scad;
+          const fixed = fixedRaw ? applyLockedValues(fixedRaw) : fixedRaw;
           if (!fixed || !fixed.trim() || fixed === code) break;
           code = fixed; setScad(fixed); setGenCount(c => c + 1);
           r = await renderScad(fixed);
@@ -593,9 +616,10 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
                   body: JSON.stringify({ image: curView, prompt: text || (sentImage ? 'the object in the reference photo' : ''), scad: curScad, multiview: true, ...(sentImage ? { refImage: sentImage } : {}) }),
                 }).then(r => r.json()).catch(() => null) as { scad?: string | null } | null;
                 if (!cr?.scad) break; // reviewer says it's faithful — stop
-                const rr = await renderScad(cr.scad);
+                const lockedScad = applyLockedValues(cr.scad);
+                const rr = await renderScad(lockedScad);
                 if (!rr.ok) break;    // the fix didn't render — keep the last good one
-                curScad = cr.scad; refined = true;
+                curScad = lockedScad; refined = true;
                 // Update the mesh in place but DON'T bump fitKey — re-fitting
                 // the camera every refine round makes the viewport jump/shake.
                 setScad(curScad);
@@ -620,7 +644,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     } finally {
       setBusy(false);
     }
-  }, [input, image, busy, scad, precise, modelId, renderScad, renderColored, setAiMsg, refreshDesigns, isKo]);
+  }, [input, image, busy, scad, precise, modelId, renderScad, renderColored, setAiMsg, refreshDesigns, isKo, applyLockedValues]);
 
   // ── Prompt expansion: rewrite a short request into a precise OpenSCAD brief ──
   // the user can review/edit before sending. Best for mechanical parts; flags
@@ -695,6 +719,16 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   }, [modelSize, busy, send]);
 
   const onCustomizer = useCallback((name: string, value: number | boolean | string) => {
+    lockedParamValuesRef.current.set(name, value);
+    setLockedParams(previous => {
+      const next = new Set(previous);
+      next.add(name);
+      return next;
+    });
+    if (programRef.current && typeof value === 'number') {
+      const applied = applyFeatureProgramCustomizerValue(programRef.current, name, value);
+      if (applied.updated) programRef.current = applied.program;
+    }
     setColoredObject(null); // drop to fast monochrome while dragging
     setScad(prev => {
       const next = applyCustomizerValue(prev, name, value);
@@ -708,6 +742,20 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
       return next;
     });
   }, [renderScad, renderColored]);
+
+  const toggleParamLock = useCallback((name: string, value: number | boolean | string) => {
+    setLockedParams(previous => {
+      const next = new Set(previous);
+      if (next.has(name)) {
+        next.delete(name);
+        lockedParamValuesRef.current.delete(name);
+      } else {
+        next.add(name);
+        lockedParamValuesRef.current.set(name, value);
+      }
+      return next;
+    });
+  }, []);
 
   const onPickImage = useCallback((file: File | null | undefined) => {
     if (!file || !file.type.startsWith('image/')) return;
@@ -917,6 +965,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const newDesign = useCallback(() => {
     currentIdRef.current = freshId(); setCurrentId(currentIdRef.current);
     lastThumbRef.current = null; importStlRef.current = null; programRef.current = null; clarificationContextRef.current = null; colorReqRef.current++;
+    lockedParamValuesRef.current.clear(); setLockedParams(new Set());
     setMessages([]); setScad(''); setGeometry(null); setColoredObject(null); setStlB64(null); setNeedLogin(false); setInput(''); setSidebarOpen(false);
     setReadiness(classifyManufacturingReadiness({ hasGeometry: false, hasFeatureProgram: false }));
   }, []);
@@ -926,6 +975,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     if (!d) return;
     currentIdRef.current = id; setCurrentId(id);
     lastThumbRef.current = d.thumb ?? null; importStlRef.current = null;
+    programRef.current = null; lockedParamValuesRef.current.clear(); setLockedParams(new Set());
     setMessages(d.messages.map(m => ({ id: nextId(), ...m })));
     setScad(d.scad);
     setReadiness(classifyManufacturingReadiness({ hasGeometry: true, hasFeatureProgram: false }));
@@ -957,7 +1007,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
       else sessionStorage.removeItem('nexyfab:studio-handoff-program');
     } catch { /* ignore */ }
     if (onExpert) onExpert();
-    else router.push(`/${lang}/shape-generator?mode=expert`);
+    else router.push(`/${lang}/shape-generator?expert=1&mode=expert&domain=mechanical&experience=expert&workMode=precision_cad`);
   }, [scad, stlB64, lang, router, onExpert]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -977,38 +1027,88 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     </span>
   ) : null;
 
+  const ParamLock = ({ name, value }: { name: string; value: number | boolean | string }) => {
+    const locked = lockedParams.has(name);
+    return (
+      <button
+        type="button"
+        data-testid={`studio-param-lock-${name}`}
+        aria-pressed={locked}
+        onClick={() => toggleParamLock(name, value)}
+        className={`shrink-0 rounded px-1 py-0.5 text-[10px] ${locked ? 'bg-amber-500/20 text-amber-300' : 'st-text-3 st-hover'}`}
+        title={locked
+          ? T('잠금 해제: 다음 AI 수정에서 이 값을 변경할 수 있음', 'Unlock: later AI edits may change this value')
+          : T('사용자 값 잠금: 다음 AI 수정에서도 유지', 'Lock user value across later AI edits')}
+      >
+        {locked ? '🔒' : '🔓'}
+      </button>
+    );
+  };
+
   const renderParam = (p: (typeof customizer)[number]) => {
     const label = p.description || p.name;
     if (p.kind === 'bool') return (
-      <label key={p.name} className="flex items-center gap-2 text-[11px] st-text-2">
+      <div key={p.name} className="flex items-center gap-2 text-[11px] st-text-2">
         <input type="checkbox" checked={p.value as boolean} onChange={e => onCustomizer(p.name, e.target.checked)} className="accent-blue-500" />
-        <span className="truncate" title={p.name}>{label}</span>
-      </label>
-    );
-    if (p.kind === 'slider') { const v = p.value as number; return (
-      <div key={p.name} className="flex flex-col gap-0.5">
-        <div className="flex justify-between text-[11px] st-text-2"><span className="truncate" title={p.name}>{label}</span><span className="tabular-nums st-text">{(p.step ?? 1) < 1 ? v.toFixed(1) : Math.round(v)}{p.unit && <span className="st-text-3 ml-0.5">{p.unit}</span>}</span></div>
-        <input type="range" min={p.min} max={p.max} step={p.step} value={v} onChange={e => onCustomizer(p.name, parseFloat(e.target.value))} className="w-full accent-blue-500" />
+        <span className="min-w-0 flex-1 truncate" title={p.name}>{label}</span>
+        <ParamLock name={p.name} value={p.value} />
       </div>
-    ); }
+    );
+    if (p.kind === 'slider') {
+      const v = p.value as number;
+      const commitExact = (raw: string) => {
+        const parsed = Number(raw);
+        if (!Number.isFinite(parsed)) return;
+        const bounded = Math.min(p.max ?? parsed, Math.max(p.min ?? parsed, parsed));
+        onCustomizer(p.name, bounded);
+      };
+      return (
+        <div key={p.name} className="flex flex-col gap-1">
+          <div className="flex items-center gap-1.5 text-[11px] st-text-2">
+            <span className="min-w-0 flex-1 truncate" title={p.name}>{label}</span>
+            <input
+              type="number"
+              data-testid={`studio-param-number-${p.name}`}
+              min={p.min}
+              max={p.max}
+              step={p.step}
+              value={v}
+              onChange={e => commitExact(e.target.value)}
+              className="w-[72px] st-panel-2 border st-bd rounded px-1 py-0.5 text-right font-mono tabular-nums st-text"
+              aria-label={`${label} ${p.unit ?? ''}`.trim()}
+            />
+            {p.unit && <span className="st-text-3">{p.unit}</span>}
+            <ParamLock name={p.name} value={p.value} />
+          </div>
+          <input type="range" min={p.min} max={p.max} step={p.step} value={v} onChange={e => onCustomizer(p.name, parseFloat(e.target.value))} className="w-full accent-blue-500" />
+        </div>
+      );
+    }
     if (p.kind === 'dropdown') return (
-      <label key={p.name} className="flex items-center gap-2 text-[11px] st-text-2">
+      <div key={p.name} className="flex items-center gap-2 text-[11px] st-text-2">
         <span className="w-24 truncate" title={p.name}>{label}</span>
-        <select value={String(p.value)} onChange={e => onCustomizer(p.name, typeof p.value === 'number' ? parseFloat(e.target.value) : e.target.value)} className="flex-1 st-panel-2 border st-bd rounded px-1 py-0.5">
+        <select value={String(p.value)} onChange={e => onCustomizer(p.name, typeof p.value === 'number' ? parseFloat(e.target.value) : e.target.value)} className="min-w-0 flex-1 st-panel-2 border st-bd rounded px-1 py-0.5">
           {(p.options ?? []).map(o => <option key={String(o)} value={String(o)}>{String(o)}</option>)}
         </select>
-      </label>
+        <ParamLock name={p.name} value={p.value} />
+      </div>
     );
     return (
-      <label key={p.name} className="flex items-center gap-2 text-[11px] st-text-2">
+      <div key={p.name} className="flex items-center gap-2 text-[11px] st-text-2">
         <span className="w-24 truncate" title={p.name}>{label}</span>
-        <input type="text" value={String(p.value)} onChange={e => onCustomizer(p.name, e.target.value)} className="flex-1 st-panel-2 border st-bd rounded px-1 py-0.5 font-mono" />
-      </label>
+        <input type="text" value={String(p.value)} onChange={e => onCustomizer(p.name, e.target.value)} className="min-w-0 flex-1 st-panel-2 border st-bd rounded px-1 py-0.5 font-mono" />
+        <ParamLock name={p.name} value={p.value} />
+      </div>
     );
   };
 
   const ParamsBody = () => (
     <div className="flex-1 overflow-auto p-3 flex flex-col gap-3">
+      <div className="rounded-lg border st-bd st-panel-2 px-2.5 py-2 text-[10px] st-text-3">
+        <div className="font-semibold st-text-2">{T('AI + 수동 설계', 'AI + manual design')}</div>
+        <div className="mt-0.5">{T('슬라이더나 숫자로 직접 수정하세요. 수정한 값은 자동 잠금되어 다음 AI 수정과 전문가 CAD 인계에서도 유지됩니다.', 'Edit directly with sliders or exact numbers. Changed values are auto-locked across later AI edits and expert CAD handoff.')}</div>
+        {lockedParams.size > 0 && <div className="mt-1 text-amber-300">{T(`사용자 값 ${lockedParams.size}개 잠금`, `${lockedParams.size} user value(s) locked`)}</div>}
+      </div>
       {modelSize && (
         <div className="flex items-center gap-1.5 text-[11px] st-text-3 pb-0.5" title={T('실제 렌더된 크기 (요청 치수와 비교용)', 'Actual rendered size (compare with the requested dimensions)')}>
           <span>📐</span>
@@ -1086,7 +1186,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   // ── Empty hero ─────────────────────────────────────────────────────────────
   if (isEmpty) {
     return (
-      <div className="flex h-dvh w-full st-bg" {...dragProps}>
+      <div data-testid="studio-workspace" data-hydrated={hydrated} className="flex h-dvh w-full st-bg" {...dragProps}>
         {sidebar}
         <div className="flex-1 min-w-0 relative flex flex-col items-center justify-center px-6 st-hero-bg">
           <button onClick={() => setSidebarOpen(true)} className="md:hidden absolute top-3 left-3 st-text-2 text-xl" aria-label="menu">☰</button>
@@ -1096,8 +1196,8 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
           {/* Mode toggle + model picker */}
           <div className="flex items-center gap-2 mb-5 flex-wrap justify-center">
             <div className="flex items-center gap-1 st-panel-2 border st-bd rounded-full p-1 text-[12px]">
-              <button onClick={() => setPrecise(false)} className={`px-3 py-1 rounded-full font-semibold ${!precise ? 'bg-blue-600 text-white' : 'st-text-2'}`}>✨ {T('자유형', 'Free-form')}</button>
-              <button onClick={() => setPrecise(true)} className={`px-3 py-1 rounded-full font-semibold ${precise ? 'bg-indigo-600 text-white' : 'st-text-2'}`}>📐 {T('정밀', 'Precise')}</button>
+              <button data-testid="ai-cad-mode-precise" aria-pressed={precise} onClick={() => setPrecise(true)} className={`px-3 py-1 rounded-full font-semibold ${precise ? 'bg-indigo-600 text-white' : 'st-text-2'}`} title={T('일반 사용자도 AI가 정밀 CAD 엔진을 자동 운용합니다', 'AI automatically operates the precision CAD engine for every user')}>✨ {T('AI 자동 설계', 'AI Auto Design')}</button>
+              <button data-testid="ai-cad-mode-free" aria-pressed={!precise} onClick={() => setPrecise(false)} className={`px-3 py-1 rounded-full font-semibold ${!precise ? 'bg-blue-600 text-white' : 'st-text-2'}`} title={T('조형·유기 형상을 빠르게 만들 때 사용', 'Use for fast free-form or organic geometry')}>{T('빠른 자유형', 'Fast Free-form')}</button>
             </div>
             <ModelPicker modelId={modelId} onPick={pickModel} isKo={isKo} />
           </div>
@@ -1152,7 +1252,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     <button onClick={() => setMobileTab(id)} className={`flex-1 py-2 text-[12px] font-semibold ${mobileTab === id ? 'text-blue-400 border-t-2 border-blue-400 -mt-px' : 'st-text-3'}`}>{label}</button>
   );
   return (
-    <div className={`flex h-dvh w-full st-bg ${dragOver ? 'ring-2 ring-blue-500 ring-inset' : ''}`} {...dragProps}>
+    <div data-testid="studio-workspace" data-hydrated={hydrated} className={`flex h-dvh w-full st-bg ${dragOver ? 'ring-2 ring-blue-500 ring-inset' : ''}`} {...dragProps}>
       {sidebar}
       <div className="flex-1 min-w-0 flex flex-col md:flex-row">
         {/* Chat */}
@@ -1177,8 +1277,8 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
           <div className="border-t st-bd p-2.5 flex flex-col gap-2 shrink-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <div className="flex items-center gap-0.5 st-panel-2 border st-bd rounded-full p-0.5 text-[11px]">
-                <button onClick={() => setPrecise(false)} className={`px-2 py-0.5 rounded-full font-semibold ${!precise ? 'bg-blue-600 text-white' : 'st-text-2'}`}>✨ {T('자유형', 'Free')}</button>
-                <button onClick={() => setPrecise(true)} className={`px-2 py-0.5 rounded-full font-semibold ${precise ? 'bg-indigo-600 text-white' : 'st-text-2'}`}>📐 {T('정밀', 'Precise')}</button>
+                <button data-testid="ai-cad-mode-precise" aria-pressed={precise} onClick={() => setPrecise(true)} className={`px-2 py-0.5 rounded-full font-semibold ${precise ? 'bg-indigo-600 text-white' : 'st-text-2'}`} title={T('AI가 정밀 CAD 엔진을 자동 운용', 'AI-managed precision CAD')}>✨ {T('AI 자동', 'AI Auto')}</button>
+                <button data-testid="ai-cad-mode-free" aria-pressed={!precise} onClick={() => setPrecise(false)} className={`px-2 py-0.5 rounded-full font-semibold ${!precise ? 'bg-blue-600 text-white' : 'st-text-2'}`}>{T('빠른 자유형', 'Fast Free')}</button>
               </div>
               <ModelPicker modelId={modelId} onPick={pickModel} isKo={isKo} compact />
             </div>
@@ -1240,7 +1340,15 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
             <div className="flex gap-2">
               <button onClick={exportStl} disabled={!stlB64} className="flex-1 border st-bd st-hover disabled:opacity-40 rounded py-1.5 text-[11px]">⬇ STL</button>
               <button onClick={() => void exportStep()} disabled={!geometry || stepBusy} className="flex-1 border st-bd st-hover disabled:opacity-40 rounded py-1.5 text-[11px]" title={precise ? T('제조용 analytic STEP (CAD 호환)', 'Analytic STEP for manufacturing (CAD interchange)') : T('제조용 STEP (테셀레이션, CAD 호환)', 'STEP for manufacturing (tessellated, CAD interchange)')}>{stepBusy ? '…' : '⬇ STEP'}</button>
-              <button onClick={handoff} className="flex-1 bg-indigo-600 hover:bg-indigo-500 rounded py-1.5 text-[11px] font-semibold" title={T('전문가형 모델러', 'Expert modeler')}>{T('전문가형 →', 'Expert →')}</button>
+              <button
+                data-testid="open-precision-cad"
+                onClick={handoff}
+                className="flex-[1.45] bg-indigo-600 hover:bg-indigo-500 rounded px-2 py-1.5 text-[11px] font-semibold leading-tight"
+                title={T('전문가가 필요할 때만 피처와 치수를 직접 편집', 'Optional direct feature and dimension editing for experts')}
+              >
+                <span className="block">{T('전문가 CAD 직접 편집 (선택) →', 'Expert CAD editing (optional) →')}</span>
+                <span className="block mt-0.5 text-[9px] font-normal text-indigo-100/80">{T('일반 사용자는 AI로 계속 가능', 'AI continues for general users')}</span>
+              </button>
             </div>
           </div>
         </aside>
@@ -1265,7 +1373,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         {/* Parameters */}
         <aside className={`${mobileTab === 'params' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-[280px] flex-1 md:flex-none min-h-0 border-l st-bd`}>
           <div className="px-3 py-2 border-b st-bd flex items-center justify-between shrink-0">
-            <span className="text-sm font-semibold">{T('파라미터', 'Parameters')}</span>
+            <span className="text-sm font-semibold">{T('AI + 수동 조정', 'AI + Manual')}</span>
             <span className="text-[11px] st-text-3">{customizer.length}</span>
           </div>
           <ParamsBody />

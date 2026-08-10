@@ -13,11 +13,13 @@ import {
   type ClassifyStepEntitiesResult,
 } from '../stepImport/entityClassifier';
 import { analytics } from '@/lib/analytics';
+import { BREP_STEP_BROWSER_MAX_BYTES } from '@/lib/brep-bridge/constants';
+import { decideStepProcessingRoute, formatStepCapacityMb } from '@/lib/brep-bridge/stepCapacityPolicy';
 
 
 const dict = {
   ko: {
-    dropZone: 'STEP / STP / IGES 파일을 드래그하거나 클릭하여 선택',
+    dropZone: 'STEP / STP 파일을 드래그하거나 클릭하여 선택',
     uploading: '분석 중...', cancel: '취소',
     applyDesign: '설계에 적용', loadViewport: '3D 뷰포트에서 보기',
     loadingGeo: '형상 변환 중...', retry: '다시 시도',
@@ -25,14 +27,14 @@ const dict = {
     faces: '면(삼각형) 수', edges: '엣지 수 (추정)', shells: '셸 수',
     volume: '부피 (cm³)', surface: '표면적 (cm²)', bbox: '경계 박스 (cm)',
     solid: '솔리드', manifold: '매니폴드', yes: '예', no: '아니오',
-    errType: '지원하지 않는 파일 형식입니다 (.step .stp .iges .igs 허용)',
+    errType: '지원하지 않는 파일 형식입니다 (.step .stp 허용)',
     maxSize: '파일 크기 제한: 50 MB',
     parts: '파트', assembly: '전체 어셈블리', partList: '파트 트리 (개별 검사)',
     showDetails: '상세 보기', hideDetails: '상세 숨기기',
     colCategory: '카테고리', colType: '엔티티 타입', colCount: '개수',
   },
   en: {
-    dropZone: 'Drag & drop a STEP / STP / IGES file, or click to browse',
+    dropZone: 'Drag & drop a STEP / STP file, or click to browse',
     uploading: 'Analyzing...', cancel: 'Cancel',
     applyDesign: 'Apply to Design', loadViewport: 'View in 3D Viewport',
     loadingGeo: 'Converting geometry…', retry: 'Try Again',
@@ -40,14 +42,14 @@ const dict = {
     faces: 'Faces (triangles)', edges: 'Edges (est.)', shells: 'Shell count',
     volume: 'Volume (cm³)', surface: 'Surface area (cm²)', bbox: 'Bounding box (cm)',
     solid: 'Solid', manifold: 'Manifold', yes: 'Yes', no: 'No',
-    errType: 'Unsupported file type (.step .stp .iges .igs allowed)',
+    errType: 'Unsupported file type (.step .stp allowed)',
     maxSize: 'File size limit: 50 MB',
     parts: 'Parts', assembly: 'Whole Assembly', partList: 'Part Tree (Inspect Individual)',
     showDetails: 'Show details', hideDetails: 'Hide details',
     colCategory: 'Category', colType: 'Entity Type', colCount: 'Count',
   },
   ja: {
-    dropZone: 'STEP / STP / IGES ファイルをドラッグするかクリックして選択',
+    dropZone: 'STEP / STP ファイルをドラッグするかクリックして選択',
     uploading: '分析中...', cancel: 'キャンセル',
     applyDesign: '設計に適用', loadViewport: '3D ビューポートで表示',
     loadingGeo: '形状を変換中…', retry: '再試行',
@@ -55,14 +57,14 @@ const dict = {
     faces: '面数（三角形）', edges: 'エッジ数（推定）', shells: 'シェル数',
     volume: '体積 (cm³)', surface: '表面積 (cm²)', bbox: 'バウンディングボックス (cm)',
     solid: 'ソリッド', manifold: 'マニフォールド', yes: 'はい', no: 'いいえ',
-    errType: 'サポートされていないファイル形式です (.step .stp .iges .igs のみ許可)',
+    errType: 'サポートされていないファイル形式です (.step .stp のみ許可)',
     maxSize: 'ファイルサイズ制限: 50 MB',
     parts: 'パーツ', assembly: '全体アセンブリ', partList: 'パーツツリー (個別検査)',
     showDetails: '詳細を表示', hideDetails: '詳細を隠す',
     colCategory: 'カテゴリ', colType: 'エンティティ', colCount: '件数',
   },
   zh: {
-    dropZone: '拖放 STEP / STP / IGES 文件，或点击浏览',
+    dropZone: '拖放 STEP / STP 文件，或点击浏览',
     uploading: '分析中...', cancel: '取消',
     applyDesign: '应用到设计', loadViewport: '在 3D 视口中查看',
     loadingGeo: '正在转换几何...', retry: '重试',
@@ -70,14 +72,14 @@ const dict = {
     faces: '面数（三角形）', edges: '边数（估算）', shells: '壳数',
     volume: '体积 (cm³)', surface: '表面积 (cm²)', bbox: '边界框 (cm)',
     solid: '实体', manifold: '流形', yes: '是', no: '否',
-    errType: '不支持的文件类型（仅允许 .step .stp .iges .igs）',
+    errType: '不支持的文件类型（仅允许 .step .stp）',
     maxSize: '文件大小限制: 50 MB',
     parts: '零件', assembly: '整个装配体', partList: '零件树（单独检查）',
     showDetails: '显示详情', hideDetails: '隐藏详情',
     colCategory: '类别', colType: '实体类型', colCount: '数量',
   },
   es: {
-    dropZone: 'Arrastra un archivo STEP / STP / IGES o haz clic para examinar',
+    dropZone: 'Arrastra un archivo STEP / STP o haz clic para examinar',
     uploading: 'Analizando...', cancel: 'Cancelar',
     applyDesign: 'Aplicar al Diseño', loadViewport: 'Ver en Viewport 3D',
     loadingGeo: 'Convirtiendo geometría…', retry: 'Reintentar',
@@ -85,14 +87,14 @@ const dict = {
     faces: 'Caras (triángulos)', edges: 'Aristas (est.)', shells: 'Nº de cáscaras',
     volume: 'Volumen (cm³)', surface: 'Área de superficie (cm²)', bbox: 'Caja contenedora (cm)',
     solid: 'Sólido', manifold: 'Variedad', yes: 'Sí', no: 'No',
-    errType: 'Tipo de archivo no soportado (.step .stp .iges .igs permitidos)',
+    errType: 'Tipo de archivo no soportado (.step .stp permitidos)',
     maxSize: 'Límite de tamaño: 50 MB',
     parts: 'Partes', assembly: 'Ensamblaje Completo', partList: 'Árbol de partes (Inspección individual)',
     showDetails: 'Ver detalles', hideDetails: 'Ocultar detalles',
     colCategory: 'Categoría', colType: 'Tipo de entidad', colCount: 'Recuento',
   },
   ar: {
-    dropZone: 'اسحب وأفلت ملف STEP / STP / IGES أو انقر للاستعراض',
+    dropZone: 'اسحب وأفلت ملف STEP / STP أو انقر للاستعراض',
     uploading: 'جارٍ التحليل...', cancel: 'إلغاء',
     applyDesign: 'تطبيق على التصميم', loadViewport: 'عرض في عارض 3D',
     loadingGeo: 'جارٍ تحويل الشكل الهندسي…', retry: 'حاول مرة أخرى',
@@ -100,7 +102,7 @@ const dict = {
     faces: 'الأوجه (المثلثات)', edges: 'الحواف (تقديري)', shells: 'عدد الأغلفة',
     volume: 'الحجم (cm³)', surface: 'مساحة السطح (cm²)', bbox: 'المربع المحيط (cm)',
     solid: 'صلب', manifold: 'متنوع', yes: 'نعم', no: 'لا',
-    errType: 'نوع الملف غير مدعوم (.step .stp .iges .igs مسموح بها)',
+    errType: 'نوع الملف غير مدعوم (.step .stp مسموح بها)',
     maxSize: 'حد حجم الملف: 50 MB',
     parts: 'أجزاء', assembly: 'التجميع بأكمله', partList: 'شجرة الأجزاء',
     showDetails: 'عرض التفاصيل', hideDetails: 'إخفاء التفاصيل',
@@ -132,7 +134,7 @@ function fmt(n: number, dec = 2) {
 
 function isStepFile(file: File) {
   const name = file.name.toLowerCase();
-  return ['.step', '.stp', '.iges', '.igs'].some(ext => name.endsWith(ext));
+  return ['.step', '.stp'].some(ext => name.endsWith(ext));
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -374,7 +376,15 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
 
   const analyze = useCallback(async (file: File) => {
     if (!isStepFile(file)) { setError(T.errType); return; }
-    if (file.size > 50 * 1024 * 1024) { setError(T.maxSize); return; }
+    const capacity = decideStepProcessingRoute(file.size, { authenticated: false, serverEnabled: false });
+    if (capacity.route === 'large-job-required') {
+      setError(`${T.maxSize} · Large-file server processing is required for ${formatStepCapacityMb(file.size)} files.`);
+      return;
+    }
+    if (capacity.route === 'unsupported-size' || file.size > BREP_STEP_BROWSER_MAX_BYTES) {
+      setError(T.maxSize);
+      return;
+    }
 
     setError(null);
     setResult(null);
@@ -506,7 +516,7 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
           {fileName && (
             <p style={{ fontSize: 11, color: 'var(--nx-border-strong)', marginTop: 8 }}>{fileName}</p>
           )}
-          <input ref={inputRef} type="file" accept=".step,.stp,.iges,.igs"
+          <input ref={inputRef} type="file" accept=".step,.stp"
             style={{ display: 'none' }} onChange={handleFileChange} />
         </div>
       )}

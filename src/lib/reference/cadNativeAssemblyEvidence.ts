@@ -71,10 +71,31 @@ export function validateCadNativeAssemblyEvidence(bundle: CadProductBundleManife
   const roots = (evidence.occurrences ?? []).filter(item => item.parentOccurrenceId === null);
   if (!evidence.occurrences?.length) errors.push('native_assembly_occurrences_missing');
   else if (roots.length !== 1) errors.push(`native_assembly_root_count_invalid:${roots.length}`);
-  const parentById = new Map((evidence.occurrences ?? []).map(item => [item.id, item.parentOccurrenceId]));
+  const occurrenceById = new Map((evidence.occurrences ?? []).map(item => [item.id, item]));
+  const reachesRoot = new Map<string, boolean>();
+  const cycleReported = new Set<string>();
   for (const occurrence of evidence.occurrences ?? []) {
-    const visited = new Set<string>(); let cursor: string | null = occurrence.id;
-    while (cursor !== null) { if (visited.has(cursor)) { errors.push(`native_assembly_parent_cycle:${occurrence.id}`); break; } visited.add(cursor); cursor = parentById.get(cursor) ?? null; }
+    if (reachesRoot.has(occurrence.id)) continue;
+    const path: string[] = [], position = new Map<string, number>();
+    let cursorId: string | null = occurrence.id, valid = false;
+    while (cursorId) {
+      const resolved = reachesRoot.get(cursorId);
+      if (resolved !== undefined) { valid = resolved; break; }
+      const cycleAt = position.get(cursorId);
+      if (cycleAt !== undefined) {
+        for (const id of path.slice(cycleAt)) {
+          if (!cycleReported.has(id)) errors.push(`native_assembly_parent_cycle:${id}`);
+          cycleReported.add(id); reachesRoot.set(id, false);
+        }
+        break;
+      }
+      const cursor = occurrenceById.get(cursorId); if (!cursor) break;
+      position.set(cursorId, path.length); path.push(cursorId);
+      if (cursor.parentOccurrenceId === null) { valid = roots.length === 1 && cursor.id === roots[0]!.id; break; }
+      cursorId = cursor.parentOccurrenceId;
+    }
+    for (const id of path) if (!reachesRoot.has(id)) reachesRoot.set(id, valid);
+    if (!valid && !cycleReported.has(occurrence.id)) errors.push(`native_assembly_disconnected:${occurrence.id}`);
   }
   const jointIds = new Set<string>();
   for (const joint of evidence.joints ?? []) {

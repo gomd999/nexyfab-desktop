@@ -486,7 +486,9 @@ export function autoPlaceCorrect(asm) {
       if (ov[0] <= 0 || ov[1] <= 0 || ov[2] <= 0) continue;
       const depth = Math.min(...ov);
       if (depth <= 2) continue; // 접촉/체결 후보는 존중
-      if (pairExempt(parts[i], parts[j], A, B)) continue; // ★판정기가 정상으로 본 쌍
+      if (pairExempt(parts[i], parts[j], A, B, {
+        trustedJointGraph: asm.jointGraphProvenance === 'deterministic-template-v1',
+      })) continue; // ★판정기가 정상으로 본 쌍
       const ax = ov.indexOf(depth);
       const volA = (A.max[0] - A.min[0]) * (A.max[1] - A.min[1]) * (A.max[2] - A.min[2]);
       const volB = (B.max[0] - B.min[0]) * (B.max[1] - B.min[1]) * (B.max[2] - B.min[2]);
@@ -924,9 +926,17 @@ const BORE_GEOM = {
  *
  * @returns {string|null} 면제 사유(문자열) 또는 null(진짜 겹침)
  */
-export function pairExempt(pa, pb, ba, bb) {
+export function pairExempt(pa, pb, ba, bb, options = {}) {
   const within = (inner, outer, axes) =>
     axes.every((k) => inner.min[k] >= outer.min[k] - 0.1 && inner.max[k] <= outer.max[k] + 0.1);
+
+  // Explicit member-to-member joint graph. Only the named pair is exempt;
+  // role similarity or accidental proximity never creates an exemption.
+  const ida = pa.id ?? pa.type, idb = pb.id ?? pb.type;
+  const linked = (part, otherId) => Array.isArray(part.connectedWith) && part.connectedWith.includes(otherId);
+  if (options.trustedJointGraph === true && (linked(pa, idb) || linked(pb, ida))) {
+    return `설계 접합 선언('${ida}' ↔ '${idb}' — 용접·볼트 상세와 강도는 connections 계층에서 별도 검토)`;
+  }
 
   /**
    * ⓪ **연속 부재 분할** — 실물은 한 몸인데 모델링 편의로 나눈 것.
@@ -1003,6 +1013,41 @@ export function pairExempt(pa, pb, ba, bb) {
 // 배관이 슬리브로 관통 가능한 건축 부재 role — 벽·바닥·슬래브 관통은 "위반"이 아니라
 // "슬리브 명세"다(건축 현실). 장비·가구·구조기둥 관통은 여전히 위반.
 const PASSABLE_ROLES = new Set(['wall', 'floor', 'slab', 'deck', 'ceiling']);
+
+/**
+ * AABB interference is blind to boolean openings. Prove that a penetrating
+ * part's cross-section is fully contained in a declared wall/slab opening,
+ * including a rotated host, before classifying the overlap as a sleeve/opening
+ * contact. The penetration axis itself may extend beyond the opening by design.
+ */
+function declaredOpeningContains(host, penetratingBox) {
+  if (!['wall_with_openings', 'slab_with_openings'].includes(host.type) || !Array.isArray(host.params?.openings)) return false;
+  const h = host.at ?? {};
+  const rx = h.rx ?? 0, ry = h.ry ?? 0, rz = h.rz ?? 0;
+  const localPenetrationAxis = host.type === 'wall_with_openings' ? [0, 1, 0] : [0, 0, 1];
+  const worldAxis = rotatePoint(localPenetrationAxis, rx, ry, rz);
+  const penetrationAxis = worldAxis.map(Math.abs).indexOf(Math.max(...worldAxis.map(Math.abs)));
+  for (const opening of host.params.openings) {
+    const localAt = host.type === 'wall_with_openings'
+      ? [opening.x, -1, opening.sill ?? 0]
+      : [opening.x, opening.y, -1];
+    const localSize = host.type === 'wall_with_openings'
+      ? [opening.w, host.params.thickness + 2, opening.h]
+      : [opening.w, opening.d, host.params.thickness + 2];
+    if (localAt.some((v) => !Number.isFinite(v)) || localSize.some((v) => !Number.isFinite(v) || v <= 0)) continue;
+    const offset = rotatePoint(localAt, rx, ry, rz);
+    const openingBox = placedAabb({
+      type: 'box', params: { width: localSize[0], depth: localSize[1], height: localSize[2] },
+      at: { tx: (h.tx ?? 0) + offset[0], ty: (h.ty ?? 0) + offset[1], tz: (h.tz ?? 0) + offset[2], rx, ry, rz },
+    });
+    const crossSectionInside = [0, 1, 2]
+      .filter((axis) => axis !== penetrationAxis)
+      .every((axis) => penetratingBox.min[axis] >= openingBox.min[axis] - 0.5
+        && penetratingBox.max[axis] <= openingBox.max[axis] + 0.5);
+    if (crossSectionInside) return true;
+  }
+  return false;
+}
 
 /** 어셈블리 → 배관 관통검사용 장애물 목록(부품=부재별, 원통 인식). pipeObstacleCheck 입력. */
 export function obstaclesFromAssembly(asm) {
@@ -1146,9 +1191,20 @@ export function buildAssembly(asm, opts = {}) {
          * `pairExempt` 단일 소스로 판정한다 — 보정기와 같은 규칙을 봐야 둘이 안 싸운다.
          * ⚠ 아래 어휘별 정밀 규칙보다 **먼저** 본다. 선언이 있으면 기하를 더 볼 이유가 없다.
          */
-        const contOnly = pairExempt(asm.parts[i], asm.parts[j], boxes[i].box, boxes[j].box);
-        if (contOnly && contOnly.startsWith('연속 부재')) {
+        const contOnly = pairExempt(asm.parts[i], asm.parts[j], boxes[i].box, boxes[j].box, {
+          trustedJointGraph: asm.jointGraphProvenance === 'deterministic-template-v1',
+        });
+        if (contOnly) {
           contacts.push({ a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v), depthMm: +depth.toFixed(2), note: contOnly });
+          continue;
+        }
+        const piOpening = declaredOpeningContains(asm.parts[i], boxes[j].box);
+        const pjOpening = declaredOpeningContains(asm.parts[j], boxes[i].box);
+        if (piOpening || pjOpening) {
+          contacts.push({
+            a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v), depthMm: +depth.toFixed(2),
+            note: '선언 개구 관통(단면이 개구 내부에 완전 포함 — 슬리브/관통 정상)',
+          });
           continue;
         }
         // 축대칭 정밀(260718d — 프로펠러 허브×블레이드 AABB 과탐): revolve(회전체)는 반경

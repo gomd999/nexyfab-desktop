@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OPENSCAD_DEFAULT_TIMEOUT_MS, OPENSCAD_MAX_SCAD_BYTES } from './constants';
 import { resolveOpenScadExecutable } from './resolveOpenScadExecutable';
+import { validateScadExecutionSource } from './sourceSecurity';
 
 export type OpenScadMeshFormat = 'stl' | 'off' | '3mf';
 
@@ -34,6 +35,26 @@ export async function runOpenScadCli(opts: {
   if (bytes > OPENSCAD_MAX_SCAD_BYTES) {
     return { ok: false, code: 'TOO_LARGE', message: `OpenSCAD source exceeds ${OPENSCAD_MAX_SCAD_BYTES} bytes` };
   }
+  const sourceSecurity = validateScadExecutionSource(opts.scadSource, {
+    hasImportStl: Boolean(opts.importStl?.byteLength),
+  });
+  if (!sourceSecurity.ok) {
+    return {
+      ok: false,
+      code: 'EXIT',
+      message: `OpenSCAD source blocked: ${sourceSecurity.reason}`,
+      stderr: sourceSecurity.detail,
+    };
+  }
+  const useDocker =
+    process.env.OPENSCAD_USE_DOCKER === '1' || process.env.OPENSCAD_USE_DOCKER === 'true';
+  if (process.env.NODE_ENV === 'production' && !useDocker) {
+    return {
+      ok: false,
+      code: 'EXIT',
+      message: 'OpenSCAD host execution is disabled in production; set OPENSCAD_USE_DOCKER=1',
+    };
+  }
 
   const id = randomBytes(12).toString('hex');
   const workDir = join(tmpdir(), `nf-openscad-${id}`);
@@ -48,8 +69,6 @@ export async function runOpenScadCli(opts: {
     await writeFile(join(workDir, 'model.stl'), Buffer.from(opts.importStl));
   }
 
-  const useDocker =
-    process.env.OPENSCAD_USE_DOCKER === '1' || process.env.OPENSCAD_USE_DOCKER === 'true';
   const dockerImage =
     process.env.OPENSCAD_DOCKER_IMAGE?.trim() || 'openscad/openscad:latest';
 

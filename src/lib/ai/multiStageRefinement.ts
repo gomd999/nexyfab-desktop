@@ -5,6 +5,7 @@ import {
   type GenerationRunState,
 } from './generationRunState';
 import { referenceGuidanceForRequest } from './referenceGuidedRefinement';
+import { assessProductDecompositionAccuracy, isProductDecompositionPlan, productPlanAccuracyReasons } from './productDecompositionAccuracy';
 
 export const REFINEMENT_STAGES = ['intent', 'decomposition', 'interfaces', 'part_programs'] as const;
 export type RefinementStage = typeof REFINEMENT_STAGES[number];
@@ -56,7 +57,7 @@ const MIN_CONFIDENCE: Record<RefinementStage, number> = {
 
 const finiteRatio = (value: number) => Number.isFinite(value) && value >= 0 && value <= 1;
 
-export function evaluateRefinementDraft(draft: RefinementDraft, attempt: number, maxAttempts: number): RefinementDecision {
+export function evaluateRefinementDraft(draft: RefinementDraft, attempt: number, maxAttempts: number, context?: RefinementContext): RefinementDecision {
   if (!REFINEMENT_STAGES.includes(draft.stage)) throw new TypeError(`Unsupported refinement stage: ${String(draft.stage)}`);
   if (!finiteRatio(draft.completeness) || !finiteRatio(draft.confidence)) throw new TypeError('Completeness and confidence must be finite ratios from 0 through 1.');
   if (draft.conflicts.length) return { disposition: 'manual_review', stage: draft.stage, reasons: draft.conflicts };
@@ -65,6 +66,18 @@ export function evaluateRefinementDraft(draft: RefinementDraft, attempt: number,
   if (draft.completeness < 1) reasons.push(`Completeness ${(draft.completeness * 100).toFixed(1)}% is below 100%.`);
   if (draft.confidence < MIN_CONFIDENCE[draft.stage]) reasons.push(`Confidence ${(draft.confidence * 100).toFixed(1)}% is below the ${MIN_CONFIDENCE[draft.stage] * 100}% stage threshold.`);
   if (draft.evidenceRefs.length === 0) reasons.push('No traceable evidence reference was supplied.');
+  if (new Set(draft.evidenceRefs).size !== draft.evidenceRefs.length || draft.evidenceRefs.some(ref => !ref.trim())) reasons.push('Evidence references must be unique non-empty identifiers.');
+  if (context) {
+    const guidance = referenceGuidanceForRequest(context.request);
+    const trusted = new Set([
+      'user:prompt',
+      ...context.immutableEvidenceRefs,
+      ...guidance.requirementIds.map(id => `manual:${id}`),
+      ...Object.values(context.priorCheckpointHashes).filter((hash): hash is string => typeof hash === 'string').map(hash => `checkpoint:${hash}`),
+    ]);
+    const invented = draft.evidenceRefs.filter(ref => !trusted.has(ref));
+    if (invented.length) reasons.push(`Untrusted evidence references: ${invented.join(', ')}.`);
+  }
   if (!reasons.length) return { disposition: 'advance', stage: draft.stage, reasons: [] };
   return attempt >= maxAttempts
     ? { disposition: 'stop', stage: draft.stage, reasons: [...reasons, `Stage exhausted ${maxAttempts} bounded attempts.`] }
@@ -82,6 +95,7 @@ export function refinementPromptContract(context: RefinementContext): string {
     `Reference requirement ids: ${guidance.requirementIds.join(', ')}.`,
     ...guidance.rules.map(rule => `Reference-derived gate: ${rule}`),
     'Preserve all accepted upstream outputs. Change only fields required by the feedback.',
+    'evidenceRefs may contain only user:prompt, immutable evidence refs supplied above, checkpoint:<supplied hash>, or manual:<listed requirement id>.',
     'List every unresolved value and conflict explicitly; never invent a manufacturing dimension.',
     'For repeated parts, create one reusable definition plus independent occurrences, not one merged body.',
   ].join('\n');
@@ -111,7 +125,22 @@ export async function runMultiStageRefinement(input: {
         priorCheckpointHashes: checkpoints, feedback, immutableEvidenceRefs: [...immutableEvidence].sort(),
       });
       if (draft.stage !== stage) throw new Error(`Generator returned ${draft.stage} while ${stage} was requested.`);
-      const decision = evaluateRefinementDraft(draft, attempt, maxAttempts);
+      let decision = evaluateRefinementDraft(draft, attempt, maxAttempts, {
+        request: input.request, stage, attempt, priorOutputs: structuredClone(outputs), priorCheckpointHashes: checkpoints,
+        feedback, immutableEvidenceRefs: [...immutableEvidence].sort(),
+      });
+      if (decision.disposition === 'advance' && stage === 'part_programs') {
+        if (!isProductDecompositionPlan(draft.output)) {
+          decision = { disposition: attempt >= maxAttempts ? 'stop' : 'refine_same_stage', stage, reasons: ['ProductDecompositionPlan envelope is incomplete or invalid.'] };
+        } else {
+          const assessment = assessProductDecompositionAccuracy(draft.output, new Set(draft.evidenceRefs));
+          if (!assessment.readyForGeometry) decision = {
+            disposition: assessment.requiresAuthoritativeInput ? 'request_input' : attempt >= maxAttempts ? 'stop' : 'refine_same_stage',
+            stage,
+            reasons: productPlanAccuracyReasons(assessment),
+          };
+        }
+      }
       if (decision.disposition === 'advance') {
         state = recordGenerationStage(state, {
           stage, input: { request: input.request, priorCheckpointHashes: checkpoints }, output: draft.output, status: 'passed',

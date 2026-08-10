@@ -7,7 +7,9 @@ import { routeNativeCadExtension, supportedNativeCadExtensions } from '../../src
 
 type NativeRequest = { caseId: string; family: string; sourceHash: string; localLocator: string; format: string };
 const requestsPath = path.resolve(process.argv[2] ?? 'docs/evidence/complex-holdout-lineage-v2-260807/native-extraction-requests.json');
-const corpusRoot = path.resolve(process.argv[3] ?? 'C:/Users/gomd9/Downloads/참고파일들');
+const corpusRootInput = process.argv[3] ?? process.env.NEXYFAB_REFERENCE_CORPUS_ROOT?.trim();
+if (!corpusRootInput) throw new Error('reference_corpus_root_required');
+const corpusRoot = path.resolve(corpusRootInput);
 const output = path.resolve(process.argv[4] ?? 'docs/evidence/complex-holdout-lineage-v2-260807/native-worker-routing-manifest.json');
 const repair = (value: string) => { if (!/[ÃƒÃ¬Ã«]/.test(value)) return value; const decoded = Buffer.from(value, 'latin1').toString('utf8'); return decoded.includes('\uFFFD') ? value : decoded; };
 const safePath = (root: string, locator: string) => { const absolute = path.resolve(root, repair(locator)); const relative = path.relative(root, absolute); if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) throw new Error(`unsafe_locator:${locator}`); return absolute; };

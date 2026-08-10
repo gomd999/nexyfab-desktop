@@ -327,9 +327,9 @@ describe('정적 전도 — 있는 계산이 판정에 닿는다 (260729b, P1-5)
     expect(s?.labelKo).toContain('0.22g');
   });
 
-  it('지지점을 못 잡으면 「판정 불가」 — 통과가 아니다', () => {
+  it('machine line의 접지 프레임에서 지지 범위를 산출해 전도를 판정한다', () => {
     const d = chk('machine_line')?.checks?.staticTipover;
-    expect(d?.pass).toBeNull();
-    expect(d?.detail?.join(' ')).toContain('판정하지 못했다');
+    expect(d?.pass).toBe(true);
+    expect(d?.detail?.join(' ')).toContain('지지 기준');
   });
 });

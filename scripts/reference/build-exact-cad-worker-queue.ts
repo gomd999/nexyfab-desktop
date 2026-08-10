@@ -8,7 +8,9 @@ type DwgAttempt = { caseId: string; route: string; classification: string; sourc
 type NativeRequest = { caseId: string; sourceHash: string; localLocator: string };
 const reviewRoot = path.resolve(process.argv[2] ?? 'docs/evidence/complex-holdout-review-260806');
 const output = path.resolve(process.argv[3] ?? path.join(reviewRoot, 'exact-cad-worker-queue.json'));
-const corpusRoot = path.resolve(process.argv[4] ?? 'C:/Users/gomd9/Downloads/참고파일들');
+const corpusRootInput = process.argv[4] ?? process.env.NEXYFAB_REFERENCE_CORPUS_ROOT?.trim();
+if (!corpusRootInput) throw new Error('reference_corpus_root_required');
+const corpusRoot = path.resolve(corpusRootInput);
 const dwg = JSON.parse(fs.readFileSync(path.join(reviewRoot, 'dwg-import-results.json'), 'utf8')) as { attempts: DwgAttempt[] };
 const native = JSON.parse(fs.readFileSync(path.join(reviewRoot, 'native-extraction-requests.json'), 'utf8')) as { requests: NativeRequest[] };
 const byCase = new Map(native.requests.map(item => [item.caseId, item]));

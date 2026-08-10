@@ -1,0 +1,373 @@
+{
+  "schema": "nexyfab.scad-definition-geometry-campaign.v1",
+  "generatedAt": "2026-08-06T10:53:11.208Z",
+  "sourceReport": "validation-reports/scad-agent-2026-08-06T09-10-47-repaired.json",
+  "sourceGeneratedAt": "2026-08-06T10:52:40.682Z",
+  "summary": {
+    "total": 4,
+    "pass": 0,
+    "fail": 4
+  },
+  "assemblies": [
+    {
+      "scenarioId": "sc7_gear_train",
+      "status": "fail",
+      "codes": [
+        "SCAD_DEFINITION_RENDER_FAILED:scad:def:gear20",
+        "SCAD_DEFINITION_RENDER_FAILED:scad:def:gear30",
+        "SCAD_DEFINITION_RENDER_FAILED:scad:def:gear_base",
+        "SCAD_DEFINITION_RENDER_FAILED:scad:def:shaft20",
+        "SCAD_DEFINITION_RENDER_FAILED:scad:def:shaft30",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:gear20:1",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:gear30:2",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:gear_base:3",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:shaft20:4",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:shaft30:5",
+        "SCAD_OCCURRENCE_GEOMETRY_COUNT_MISMATCH:0:5"
+      ],
+      "evidence": {
+        "schema": "nexyfab.scad-definition-geometry-evidence.v1",
+        "status": "fail",
+        "releaseReady": false,
+        "definitions": [
+          {
+            "definitionId": "scad:def:gear20",
+            "moduleName": "gear20",
+            "status": "fail",
+            "sha256": null,
+            "bytes": 0,
+            "triangles": null,
+            "watertight": null,
+            "volumeMm3": null,
+            "bbox": null,
+            "codes": [
+              "SCAD_DEFINITION_RENDER_FAILED:scad:def:gear20",
+              "ENOENT:OpenSCAD executable not found. Set OPENSCAD_BIN to the openscad binary (e.g. C:\\Program Files\\OpenSCAD\\openscad.com), or set OPENSCAD_USE_DOCKER=1.:"
+            ]
+          },
+          {
+            "definitionId": "scad:def:gear30",
+            "moduleName": "gear30",
+            "status": "fail",
+            "sha256": null,
+            "bytes": 0,
+            "triangles": null,
+            "watertight": null,
+            "volumeMm3": null,
+            "bbox": null,
+            "codes": [
+              "SCAD_DEFINITION_RENDER_FAILED:scad:def:gear30",
+              "ENOENT:OpenSCAD executable not found. Set OPENSCAD_BIN to the openscad binary (e.g. C:\\Program Files\\OpenSCAD\\openscad.com), or set OPENSCAD_USE_DOCKER=1.:"
+            ]
+          },
+          {
+            "definitionId": "scad:def:gear_base",
+            "moduleName": "gear_base",
+            "status": "fail",
+            "sha256": null,
+            "bytes": 0,
+            "triangles": null,
+            "watertight": null,
+            "volumeMm3": null,
+            "bbox": null,
+            "codes": [
+              "SCAD_DEFINITION_RENDER_FAILED:scad:def:gear_base",
+              "ENOENT:OpenSCAD executable not found. Set OPENSCAD_BIN to the openscad binary (e.g. C:\\Program Files\\OpenSCAD\\openscad.com), or set OPENSCAD_USE_DOCKER=1.:"
+            ]
+          },
+          {
+            "definitionId": "scad:def:shaft20",
+            "moduleName": "shaft20",
+            "status": "fail",
+            "sha256": null,
+            "bytes": 0,
+            "triangles": null,
+            "watertight": null,
+            "volumeMm3": null,
+            "bbox": null,
+            "codes": [
+              "SCAD_DEFINITION_RENDER_FAILED:scad:def:shaft20",
+              "ENOENT:OpenSCAD executable not found. Set OPENSCAD_BIN to the openscad binary (e.g. C:\\Program Files\\OpenSCAD\\openscad.com), or set OPENSCAD_USE_DOCKER=1.:"
+            ]
+          },
+          {
+            "definitionId": "scad:def:shaft30",
+            "moduleName": "shaft30",
+            "status": "fail",
+            "sha256": null,
+            "bytes": 0,
+            "triangles": null,
+            "watertight": null,
+            "volumeMm3": null,
+            "bbox": null,
+            "codes": [
+              "SCAD_DEFINITION_RENDER_FAILED:scad:def:shaft30",
+              "ENOENT:OpenSCAD executable not found. Set OPENSCAD_BIN to the openscad binary (e.g. C:\\Program Files\\OpenSCAD\\openscad.com), or set OPENSCAD_USE_DOCKER=1.:"
+            ]
+          }
+        ],
+        "occurrences": [],
+        "codes": [
+          "SCAD_DEFINITION_RENDER_FAILED:scad:def:gear20",
+          "SCAD_DEFINITION_RENDER_FAILED:scad:def:gear30",
+          "SCAD_DEFINITION_RENDER_FAILED:scad:def:gear_base",
+          "SCAD_DEFINITION_RENDER_FAILED:scad:def:shaft20",
+          "SCAD_DEFINITION_RENDER_FAILED:scad:def:shaft30",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:gear20:1",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:gear30:2",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:gear_base:3",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:shaft20:4",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:shaft30:5",
+          "SCAD_OCCURRENCE_GEOMETRY_COUNT_MISMATCH:0:5"
+        ],
+        "limitations": [
+          "native_brep_not_available",
+          "feature_history_not_available",
+          "joint_semantics_not_certified",
+          "step_roundtrip_not_certified"
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc8_pipe_joint",
+      "status": "fail",
+      "codes": [
+        "SCAD_DEFINITION_RENDER_FAILED:scad:def:main_pipe_left",
+        "SCAD_DEFINITION_RENDER_FAILED:scad:def:main_pipe_right",
+        "SCAD_DEFINITION_RENDER_FAILED:scad:def:branch_pipe",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:main_pipe_left:1",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:main_pipe_right:2",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:branch_pipe:3",
+        "SCAD_OCCURRENCE_GEOMETRY_COUNT_MISMATCH:0:3"
+      ],
+      "evidence": {
+        "schema": "nexyfab.scad-definition-geometry-evidence.v1",
+        "status": "fail",
+        "releaseReady": false,
+        "definitions": [
+          {
+            "definitionId": "scad:def:main_pipe_left",
+            "moduleName": "main_pipe_left",
+            "status": "fail",
+            "sha256": null,
+            "bytes": 0,
+            "triangles": null,
+            "watertight": null,
+            "volumeMm3": null,
+            "bbox": null,
+            "codes": [
+              "SCAD_DEFINITION_RENDER_FAILED:scad:def:main_pipe_left",
+              "ENOENT:OpenSCAD executable not found. Set OPENSCAD_BIN to the openscad binary (e.g. C:\\Program Files\\OpenSCAD\\openscad.com), or set OPENSCAD_USE_DOCKER=1.:"
+            ]
+          },
+          {
+            "definitionId": "scad:def:main_pipe_right",
+            "moduleName": "main_pipe_right",
+            "status": "fail",
+            "sha256": null,
+            "bytes": 0,
+            "triangles": null,
+            "watertight": null,
+            "volumeMm3": null,
+            "bbox": null,
+            "codes": [
+              "SCAD_DEFINITION_RENDER_FAILED:scad:def:main_pipe_right",
+              "ENOENT:OpenSCAD executable not found. Set OPENSCAD_BIN to the openscad binary (e.g. C:\\Program Files\\OpenSCAD\\openscad.com), or set OPENSCAD_USE_DOCKER=1.:"
+            ]
+          },
+          {
+            "definitionId": "scad:def:branch_pipe",
+            "moduleName": "branch_pipe",
+            "status": "fail",
+            "sha256": null,
+            "bytes": 0,
+            "triangles": null,
+            "watertight": null,
+            "volumeMm3": null,
+            "bbox": null,
+            "codes": [
+              "SCAD_DEFINITION_RENDER_FAILED:scad:def:branch_pipe",
+              "ENOENT:OpenSCAD executable not found. Set OPENSCAD_BIN to the openscad binary (e.g. C:\\Program Files\\OpenSCAD\\openscad.com), or set OPENSCAD_USE_DOCKER=1.:"
+            ]
+          }
+        ],
+        "occurrences": [],
+        "codes": [
+          "SCAD_DEFINITION_RENDER_FAILED:scad:def:main_pipe_left",
+          "SCAD_DEFINITION_RENDER_FAILED:scad:def:main_pipe_right",
+          "SCAD_DEFINITION_RENDER_FAILED:scad:def:branch_pipe",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:main_pipe_left:1",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:main_pipe_right:2",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:branch_pipe:3",
+          "SCAD_OCCURRENCE_GEOMETRY_COUNT_MISMATCH:0:3"
+        ],
+        "limitations": [
+          "native_brep_not_available",
+          "feature_history_not_available",
+          "joint_semantics_not_certified",
+          "step_roundtrip_not_certified"
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc9_simple_car",
+      "status": "fail",
+      "codes": [
+        "SCAD_DEFINITION_RENDER_FAILED:scad:def:body",
+        "SCAD_DEFINITION_RENDER_FAILED:scad:def:wheel",
+        "SCAD_DEFINITION_RENDER_FAILED:scad:def:window",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:body:1",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:wheel:2",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:wheel:3",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:wheel:4",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:wheel:5",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:window:6",
+        "SCAD_OCCURRENCE_GEOMETRY_COUNT_MISMATCH:0:6"
+      ],
+      "evidence": {
+        "schema": "nexyfab.scad-definition-geometry-evidence.v1",
+        "status": "fail",
+        "releaseReady": false,
+        "definitions": [
+          {
+            "definitionId": "scad:def:body",
+            "moduleName": "body",
+            "status": "fail",
+            "sha256": null,
+            "bytes": 0,
+            "triangles": null,
+            "watertight": null,
+            "volumeMm3": null,
+            "bbox": null,
+            "codes": [
+              "SCAD_DEFINITION_RENDER_FAILED:scad:def:body",
+              "ENOENT:OpenSCAD executable not found. Set OPENSCAD_BIN to the openscad binary (e.g. C:\\Program Files\\OpenSCAD\\openscad.com), or set OPENSCAD_USE_DOCKER=1.:"
+            ]
+          },
+          {
+            "definitionId": "scad:def:wheel",
+            "moduleName": "wheel",
+            "status": "fail",
+            "sha256": null,
+            "bytes": 0,
+            "triangles": null,
+            "watertight": null,
+            "volumeMm3": null,
+            "bbox": null,
+            "codes": [
+              "SCAD_DEFINITION_RENDER_FAILED:scad:def:wheel",
+              "ENOENT:OpenSCAD executable not found. Set OPENSCAD_BIN to the openscad binary (e.g. C:\\Program Files\\OpenSCAD\\openscad.com), or set OPENSCAD_USE_DOCKER=1.:"
+            ]
+          },
+          {
+            "definitionId": "scad:def:window",
+            "moduleName": "window",
+            "status": "fail",
+            "sha256": null,
+            "bytes": 0,
+            "triangles": null,
+            "watertight": null,
+            "volumeMm3": null,
+            "bbox": null,
+            "codes": [
+              "SCAD_DEFINITION_RENDER_FAILED:scad:def:window",
+              "ENOENT:OpenSCAD executable not found. Set OPENSCAD_BIN to the openscad binary (e.g. C:\\Program Files\\OpenSCAD\\openscad.com), or set OPENSCAD_USE_DOCKER=1.:"
+            ]
+          }
+        ],
+        "occurrences": [],
+        "codes": [
+          "SCAD_DEFINITION_RENDER_FAILED:scad:def:body",
+          "SCAD_DEFINITION_RENDER_FAILED:scad:def:wheel",
+          "SCAD_DEFINITION_RENDER_FAILED:scad:def:window",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:body:1",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:wheel:2",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:wheel:3",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:wheel:4",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:wheel:5",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:window:6",
+          "SCAD_OCCURRENCE_GEOMETRY_COUNT_MISMATCH:0:6"
+        ],
+        "limitations": [
+          "native_brep_not_available",
+          "feature_history_not_available",
+          "joint_semantics_not_certified",
+          "step_roundtrip_not_certified"
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc10_brackets_grid",
+      "status": "fail",
+      "codes": [
+        "SCAD_DEFINITION_RENDER_FAILED:scad:def:bracket",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:1",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:2",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:3",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:4",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:5",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:6",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:7",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:8",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:9",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:10",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:11",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:12",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:13",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:14",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:15",
+        "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:16",
+        "SCAD_OCCURRENCE_GEOMETRY_COUNT_MISMATCH:0:16"
+      ],
+      "evidence": {
+        "schema": "nexyfab.scad-definition-geometry-evidence.v1",
+        "status": "fail",
+        "releaseReady": false,
+        "definitions": [
+          {
+            "definitionId": "scad:def:bracket",
+            "moduleName": "bracket",
+            "status": "fail",
+            "sha256": null,
+            "bytes": 0,
+            "triangles": null,
+            "watertight": null,
+            "volumeMm3": null,
+            "bbox": null,
+            "codes": [
+              "SCAD_DEFINITION_RENDER_FAILED:scad:def:bracket",
+              "ENOENT:OpenSCAD executable not found. Set OPENSCAD_BIN to the openscad binary (e.g. C:\\Program Files\\OpenSCAD\\openscad.com), or set OPENSCAD_USE_DOCKER=1.:"
+            ]
+          }
+        ],
+        "occurrences": [],
+        "codes": [
+          "SCAD_DEFINITION_RENDER_FAILED:scad:def:bracket",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:1",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:2",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:3",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:4",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:5",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:6",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:7",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:8",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:9",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:10",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:11",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:12",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:13",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:14",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:15",
+          "SCAD_OCCURRENCE_DEFINITION_GEOMETRY_MISSING:scad:occ:bracket:16",
+          "SCAD_OCCURRENCE_GEOMETRY_COUNT_MISMATCH:0:16"
+        ],
+        "limitations": [
+          "native_brep_not_available",
+          "feature_history_not_available",
+          "joint_semantics_not_certified",
+          "step_roundtrip_not_certified"
+        ]
+      }
+    }
+  ]
+}

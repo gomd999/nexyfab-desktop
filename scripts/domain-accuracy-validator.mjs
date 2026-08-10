@@ -43,7 +43,7 @@ import { placedAabb } from './drawing-to-3d/assembly.mjs';
 const axesOfCase = caseValue =>
   [...new Set((caseValue.groundTruthAssertions ?? []).map(truth => truth.axis))];
 
-const MEASURED_AXES = new Set(['requirements', 'dimensions', 'part_definitions', 'collision_clearance']);
+const MEASURED_AXES = new Set(['requirements', 'geometry', 'semantic_objects', 'relationships', 'output_consistency', 'structures']);
 
 /**
  * corpus(후보 매니페스트) 항목 + 캠페인 입력 → DomainAccuracyRun.
@@ -91,7 +91,7 @@ export async function validateCase(corpusEntry, input, opts = {}) {
   const flags = { falseClear: false };
   if (rebuilt) {
     const hash = hashAssemblyArtifact(rebuilt);
-    judged('dimensions', hash === corpusEntry.artifactHash,
+    judged('geometry', hash === corpusEntry.artifactHash,
       hash === corpusEntry.artifactHash
         ? 'artifact_hash_deterministic_across_processes'
         : `artifact_hash_mismatch:${hash.slice(0, 12)}!=${String(corpusEntry.artifactHash).slice(0, 12)}`);
@@ -101,12 +101,12 @@ export async function validateCase(corpusEntry, input, opts = {}) {
     const expected = corpusEntry.artifactSummary ?? {};
     const defsOk = parts.length === expected.partCount
       && JSON.stringify(roles) === JSON.stringify(expected.roles ?? []);
-    judged('part_definitions', defsOk,
+    judged('semantic_objects', defsOk,
       defsOk ? `part_count_${parts.length}_roles_match` : `part_defs_mismatch:${parts.length}/${expected.partCount}`);
 
     const alignmentErrors = rebuilt.alignmentErrors ?? [];
     const unverified = parts.filter(part => part.unverified === true).length;
-    judged('collision_clearance', alignmentErrors.length === 0 && unverified === 0,
+    judged('relationships', alignmentErrors.length === 0 && unverified === 0,
       alignmentErrors.length === 0 && unverified === 0
         ? 'alignment_gate_clean_on_rebuild'
         : `alignment_gate:${alignmentErrors.length}err_${unverified}unverified`);
@@ -115,7 +115,7 @@ export async function validateCase(corpusEntry, input, opts = {}) {
     // 측정할 대상이 자명하게 0이면 not_run — 공허한 0==0 pass 로 커버리지를
     // 부풀리지 않는다.
     if (expected.extents === null) {
-      notRun('transforms', 'extents_non_finite:part_rotation_outside_yaw_vocabulary');
+      notRun('output_consistency', 'extents_non_finite:part_rotation_outside_yaw_vocabulary');
     } else if (Array.isArray(expected.extents)) {
       const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
       for (const part of parts) {
@@ -125,11 +125,11 @@ export async function validateCase(corpusEntry, input, opts = {}) {
       const got = parts.length ? [0, 1, 2].map(k => +(mx[k] - mn[k]).toFixed(6)) : [0, 0, 0];
       const match = got.every(Number.isFinite)
         && got.every((v, k) => Math.abs(v - expected.extents[k]) <= 1e-6);
-      judged('transforms', match, match
+      judged('output_consistency', match, match
         ? `extents_rederived_${got.join('x')}`
         : `extents_mismatch:${got.join('x')}!=${expected.extents.join('x')}`);
     } else {
-      notRun('transforms', 'corpus_summary_missing:extents');
+      notRun('output_consistency', 'corpus_summary_missing:extents');
     }
 
     if (typeof expected.holeTotal === 'number' && expected.holeTotal > 0) {
@@ -154,7 +154,7 @@ export async function validateCase(corpusEntry, input, opts = {}) {
       notRun('hierarchy', 'template_without_hierarchy');
     }
 
-    if (opts.roundtrip) {
+    if (opts.roundtrip && axes.includes('step_roundtrip')) {
       // W1-2 — STEP 왕복 실측: 방출(드롭 0)→재임포트→메시 체적 유한/양수.
       // 실패는 사유와 함께 fail — 왕복이 안 되는 산출물을 통과시키지 않는다.
       try {
@@ -212,20 +212,20 @@ export async function validateCase(corpusEntry, input, opts = {}) {
           .filter(([key, value]) => Math.abs(value - (meta[key] ?? NaN)) > 1e-6)
           .map(([key]) => key);
         if (drift.length) {
-          judged('manufacturing', false, `geometry_meta_drift:${drift.join(',')}`);
+          judged('structures', false, `geometry_meta_drift:${drift.join(',')}`);
         } else {
           const { civilCheck } = await import('./drawing-to-3d/civil-check.mjs');
           const prelim = civilCheck(rebuilt);
           const allPass = !!prelim && Object.values(prelim.checks ?? {}).every(check => check.pass === true);
-          judged('manufacturing', allPass, allPass
+          judged('structures', allPass, allPass
             ? 'shape_to_check_roundtrip_ok'
             : `preliminary_check_failed:${Object.entries(prelim?.checks ?? {}).filter(([, c]) => !c.pass).map(([k]) => k).join(',')}`);
         }
       } catch (error) {
-        judged('manufacturing', false, `roundtrip_failed:${(error instanceof Error ? error.message : String(error)).slice(0, 60)}`);
+        judged('structures', false, `roundtrip_failed:${(error instanceof Error ? error.message : String(error)).slice(0, 60)}`);
       }
     } else {
-      notRun('manufacturing', 'shape_to_check_roundtrip_vocabulary_pending');
+      notRun('structures', 'shape_to_check_roundtrip_vocabulary_pending');
     }
 
     if (opts.repair) {
@@ -271,10 +271,10 @@ export async function validateCase(corpusEntry, input, opts = {}) {
       }
     }
   } else {
-    judged('dimensions', false, `rebuild_unavailable:${rebuildError}`);
-    judged('part_definitions', false, `rebuild_unavailable:${rebuildError}`);
-    judged('collision_clearance', false, `rebuild_unavailable:${rebuildError}`);
-    if (opts.roundtrip) judged('step_roundtrip', false, `rebuild_unavailable:${rebuildError}`);
+    judged('geometry', false, `rebuild_unavailable:${rebuildError}`);
+    judged('semantic_objects', false, `rebuild_unavailable:${rebuildError}`);
+    judged('relationships', false, `rebuild_unavailable:${rebuildError}`);
+    if (opts.roundtrip && axes.includes('step_roundtrip')) judged('step_roundtrip', false, `rebuild_unavailable:${rebuildError}`);
   }
 
   for (const axis of axes) {
@@ -337,19 +337,19 @@ async function validateCaseAiSubject(corpusEntry, input, opts, ctx) {
     const expected = corpusEntry.artifactSummary ?? {};
     const defsOk = parts.length === expected.partCount
       && JSON.stringify(roles) === JSON.stringify(expected.roles ?? []);
-    judged('part_definitions', defsOk,
+    judged('semantic_objects', defsOk,
       defsOk ? `ai_part_count_${parts.length}_roles_match` : `ai_part_defs_mismatch:${parts.length}/${expected.partCount}`);
     const alignmentErrors = asm.alignmentErrors ?? [];
     const unverified = parts.filter(part => part.unverified === true).length;
-    judged('collision_clearance', alignmentErrors.length === 0 && unverified === 0,
+    judged('relationships', alignmentErrors.length === 0 && unverified === 0,
       alignmentErrors.length === 0 && unverified === 0
         ? 'ai_alignment_gate_clean'
         : `ai_alignment_gate:${alignmentErrors.length}err_${unverified}unverified`);
   } else {
-    judged('part_definitions', false, `ai_output_unavailable:${genError}`);
-    judged('collision_clearance', false, `ai_output_unavailable:${genError}`);
+    judged('semantic_objects', false, `ai_output_unavailable:${genError}`);
+    judged('relationships', false, `ai_output_unavailable:${genError}`);
   }
-  notRun('dimensions', 'ai_subject_dimension_gt_requires_holdout_assertions');
+  notRun('geometry', 'ai_subject_geometry_gt_requires_holdout_assertions');
 
   for (const axis of axes) {
     if (!results.has(axis)) notRun(axis, `dryrun_v1_out_of_scope:${axis}`);

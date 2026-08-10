@@ -1,0 +1,384 @@
+{
+  "schema": "nexyfab.complex-holdout-review.v1",
+  "family": "gearbox",
+  "policy": {
+    "selectedDoesNotMeanApproved": true,
+    "scoreEligible": false,
+    "oneCasePerLineage": true,
+    "requiredApprovedCases": 20
+  },
+  "candidates": 19,
+  "selected": 17,
+  "shortfall": 3,
+  "structurallyRejected": [
+    {
+      "lineageGroup": "gearbox:gear-box-28",
+      "relativePath": "참고파일들4/gear-box--28.snapshot.2.zip",
+      "reason": "supported_product_cad_missing"
+    },
+    {
+      "lineageGroup": "gearbox:wpx-worm-gear-speed-reducer-gearbox-3d-model-autocad-design-1",
+      "relativePath": "참고파일들4/wpx-worm-gear-speed-reducer-gearbox-3d-model-autocad-design-1.snapshot.2.zip",
+      "reason": "supported_product_cad_missing"
+    }
+  ],
+  "items": [
+    {
+      "caseId": "gearbox-review-01",
+      "family": "gearbox",
+      "tierCandidate": "T2",
+      "holdoutGroup": "gearbox:3-stage-helical-gear-reducer-design-1",
+      "sourceHash": "34456f5a233bf4ef5b9bc0fa0c5970d8b54aebb8fa3eceeaadf51253a4126e9d",
+      "bytes": 2549222,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/3-stage-helical-gear-reducer-design-1.snapshot.4/Montaj bitiş.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-02",
+      "family": "gearbox",
+      "tierCandidate": "T2",
+      "holdoutGroup": "gearbox:basic-worm-gear-assembly-solidworks-1",
+      "sourceHash": "234a768f45040a1df2ec2d47554fe048f8f9dfe293c0590b0d56476559436104",
+      "bytes": 1051314,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/basic-worm-gear-assembly-solidworks-1.snapshot.2/Assem1.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-03",
+      "family": "gearbox",
+      "tierCandidate": "T2",
+      "holdoutGroup": "gearbox:cycloidal-gearbox-50-1-for-curtain-lift-canon-pixma-mg5540-motor-1",
+      "sourceHash": "b5aa4955b6e4e441f33e6d67f2b42a1b0c01e5aa5dd2e2810e85265215b71f36",
+      "bytes": 754765,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/cycloidal-gearbox-50-1-for-curtain-lift-canon-pixma-mg5540-motor-1.snapshot.58/cycloidal gearbox 50_1.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-04",
+      "family": "gearbox",
+      "tierCandidate": "T1",
+      "holdoutGroup": "gearbox:differential-109",
+      "sourceHash": "6a66de0b245fd5f3764358c105f39845922fb9485d5617e6537e39686844d51c",
+      "bytes": 13673241,
+      "extension": "step",
+      "localLocator": "참고파일들4/differential-109.snapshot.7/DIFFERENTIAL GEAR BOX FILE.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-05",
+      "family": "gearbox",
+      "tierCandidate": "T2",
+      "holdoutGroup": "gearbox:differential-gear-box-47",
+      "sourceHash": "5e171f9695873a0fb0933dd7d333b30b89809fc7ad8d1e915dad1d9a3d066009",
+      "bytes": 2443139,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/differential-gear-box-47.snapshot.7/Assem GB.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-06",
+      "family": "gearbox",
+      "tierCandidate": "T2",
+      "holdoutGroup": "gearbox:gear-box-142",
+      "sourceHash": "4d17aa98089879f4af6812a9478e12557116a8710ed80487d4c3d4c7ac9e65e3",
+      "bytes": 4123526,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/gear-box-142.snapshot.4/Gear Box/MONTAJ.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-07",
+      "family": "gearbox",
+      "tierCandidate": "T2",
+      "holdoutGroup": "gearbox:gear-box-261",
+      "sourceHash": "f88f2b80dc74d5b756b5267ff6817107118fa50e0931f5de67f01ce409f7e204",
+      "bytes": 732569,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/gear-box-261.snapshot.1/gearbox/Gear Box & Body Assembely.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-08",
+      "family": "gearbox",
+      "tierCandidate": "T2",
+      "holdoutGroup": "gearbox:gear-reducer-24",
+      "sourceHash": "18f10d7e5fbd68e6eeadf5fcc4e035381157b10387fce110227b8c513bbcc0d9",
+      "bytes": 231229,
+      "extension": "catproduct",
+      "localLocator": "참고파일들4/gear-reducer-24.snapshot.2/video2.CATProduct",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-09",
+      "family": "gearbox",
+      "tierCandidate": "T3",
+      "holdoutGroup": "gearbox:gearbox-109",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "bytes": 10400789,
+      "extension": "zip",
+      "localLocator": "참고파일들4/gearbox-109.snapshot.12.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-10",
+      "family": "gearbox",
+      "tierCandidate": "T2",
+      "holdoutGroup": "gearbox:helical-gear-box-ratio-2-5-1",
+      "sourceHash": "0b9069caa4d457021df7825d6365183166df6914d86561638fc3002e1fedee04",
+      "bytes": 2125312,
+      "extension": "asm",
+      "localLocator": "참고파일들4/helical-gear-box-ratio-2-5-1.snapshot.2/C9 GB.asm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-11",
+      "family": "gearbox",
+      "tierCandidate": "T1",
+      "holdoutGroup": "gearbox:helical-planetary-gearbox-design-advanced-solidworks-assembly-1",
+      "sourceHash": "5b0b36d1168a1a3e89627712c774e6ec9f31ef86eb80934e5c7202f224b6807a",
+      "bytes": 22458782,
+      "extension": "step",
+      "localLocator": "참고파일들4/helical-planetary-gearbox-design-advanced-solidworks-assembly-1.snapshot.1/step/final assemm.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-12",
+      "family": "gearbox",
+      "tierCandidate": "T2",
+      "holdoutGroup": "gearbox:industrial-gearbox-speed-reducer-full-assembly-parts-1",
+      "sourceHash": "58c33910be55d7819dba9ba6ab427799c1795abc1f795e05ba6db9b62080352a",
+      "bytes": 1297254,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/industrial-gearbox-speed-reducer-full-assembly-parts-1.snapshot.4/Gear Box Assembly.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-13",
+      "family": "gearbox",
+      "tierCandidate": "T2",
+      "holdoutGroup": "gearbox:planetary-gearbox-assembly-4",
+      "sourceHash": "75815ed5ab9524c34508ffbc6ade7280a4dd64a8f0edf368467b154b1f80fc8a",
+      "bytes": 924531,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/planetary-gearbox-assembly-4.snapshot.5/Planetary Gear/Planetary Gear Assembly.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-14",
+      "family": "gearbox",
+      "tierCandidate": "T1",
+      "holdoutGroup": "gearbox:reductor-de-tornillo-sinfin-gear-reducer-driven-1",
+      "sourceHash": "36fa5483509d06002a2cc1439a6df6d4f8838b80e4da482c9ad47019e6ec9e7d",
+      "bytes": 10197110,
+      "extension": "igs",
+      "localLocator": "참고파일들4/reductor-de-tornillo-sinfin-gear-reducer-driven-1.snapshot.2/Reductor de tornillo/Reductor de Tornillo Assy.IGS",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-15",
+      "family": "gearbox",
+      "tierCandidate": "T1",
+      "holdoutGroup": "gearbox:simple-bevel-gear-reducer-1",
+      "sourceHash": "7dfe9e91c66bc0ed0721b82af6bcbed3130e28cb7aa8a882c398b4f97228d957",
+      "bytes": 2665249,
+      "extension": "stp",
+      "localLocator": "참고파일들4/simple-bevel-gear-reducer-1.snapshot.2/Assieme_riduttore_conico.stp",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-16",
+      "family": "gearbox",
+      "tierCandidate": "T2",
+      "holdoutGroup": "gearbox:single-stage-helical-gear-reducer-solidworks-project-1",
+      "sourceHash": "4d0fe353e753d07504e2ab4a1458b348304726cb1f4c9f0be0ca8d35061b0e49",
+      "bytes": 1836840,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/single-stage-helical-gear-reducer-solidworks-project-1.snapshot.3/final.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-17",
+      "family": "gearbox",
+      "tierCandidate": "T1",
+      "holdoutGroup": "gearbox:single-stage-reduction-helical-gear-box-1",
+      "sourceHash": "aaa4267e7bb109c4d83d862392407420c215ac3a5c9abc333b08f7becaea87a8",
+      "bytes": 33513918,
+      "extension": "step",
+      "localLocator": "참고파일들4/single-stage-reduction-helical-gear-box-1.snapshot.1/Single Stage Reduction Helical Gear Box.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    }
+  ]
+}

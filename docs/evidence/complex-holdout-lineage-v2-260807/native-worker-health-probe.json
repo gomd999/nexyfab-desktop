@@ -1,0 +1,48 @@
+{
+  "schema": "nexyfab.native-worker-health-probe-batch.v1",
+  "generatedAt": "2026-08-08T22:56:10.830Z",
+  "releaseReady": false,
+  "summary": {
+    "workers": 7,
+    "pass": 0,
+    "fail": 0,
+    "notRun": 7
+  },
+  "results": [
+    {
+      "workerKind": "solidworks-native",
+      "status": "not_run",
+      "reason": "worker_command_unconfigured"
+    },
+    {
+      "workerKind": "inventor-native",
+      "status": "not_run",
+      "reason": "worker_command_unconfigured"
+    },
+    {
+      "workerKind": "catia-native",
+      "status": "not_run",
+      "reason": "worker_command_unconfigured"
+    },
+    {
+      "workerKind": "creo-native",
+      "status": "not_run",
+      "reason": "worker_command_unconfigured"
+    },
+    {
+      "workerKind": "parasolid-native",
+      "status": "not_run",
+      "reason": "worker_command_unconfigured"
+    },
+    {
+      "workerKind": "dwg-exact",
+      "status": "not_run",
+      "reason": "worker_command_unconfigured"
+    },
+    {
+      "workerKind": "revit-native",
+      "status": "not_run",
+      "reason": "worker_command_unconfigured"
+    }
+  ]
+}

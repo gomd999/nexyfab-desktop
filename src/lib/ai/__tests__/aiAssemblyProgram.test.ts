@@ -51,4 +51,21 @@ describe('validateAiAssemblyProgram', () => {
     expect(messages).toContain('assembly instance housing-1 belongs to multiple subassemblies');
     expect(messages.some(message => message.includes('hierarchy contains a cycle'))).toBe(true);
   });
+
+  it('rejects divergent repeated definitions and review-ready assumed metadata', () => {
+    const repeated: AiAssemblyProgram = {
+      ...valid,
+      classification: 'review_required', unresolved: [],
+      parts: valid.parts.map((part, index) => ({
+        ...part,
+        definitionId: 'shared',
+        metadata: { ...part.metadata, partNumber: 'SHARED', source: index === 0 ? 'confirmed' : 'assumed' },
+        featureTree: index === 0 ? part.featureTree : { nodes: [{ id: 'different', name: 'different', dependencies: [], payload: { kind: 'extrude', loop: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }], depth: 1, direction: 'one_sided', mode: 'add' } }] },
+      })),
+      assembly: { ...valid.assembly, parts: valid.assembly.parts.map(part => ({ ...part, partTemplateId: 'shared' })) },
+    };
+    const messages = validateAiAssemblyProgram(repeated).map(issue => issue.message);
+    expect(messages).toContain('assumed component metadata requires concept_only classification');
+    expect(messages.some(message => message.includes('divergent geometry'))).toBe(true);
+  });
 });

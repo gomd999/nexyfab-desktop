@@ -74,11 +74,11 @@ export async function PATCH(req: NextRequest) {
   const now = Date.now();
   const newStatus = body.action === 'approve' ? 'approved' : 'rejected';
   await db.execute(
-    'UPDATE partner_applications SET status = ?, updated_at = ? WHERE id = ?',
+    'UPDATE partner_applications SET status = ?, updated_at = ?, active_key = NULL WHERE id = ?',
     newStatus, now, body.id,
   ).catch(async () => {
     await db.execute('ALTER TABLE partner_applications ADD COLUMN updated_at INTEGER').catch(() => {});
-    await db.execute('UPDATE partner_applications SET status = ? WHERE id = ?', newStatus, body.id);
+    await db.execute('UPDATE partner_applications SET status = ?, active_key = NULL WHERE id = ?', newStatus, body.id);
   });
 
   if (body.action === 'approve') {

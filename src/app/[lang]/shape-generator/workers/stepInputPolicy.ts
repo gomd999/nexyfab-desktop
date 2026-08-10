@@ -1,4 +1,6 @@
-export const DEFAULT_MAX_STEP_BYTES = 200 * 1024 * 1024;
+import { BREP_STEP_BROWSER_MAX_BYTES } from '@/lib/brep-bridge/constants';
+
+export const DEFAULT_MAX_STEP_BYTES = BREP_STEP_BROWSER_MAX_BYTES;
 const STEP_START = 'ISO-10303-21;';
 const STEP_END = 'END-ISO-10303-21;';
 

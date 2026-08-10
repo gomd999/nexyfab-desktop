@@ -1,0 +1,344 @@
+{
+  "schema": "nexyfab.step-body-membership-campaign.v1",
+  "generatedAt": "2026-08-06T13:07:18.910Z",
+  "scope": "Four calibrated SCAD assemblies plus native multi-body and three-level hierarchy fixtures; not a general complex-product accuracy claim.",
+  "inputs": {
+    "bridge": "docs/evidence/scad-assembly-bridge-260806/run-6.json",
+    "nativeStep": "docs/evidence/scad-native-step-assembly-260806/run-5.json"
+  },
+  "summary": {
+    "scenarios": 7,
+    "pass": 7,
+    "fail": 0,
+    "notRun": 0
+  },
+  "results": [
+    {
+      "scenarioId": "sc7_gear_train",
+      "status": "pass",
+      "codes": [],
+      "affectedDefinitionIds": [],
+      "expected": {
+        "partDefinitions": 5,
+        "occurrences": 5
+      },
+      "imported": {
+        "productDefinitions": 6,
+        "partDefinitions": 5,
+        "bodies": 5,
+        "occurrences": 5,
+        "relationships": 5,
+        "finiteLocalTransforms": 5,
+        "finiteWorldTransforms": 5
+      },
+      "evidence": {
+        "authoritative": true,
+        "definitions": [
+          {
+            "definitionId": "scad:def:gear20",
+            "bodyCount": 1
+          },
+          {
+            "definitionId": "scad:def:gear30",
+            "bodyCount": 1
+          },
+          {
+            "definitionId": "scad:def:gear_base",
+            "bodyCount": 1
+          },
+          {
+            "definitionId": "scad:def:shaft20",
+            "bodyCount": 1
+          },
+          {
+            "definitionId": "scad:def:shaft30",
+            "bodyCount": 1
+          }
+        ],
+        "occurrenceCounts": [
+          {
+            "definitionId": "scad:def:gear20",
+            "count": 1
+          },
+          {
+            "definitionId": "scad:def:gear30",
+            "count": 1
+          },
+          {
+            "definitionId": "scad:def:gear_base",
+            "count": 1
+          },
+          {
+            "definitionId": "scad:def:shaft20",
+            "count": 1
+          },
+          {
+            "definitionId": "scad:def:shaft30",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc8_pipe_joint",
+      "status": "pass",
+      "codes": [],
+      "affectedDefinitionIds": [],
+      "expected": {
+        "partDefinitions": 3,
+        "occurrences": 3
+      },
+      "imported": {
+        "productDefinitions": 4,
+        "partDefinitions": 3,
+        "bodies": 3,
+        "occurrences": 3,
+        "relationships": 3,
+        "finiteLocalTransforms": 3,
+        "finiteWorldTransforms": 3
+      },
+      "evidence": {
+        "authoritative": true,
+        "definitions": [
+          {
+            "definitionId": "scad:def:main_pipe_left",
+            "bodyCount": 1
+          },
+          {
+            "definitionId": "scad:def:main_pipe_right",
+            "bodyCount": 1
+          },
+          {
+            "definitionId": "scad:def:branch_pipe",
+            "bodyCount": 1
+          }
+        ],
+        "occurrenceCounts": [
+          {
+            "definitionId": "scad:def:main_pipe_left",
+            "count": 1
+          },
+          {
+            "definitionId": "scad:def:main_pipe_right",
+            "count": 1
+          },
+          {
+            "definitionId": "scad:def:branch_pipe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc9_simple_car",
+      "status": "pass",
+      "codes": [],
+      "affectedDefinitionIds": [],
+      "expected": {
+        "partDefinitions": 3,
+        "occurrences": 6
+      },
+      "imported": {
+        "productDefinitions": 4,
+        "partDefinitions": 3,
+        "bodies": 3,
+        "occurrences": 6,
+        "relationships": 6,
+        "finiteLocalTransforms": 6,
+        "finiteWorldTransforms": 6
+      },
+      "evidence": {
+        "authoritative": true,
+        "definitions": [
+          {
+            "definitionId": "scad:def:body",
+            "bodyCount": 1
+          },
+          {
+            "definitionId": "scad:def:wheel",
+            "bodyCount": 1
+          },
+          {
+            "definitionId": "scad:def:window",
+            "bodyCount": 1
+          }
+        ],
+        "occurrenceCounts": [
+          {
+            "definitionId": "scad:def:body",
+            "count": 1
+          },
+          {
+            "definitionId": "scad:def:wheel",
+            "count": 4
+          },
+          {
+            "definitionId": "scad:def:window",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc10_brackets_grid",
+      "status": "pass",
+      "codes": [],
+      "affectedDefinitionIds": [],
+      "expected": {
+        "partDefinitions": 1,
+        "occurrences": 16
+      },
+      "imported": {
+        "productDefinitions": 2,
+        "partDefinitions": 1,
+        "bodies": 1,
+        "occurrences": 16,
+        "relationships": 16,
+        "finiteLocalTransforms": 16,
+        "finiteWorldTransforms": 16
+      },
+      "evidence": {
+        "authoritative": true,
+        "definitions": [
+          {
+            "definitionId": "scad:def:bracket",
+            "bodyCount": 1
+          }
+        ],
+        "occurrenceCounts": [
+          {
+            "definitionId": "scad:def:bracket",
+            "count": 16
+          }
+        ]
+      }
+    },
+    {
+      "scenarioId": "native_multibody_weldment",
+      "status": "pass",
+      "codes": [],
+      "affectedDefinitionIds": [],
+      "expected": {
+        "partDefinitions": 1,
+        "occurrences": 1
+      },
+      "imported": {
+        "productDefinitions": 2,
+        "partDefinitions": 1,
+        "bodies": 3,
+        "occurrences": 1,
+        "relationships": 1,
+        "finiteLocalTransforms": 1,
+        "finiteWorldTransforms": 1
+      },
+      "evidence": {
+        "authoritative": true,
+        "definitions": [
+          {
+            "definitionId": "frame",
+            "bodyCount": 3
+          }
+        ],
+        "occurrenceCounts": [
+          {
+            "definitionId": "frame",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "scenarioId": "native_three_level_hierarchy",
+      "status": "pass",
+      "codes": [],
+      "affectedDefinitionIds": [],
+      "expected": {
+        "partDefinitions": 1,
+        "occurrences": 1
+      },
+      "imported": {
+        "productDefinitions": 3,
+        "partDefinitions": 1,
+        "bodies": 1,
+        "occurrences": 1,
+        "relationships": 2,
+        "finiteLocalTransforms": 2,
+        "finiteWorldTransforms": 1,
+        "pathDepth": 3,
+        "worldTranslation": [
+          80,
+          0,
+          0
+        ],
+        "worldRotationDiagonal": [
+          -1,
+          -1,
+          1
+        ]
+      },
+      "evidence": {
+        "authoritative": true,
+        "definitions": [
+          {
+            "definitionId": "leaf",
+            "bodyCount": 1
+          }
+        ],
+        "occurrenceCounts": [
+          {
+            "definitionId": "leaf",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "scenarioId": "native_four_level_branching_reuse",
+      "status": "pass",
+      "codes": [],
+      "affectedDefinitionIds": [],
+      "expected": {
+        "partDefinitions": 1,
+        "occurrences": 2
+      },
+      "imported": {
+        "productDefinitions": 5,
+        "partDefinitions": 1,
+        "bodies": 1,
+        "occurrences": 2,
+        "relationships": 5,
+        "finiteLocalTransforms": 5,
+        "finiteWorldTransforms": 2,
+        "pathDepth": 4,
+        "reusedDefinitionCount": 1,
+        "worldTranslations": [
+          [
+            10,
+            25,
+            0
+          ],
+          [
+            15,
+            -20,
+            0
+          ]
+        ]
+      },
+      "evidence": {
+        "authoritative": true,
+        "definitions": [
+          {
+            "definitionId": "shared_leaf",
+            "bodyCount": 1
+          }
+        ],
+        "occurrenceCounts": [
+          {
+            "definitionId": "shared_leaf",
+            "count": 2
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,357 @@
+{
+  "schema": "nexyfab.complex-ground-truth-review-priority.v1",
+  "generatedAt": "2026-08-06T15:07:10.477Z",
+  "policy": {
+    "grantsApproval": false,
+    "scoreEligible": false,
+    "ordering": "source hash pass, automatic evidence descending, manual actions ascending, case id"
+  },
+  "summary": {
+    "candidates": 115,
+    "selected": 30,
+    "perFamily": 5,
+    "familyCounts": {
+      "factory_equipment": 20,
+      "gearbox": 20,
+      "interior": 20,
+      "pressure_vessel": 20,
+      "robot": 20,
+      "turbomachinery": 15
+    },
+    "deficitsTo20": {
+      "turbomachinery": 5
+    }
+  },
+  "selected": [
+    {
+      "rankInFamily": 1,
+      "caseId": "factory_equipment-review-07",
+      "family": "factory_equipment",
+      "tier": "T3",
+      "priorityScore": 981,
+      "sourceHashPassed": true,
+      "automaticPasses": 1,
+      "reviewerRequired": 12,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 2,
+      "caseId": "factory_equipment-review-01",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "priorityScore": 900,
+      "sourceHashPassed": true,
+      "automaticPasses": 0,
+      "reviewerRequired": 10,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 3,
+      "caseId": "factory_equipment-review-02",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "priorityScore": 900,
+      "sourceHashPassed": true,
+      "automaticPasses": 0,
+      "reviewerRequired": 10,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 4,
+      "caseId": "factory_equipment-review-03",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "priorityScore": 900,
+      "sourceHashPassed": true,
+      "automaticPasses": 0,
+      "reviewerRequired": 10,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 5,
+      "caseId": "factory_equipment-review-04",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "priorityScore": 900,
+      "sourceHashPassed": true,
+      "automaticPasses": 0,
+      "reviewerRequired": 10,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 1,
+      "caseId": "gearbox-review-10",
+      "family": "gearbox",
+      "tier": "T3",
+      "priorityScore": 1314,
+      "sourceHashPassed": true,
+      "automaticPasses": 4,
+      "reviewerRequired": 9,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 2,
+      "caseId": "gearbox-review-05",
+      "family": "gearbox",
+      "tier": "T1",
+      "priorityScore": 1263,
+      "sourceHashPassed": true,
+      "automaticPasses": 3,
+      "reviewerRequired": 4,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 3,
+      "caseId": "gearbox-review-12",
+      "family": "gearbox",
+      "tier": "T1",
+      "priorityScore": 1263,
+      "sourceHashPassed": true,
+      "automaticPasses": 3,
+      "reviewerRequired": 4,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 4,
+      "caseId": "gearbox-review-14",
+      "family": "gearbox",
+      "tier": "T1",
+      "priorityScore": 1263,
+      "sourceHashPassed": true,
+      "automaticPasses": 3,
+      "reviewerRequired": 4,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 5,
+      "caseId": "gearbox-review-01",
+      "family": "gearbox",
+      "tier": "T3",
+      "priorityScore": 981,
+      "sourceHashPassed": true,
+      "automaticPasses": 1,
+      "reviewerRequired": 12,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 1,
+      "caseId": "interior-review-03",
+      "family": "interior",
+      "tier": "T1",
+      "priorityScore": 1263,
+      "sourceHashPassed": true,
+      "automaticPasses": 3,
+      "reviewerRequired": 4,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 2,
+      "caseId": "interior-review-07",
+      "family": "interior",
+      "tier": "T3",
+      "priorityScore": 1203,
+      "sourceHashPassed": true,
+      "automaticPasses": 3,
+      "reviewerRequired": 10,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 3,
+      "caseId": "interior-review-11",
+      "family": "interior",
+      "tier": "T3",
+      "priorityScore": 1203,
+      "sourceHashPassed": true,
+      "automaticPasses": 3,
+      "reviewerRequired": 10,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 4,
+      "caseId": "interior-review-13",
+      "family": "interior",
+      "tier": "T3",
+      "priorityScore": 1203,
+      "sourceHashPassed": true,
+      "automaticPasses": 3,
+      "reviewerRequired": 10,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 5,
+      "caseId": "interior-review-01",
+      "family": "interior",
+      "tier": "T3",
+      "priorityScore": 870,
+      "sourceHashPassed": true,
+      "automaticPasses": 0,
+      "reviewerRequired": 13,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 1,
+      "caseId": "pressure_vessel-review-01",
+      "family": "pressure_vessel",
+      "tier": "T3",
+      "priorityScore": 1314,
+      "sourceHashPassed": true,
+      "automaticPasses": 4,
+      "reviewerRequired": 9,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 2,
+      "caseId": "pressure_vessel-review-02",
+      "family": "pressure_vessel",
+      "tier": "T3",
+      "priorityScore": 1314,
+      "sourceHashPassed": true,
+      "automaticPasses": 4,
+      "reviewerRequired": 9,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 3,
+      "caseId": "pressure_vessel-review-15",
+      "family": "pressure_vessel",
+      "tier": "T3",
+      "priorityScore": 1314,
+      "sourceHashPassed": true,
+      "automaticPasses": 4,
+      "reviewerRequired": 9,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 4,
+      "caseId": "pressure_vessel-review-19",
+      "family": "pressure_vessel",
+      "tier": "T3",
+      "priorityScore": 1314,
+      "sourceHashPassed": true,
+      "automaticPasses": 4,
+      "reviewerRequired": 9,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 5,
+      "caseId": "pressure_vessel-review-04",
+      "family": "pressure_vessel",
+      "tier": "T1",
+      "priorityScore": 1263,
+      "sourceHashPassed": true,
+      "automaticPasses": 3,
+      "reviewerRequired": 4,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 1,
+      "caseId": "robot-review-09",
+      "family": "robot",
+      "tier": "T3",
+      "priorityScore": 1314,
+      "sourceHashPassed": true,
+      "automaticPasses": 4,
+      "reviewerRequired": 9,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 2,
+      "caseId": "robot-review-01",
+      "family": "robot",
+      "tier": "T1",
+      "priorityScore": 1263,
+      "sourceHashPassed": true,
+      "automaticPasses": 3,
+      "reviewerRequired": 4,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 3,
+      "caseId": "robot-review-02",
+      "family": "robot",
+      "tier": "T1",
+      "priorityScore": 1263,
+      "sourceHashPassed": true,
+      "automaticPasses": 3,
+      "reviewerRequired": 4,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 4,
+      "caseId": "robot-review-03",
+      "family": "robot",
+      "tier": "T1",
+      "priorityScore": 1263,
+      "sourceHashPassed": true,
+      "automaticPasses": 3,
+      "reviewerRequired": 4,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 5,
+      "caseId": "robot-review-04",
+      "family": "robot",
+      "tier": "T1",
+      "priorityScore": 1263,
+      "sourceHashPassed": true,
+      "automaticPasses": 3,
+      "reviewerRequired": 4,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 1,
+      "caseId": "turbomachinery-review-01",
+      "family": "turbomachinery",
+      "tier": "T3",
+      "priorityScore": 1314,
+      "sourceHashPassed": true,
+      "automaticPasses": 4,
+      "reviewerRequired": 9,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 2,
+      "caseId": "turbomachinery-review-03",
+      "family": "turbomachinery",
+      "tier": "T3",
+      "priorityScore": 1314,
+      "sourceHashPassed": true,
+      "automaticPasses": 4,
+      "reviewerRequired": 9,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 3,
+      "caseId": "turbomachinery-review-08",
+      "family": "turbomachinery",
+      "tier": "T3",
+      "priorityScore": 1314,
+      "sourceHashPassed": true,
+      "automaticPasses": 4,
+      "reviewerRequired": 9,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 4,
+      "caseId": "turbomachinery-review-13",
+      "family": "turbomachinery",
+      "tier": "T3",
+      "priorityScore": 1314,
+      "sourceHashPassed": true,
+      "automaticPasses": 4,
+      "reviewerRequired": 9,
+      "nativeExtractionStatus": "not_run"
+    },
+    {
+      "rankInFamily": 5,
+      "caseId": "turbomachinery-review-14",
+      "family": "turbomachinery",
+      "tier": "T3",
+      "priorityScore": 1314,
+      "sourceHashPassed": true,
+      "automaticPasses": 4,
+      "reviewerRequired": 9,
+      "nativeExtractionStatus": "not_run"
+    }
+  ]
+}

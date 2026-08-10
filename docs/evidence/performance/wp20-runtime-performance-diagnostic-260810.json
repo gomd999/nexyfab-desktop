@@ -1,0 +1,1001 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-09T23:03:59.130Z",
+  "baseUrl": "http://127.0.0.1:3337",
+  "pass": false,
+  "checks": [
+    {
+      "id": "landing-desktop.http",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "id": "guided-design-desktop.http",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "id": "precision-cad-mobile.http",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "id": "precision-cad-desktop.http",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "id": "landing-desktop.csp",
+      "pass": true,
+      "actual": "present"
+    },
+    {
+      "id": "guided-design-desktop.csp",
+      "pass": true,
+      "actual": "present"
+    },
+    {
+      "id": "precision-cad-mobile.csp",
+      "pass": true,
+      "actual": "present"
+    },
+    {
+      "id": "precision-cad-desktop.csp",
+      "pass": true,
+      "actual": "present"
+    },
+    {
+      "id": "landing-desktop.transferBytes-budget",
+      "pass": true,
+      "actual": 626915,
+      "limit": 734003
+    },
+    {
+      "id": "landing-desktop.decodedBodyBytes-budget",
+      "pass": true,
+      "actual": 2041845,
+      "limit": 2600000
+    },
+    {
+      "id": "guided-design-desktop.transferBytes-budget",
+      "pass": true,
+      "actual": 894694,
+      "limit": 943718
+    },
+    {
+      "id": "guided-design-desktop.decodedBodyBytes-budget",
+      "pass": true,
+      "actual": 3013782,
+      "limit": 3145728
+    },
+    {
+      "id": "precision-cad-mobile.transferBytes-budget",
+      "pass": true,
+      "actual": 1634231,
+      "limit": 2621440
+    },
+    {
+      "id": "precision-cad-mobile.decodedBodyBytes-budget",
+      "pass": true,
+      "actual": 5144424,
+      "limit": 6500000
+    },
+    {
+      "id": "precision-cad-desktop.transferBytes-budget",
+      "pass": true,
+      "actual": 2197304,
+      "limit": 7340032
+    },
+    {
+      "id": "precision-cad-desktop.decodedBodyBytes-budget",
+      "pass": true,
+      "actual": 6790349,
+      "limit": 21000000
+    },
+    {
+      "id": "landing-desktop.recaptcha-lazy",
+      "pass": true,
+      "actual": []
+    },
+    {
+      "id": "guided-design-desktop.recaptcha-lazy",
+      "pass": true,
+      "actual": []
+    },
+    {
+      "id": "precision-cad-mobile.exact-kernel-on-demand",
+      "pass": true,
+      "actual": []
+    },
+    {
+      "id": "precision-cad-desktop.exact-kernel-default",
+      "pass": false,
+      "actual": []
+    }
+  ],
+  "results": [
+    {
+      "id": "landing-desktop",
+      "requestedPath": "/kr/",
+      "finalUrl": "http://127.0.0.1:3337/kr/",
+      "status": 200,
+      "elapsedMs": 3150,
+      "headers": {
+        "contentSecurityPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.dicebear.com https://www.facebook.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://www.google.com https://*.sentry.io; worker-src 'self' blob:; frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/; frame-ancestors 'none'; manifest-src 'self'",
+        "xContentTypeOptions": "nosniff",
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      },
+      "resourceCount": 41,
+      "transferBytes": 626915,
+      "encodedBodyBytes": 614615,
+      "decodedBodyBytes": 2041845,
+      "scriptTransferBytes": 367432,
+      "scriptDecodedBodyBytes": 1111548,
+      "domContentLoadedMs": 192.29999995231628,
+      "loadEventMs": 254.40000009536743,
+      "jsHeapBytes": 7647352,
+      "occtStatus": null,
+      "topResources": [
+        {
+          "url": "http://127.0.0.1:3337/_next/static/css/5180a3a9ae4bad85.css",
+          "initiatorType": "link",
+          "transferBytes": 148352,
+          "decodedBodyBytes": 461485
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/12217-c776f70fe2f18d6c.js",
+          "initiatorType": "script",
+          "transferBytes": 94038,
+          "decodedBodyBytes": 330536
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/4bd1b696-f998cba21de05210.js",
+          "initiatorType": "script",
+          "transferBytes": 63604,
+          "decodedBodyBytes": 201061
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/3670-ec23997bbda60f43.js",
+          "initiatorType": "script",
+          "transferBytes": 61336,
+          "decodedBodyBytes": 174898
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/3730-2192c81146ea18f4.js",
+          "initiatorType": "script",
+          "transferBytes": 43070,
+          "decodedBodyBytes": 120177
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/css/f4c19b264dfe59b3.css",
+          "initiatorType": "link",
+          "transferBytes": 24366,
+          "decodedBodyBytes": 148062
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/%5Blang%5D/page-ec808cc5e6755005.js",
+          "initiatorType": "script",
+          "transferBytes": 22385,
+          "decodedBodyBytes": 66553
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/css/ac79c72863170f34.css",
+          "initiatorType": "link",
+          "transferBytes": 18971,
+          "decodedBodyBytes": 109317
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/webpack-10883f96fb2bfb8f.js",
+          "initiatorType": "link",
+          "transferBytes": 15564,
+          "decodedBodyBytes": 28821
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/%5Blang%5D/pricing/page-5413448e45a59186.js",
+          "initiatorType": "script",
+          "transferBytes": 14958,
+          "decodedBodyBytes": 42466
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/80376-db1917ed2f092886.js",
+          "initiatorType": "script",
+          "transferBytes": 10614,
+          "decodedBodyBytes": 30339
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/%5Blang%5D/nexyfab/layout-23d4fa0c06d470cf.js",
+          "initiatorType": "script",
+          "transferBytes": 9481,
+          "decodedBodyBytes": 28796
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/71511-f6fac8c5a88ce910.js",
+          "initiatorType": "script",
+          "transferBytes": 9392,
+          "decodedBodyBytes": 27832
+        },
+        {
+          "url": "http://127.0.0.1:3337/kr/?_rsc=FakvOLXDzaUqt-X_",
+          "initiatorType": "fetch",
+          "transferBytes": 7930,
+          "decodedBodyBytes": 20023
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/(auth)/login/page-a66279982236932d.js",
+          "initiatorType": "script",
+          "transferBytes": 7862,
+          "decodedBodyBytes": 23367
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/40394-0bf54682e5341c21.js",
+          "initiatorType": "script",
+          "transferBytes": 7484,
+          "decodedBodyBytes": 21832
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/%5Blang%5D/layout-3a0b4e4867595e46.js",
+          "initiatorType": "script",
+          "transferBytes": 6944,
+          "decodedBodyBytes": 16798
+        },
+        {
+          "url": "http://127.0.0.1:3337/kr/nexyfab/ai/?_rsc=LBlTgpqo5rUTjNS3",
+          "initiatorType": "fetch",
+          "transferBytes": 4726,
+          "decodedBodyBytes": 18163
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/95205-a9c729cd6411f2e2.js",
+          "initiatorType": "script",
+          "transferBytes": 2816,
+          "decodedBodyBytes": 6543
+        },
+        {
+          "url": "http://127.0.0.1:3337/kr/?_rsc=CyTeck_VkxmE0Hf7",
+          "initiatorType": "fetch",
+          "transferBytes": 2705,
+          "decodedBodyBytes": 9777
+        },
+        {
+          "url": "http://127.0.0.1:3337/login/?_rsc=vGUdu6qydTgC84J3",
+          "initiatorType": "fetch",
+          "transferBytes": 2648,
+          "decodedBodyBytes": 7569
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/%5Blang%5D/nexyfab/ai/page-47db2671256fb8da.js",
+          "initiatorType": "script",
+          "transferBytes": 2231,
+          "decodedBodyBytes": 5208
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/98500-260eaed6dcf76737.js",
+          "initiatorType": "script",
+          "transferBytes": 2150,
+          "decodedBodyBytes": 4163
+        },
+        {
+          "url": "http://127.0.0.1:3337/kr/pricing/?_rsc=9JlWawbK3Gw9Fn5J",
+          "initiatorType": "fetch",
+          "transferBytes": 2114,
+          "decodedBodyBytes": 4978
+        },
+        {
+          "url": "http://127.0.0.1:3337/kr/factories/?_rsc=Haw0uC8XVsXw6hGr",
+          "initiatorType": "fetch",
+          "transferBytes": 2057,
+          "decodedBodyBytes": 4516
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/not-found-756282f51c8ac78b.js",
+          "initiatorType": "script",
+          "transferBytes": 1948,
+          "decodedBodyBytes": 2864
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/main-app-876dd1c5a37ebf3b.js",
+          "initiatorType": "script",
+          "transferBytes": 1897,
+          "decodedBodyBytes": 3109
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/global-error-21f8d9e29a0e58a7.js",
+          "initiatorType": "script",
+          "transferBytes": 1797,
+          "decodedBodyBytes": 2399
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/css/692f68435ef45c91.css",
+          "initiatorType": "link",
+          "transferBytes": 1335,
+          "decodedBodyBytes": 12964
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/(auth)/layout-2d603efb8162969a.js",
+          "initiatorType": "script",
+          "transferBytes": 1157,
+          "decodedBodyBytes": 857
+        }
+      ],
+      "budget": {
+        "transferBytes": 734003,
+        "decodedBodyBytes": 2600000
+      },
+      "recaptchaRequests": [],
+      "wasmRequests": [],
+      "exactKernelRequests": [],
+      "failedRequests": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "pageErrors": []
+    },
+    {
+      "id": "guided-design-desktop",
+      "requestedPath": "/kr/nexyfab/design/",
+      "finalUrl": "http://127.0.0.1:3337/kr/nexyfab/design/",
+      "status": 200,
+      "elapsedMs": 4098,
+      "headers": {
+        "contentSecurityPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.dicebear.com https://www.facebook.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://www.google.com https://*.sentry.io; worker-src 'self' blob:; frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/; frame-ancestors 'none'; manifest-src 'self'",
+        "xContentTypeOptions": "nosniff",
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      },
+      "resourceCount": 50,
+      "transferBytes": 894694,
+      "encodedBodyBytes": 879694,
+      "decodedBodyBytes": 3013782,
+      "scriptTransferBytes": 785700,
+      "scriptDecodedBodyBytes": 2562979,
+      "domContentLoadedMs": 169.10000014305115,
+      "loadEventMs": 263.30000019073486,
+      "jsHeapBytes": 9740925,
+      "occtStatus": null,
+      "topResources": [
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/70227-93e26398f65c79bb.js",
+          "initiatorType": "script",
+          "transferBytes": 129581,
+          "decodedBodyBytes": 407297
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/bd904a5c-5820d944a36906da.js",
+          "initiatorType": "script",
+          "transferBytes": 99998,
+          "decodedBodyBytes": 373615
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/12217-c776f70fe2f18d6c.js",
+          "initiatorType": "script",
+          "transferBytes": 94038,
+          "decodedBodyBytes": 330536
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/74281-9d866dc1c98bf13f.js",
+          "initiatorType": "script",
+          "transferBytes": 92971,
+          "decodedBodyBytes": 287955
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/b536a0f1-7b40e1097e25f312.js",
+          "initiatorType": "script",
+          "transferBytes": 85988,
+          "decodedBodyBytes": 352912
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/4bd1b696-f998cba21de05210.js",
+          "initiatorType": "script",
+          "transferBytes": 63604,
+          "decodedBodyBytes": 201061
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/3670-ec23997bbda60f43.js",
+          "initiatorType": "script",
+          "transferBytes": 61336,
+          "decodedBodyBytes": 174898
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/%5Blang%5D/nexyfab/design/page-60649997d76a334f.js",
+          "initiatorType": "script",
+          "transferBytes": 37430,
+          "decodedBodyBytes": 110294
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/css/f4c19b264dfe59b3.css",
+          "initiatorType": "link",
+          "transferBytes": 24366,
+          "decodedBodyBytes": 148062
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/%5Blang%5D/page-ec808cc5e6755005.js",
+          "initiatorType": "script",
+          "transferBytes": 22385,
+          "decodedBodyBytes": 66553
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/css/ac79c72863170f34.css",
+          "initiatorType": "link",
+          "transferBytes": 18971,
+          "decodedBodyBytes": 109317
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/webpack-10883f96fb2bfb8f.js",
+          "initiatorType": "link",
+          "transferBytes": 15564,
+          "decodedBodyBytes": 28821
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/54447-99719a4b9abaa0c1.js",
+          "initiatorType": "script",
+          "transferBytes": 11486,
+          "decodedBodyBytes": 33852
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/80376-db1917ed2f092886.js",
+          "initiatorType": "script",
+          "transferBytes": 10614,
+          "decodedBodyBytes": 30339
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/%5Blang%5D/nexyfab/layout-23d4fa0c06d470cf.js",
+          "initiatorType": "script",
+          "transferBytes": 9481,
+          "decodedBodyBytes": 28796
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/%5Blang%5D/nexyfab/projects/page-f3b0537476063e85.js",
+          "initiatorType": "script",
+          "transferBytes": 9132,
+          "decodedBodyBytes": 26675
+        },
+        {
+          "url": "http://127.0.0.1:3337/kr/?_rsc=llbehelgKxfWfU4c",
+          "initiatorType": "fetch",
+          "transferBytes": 7930,
+          "decodedBodyBytes": 20023
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/40394-0bf54682e5341c21.js",
+          "initiatorType": "script",
+          "transferBytes": 7484,
+          "decodedBodyBytes": 21832
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/49304-6c7838c1756c1190.js",
+          "initiatorType": "script",
+          "transferBytes": 7369,
+          "decodedBodyBytes": 22745
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/%5Blang%5D/layout-3a0b4e4867595e46.js",
+          "initiatorType": "script",
+          "transferBytes": 6944,
+          "decodedBodyBytes": 16798
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/27647-9747fe8b1eee9384.js",
+          "initiatorType": "script",
+          "transferBytes": 5637,
+          "decodedBodyBytes": 14282
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/6398-4aeacef898ca9b0d.js",
+          "initiatorType": "script",
+          "transferBytes": 5121,
+          "decodedBodyBytes": 11807
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/37443-491c7e9ec1c0be68.js",
+          "initiatorType": "script",
+          "transferBytes": 4904,
+          "decodedBodyBytes": 12590
+        },
+        {
+          "url": "http://127.0.0.1:3337/kr/examples/?_rsc=Ntu7YNSWhHsVVY8v",
+          "initiatorType": "fetch",
+          "transferBytes": 4324,
+          "decodedBodyBytes": 27512
+        },
+        {
+          "url": "http://127.0.0.1:3337/kr/nexyfab/projects/?_rsc=UUhROAtYDs7dZ3S8",
+          "initiatorType": "fetch",
+          "transferBytes": 3084,
+          "decodedBodyBytes": 8868
+        },
+        {
+          "url": "http://127.0.0.1:3337/kr/nexyfab/hub/?_rsc=gyUaoqY6kUo6QS3M",
+          "initiatorType": "fetch",
+          "transferBytes": 3070,
+          "decodedBodyBytes": 7883
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/44101-e2ebf4dce819df8f.js",
+          "initiatorType": "script",
+          "transferBytes": 2861,
+          "decodedBodyBytes": 6888
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/95205-a9c729cd6411f2e2.js",
+          "initiatorType": "script",
+          "transferBytes": 2816,
+          "decodedBodyBytes": 6543
+        },
+        {
+          "url": "http://127.0.0.1:3337/kr/?_rsc=bPkUkal8iTgExcx0",
+          "initiatorType": "fetch",
+          "transferBytes": 2705,
+          "decodedBodyBytes": 9777
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/app/%5Blang%5D/nexyfab/hub/page-71c2027f605c1c26.js",
+          "initiatorType": "script",
+          "transferBytes": 2584,
+          "decodedBodyBytes": 6238
+        }
+      ],
+      "budget": {
+        "transferBytes": 943718,
+        "decodedBodyBytes": 3145728
+      },
+      "recaptchaRequests": [],
+      "wasmRequests": [],
+      "exactKernelRequests": [],
+      "failedRequests": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "pageErrors": []
+    },
+    {
+      "id": "precision-cad-mobile",
+      "requestedPath": "/kr/shape-generator/?expert=1",
+      "finalUrl": "http://127.0.0.1:3337/kr/shape-generator/?expert=1",
+      "status": 200,
+      "elapsedMs": 6551,
+      "headers": {
+        "contentSecurityPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.dicebear.com https://www.facebook.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://www.google.com https://*.sentry.io; worker-src 'self' blob:; frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/; frame-ancestors 'none'; manifest-src 'self'",
+        "xContentTypeOptions": "nosniff",
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      },
+      "resourceCount": 73,
+      "transferBytes": 1634231,
+      "encodedBodyBytes": 1612631,
+      "decodedBodyBytes": 5144424,
+      "scriptTransferBytes": 1460113,
+      "scriptDecodedBodyBytes": 4676488,
+      "domContentLoadedMs": 34.10000014305115,
+      "loadEventMs": 106.5,
+      "jsHeapBytes": 19587589,
+      "occtStatus": null,
+      "topResources": [
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/94972.03d17c6c893d0d9b.js",
+          "initiatorType": "script",
+          "transferBytes": 461691,
+          "decodedBodyBytes": 1453673
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/70227-93e26398f65c79bb.js",
+          "initiatorType": "script",
+          "transferBytes": 129581,
+          "decodedBodyBytes": 407297
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/bd904a5c-5820d944a36906da.js",
+          "initiatorType": "script",
+          "transferBytes": 99998,
+          "decodedBodyBytes": 373615
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/12217-c776f70fe2f18d6c.js",
+          "initiatorType": "script",
+          "transferBytes": 94038,
+          "decodedBodyBytes": 330536
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/74281-9d866dc1c98bf13f.js",
+          "initiatorType": "script",
+          "transferBytes": 92971,
+          "decodedBodyBytes": 287955
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/b536a0f1-7b40e1097e25f312.js",
+          "initiatorType": "script",
+          "transferBytes": 85988,
+          "decodedBodyBytes": 352912
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/4bd1b696-f998cba21de05210.js",
+          "initiatorType": "script",
+          "transferBytes": 63604,
+          "decodedBodyBytes": 201061
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/3670-ec23997bbda60f43.js",
+          "initiatorType": "script",
+          "transferBytes": 61336,
+          "decodedBodyBytes": 174898
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/media/e4af272ccee01ff0-s.p.woff2",
+          "initiatorType": "css",
+          "transferBytes": 48732,
+          "decodedBodyBytes": 48432
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/51749ec1-ba2ae67e2f52579f.js",
+          "initiatorType": "script",
+          "transferBytes": 46307,
+          "decodedBodyBytes": 145389
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/50615.de64c9a10869857a.js",
+          "initiatorType": "script",
+          "transferBytes": 37742,
+          "decodedBodyBytes": 124704
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/media/558ca1a6aa3cb55e-s.p.woff2",
+          "initiatorType": "css",
+          "transferBytes": 31640,
+          "decodedBodyBytes": 31340
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/16427-90f520c124781d28.js",
+          "initiatorType": "script",
+          "transferBytes": 26340,
+          "decodedBodyBytes": 75397
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/47173-5c5d450c4ba937b1.js",
+          "initiatorType": "script",
+          "transferBytes": 25700,
+          "decodedBodyBytes": 97840
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/css/f4c19b264dfe59b3.css",
+          "initiatorType": "link",
+          "transferBytes": 24366,
+          "decodedBodyBytes": 148062
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/css/ac79c72863170f34.css",
+          "initiatorType": "link",
+          "transferBytes": 18971,
+          "decodedBodyBytes": 109317
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/pipeline-worker.46f87b42d1f2dd31.js",
+          "initiatorType": "other",
+          "transferBytes": 17943,
+          "decodedBodyBytes": 50378
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/6be7e44c-830e1087df49f0b0.js",
+          "initiatorType": "script",
+          "transferBytes": 17675,
+          "decodedBodyBytes": 60815
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/26066.d74ed99f2165ef0e.js",
+          "initiatorType": "script",
+          "transferBytes": 16290,
+          "decodedBodyBytes": 56342
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/webpack-10883f96fb2bfb8f.js",
+          "initiatorType": "link",
+          "transferBytes": 15564,
+          "decodedBodyBytes": 28821
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/88790.e0d49c51df22f0c2.js",
+          "initiatorType": "script",
+          "transferBytes": 14620,
+          "decodedBodyBytes": 45261
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/93402-af60b8f374c7d650.js",
+          "initiatorType": "script",
+          "transferBytes": 13210,
+          "decodedBodyBytes": 52965
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/54447-99719a4b9abaa0c1.js",
+          "initiatorType": "script",
+          "transferBytes": 11486,
+          "decodedBodyBytes": 33852
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/80376-db1917ed2f092886.js",
+          "initiatorType": "script",
+          "transferBytes": 10614,
+          "decodedBodyBytes": 30339
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/53369-3a4dc43a3dec75b9.js",
+          "initiatorType": "script",
+          "transferBytes": 8183,
+          "decodedBodyBytes": 21685
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/97905.c98a7ecdeb33a11a.js",
+          "initiatorType": "script",
+          "transferBytes": 7617,
+          "decodedBodyBytes": 26899
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/40394-0bf54682e5341c21.js",
+          "initiatorType": "script",
+          "transferBytes": 7484,
+          "decodedBodyBytes": 21832
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/39829-e86926749d46bdb7.js",
+          "initiatorType": "script",
+          "transferBytes": 7438,
+          "decodedBodyBytes": 20690
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/49304-6c7838c1756c1190.js",
+          "initiatorType": "script",
+          "transferBytes": 7369,
+          "decodedBodyBytes": 22745
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/68345-3a888a688cec8c73.js",
+          "initiatorType": "script",
+          "transferBytes": 7148,
+          "decodedBodyBytes": 16866
+        }
+      ],
+      "budget": {
+        "transferBytes": 2621440,
+        "decodedBodyBytes": 6500000
+      },
+      "recaptchaRequests": [],
+      "wasmRequests": [],
+      "exactKernelRequests": [],
+      "failedRequests": [
+        {
+          "url": "https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&data=http%3A%2F%2F127.0.0.1%3A3337%2Fkr%2Fshape-generator%2F%3Fexpert%3D1",
+          "error": "csp"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+        "Loading the image 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&data=http%3A%2F%2F127.0.0.1%3A3337%2Fkr%2Fshape-generator%2F%3Fexpert%3D1' violates the following Content Security Policy directive: \"img-src 'self' data: blob: https://api.dicebear.com https://www.facebook.com\". The action has been blocked.",
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+      ],
+      "pageErrors": []
+    },
+    {
+      "id": "precision-cad-desktop",
+      "requestedPath": "/kr/shape-generator/?expert=1",
+      "finalUrl": "http://127.0.0.1:3337/kr/shape-generator/?expert=1",
+      "status": 200,
+      "elapsedMs": 10850,
+      "headers": {
+        "contentSecurityPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.dicebear.com https://www.facebook.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://www.google.com https://*.sentry.io; worker-src 'self' blob:; frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/; frame-ancestors 'none'; manifest-src 'self'",
+        "xContentTypeOptions": "nosniff",
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      },
+      "resourceCount": 117,
+      "transferBytes": 2197304,
+      "encodedBodyBytes": 2162204,
+      "decodedBodyBytes": 6790349,
+      "scriptTransferBytes": 2017409,
+      "scriptDecodedBodyBytes": 6312367,
+      "domContentLoadedMs": 32.700000047683716,
+      "loadEventMs": 108.80000019073486,
+      "jsHeapBytes": 30882736,
+      "occtStatus": {
+        "text": "OCCT: OFF ⚠",
+        "title": "Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/\".\n",
+        "disabled": false,
+        "preference": "on"
+      },
+      "topResources": [
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/94972.03d17c6c893d0d9b.js",
+          "initiatorType": "script",
+          "transferBytes": 461691,
+          "decodedBodyBytes": 1453673
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/70227-93e26398f65c79bb.js",
+          "initiatorType": "script",
+          "transferBytes": 129581,
+          "decodedBodyBytes": 407297
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/aaea2bcf.f63852774dccb5b0.js",
+          "initiatorType": "script",
+          "transferBytes": 100593,
+          "decodedBodyBytes": 325366
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/bd904a5c-5820d944a36906da.js",
+          "initiatorType": "script",
+          "transferBytes": 99998,
+          "decodedBodyBytes": 373615
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/12217-c776f70fe2f18d6c.js",
+          "initiatorType": "script",
+          "transferBytes": 94038,
+          "decodedBodyBytes": 330536
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/74281-9d866dc1c98bf13f.js",
+          "initiatorType": "script",
+          "transferBytes": 92971,
+          "decodedBodyBytes": 287955
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/b536a0f1-7b40e1097e25f312.js",
+          "initiatorType": "script",
+          "transferBytes": 85988,
+          "decodedBodyBytes": 352912
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/f6211eb1.2ca4995b17a194f0.js",
+          "initiatorType": "script",
+          "transferBytes": 66555,
+          "decodedBodyBytes": 87856
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/59912.f7f7fe1615c4044d.js",
+          "initiatorType": "script",
+          "transferBytes": 63890,
+          "decodedBodyBytes": 211409
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/4bd1b696-f998cba21de05210.js",
+          "initiatorType": "script",
+          "transferBytes": 63604,
+          "decodedBodyBytes": 201061
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/3670-ec23997bbda60f43.js",
+          "initiatorType": "script",
+          "transferBytes": 61336,
+          "decodedBodyBytes": 174898
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/media/e4af272ccee01ff0-s.p.woff2",
+          "initiatorType": "css",
+          "transferBytes": 48732,
+          "decodedBodyBytes": 48432
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/51749ec1-ba2ae67e2f52579f.js",
+          "initiatorType": "script",
+          "transferBytes": 46307,
+          "decodedBodyBytes": 145389
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/75192.64e1598665cc8111.js",
+          "initiatorType": "script",
+          "transferBytes": 44038,
+          "decodedBodyBytes": 157633
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/50615.de64c9a10869857a.js",
+          "initiatorType": "script",
+          "transferBytes": 37742,
+          "decodedBodyBytes": 124704
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/media/558ca1a6aa3cb55e-s.p.woff2",
+          "initiatorType": "css",
+          "transferBytes": 31640,
+          "decodedBodyBytes": 31340
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/23755.b8fb4ae739a157f8.js",
+          "initiatorType": "script",
+          "transferBytes": 26528,
+          "decodedBodyBytes": 90841
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/52050.cccdca653acabb3a.js",
+          "initiatorType": "script",
+          "transferBytes": 26379,
+          "decodedBodyBytes": 80885
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/16427-90f520c124781d28.js",
+          "initiatorType": "script",
+          "transferBytes": 26340,
+          "decodedBodyBytes": 75397
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/27269.727726456fb0a5f2.js",
+          "initiatorType": "script",
+          "transferBytes": 25790,
+          "decodedBodyBytes": 88698
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/47173-5c5d450c4ba937b1.js",
+          "initiatorType": "script",
+          "transferBytes": 25700,
+          "decodedBodyBytes": 97840
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/css/f4c19b264dfe59b3.css",
+          "initiatorType": "link",
+          "transferBytes": 24366,
+          "decodedBodyBytes": 148062
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/63449.ff0f4fe7ea6e336b.js",
+          "initiatorType": "script",
+          "transferBytes": 22196,
+          "decodedBodyBytes": 75656
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/a3cd4a83.26990ce7817a3cbd.js",
+          "initiatorType": "script",
+          "transferBytes": 21090,
+          "decodedBodyBytes": 95707
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/17796.30e9bd6e596ed1a5.js",
+          "initiatorType": "script",
+          "transferBytes": 20551,
+          "decodedBodyBytes": 64421
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/css/ac79c72863170f34.css",
+          "initiatorType": "link",
+          "transferBytes": 18971,
+          "decodedBodyBytes": 109317
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/19176.1c23f8bbd7c87c19.js",
+          "initiatorType": "script",
+          "transferBytes": 18207,
+          "decodedBodyBytes": 50699
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/pipeline-worker.46f87b42d1f2dd31.js",
+          "initiatorType": "other",
+          "transferBytes": 17943,
+          "decodedBodyBytes": 50378
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/6be7e44c-830e1087df49f0b0.js",
+          "initiatorType": "script",
+          "transferBytes": 17675,
+          "decodedBodyBytes": 60815
+        },
+        {
+          "url": "http://127.0.0.1:3337/_next/static/chunks/26066.d74ed99f2165ef0e.js",
+          "initiatorType": "script",
+          "transferBytes": 16290,
+          "decodedBodyBytes": 56342
+        }
+      ],
+      "budget": {
+        "transferBytes": 7340032,
+        "decodedBodyBytes": 21000000
+      },
+      "recaptchaRequests": [],
+      "wasmRequests": [],
+      "exactKernelRequests": [],
+      "failedRequests": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+      ],
+      "pageErrors": []
+    }
+  ]
+}

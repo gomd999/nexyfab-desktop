@@ -1,0 +1,45 @@
+{
+  "schema": "nexyfab.design-workspace-revision-evidence.v1",
+  "generatedAt": "2026-08-09T16:21:56.632Z",
+  "claims": {
+    "externalCadInstallationRequired": false,
+    "guidedAndExpertShareLineage": true,
+    "manualAndExpertValuesOverrideAi": true,
+    "modelAndArtifactCommitIsAtomic": true,
+    "dependentArtifactsBecomeStale": [
+      "drawing",
+      "quantity"
+    ]
+  },
+  "checks": {
+    "modeSwitch": {
+      "committed": true,
+      "experience": "expert",
+      "workMode": "precision_cad"
+    },
+    "manualLockCommit": {
+      "committed": true,
+      "lockIds": [
+        "expert-shaft-diameter"
+      ]
+    },
+    "blockedAiChange": {
+      "committed": false,
+      "issues": [
+        "protected_user_or_authority_value"
+      ],
+      "blockedLockIds": [
+        "expert-shaft-diameter"
+      ]
+    },
+    "artifactTransaction": {
+      "committed": true,
+      "staleArtifactIds": [
+        "drawing",
+        "quantity"
+      ],
+      "issues": []
+    }
+  },
+  "releaseScope": "WP7 behavioral evidence only; independent holdout and technical release audit remain WP9."
+}

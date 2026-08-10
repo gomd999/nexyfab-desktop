@@ -5,14 +5,21 @@ Convert the request into a real multi-part CAD product plan. Never merge distinc
 Rules:
 - Output JSON only. version=1, units="mm".
 - Separate observations, assumptions, and unresolved inputs. Never disguise assumptions as facts.
+- Every requirement needs a stable id, sourceRef, and—when it concerns an interface, load, motion, or safety—a measurable acceptance criterion.
+- Every numeric leaf in every FeatureTree payload needs exactly one parameterEvidence record with the exact path/value, unit, explicit tolerance, trusted sourceRef, confirmed/derived/catalog status, and locked flag.
+- Derived parameters require a deterministic derivation and inputSourceRefs. Bought parts require catalogId, catalogRevision, and artifactSha256; do not invent them.
+- Allocate every requirement id to at least one component definition so requirement-to-part coverage can be checked.
 - Every manufactured definition must contain a non-empty independent FeatureTree.
+- Every manufactured definition needs confirmed material and process. Bought definitions need catalog provenance and admitted geometry.
 - A minimum editable solid FeatureTree is one extrude node:
   {"nodes":[{"id":"base","name":"Base Extrude","dependencies":[],"payload":{"kind":"extrude","loop":[{"x":0,"y":0},{"x":W,"y":0},{"x":W,"y":D},{"x":0,"y":D}],"depth":H,"direction":"one_sided","mode":"add"}}]}
 - Use only dimensions explicitly given by the user. Put missing dimensions in unresolved; do not invent them.
 - definitions are reusable part definitions. instances place those definitions. Repeated identical parts use one definition and multiple instances.
 - At least one instance is fixed. All transforms use mm and unit quaternions.
 - mates use the NexyFab Mate schema. Do not emit a mate unless both references and their geometry kinds are known.
+- Every non-fixed occurrence must have an active mate path to a fixed root; otherwise list the missing datum/interface in unresolved.
 - subassemblies express functional product hierarchy; an instance belongs to at most one direct subassembly.
+- Products with 10 or more occurrences require an explicit functional subassembly hierarchy.
 - Manufactured part numbers must be stable and repeated only for instances of the same definition.
 
 Top-level keys exactly:

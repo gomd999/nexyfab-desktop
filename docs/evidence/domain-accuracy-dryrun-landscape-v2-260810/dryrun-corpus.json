@@ -1,0 +1,757 @@
+[
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-apartment_complex-01",
+    "domain": "landscape",
+    "sourceHash": "8d442a2faf43ace76447f767a1c0fcacad61921f22412bd757e2959ac9fce8a8",
+    "sourceKind": "internal-template",
+    "templateId": "apartment_complex",
+    "parameters": {
+      "towersX": 2.4,
+      "towersY": 1.6,
+      "floors": 12,
+      "towerW": 16000,
+      "towerD": 12000,
+      "gapX": 20000,
+      "gapY": 28000
+    },
+    "artifactHash": "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4",
+    "artifactSummary": {
+      "name": "아파트 단지 (4개동 12층)",
+      "partCount": 9,
+      "pipeCount": 0,
+      "roles": [
+        "building",
+        "green",
+        "ground"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        92000,
+        108000,
+        35000
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-pergola-01",
+    "domain": "landscape",
+    "sourceHash": "9aae3774b800b1ef27c671ccf382ffb712803052dc1f0616c90fa17e1ae57ba8",
+    "sourceKind": "internal-template",
+    "templateId": "pergola",
+    "parameters": {
+      "width": 2880,
+      "depth": 2400,
+      "height": 1920,
+      "postSize": 96,
+      "rafterCount": 5.6,
+      "irrigation": 0
+    },
+    "artifactHash": "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a",
+    "artifactSummary": {
+      "name": "목재 파고라",
+      "partCount": 12,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "joist"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3480,
+        3000,
+        2220
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-timber_deck-01",
+    "domain": "landscape",
+    "sourceHash": "bcdee2fc272b5b278cbd345162c0edde1c15656abb9da416e4680055b11a7386",
+    "sourceKind": "internal-template",
+    "templateId": "timber_deck",
+    "parameters": {
+      "width": 2880,
+      "depth": 1920,
+      "joistSpacing": 360,
+      "boardWidth": 96
+    },
+    "artifactHash": "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964",
+    "artifactSummary": {
+      "name": "목재 데크",
+      "partCount": 28,
+      "pipeCount": 0,
+      "roles": [
+        "deck",
+        "joist"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        2880,
+        1920,
+        161
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-fence_run-01",
+    "domain": "landscape",
+    "sourceHash": "d039fc745f2a6e141f70e4f1f9cc3ee0a064d511ad1f8dda43dd8f2d985f7e42",
+    "sourceKind": "internal-template",
+    "templateId": "fence_run",
+    "parameters": {
+      "length": 9600,
+      "postPitch": 1600,
+      "height": 960,
+      "postSize": 80,
+      "railCount": 1.6,
+      "picketWidth": 72,
+      "picketGap": 24
+    },
+    "artifactHash": "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e",
+    "artifactSummary": {
+      "name": "목재 울타리 9.6m",
+      "partCount": 109,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "board",
+        "column"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        9600,
+        140,
+        1060
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-planter_wall-01",
+    "domain": "landscape",
+    "sourceHash": "ad53a600ac8dd9d8b2d9edef8d0a04be473d86783c6180fc03233ce7ae8dfd24",
+    "sourceKind": "internal-template",
+    "templateId": "planter_wall",
+    "parameters": {
+      "length": 4800,
+      "height": 720,
+      "stemThk": 160,
+      "baseWidth": 560,
+      "baseThk": 200,
+      "toeLength": 160,
+      "segLength": 2400,
+      "drainDia": 80
+    },
+    "artifactHash": "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99",
+    "artifactSummary": {
+      "name": "화단 옹벽 4.8m (H720)",
+      "partCount": 7,
+      "pipeCount": 0,
+      "roles": [
+        "coping",
+        "pipe",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        4900,
+        660,
+        1030
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-parking_pavement-01",
+    "domain": "landscape",
+    "sourceHash": "7a3f8bcbdc1662f8522410ed98285ffdf2a0725eb76b09e4a5ece462afc5640f",
+    "sourceKind": "internal-template",
+    "templateId": "parking_pavement",
+    "parameters": {
+      "stalls": 4.8,
+      "stallWidth": 2300,
+      "stallLength": 4500,
+      "aisleWidth": 4800,
+      "subbaseThk": 120,
+      "baseThk": 80,
+      "surfaceThk": 40,
+      "curbHeight": 400,
+      "slopePct": 0
+    },
+    "artifactHash": "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b",
+    "artifactSummary": {
+      "name": "주차장 포장 5면",
+      "partCount": 38,
+      "pipeCount": 0,
+      "roles": [
+        "curb",
+        "pavement",
+        "wheelstop"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        11800,
+        9450,
+        400
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-pavilion-01",
+    "domain": "landscape",
+    "sourceHash": "ed31fb602e4f00b5344a3b7c317deddce36cf115400b348d826fa944bf9d960e",
+    "sourceKind": "internal-template",
+    "templateId": "pavilion",
+    "parameters": {
+      "width": 2400,
+      "depth": 2400,
+      "postHeight": 1920,
+      "postSize": 120,
+      "girderHeight": 160,
+      "pitchDeg": 24,
+      "padThk": 120
+    },
+    "artifactHash": "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f",
+    "artifactSummary": {
+      "name": "정자/쉼터 2.4×2.4m",
+      "partCount": 12,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "furniture",
+        "roof",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3600,
+        3600,
+        2825.628968
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-tree_planting-01",
+    "domain": "landscape",
+    "sourceHash": "cbeba791b2764d8a34550ae62eb6d3e29dac9dd51406a87cbaee0392420caac5",
+    "sourceKind": "internal-template",
+    "templateId": "tree_planting",
+    "parameters": {
+      "rows": 1.6,
+      "cols": 3.2,
+      "spacingX": 3200,
+      "spacingY": 3200,
+      "trunkDia": 120,
+      "trunkHeight": 1440,
+      "canopyDia": 2400
+    },
+    "artifactHash": "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92",
+    "artifactSummary": {
+      "name": "식재 플랜 6주",
+      "partCount": 12,
+      "pipeCount": 0,
+      "roles": [
+        "canopy",
+        "trunk"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        8800,
+        5600,
+        3840
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-apartment_complex-02",
+    "domain": "landscape",
+    "sourceHash": "e3d5f315bde73c58dbeb66d2d9e66602afc099704a51ee7e8a0dd2230114f4dc",
+    "sourceKind": "internal-template",
+    "templateId": "apartment_complex",
+    "parameters": {
+      "towersX": 2.52,
+      "towersY": 1.68,
+      "floors": 12.6,
+      "towerW": 16800,
+      "towerD": 12600,
+      "gapX": 21000,
+      "gapY": 29400
+    },
+    "artifactHash": "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd",
+    "artifactSummary": {
+      "name": "아파트 단지 (6개동 13층)",
+      "partCount": 14,
+      "pipeCount": 0,
+      "roles": [
+        "building",
+        "green",
+        "ground"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        134400,
+        113400,
+        37900
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-pergola-02",
+    "domain": "landscape",
+    "sourceHash": "cdcec073737f17eb62d32770cf213c0bcd8f8c7d52b75c1d7c508f88f866b536",
+    "sourceKind": "internal-template",
+    "templateId": "pergola",
+    "parameters": {
+      "width": 3024,
+      "depth": 2520,
+      "height": 2016,
+      "postSize": 100.8,
+      "rafterCount": 5.88,
+      "irrigation": 0
+    },
+    "artifactHash": "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220",
+    "artifactSummary": {
+      "name": "목재 파고라",
+      "partCount": 12,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "joist"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3624,
+        3120,
+        2316
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-timber_deck-02",
+    "domain": "landscape",
+    "sourceHash": "c0e2029d320469181d499773371033ece38a0a918c2b90b2cf07d95324c8f160",
+    "sourceKind": "internal-template",
+    "templateId": "timber_deck",
+    "parameters": {
+      "width": 3024,
+      "depth": 2016,
+      "joistSpacing": 378,
+      "boardWidth": 100.8
+    },
+    "artifactHash": "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274",
+    "artifactSummary": {
+      "name": "목재 데크",
+      "partCount": 28,
+      "pipeCount": 0,
+      "roles": [
+        "deck",
+        "joist"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3024,
+        2016,
+        161
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-fence_run-02",
+    "domain": "landscape",
+    "sourceHash": "f89f826d19a5d3c0e400d47adabc2e9ace474eb2bc80936bd935fe8de3f8a13e",
+    "sourceKind": "internal-template",
+    "templateId": "fence_run",
+    "parameters": {
+      "length": 10080,
+      "postPitch": 1680,
+      "height": 1008,
+      "postSize": 84,
+      "railCount": 1.68,
+      "picketWidth": 75.6,
+      "picketGap": 25.2
+    },
+    "artifactHash": "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7",
+    "artifactSummary": {
+      "name": "목재 울타리 10.08m",
+      "partCount": 109,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "board",
+        "column"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        10080,
+        144,
+        1108
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-planter_wall-02",
+    "domain": "landscape",
+    "sourceHash": "900956152bfd0defb95bc88858936a734fcb4e04275d1a6a3ea4a51c1f725df3",
+    "sourceKind": "internal-template",
+    "templateId": "planter_wall",
+    "parameters": {
+      "length": 5040,
+      "height": 756,
+      "stemThk": 168,
+      "baseWidth": 588,
+      "baseThk": 210,
+      "toeLength": 168,
+      "segLength": 2520,
+      "drainDia": 84
+    },
+    "artifactHash": "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a",
+    "artifactSummary": {
+      "name": "화단 옹벽 5.04m (H756)",
+      "partCount": 7,
+      "pipeCount": 0,
+      "roles": [
+        "coping",
+        "pipe",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        5140,
+        688,
+        1076
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-parking_pavement-02",
+    "domain": "landscape",
+    "sourceHash": "473f26ebd192fe2580174f8e856490d2d93bc57309ece96e32e403315665d6e4",
+    "sourceKind": "internal-template",
+    "templateId": "parking_pavement",
+    "parameters": {
+      "stalls": 5.04,
+      "stallWidth": 2300,
+      "stallLength": 4500,
+      "aisleWidth": 5040,
+      "subbaseThk": 126,
+      "baseThk": 84,
+      "surfaceThk": 42,
+      "curbHeight": 420,
+      "slopePct": 0
+    },
+    "artifactHash": "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9",
+    "artifactSummary": {
+      "name": "주차장 포장 5면",
+      "partCount": 40,
+      "pipeCount": 0,
+      "roles": [
+        "curb",
+        "pavement",
+        "wheelstop"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        11800,
+        9690,
+        420
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-pavilion-02",
+    "domain": "landscape",
+    "sourceHash": "c2a7f7751320d81649457dbf119cc9a924f1a0179ce35dc53b2eb6360fff1bd8",
+    "sourceKind": "internal-template",
+    "templateId": "pavilion",
+    "parameters": {
+      "width": 2520,
+      "depth": 2520,
+      "postHeight": 2016,
+      "postSize": 126,
+      "girderHeight": 168,
+      "pitchDeg": 25.2,
+      "padThk": 126
+    },
+    "artifactHash": "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1",
+    "artifactSummary": {
+      "name": "정자/쉼터 2.52×2.52m",
+      "partCount": 12,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "furniture",
+        "roof",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3720,
+        3720,
+        2993.3937
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-tree_planting-02",
+    "domain": "landscape",
+    "sourceHash": "12045c86ea6c2bc36f84c578b9df936947ed172b1037012fbd5d46dfe013d23c",
+    "sourceKind": "internal-template",
+    "templateId": "tree_planting",
+    "parameters": {
+      "rows": 1.68,
+      "cols": 3.36,
+      "spacingX": 3360,
+      "spacingY": 3360,
+      "trunkDia": 126,
+      "trunkHeight": 1512,
+      "canopyDia": 2520
+    },
+    "artifactHash": "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837",
+    "artifactSummary": {
+      "name": "식재 플랜 6주",
+      "partCount": 12,
+      "pipeCount": 0,
+      "roles": [
+        "canopy",
+        "trunk"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        9240,
+        5880,
+        4032
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-apartment_complex-03",
+    "domain": "landscape",
+    "sourceHash": "d8ea0d349ac2155e25256f9d11759186e693d78cf0310ac4cb8ec210dc9dba2e",
+    "sourceKind": "internal-template",
+    "templateId": "apartment_complex",
+    "parameters": {
+      "towersX": 2.64,
+      "towersY": 1.76,
+      "floors": 13.2,
+      "towerW": 17600,
+      "towerD": 13200,
+      "gapX": 22000,
+      "gapY": 30800
+    },
+    "artifactHash": "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5",
+    "artifactSummary": {
+      "name": "아파트 단지 (6개동 13층)",
+      "partCount": 14,
+      "pipeCount": 0,
+      "roles": [
+        "building",
+        "green",
+        "ground"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        140800,
+        118800,
+        37900
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-pergola-03",
+    "domain": "landscape",
+    "sourceHash": "efb93be96f1ea8d3ac45ed7dcea014d445d28848c1982e5a021ac28c0f09cb15",
+    "sourceKind": "internal-template",
+    "templateId": "pergola",
+    "parameters": {
+      "width": 3168,
+      "depth": 2640,
+      "height": 2112,
+      "postSize": 105.6,
+      "rafterCount": 6.16,
+      "irrigation": 0
+    },
+    "artifactHash": "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6",
+    "artifactSummary": {
+      "name": "목재 파고라",
+      "partCount": 12,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "joist"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3768,
+        3240,
+        2412
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-timber_deck-03",
+    "domain": "landscape",
+    "sourceHash": "385242c67aaf0d7bebc4232704f3e1905adc545aaea99c1688c33312f84b0315",
+    "sourceKind": "internal-template",
+    "templateId": "timber_deck",
+    "parameters": {
+      "width": 3168,
+      "depth": 2112,
+      "joistSpacing": 396,
+      "boardWidth": 105.6
+    },
+    "artifactHash": "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f",
+    "artifactSummary": {
+      "name": "목재 데크",
+      "partCount": 28,
+      "pipeCount": 0,
+      "roles": [
+        "deck",
+        "joist"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3168,
+        2112,
+        161
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-landscape-fence_run-03",
+    "domain": "landscape",
+    "sourceHash": "5de4205e6803a54b8fa9edcc70cc0963706ccf20e879f667ff836f534f1d50cd",
+    "sourceKind": "internal-template",
+    "templateId": "fence_run",
+    "parameters": {
+      "length": 10560,
+      "postPitch": 1760,
+      "height": 1056,
+      "postSize": 88,
+      "railCount": 1.76,
+      "picketWidth": 79.2,
+      "picketGap": 26.4
+    },
+    "artifactHash": "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db",
+    "artifactSummary": {
+      "name": "목재 울타리 10.56m",
+      "partCount": 109,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "board",
+        "column"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        10560,
+        148,
+        1156
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  }
+]

@@ -7,6 +7,7 @@
  */
 import type { RenderAdapter, GeometryAdapter, DfmAdapter, ToolHostAdapters, VisionAdapter, BrepAdapter, DrawingStudioAdapter } from './tools';
 import type { RenderState, GeometryStats } from './types';
+import { projectReplicadShapeExact } from '@/lib/drawing/replicadExactProjection';
 
 /**
  * STL bytes from the last successful render, keyed by the RenderState object
@@ -660,7 +661,7 @@ export const serverDrawingStudioAdapter: DrawingStudioAdapter = {
         const plane = v === 'iso' ? 'XY' : v;
         let proj: DrawingProjection;
         try {
-          proj = replicad.drawProjection(shape, plane);
+          proj = projectReplicadShapeExact(replicad as never, shape as never, plane as never);
         } catch (e) {
           return { ok: false, reason: `projection ${v} failed: ${(e as Error).message}` };
         }
@@ -699,7 +700,7 @@ export const serverDrawingStudioAdapter: DrawingStudioAdapter = {
       }
       const view = args.view ?? 'front';
       const margin = args.marginMm ?? 10;
-      const proj = replicad.drawProjection(shape, view) as {
+      const proj = projectReplicadShapeExact(replicad as never, shape as never, view as never) as {
         visible: { toSVG?: (m?: number) => string; boundingBox?: { width: number; height: number; minX?: number; minY?: number } };
         hidden: { toSVG?: (m?: number) => string };
       };
@@ -792,7 +793,6 @@ function combineSvgLayers(visibleSvg: string, hiddenSvg: string, vb: { x: number
 import { serverCollabAdapter } from './serverCollab';
 import { serverMateAdapter } from './serverMate';
 import { serverSolverAdapter } from './serverSolver';
-import { serverDocRefAdapter } from './serverDocRefs';
 
 export const SERVER_HOST_ADAPTERS: ToolHostAdapters = {
   render: serverRenderAdapter,
@@ -804,7 +804,8 @@ export const SERVER_HOST_ADAPTERS: ToolHostAdapters = {
   collab: serverCollabAdapter,
   mateSolver: serverMateAdapter,
   solver: serverSolverAdapter,
-  docRefs: serverDocRefAdapter,
+  // External references require a request-scoped, owner-authorized private
+  // file adapter. The server-wide adapter intentionally exposes none.
 };
 
 /**

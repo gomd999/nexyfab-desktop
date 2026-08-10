@@ -5,36 +5,38 @@ import { usePathname } from 'next/navigation';
 import * as THREE from 'three';
 import type { StepAnalysisResult } from './StepUploader';
 import { useStepWorker } from '../workers/useStepWorker';
+import { BREP_STEP_BROWSER_MAX_BYTES, BREP_STEP_LARGE_JOB_MAX_BYTES } from '@/lib/brep-bridge/constants';
+import { meshSurfaceArea, meshVolume } from '../shapes';
 
 const dict = {
   ko: {
     label: 'STEP 파일 불러오기', loading: 'STEP 파일 파싱 중…', errLabel: '오류',
-    errType: '지원하지 않는 파일 형식', maxSize: '파일 크기 제한 50 MB',
+    errType: '지원하지 않는 파일 형식', maxSize: '대형 STEP 파일 제한 512 MB',
     parseErr: (e: string) => `파싱 오류: ${e}`,
   },
   en: {
     label: 'Import STEP File', loading: 'Parsing STEP file…', errLabel: 'Error',
-    errType: 'Unsupported file type', maxSize: 'File size limit: 50 MB',
+    errType: 'Unsupported file type', maxSize: 'Large STEP file limit: 512 MB',
     parseErr: (e: string) => `Parse error: ${e}`,
   },
   ja: {
     label: 'STEP ファイルを読み込む', loading: 'STEP ファイルを解析中…', errLabel: 'エラー',
-    errType: 'サポートされていないファイル形式', maxSize: 'ファイルサイズ制限 50 MB',
+    errType: 'サポートされていないファイル形式', maxSize: '大容量 STEP ファイル制限 512 MB',
     parseErr: (e: string) => `解析エラー: ${e}`,
   },
   zh: {
     label: '导入 STEP 文件', loading: '正在解析 STEP 文件…', errLabel: '错误',
-    errType: '不支持的文件类型', maxSize: '文件大小限制 50 MB',
+    errType: '不支持的文件类型', maxSize: '大型 STEP 文件限制 512 MB',
     parseErr: (e: string) => `解析错误: ${e}`,
   },
   es: {
     label: 'Importar Archivo STEP', loading: 'Analizando archivo STEP…', errLabel: 'Error',
-    errType: 'Tipo de archivo no soportado', maxSize: 'Límite de tamaño 50 MB',
+    errType: 'Tipo de archivo no soportado', maxSize: 'Límite STEP grande: 512 MB',
     parseErr: (e: string) => `Error de análisis: ${e}`,
   },
   ar: {
     label: 'استيراد ملف STEP', loading: 'جارٍ تحليل ملف STEP…', errLabel: 'خطأ',
-    errType: 'نوع الملف غير مدعوم', maxSize: 'حد حجم الملف 50 MB',
+    errType: 'نوع الملف غير مدعوم', maxSize: 'حد ملف STEP الكبير 512 MB',
     parseErr: (e: string) => `خطأ في التحليل: ${e}`,
   },
 };
@@ -62,12 +64,12 @@ export default function StepUploaderButton({ onResult, lang = 'en' }: StepUpload
 
   const handleFile = async (file: File) => {
     const name = file.name.toLowerCase();
-    const allowed = ['.step', '.stp', '.iges', '.igs'].some(ext => name.endsWith(ext));
+    const allowed = ['.step', '.stp'].some(ext => name.endsWith(ext));
     if (!allowed) {
       setError(t.errType);
       return;
     }
-    if (file.size > 50 * 1024 * 1024) {
+    if (file.size > BREP_STEP_LARGE_JOB_MAX_BYTES) {
       setError(t.maxSize);
       return;
     }
@@ -76,6 +78,27 @@ export default function StepUploaderButton({ onResult, lang = 'en' }: StepUpload
     setIsLoading(true);
 
     try {
+      if (file.size > BREP_STEP_BROWSER_MAX_BYTES) {
+        const { importLargeStepDirect } = await import('./directLargeStepImport');
+        const { geometry } = await importLargeStepDirect(file);
+        geometry.computeBoundingBox();
+        const size = geometry.boundingBox?.getSize(new THREE.Vector3()) ?? new THREE.Vector3();
+        const edgeGeometry = new THREE.EdgesGeometry(geometry);
+        const faceCount = geometry.index ? geometry.index.count / 3 : (geometry.getAttribute('position')?.count ?? 0) / 3;
+        const edgeCount = (edgeGeometry.getAttribute('position')?.count ?? 0) / 2;
+        edgeGeometry.dispose();
+        onResult({
+          faceCount: Math.round(faceCount), edgeCount: Math.round(edgeCount), shellCount: 0,
+          volume_cm3: meshVolume(geometry) / 1000,
+          surfaceArea_cm2: meshSurfaceArea(geometry) / 100,
+          bbox: { w: size.x, h: size.y, d: size.z },
+          // Preview STL alone cannot certify closed-solid/manifold source topology.
+          isSolid: false, isManifold: false,
+          dfmSuggestions: ['Large-file preview loaded. Exact source topology and assembly semantics require server evidence.'],
+          geometry,
+        });
+        return;
+      }
       const buffer = await file.arrayBuffer();
       const workerResult = await parseStep(buffer, file.name);
 
@@ -149,7 +172,7 @@ export default function StepUploaderButton({ onResult, lang = 'en' }: StepUpload
       <input
         ref={inputRef}
         type="file"
-        accept=".step,.stp,.iges,.igs"
+        accept=".step,.stp"
         style={{ display: 'none' }}
         onChange={e => {
           const file = e.target.files?.[0];

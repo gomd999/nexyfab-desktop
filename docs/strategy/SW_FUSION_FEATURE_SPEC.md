@@ -745,5 +745,5 @@ Given the spec above, the **next 12-month sequence** that maximizes value:
 - 10-year strategic plan: [SW_FUSION_PARITY_PLAN.md](./SW_FUSION_PARITY_PLAN.md)
 - Current build roadmap: [OWN_PRO_CAD.md](../roadmap/OWN_PRO_CAD.md)
 - Architecture commit: [ADR-013](../adr/013-own-pro-cad-track.md)
-- Webpack/Emscripten lesson: [feedback_webpack_emscripten_wasm.md](../../C:/Users/gomd9/.claude/projects/C--Users-gomd9/memory/feedback_webpack_emscripten_wasm.md)
+- Webpack/Emscripten lesson: private local planning memory (not a repository artifact)
 - Design partner kit: [DESIGN_PARTNER_OUTREACH_KIT.md](./DESIGN_PARTNER_OUTREACH_KIT.md), [_EXECUTION.md](./DESIGN_PARTNER_OUTREACH_EXECUTION.md)

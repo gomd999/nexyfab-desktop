@@ -1,0 +1,376 @@
+{
+  "schema": "nexyfab.aihub239-readonly-audit.v1",
+  "generatedAt": "2026-08-09T14:58:35.879Z",
+  "root": "C:\\Users\\gomd9\\Downloads\\239.건축 도면 데이터",
+  "mode": "full",
+  "split": "all",
+  "sourcePolicy": {
+    "readOnly": true,
+    "extracted": false,
+    "copiedPayload": false,
+    "trainingAuthorized": false,
+    "commercialEvidenceAuthorized": false
+  },
+  "summary": {
+    "archiveCount": 20,
+    "labelsScanned": 43219,
+    "imagesReferenced": 43219,
+    "complete": true,
+    "issueCounts": {
+      "SCHEMA_ERROR": 140,
+      "TRACK_CONTAMINATION": 44,
+      "TRAIN_VALIDATION_LEAKAGE": 8
+    },
+    "affectedSubjectCounts": {
+      "SCHEMA_ERROR": 47,
+      "TRACK_CONTAMINATION": 19,
+      "TRAIN_VALIDATION_LEAKAGE": 8
+    },
+    "issueSampleCount": 48
+  },
+  "archives": [
+    {
+      "path": "01-1.정식개방데이터\\Training\\01.원천데이터\\TS_OBJ_1.zip",
+      "split": "training",
+      "kind": "source",
+      "track": "OBJ",
+      "entryCount": 6058
+    },
+    {
+      "path": "01-1.정식개방데이터\\Training\\01.원천데이터\\TS_OBJ_2.zip",
+      "split": "training",
+      "kind": "source",
+      "track": "OBJ",
+      "entryCount": 2041
+    },
+    {
+      "path": "01-1.정식개방데이터\\Training\\01.원천데이터\\TS_OCR_1.zip",
+      "split": "training",
+      "kind": "source",
+      "track": "OCR",
+      "entryCount": 6057
+    },
+    {
+      "path": "01-1.정식개방데이터\\Training\\01.원천데이터\\TS_OCR_2.zip",
+      "split": "training",
+      "kind": "source",
+      "track": "OCR",
+      "entryCount": 2961
+    },
+    {
+      "path": "01-1.정식개방데이터\\Training\\01.원천데이터\\TS_SPA_1.zip",
+      "split": "training",
+      "kind": "source",
+      "track": "SPA",
+      "entryCount": 6060
+    },
+    {
+      "path": "01-1.정식개방데이터\\Training\\01.원천데이터\\TS_SPA_2.zip",
+      "split": "training",
+      "kind": "source",
+      "track": "SPA",
+      "entryCount": 3585
+    },
+    {
+      "path": "01-1.정식개방데이터\\Training\\01.원천데이터\\TS_STR_1.zip",
+      "split": "training",
+      "kind": "source",
+      "track": "STR",
+      "entryCount": 6051
+    },
+    {
+      "path": "01-1.정식개방데이터\\Training\\01.원천데이터\\TS_STR_2.zip",
+      "split": "training",
+      "kind": "source",
+      "track": "STR",
+      "entryCount": 5592
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\01.원천데이터\\VS_OBJ.zip",
+      "split": "validation",
+      "kind": "source",
+      "track": "OBJ",
+      "entryCount": 1014
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\01.원천데이터\\VS_OCR.zip",
+      "split": "validation",
+      "kind": "source",
+      "track": "OCR",
+      "entryCount": 1129
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\01.원천데이터\\VS_SPA.zip",
+      "split": "validation",
+      "kind": "source",
+      "track": "SPA",
+      "entryCount": 1210
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\01.원천데이터\\VS_STR.zip",
+      "split": "validation",
+      "kind": "source",
+      "track": "STR",
+      "entryCount": 1461
+    },
+    {
+      "path": "01-1.정식개방데이터\\Training\\02.라벨링데이터\\TL_OBJ.zip",
+      "split": "training",
+      "kind": "label",
+      "track": "OBJ",
+      "entryCount": 8099,
+      "scannedCount": 8099
+    },
+    {
+      "path": "01-1.정식개방데이터\\Training\\02.라벨링데이터\\TL_OCR.zip",
+      "split": "training",
+      "kind": "label",
+      "track": "OCR",
+      "entryCount": 9018,
+      "scannedCount": 9018
+    },
+    {
+      "path": "01-1.정식개방데이터\\Training\\02.라벨링데이터\\TL_SPA.zip",
+      "split": "training",
+      "kind": "label",
+      "track": "SPA",
+      "entryCount": 9645,
+      "scannedCount": 9645
+    },
+    {
+      "path": "01-1.정식개방데이터\\Training\\02.라벨링데이터\\TL_STR.zip",
+      "split": "training",
+      "kind": "label",
+      "track": "STR",
+      "entryCount": 11643,
+      "scannedCount": 11643
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\02.라벨링데이터\\VL_OBJ.zip",
+      "split": "validation",
+      "kind": "label",
+      "track": "OBJ",
+      "entryCount": 1014,
+      "scannedCount": 1014
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\02.라벨링데이터\\VL_OCR.zip",
+      "split": "validation",
+      "kind": "label",
+      "track": "OCR",
+      "entryCount": 1129,
+      "scannedCount": 1129
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\02.라벨링데이터\\VL_SPA.zip",
+      "split": "validation",
+      "kind": "label",
+      "track": "SPA",
+      "entryCount": 1210,
+      "scannedCount": 1210
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\02.라벨링데이터\\VL_STR.zip",
+      "split": "validation",
+      "kind": "label",
+      "track": "STR",
+      "entryCount": 1461,
+      "scannedCount": 1461
+    }
+  ],
+  "issueSamples": [
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_091321256.json:annotations[19]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_091321256.json:annotations[22]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_091321256.json:annotations[43]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_145614715.json:annotations[15]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_145614715.json:annotations[27]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_145614715.json:annotations[52]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_186833453.json:annotations[0]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_193946469.json:annotations[5]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_193946469.json:annotations[9]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_193946469.json:annotations[40]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_318610538.json:annotations[11]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_318610538.json:annotations[19]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_318610538.json:annotations[39]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_513730512.json:annotations[27]: bbox outside image"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_534809865.json:annotations[0]: unknown image_id"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_534809865.json:annotations[1]: unknown image_id"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_534809865.json:annotations[2]: unknown image_id"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_534809865.json:annotations[3]: unknown image_id"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_534809865.json:annotations[4]: unknown image_id"
+    },
+    {
+      "code": "SCHEMA_ERROR",
+      "detail": "training:SPA:/APT_FP_SPA_534809865.json:annotations[5]: unknown image_id"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_EP_STR_206532631.json:track: annotations[315] category 공간_기타 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_EP_STR_213241852.json:track: annotations[315] category 공간_기타 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_EP_STR_297011364.json:track: annotations[315] category 공간_기타 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_EP_STR_329298101.json:track: annotations[315] category 공간_기타 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_EP_STR_340896276.json:track: annotations[208] category 공간_기타 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_EP_STR_953661525.json:track: annotations[315] category 공간_기타 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_EP_STR_934173817.json:track: annotations[315] category 공간_기타 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_FP_STR_046449525.json:track: annotations[1] category 공간_화장실 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_FP_STR_046449525.json:track: annotations[2] category 공간_화장실 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_FP_STR_131268209.json:track: annotations[2] category 공간_엘리베이터 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_FP_STR_480002245.json:track: annotations[54] category 공간_드레스룸 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_FP_STR_480002245.json:track: annotations[55] category 공간_드레스룸 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_FP_STR_564845637.json:track: annotations[12] category 공간_화장실 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_FP_STR_564845637.json:track: annotations[32] category 공간_화장실 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_FP_STR_564845637.json:track: annotations[33] category 공간_화장실 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_FP_STR_564845637.json:track: annotations[34] category 공간_화장실 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_FP_STR_564845637.json:track: annotations[35] category 공간_화장실 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_FP_STR_564845637.json:track: annotations[36] category 공간_화장실 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_FP_STR_564845637.json:track: annotations[67] category 공간_화장실 does not belong to STR"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "training:STR:/APT_FP_STR_564845637.json:track: annotations[68] category 공간_화장실 does not belong to STR"
+    },
+    {
+      "code": "TRAIN_VALIDATION_LEAKAGE",
+      "detail": "APT_FP_TRACK_114100600"
+    },
+    {
+      "code": "TRAIN_VALIDATION_LEAKAGE",
+      "detail": "APT_FP_TRACK_105904400"
+    },
+    {
+      "code": "TRAIN_VALIDATION_LEAKAGE",
+      "detail": "APT_FP_TRACK_114100300"
+    },
+    {
+      "code": "TRAIN_VALIDATION_LEAKAGE",
+      "detail": "APT_FP_TRACK_500100200"
+    },
+    {
+      "code": "TRAIN_VALIDATION_LEAKAGE",
+      "detail": "APT_FP_TRACK_500100300"
+    },
+    {
+      "code": "TRAIN_VALIDATION_LEAKAGE",
+      "detail": "APT_FP_TRACK_105904600"
+    },
+    {
+      "code": "TRAIN_VALIDATION_LEAKAGE",
+      "detail": "APT_FP_TRACK_114100500"
+    },
+    {
+      "code": "TRAIN_VALIDATION_LEAKAGE",
+      "detail": "APT_FP_TRACK_114100100"
+    }
+  ],
+  "pass": false
+}

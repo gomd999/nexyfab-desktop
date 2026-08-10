@@ -1,0 +1,1578 @@
+{
+  "schema": "nexyfab.scad-native-step-assembly-campaign.v1",
+  "generatedAt": "2026-08-06T10:26:37.532Z",
+  "summary": {
+    "scenarios": 4,
+    "pass": 0,
+    "fail": 4,
+    "definitions": 9,
+    "occurrences": 28,
+    "manufacturingReleaseReady": 0
+  },
+  "results": [
+    {
+      "scenarioId": "sc7_gear_train",
+      "status": "fail",
+      "structuralReady": false,
+      "manufacturingReleaseReady": false,
+      "reason": "Material/process assignments remain unresolved.",
+      "definitionCount": 2,
+      "occurrenceCount": 2,
+      "products": 3,
+      "nauo": 2,
+      "placementEvidence": {
+        "sourceOccurrenceCount": 2,
+        "cycleFree": true,
+        "occurrences": [
+          {
+            "occurrenceId": "#45388",
+            "entityId": 45388,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 45379,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#113369",
+            "entityId": 113369,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 113360,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                0.9945218953682342,
+                0.10452846326802462,
+                0,
+                -49.72609476841171,
+                -0.10452846326802462,
+                0.9945218953682342,
+                0,
+                5.226423163401231,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                0.9945218953682342,
+                0.10452846326802462,
+                0,
+                -49.72609476841171,
+                -0.10452846326802462,
+                0.9945218953682342,
+                0,
+                5.226423163401231,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 0.9999999999999998,
+            "reflection": false,
+            "nonUniformScale": false
+          }
+        ],
+        "availableTransformCount": 2,
+        "missingTransformCount": 0,
+        "invalidTransformCount": 0,
+        "worldPlacementCount": 2,
+        "reflectionCount": 0,
+        "nonUniformScaleCount": 0
+      },
+      "stepFile": "step/sc7_gear_train.step",
+      "codes": [
+        "STEP_ASSEMBLY_TRANSFORM_MISMATCH"
+      ]
+    },
+    {
+      "scenarioId": "sc8_pipe_joint",
+      "status": "fail",
+      "structuralReady": false,
+      "manufacturingReleaseReady": false,
+      "reason": "Material/process assignments remain unresolved.",
+      "definitionCount": 3,
+      "occurrenceCount": 3,
+      "products": 4,
+      "nauo": 3,
+      "placementEvidence": {
+        "sourceOccurrenceCount": 3,
+        "cycleFree": true,
+        "occurrences": [
+          {
+            "occurrenceId": "#232",
+            "entityId": 232,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 223,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                6.123233995737e-17,
+                0,
+                -1,
+                3.0616169978685e-15,
+                0,
+                1,
+                0,
+                0,
+                1,
+                0,
+                6.123233995737e-17,
+                50,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                6.123233995737e-17,
+                0,
+                -1,
+                3.0616169978685e-15,
+                0,
+                1,
+                0,
+                0,
+                1,
+                0,
+                6.123233995737e-17,
+                50,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#433",
+            "entityId": 433,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 424,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                6.123233995737e-17,
+                0,
+                -1,
+                0,
+                0,
+                1,
+                0,
+                0,
+                1,
+                0,
+                6.123233995737e-17,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                6.123233995737e-17,
+                0,
+                -1,
+                0,
+                0,
+                1,
+                0,
+                0,
+                1,
+                0,
+                6.123233995737e-17,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#634",
+            "entityId": 634,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 625,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          }
+        ],
+        "availableTransformCount": 3,
+        "missingTransformCount": 0,
+        "invalidTransformCount": 0,
+        "worldPlacementCount": 3,
+        "reflectionCount": 0,
+        "nonUniformScaleCount": 0
+      },
+      "stepFile": "step/sc8_pipe_joint.step",
+      "codes": [
+        "STEP_ASSEMBLY_TRANSFORM_MISMATCH"
+      ]
+    },
+    {
+      "scenarioId": "sc9_simple_car",
+      "status": "fail",
+      "structuralReady": false,
+      "manufacturingReleaseReady": false,
+      "reason": "Material/process assignments remain unresolved.",
+      "definitionCount": 3,
+      "occurrenceCount": 7,
+      "products": 4,
+      "nauo": 7,
+      "placementEvidence": {
+        "sourceOccurrenceCount": 7,
+        "cycleFree": true,
+        "occurrences": [
+          {
+            "occurrenceId": "#396",
+            "entityId": 396,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 387,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#513",
+            "entityId": 513,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 504,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -20,
+                0,
+                1,
+                0,
+                -18,
+                0,
+                0,
+                1,
+                -7,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -20,
+                0,
+                1,
+                0,
+                -18,
+                0,
+                0,
+                1,
+                -7,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#519",
+            "entityId": 519,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 504,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -20,
+                0,
+                1,
+                0,
+                18,
+                0,
+                0,
+                1,
+                -7,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -20,
+                0,
+                1,
+                0,
+                18,
+                0,
+                0,
+                1,
+                -7,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#524",
+            "entityId": 524,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 504,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                20,
+                0,
+                1,
+                0,
+                -18,
+                0,
+                0,
+                1,
+                -7,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                20,
+                0,
+                1,
+                0,
+                -18,
+                0,
+                0,
+                1,
+                -7,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#529",
+            "entityId": 529,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 504,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                20,
+                0,
+                1,
+                0,
+                18,
+                0,
+                0,
+                1,
+                -7,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                20,
+                0,
+                1,
+                0,
+                18,
+                0,
+                0,
+                1,
+                -7,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#877",
+            "entityId": 877,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 868,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                -6,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                -6,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#883",
+            "entityId": 883,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 868,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                -6,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                -6,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          }
+        ],
+        "availableTransformCount": 7,
+        "missingTransformCount": 0,
+        "invalidTransformCount": 0,
+        "worldPlacementCount": 7,
+        "reflectionCount": 0,
+        "nonUniformScaleCount": 0
+      },
+      "stepFile": "step/sc9_simple_car.step",
+      "codes": [
+        "STEP_ASSEMBLY_TRANSFORM_MISMATCH"
+      ]
+    },
+    {
+      "scenarioId": "sc10_brackets_grid",
+      "status": "fail",
+      "structuralReady": false,
+      "manufacturingReleaseReady": false,
+      "reason": "Material/process assignments remain unresolved.",
+      "definitionCount": 1,
+      "occurrenceCount": 16,
+      "products": 2,
+      "nauo": 16,
+      "placementEvidence": {
+        "sourceOccurrenceCount": 16,
+        "cycleFree": true,
+        "occurrences": [
+          {
+            "occurrenceId": "#588",
+            "entityId": 588,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#594",
+            "entityId": 594,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                -50,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                -50,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#599",
+            "entityId": 599,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                -100,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                -100,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#604",
+            "entityId": 604,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                -150,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                -150,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#609",
+            "entityId": 609,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -50,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -50,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#614",
+            "entityId": 614,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -50,
+                0,
+                1,
+                0,
+                -50,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -50,
+                0,
+                1,
+                0,
+                -50,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#619",
+            "entityId": 619,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -50,
+                0,
+                1,
+                0,
+                -100,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -50,
+                0,
+                1,
+                0,
+                -100,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#624",
+            "entityId": 624,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -50,
+                0,
+                1,
+                0,
+                -150,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -50,
+                0,
+                1,
+                0,
+                -150,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#629",
+            "entityId": 629,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -100,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -100,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#634",
+            "entityId": 634,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -100,
+                0,
+                1,
+                0,
+                -50,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -100,
+                0,
+                1,
+                0,
+                -50,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#639",
+            "entityId": 639,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -100,
+                0,
+                1,
+                0,
+                -100,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -100,
+                0,
+                1,
+                0,
+                -100,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#644",
+            "entityId": 644,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -100,
+                0,
+                1,
+                0,
+                -150,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -100,
+                0,
+                1,
+                0,
+                -150,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#649",
+            "entityId": 649,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -150,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -150,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#654",
+            "entityId": 654,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -150,
+                0,
+                1,
+                0,
+                -50,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -150,
+                0,
+                1,
+                0,
+                -50,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#659",
+            "entityId": 659,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -150,
+                0,
+                1,
+                0,
+                -100,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -150,
+                0,
+                1,
+                0,
+                -100,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          },
+          {
+            "occurrenceId": "#664",
+            "entityId": 664,
+            "parentDefinitionId": 5,
+            "childDefinitionId": 579,
+            "parentOccurrenceId": null,
+            "localToParent": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -150,
+                0,
+                1,
+                0,
+                -150,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "worldPlacement": {
+              "status": "available",
+              "matrix": [
+                1,
+                0,
+                0,
+                -150,
+                0,
+                1,
+                0,
+                -150,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "determinant": 1,
+            "reflection": false,
+            "nonUniformScale": false
+          }
+        ],
+        "availableTransformCount": 16,
+        "missingTransformCount": 0,
+        "invalidTransformCount": 0,
+        "worldPlacementCount": 16,
+        "reflectionCount": 0,
+        "nonUniformScaleCount": 0
+      },
+      "stepFile": "step/sc10_brackets_grid.step",
+      "codes": [
+        "STEP_ASSEMBLY_TRANSFORM_MISMATCH"
+      ]
+    }
+  ]
+}

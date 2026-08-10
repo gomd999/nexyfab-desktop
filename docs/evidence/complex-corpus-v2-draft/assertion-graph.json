@@ -1,0 +1,7689 @@
+{
+  "schema": "nexyfab.complex-assertion-graph.v1",
+  "cases": [
+    {
+      "caseId": "robot-review-01",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-02",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-03",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-04",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-05",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-06",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-07",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-08",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-09",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-10",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-11",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-12",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-13",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-14",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-15",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-16",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-17",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-18",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-19",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-20",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-01",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-02",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-03",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-04",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-05",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-06",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-07",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-08",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-09",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-10",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-11",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-12",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-13",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-14",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-15",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-16",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-17",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-18",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-19",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-20",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-01",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-02",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-03",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-04",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-05",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-06",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-07",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-08",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-09",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-10",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-11",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-12",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-13",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-14",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-15",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-16",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-17",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-18",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-19",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-20",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-01",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-02",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-03",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-04",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-05",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-06",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-07",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-08",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-09",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-10",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-11",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-12",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-13",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-14",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-15",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-01",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-02",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-03",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-04",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-05",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-06",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-07",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-08",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-09",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-10",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-11",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-12",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-13",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-14",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-15",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-16",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-17",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-18",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-19",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-20",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-01",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-02",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-03",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-04",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-05",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-06",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-07",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-08",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-09",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-10",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-11",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-12",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-13",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-14",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-15",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-16",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-17",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-18",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-19",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-20",
+      "nodes": [
+        {
+          "assertionId": "requirements:source-intent",
+          "dependsOn": []
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "occurrences:count",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "dependsOn": [
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "dependsOn": [
+            "requirements:source-intent"
+          ]
+        },
+        {
+          "assertionId": "features:required",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "dependsOn": [
+            "part-definitions:count",
+            "occurrences:count"
+          ]
+        },
+        {
+          "assertionId": "transforms:occurrences",
+          "dependsOn": [
+            "hierarchy:structure"
+          ]
+        },
+        {
+          "assertionId": "joints:interfaces",
+          "dependsOn": [
+            "transforms:occurrences"
+          ]
+        },
+        {
+          "assertionId": "body-membership:definitions",
+          "dependsOn": [
+            "part-definitions:count"
+          ]
+        },
+        {
+          "assertionId": "motion:operating-range",
+          "dependsOn": [
+            "joints:interfaces"
+          ]
+        },
+        {
+          "assertionId": "collision-clearance:operating-range",
+          "dependsOn": [
+            "motion:operating-range"
+          ]
+        },
+        {
+          "assertionId": "manufacturing:release",
+          "dependsOn": [
+            "dimensions:governed"
+          ]
+        }
+      ]
+    }
+  ]
+}

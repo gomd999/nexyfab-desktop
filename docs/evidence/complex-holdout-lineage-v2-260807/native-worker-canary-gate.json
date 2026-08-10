@@ -1,0 +1,121 @@
+{
+  "schema": "nexyfab.native-worker-canary-gate.v1",
+  "generatedAt": "2026-08-08T22:56:11.627Z",
+  "healthGeneratedAt": "2026-08-08T22:56:10.830Z",
+  "validUntil": "2026-08-09T22:56:10.830Z",
+  "manifestSha256": "28b2fc04d5718fd246c5cf6e248e2f0b65018be65f4074482aad8a393e328ad4",
+  "policy": {
+    "oneDeterministicCanaryPerWorker": true,
+    "freshHealthRequiredBeforeCanary": true,
+    "workerIdentityVersionBound": true,
+    "manifestAndResultHashBound": true,
+    "canaryRequiredBeforeBatch": true
+  },
+  "releaseReady": false,
+  "summary": {
+    "workers": 7,
+    "pass": 0,
+    "readyToRun": 0,
+    "blockedHealth": 7
+  },
+  "gates": [
+    {
+      "workerKind": "catia-native",
+      "status": "blocked_health",
+      "healthStatus": "not_run",
+      "canaryJobId": "1d1de823a33f6bb5d6fd68b9",
+      "caseId": "gearbox-review-08",
+      "extension": "catproduct",
+      "candidateJobs": 1,
+      "accepted": false,
+      "errors": [
+        "health_not_passed"
+      ],
+      "workerIdentitySha256": null
+    },
+    {
+      "workerKind": "creo-native",
+      "status": "blocked_health",
+      "healthStatus": "not_run",
+      "canaryJobId": "018c48778afe958d8224a1ae",
+      "caseId": "gearbox-review-09",
+      "extension": "prt",
+      "candidateJobs": 16,
+      "accepted": false,
+      "errors": [
+        "health_not_passed"
+      ],
+      "workerIdentitySha256": null
+    },
+    {
+      "workerKind": "dwg-exact",
+      "status": "blocked_health",
+      "healthStatus": "not_run",
+      "canaryJobId": "06427cc581898b44152a994a",
+      "caseId": "interior-review-11",
+      "extension": "dwg",
+      "candidateJobs": 16,
+      "accepted": false,
+      "errors": [
+        "health_not_passed"
+      ],
+      "workerIdentitySha256": null
+    },
+    {
+      "workerKind": "inventor-native",
+      "status": "blocked_health",
+      "healthStatus": "not_run",
+      "canaryJobId": "05059c3fbd835ffa7cb0502e",
+      "caseId": "turbomachinery-review-04",
+      "extension": "ipt",
+      "candidateJobs": 33,
+      "accepted": false,
+      "errors": [
+        "health_not_passed"
+      ],
+      "workerIdentitySha256": null
+    },
+    {
+      "workerKind": "parasolid-native",
+      "status": "blocked_health",
+      "healthStatus": "not_run",
+      "canaryJobId": "f6542eed1c9f4f206a82c286",
+      "caseId": "robot-review-02",
+      "extension": "x_t",
+      "candidateJobs": 1,
+      "accepted": false,
+      "errors": [
+        "health_not_passed"
+      ],
+      "workerIdentitySha256": null
+    },
+    {
+      "workerKind": "revit-native",
+      "status": "blocked_health",
+      "healthStatus": "not_run",
+      "canaryJobId": "50b43841c013992f84ddf56e",
+      "caseId": "interior-review-15",
+      "extension": "rvt",
+      "candidateJobs": 6,
+      "accepted": false,
+      "errors": [
+        "health_not_passed"
+      ],
+      "workerIdentitySha256": null
+    },
+    {
+      "workerKind": "solidworks-native",
+      "status": "blocked_health",
+      "healthStatus": "not_run",
+      "canaryJobId": "0095b45228a6cce9e79d1d47",
+      "caseId": "pressure_vessel-review-08",
+      "extension": "sldasm",
+      "candidateJobs": 35,
+      "accepted": false,
+      "errors": [
+        "health_not_passed"
+      ],
+      "workerIdentitySha256": null
+    }
+  ]
+}

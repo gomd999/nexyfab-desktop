@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ELEV_COOKIE, verifyElevToken, elevMatchesSession } from '@/lib/admin-elev-token';
+import { getTrustedClientIp } from '@/lib/client-ip';
+import { enforceCadApiBoundary } from '@/lib/cad-api-proxy-boundary';
+import { checkOrigin } from '@/lib/csrf';
 
 /**
  * Expert CAD 게이트 (proxy).
@@ -31,6 +34,8 @@ import { ELEV_COOKIE, verifyElevToken, elevMatchesSession } from '@/lib/admin-el
  */
 
 const EXPERT_GATE_RE = /^\/(kr|en|ja|cn|es|ar)\/shape-generator(?:\/|$)/;
+const ALWAYS_BLOCKED_LEGACY_SCRIPT_RE = /^\/(?:send-mail\.php|search\.php)$/i;
+const OBSERVED_LEGACY_UPLOAD_RE = /^\/uploads(?:\/|$)/i;
 
 /**
  * 관리자 전용 API — **step-up 상승 없이는 지나가지 못한다** (260802).
@@ -49,8 +54,218 @@ const EXPERT_GATE_RE = /^\/(kr|en|ja|cn|es|ar)\/shape-generator(?:\/|$)/;
  */
 const ADMIN_API_RE = /^\/api\/(admin|nexyfab\/admin)(?:\/|$)/;
 
+type SecurityGateMode = 'shadow' | 'enforce' | 'off';
+type SecurityDecision = {
+  reason: 'blocked_public_asset' | 'cross_site_cookie_mutation' | 'rate_limit' | 'request_too_large' | 'unsafe_method';
+  response: NextResponse;
+};
+
+function securityGateMode(): SecurityGateMode {
+  const configured = process.env.SECURITY_GATE_MODE?.trim().toLowerCase();
+  if (configured === 'enforce' || configured === 'off' || configured === 'shadow') return configured;
+  // Local/CI remains observation-only. A production deployment is secure by
+  // default even when an operator forgets to set the rollout flag.
+  return process.env.NODE_ENV === 'production' ? 'enforce' : 'shadow';
+}
+
+const shadowLogStore = new Map<string, number>();
+const SHADOW_LOG_INTERVAL_MS = 5 * 60_000;
+
+function privacySafePathname(pathname: string): string {
+  if (pathname === '/send-mail.php' || pathname === '/search.php') return pathname;
+  if (pathname.startsWith('/uploads/')) return '/uploads/:path*';
+  return pathname
+    .split('/')
+    .map((segment) => (
+      segment.length > 24 || /^[0-9a-f]{16,}$/i.test(segment) ? ':id' : segment
+    ))
+    .join('/');
+}
+
+function logShadowDecision(req: NextRequest, decision: SecurityDecision): void {
+  const pathname = privacySafePathname(req.nextUrl.pathname);
+  const key = `${decision.reason}:${req.method}:${pathname}`;
+  const now = Date.now();
+  const lastLoggedAt = shadowLogStore.get(key) ?? 0;
+  if (now - lastLoggedAt < SHADOW_LOG_INTERVAL_MS) return;
+  shadowLogStore.set(key, now);
+  console.warn('[security-event]', JSON.stringify({
+    event: 'security_gate_decision',
+    mode: 'shadow',
+    decision: 'would_block',
+    reason: decision.reason,
+    method: req.method,
+    pathname,
+    status: decision.response.status,
+    occurredAt: new Date(now).toISOString(),
+  }));
+}
+
+type RateLimitEntry = { count: number; resetAt: number };
+const apiRateLimitStore = new Map<string, RateLimitEntry>();
+const API_RATE_LIMIT_WINDOW_MS = 60_000;
+const API_RATE_LIMIT_DEFAULT = 100;
+const API_RATE_LIMIT_MAX_KEYS = 20_000;
+
+function apiRateLimitFor(pathname: string): number {
+  if (/^\/api\/auth\/(login|signup|forgot-password|reset-password|cross-login|cross-signup)(?:\/|$)/.test(pathname)) return 10;
+  if (/^\/api\/(send-mail|auth\/send-verification)(?:\/|$)/.test(pathname)) return 5;
+  if (/^\/api\/(partner\/upload|quick-quote\/upload|nexyfab\/files)(?:\/|$)/.test(pathname)) return 15;
+  if (/^\/api\/(billing|stripe)(?:\/|$)/.test(pathname)) return 20;
+  if (ADMIN_API_RE.test(pathname)) return 60;
+  return API_RATE_LIMIT_DEFAULT;
+}
+
+function evaluateApiRateLimit(req: NextRequest): SecurityDecision | null {
+  const { pathname } = req.nextUrl;
+  if (!pathname.startsWith('/api/')) return null;
+  if (
+    pathname === '/api/billing/webhook'
+    || pathname === '/api/stripe/webhook'
+    || pathname === '/api/webhooks/dodo'
+  ) return null;
+
+  const now = Date.now();
+  const limit = apiRateLimitFor(pathname);
+  const routeBucket = pathname.split('/').slice(0, 4).join('/');
+  const key = `${getTrustedClientIp(req.headers)}:${routeBucket}`;
+  const current = apiRateLimitStore.get(key);
+
+  if (!current || now >= current.resetAt) {
+    if (!current && apiRateLimitStore.size >= API_RATE_LIMIT_MAX_KEYS) {
+      const oldest = [...apiRateLimitStore.entries()]
+        .sort((a, b) => a[1].resetAt - b[1].resetAt)
+        .slice(0, Math.ceil(API_RATE_LIMIT_MAX_KEYS * 0.1));
+      for (const [entryKey] of oldest) apiRateLimitStore.delete(entryKey);
+    }
+    apiRateLimitStore.set(key, { count: 1, resetAt: now + API_RATE_LIMIT_WINDOW_MS });
+    return null;
+  }
+
+  if (current.count >= limit) {
+    const retryAfter = Math.max(1, Math.ceil((current.resetAt - now) / 1000));
+    return {
+      reason: 'rate_limit',
+      response: NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(retryAfter),
+            'X-RateLimit-Limit': String(limit),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(current.resetAt),
+          },
+        },
+      ),
+    };
+  }
+
+  current.count += 1;
+  return null;
+}
+
+function requestSizeLimit(pathname: string): number {
+  if (/^\/api\/(partner\/upload|quick-quote\/upload|nexyfab\/files)(?:\/|$)/.test(pathname)) {
+    return 64 * 1024 * 1024;
+  }
+  // The legacy inquiry form may carry several attachments. This remains a
+  // deliberately generous observation threshold until beta traffic is known.
+  if (pathname === '/api/send-mail') return 256 * 1024 * 1024;
+  return 16 * 1024 * 1024;
+}
+
+const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const COOKIE_CSRF_EXEMPT_RE = /^(?:\/api\/billing\/webhook|\/api\/stripe\/webhook|\/api\/webhooks\/(?:dodo|inbound-email)|\/api\/nexyfab\/ses-notifications)$/;
+
+function evaluateCookieOrigin(req: NextRequest): SecurityDecision | null {
+  if (!MUTATION_METHODS.has(req.method)) return null;
+  const hasAuthCookie = ['nf_access_token', 'nf_refresh_token', 'nf_admin_token']
+    .some(name => Boolean(req.cookies.get(name)?.value));
+  if (!hasAuthCookie) return null;
+  if (COOKIE_CSRF_EXEMPT_RE.test(req.nextUrl.pathname)) return null;
+  if (checkOrigin(req)) return null;
+  return {
+    reason: 'cross_site_cookie_mutation',
+    response: NextResponse.json({ error: 'Cross-site request blocked' }, { status: 403 }),
+  };
+}
+
+function evaluateRequestPolicy(req: NextRequest): SecurityDecision | null {
+  const { pathname } = req.nextUrl;
+  if (OBSERVED_LEGACY_UPLOAD_RE.test(pathname)) {
+    return {
+      reason: 'blocked_public_asset',
+      response: new NextResponse('Not Found', {
+        status: 404,
+        headers: { 'Cache-Control': 'no-store' },
+      }),
+    };
+  }
+
+  if (req.method === 'TRACE' || req.method === 'CONNECT') {
+    return {
+      reason: 'unsafe_method',
+      response: NextResponse.json({ error: 'Method not allowed' }, { status: 405 }),
+    };
+  }
+
+  if (pathname.startsWith('/api/')) {
+    const originDecision = evaluateCookieOrigin(req);
+    if (originDecision) return originDecision;
+    const rawLength = req.headers.get('content-length');
+    const contentLength = rawLength == null ? null : Number(rawLength);
+    if (contentLength != null && Number.isFinite(contentLength) && contentLength > requestSizeLimit(pathname)) {
+      return {
+        reason: 'request_too_large',
+        response: NextResponse.json({ error: 'Request body too large' }, { status: 413 }),
+      };
+    }
+  }
+
+  return evaluateApiRateLimit(req);
+}
+
 export async function proxy(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
+
+  // PHP is not executed by Next.js. Serving these files would disclose their
+  // source (including a legacy secret), so this boundary is unconditional and
+  // does not affect account or customer-artifact compatibility.
+  if (ALWAYS_BLOCKED_LEGACY_SCRIPT_RE.test(pathname)) {
+    return new NextResponse('Not Found', {
+      status: 404,
+      headers: { 'Cache-Control': 'no-store' },
+    });
+  }
+
+  // Closed-beta compatibility: new controls observe by default. They never
+  // mutate accounts/files, and only block when SECURITY_GATE_MODE=enforce.
+  const mode = securityGateMode();
+  if (mode !== 'off') {
+    const decision = evaluateRequestPolicy(req);
+    if (decision) {
+      if (mode === 'enforce') {
+        console.warn('[security-event]', JSON.stringify({
+          event: 'security_gate_decision',
+          mode: 'enforce',
+          decision: 'blocked',
+          reason: decision.reason,
+          method: req.method,
+          pathname: privacySafePathname(req.nextUrl.pathname),
+          status: decision.response.status,
+          occurredAt: new Date().toISOString(),
+        }));
+        return decision.response;
+      }
+      logShadowDecision(req, decision);
+    }
+  }
+
+  // Next 16 executes this proxy, not the deprecated root middleware. Keep the
+  // CAD compute boundary here so route handlers cannot be reached anonymously.
+  const cadBoundary = await enforceCadApiBoundary(req);
+  if (cadBoundary) return cadBoundary;
 
   if (ADMIN_API_RE.test(pathname)) {
     // 강제가 꺼져 있으면 통과 — 인프라에서 명시적으로 꺼야만 꺼진다.
@@ -118,6 +333,10 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
 export const config = {
   // shape-generator 기본 경로(트레일링 슬래시 유무) + 모든 하위 경로.
   matcher: [
+    '/api/:path*',
+    '/send-mail.php',
+    '/search.php',
+    '/uploads/:path*',
     // 관리자 전용 API — OTP 라우트(`/api/auth/admin-otp/*`)는 여기에 걸리지 않는다.
     '/api/admin/:path*',
     '/api/nexyfab/admin/:path*',

@@ -1,0 +1,329 @@
+{
+  "schema": "nexyfab.ground-truth-review-form.v1",
+  "caseId": "robot-review-08",
+  "family": "robot",
+  "tier": "T1",
+  "immutableTarget": {
+    "source": {
+      "hash": "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103",
+      "locator": "참고파일들4/two-wheel-self-balancing-robot-v1-1.snapshot.4/CAD/reference-components/arduino-uno-sensor-shield-1.snapshot.6/Arduino Sensor Board V1.stp",
+      "extension": "stp",
+      "bytes": 3339756,
+      "holdoutGroup": "robot:two-wheel-self-balancing-robot-v1-1",
+      "hashPassed": true
+    },
+    "artifactSetHash": "6d54fe84570c0de7a8bb2f7e38c213dd3a211380e0dcad998edad2e0db8d8325",
+    "requiredAssertionIds": [
+      "requirements:source-intent",
+      "part-definitions:count",
+      "occurrences:count",
+      "hierarchy:structure",
+      "dimensions:governed",
+      "features:required",
+      "step-roundtrip:preservation"
+    ],
+    "evidence": {
+      "automaticPasses": 1,
+      "reviewerRequired": 6,
+      "assertions": [
+        {
+          "assertionId": "requirements:source-intent",
+          "axis": "requirements",
+          "artifactHashes": [
+            "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "axis": "part_definitions",
+          "artifactHashes": [
+            "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103"
+          ],
+          "tolerancePolicy": "exact-count",
+          "automaticEvidence": {
+            "axis": "part_definitions",
+            "status": "pass",
+            "reason": "STEP product definitions measured.",
+            "measured": {
+              "definitions": 1,
+              "solids": 1
+            }
+          },
+          "reviewerRequired": false,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "occurrences:count",
+          "axis": "occurrences",
+          "artifactHashes": [
+            "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103"
+          ],
+          "tolerancePolicy": "exact-count",
+          "automaticEvidence": {
+            "axis": "occurrences",
+            "status": "not_run",
+            "reason": "No STEP assembly occurrence relationship.",
+            "measured": 0
+          },
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "axis": "hierarchy",
+          "artifactHashes": [
+            "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": {
+            "axis": "hierarchy",
+            "status": "not_run",
+            "reason": "Hierarchy unavailable.",
+            "measured": 0
+          },
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "axis": "dimensions",
+          "artifactHashes": [
+            "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103"
+          ],
+          "tolerancePolicy": "reviewed-linear-tolerance-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "features:required",
+          "axis": "features",
+          "artifactHashes": [
+            "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "axis": "step_roundtrip",
+          "artifactHashes": [
+            "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        }
+      ],
+      "nativeStatus": "not_run",
+      "nativeReleaseReady": false,
+      "nativeAxes": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native definitions extracted.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ],
+          "measured": 2
+        },
+        {
+          "axis": "body_membership",
+          "status": "pass",
+          "reason": "Every native part definition has extractor-owned solid membership evidence.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "Native occurrences extracted.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ],
+          "measured": 2
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "Native occurrence hierarchy validated.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ],
+          "measured": 1
+        },
+        {
+          "axis": "transforms",
+          "status": "pass",
+          "reason": "Every native occurrence has a validated rigid local transform.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ],
+          "measured": 2
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Extractor did not declare joint semantics complete.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ]
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "Native unit metadata extracted.",
+          "artifactHashes": [
+            "3a340a71a6fda128dd147412db41845773e9ce1b6cd2c44a5c210c7fd6a415e3"
+          ],
+          "measured": "mm/deg"
+        }
+      ]
+    }
+  },
+  "instructions": {
+    "decisions": [
+      "approved",
+      "rejected",
+      "changes_requested"
+    ],
+    "reviewerIdsMustBeRealAndNonEmpty": true,
+    "notesMustBeNonEmpty": true,
+    "timestampsMustBeIso8601": true,
+    "independentReviewerMustDiffer": true,
+    "independentReviewerMustNotAuthorAssertionReviews": true
+  },
+  "submission": {
+    "revision": 1,
+    "licenseReview": {
+      "decision": null,
+      "reviewerId": null,
+      "note": null,
+      "reviewedAt": null
+    },
+    "holdoutIsolationReview": {
+      "decision": null,
+      "reviewerId": null,
+      "note": null,
+      "reviewedAt": null
+    },
+    "assertionReviews": [
+      {
+        "assertionId": "requirements:source-intent",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "part-definitions:count",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "occurrences:count",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "hierarchy:structure",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "dimensions:governed",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "features:required",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "step-roundtrip:preservation",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      }
+    ],
+    "signoffs": [
+      {
+        "role": "domain-reviewer",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null,
+        "artifactSetHash": "6d54fe84570c0de7a8bb2f7e38c213dd3a211380e0dcad998edad2e0db8d8325",
+        "reviewedAssertionIds": [
+          "requirements:source-intent",
+          "part-definitions:count",
+          "occurrences:count",
+          "hierarchy:structure",
+          "dimensions:governed",
+          "features:required",
+          "step-roundtrip:preservation"
+        ]
+      },
+      {
+        "role": "independent-reviewer",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null,
+        "artifactSetHash": "6d54fe84570c0de7a8bb2f7e38c213dd3a211380e0dcad998edad2e0db8d8325",
+        "reviewedAssertionIds": [
+          "requirements:source-intent",
+          "part-definitions:count",
+          "occurrences:count",
+          "hierarchy:structure",
+          "dimensions:governed",
+          "features:required",
+          "step-roundtrip:preservation"
+        ]
+      }
+    ]
+  },
+  "checklist": [
+    "provenance_and_commercial_license",
+    "lineage_independence",
+    "native_definition_occurrence_counts",
+    "units_and_coordinate_system",
+    "assertion_graph_and_tolerance",
+    "prompt_and_holdout_isolation"
+  ]
+}

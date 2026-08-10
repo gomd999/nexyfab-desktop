@@ -144,6 +144,8 @@ export function buildPartRefRegistry(
     const baseZ=base.profileOffsetZ??0,topZ=baseZ+base.depth;
     registry.set('f.cap.bottom', { kind:'plane', origin:vec3(0,0,baseZ), normal:vec3(0,0,1) });
     registry.set('f.cap.top', { kind:'plane', origin:vec3(0,0,topZ), normal:vec3(0,0,1) });
+    registry.set('bbox_axis_z_min', { kind:'axis', origin:vec3(0,0,baseZ), direction:vec3(0,0,1) });
+    registry.set('bbox_axis_z_max', { kind:'axis', origin:vec3(0,0,topZ), direction:vec3(0,0,1) });
     const loop = base.loop.filter((point,index,all)=>index===0||Math.hypot(point.x-all[index-1]!.x,point.y-all[index-1]!.y)>1e-9);
     if(loop.length>1&&Math.hypot(loop[0]!.x-loop.at(-1)!.x,loop[0]!.y-loop.at(-1)!.y)<1e-9)loop.pop();
     loop.forEach((a,index)=>{const b=loop[(index+1)%loop.length]!,dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;registry.set(`f.side.${index}`,{kind:'plane',origin:vec3(a.x,a.y,baseZ),normal:vec3(dy/len,-dx/len,0)});registry.set(`v.bottom.${index}`,{kind:'point',origin:vec3(a.x,a.y,baseZ)});registry.set(`v.top.${index}`,{kind:'point',origin:vec3(a.x,a.y,topZ)});});

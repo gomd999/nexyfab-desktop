@@ -1,0 +1,99 @@
+[
+  {
+    "schema": "nexyfab.complex-benchmark-run.v2",
+    "subject": "reference_ground_truth",
+    "caseId": "mearm-snapshot-10",
+    "campaign": 1,
+    "repeat": 1,
+    "usedForTuning": false,
+    "requiredGatesPassed": false,
+    "verified": false,
+    "falseVerified": false,
+    "falseClear": false,
+    "destructivePartMerge": false,
+    "assertions": [
+      {
+        "assertionId": "occurrences:exported-mesh-count",
+        "status": "pass",
+        "reason": "93 hash-bound STL exports agree with 93 fusion occurrences.",
+        "artifactHashes": [
+          "c676a2ca918b574406a43af8291eb5e6b2b1aa79db87e260ef902d3fb7cfcbe5",
+          "4bcd3e86b6ea95da7e2f6d973cee80ccaff4a5e2bce85e3aa4a1a126648bef19"
+        ]
+      },
+      {
+        "assertionId": "part-definitions:semantic-groups",
+        "status": "not_run",
+        "reason": "35 semantic filename groups are inferred and are not approved native definitions.",
+        "artifactHashes": [
+          "8064877de90b2d714ba8c60ee2699e37fc5ecd5ec3cefcddafa569d7351274e7"
+        ]
+      },
+      {
+        "assertionId": "body-membership:x_t-to-part",
+        "status": "not_run",
+        "reason": "Authoritative native extractor or reviewed ground truth is unavailable.",
+        "artifactHashes": [
+          "8064877de90b2d714ba8c60ee2699e37fc5ecd5ec3cefcddafa569d7351274e7"
+        ]
+      },
+      {
+        "assertionId": "hierarchy:native-subassemblies",
+        "status": "not_run",
+        "reason": "Authoritative native extractor or reviewed ground truth is unavailable.",
+        "artifactHashes": [
+          "4704cb60213ec78ffae22cb777986ac556c905a9c30b113ca732ed3686b74ee8"
+        ]
+      },
+      {
+        "assertionId": "transforms:native-occurrences",
+        "status": "not_run",
+        "reason": "Authoritative native extractor or reviewed ground truth is unavailable.",
+        "artifactHashes": [
+          "4704cb60213ec78ffae22cb777986ac556c905a9c30b113ca732ed3686b74ee8"
+        ]
+      },
+      {
+        "assertionId": "joints:native-mates",
+        "status": "not_run",
+        "reason": "Authoritative native extractor or reviewed ground truth is unavailable.",
+        "artifactHashes": [
+          "4704cb60213ec78ffae22cb777986ac556c905a9c30b113ca732ed3686b74ee8"
+        ]
+      },
+      {
+        "assertionId": "motion:joint-operating-range",
+        "status": "not_run",
+        "reason": "Authoritative native extractor or reviewed ground truth is unavailable.",
+        "artifactHashes": [
+          "4704cb60213ec78ffae22cb777986ac556c905a9c30b113ca732ed3686b74ee8"
+        ]
+      },
+      {
+        "assertionId": "collision-clearance:operating-range",
+        "status": "not_run",
+        "reason": "Authoritative native extractor or reviewed ground truth is unavailable.",
+        "artifactHashes": [
+          "4704cb60213ec78ffae22cb777986ac556c905a9c30b113ca732ed3686b74ee8",
+          "c676a2ca918b574406a43af8291eb5e6b2b1aa79db87e260ef902d3fb7cfcbe5"
+        ]
+      },
+      {
+        "assertionId": "manufacturing:material-mass",
+        "status": "not_run",
+        "reason": "Authoritative native extractor or reviewed ground truth is unavailable.",
+        "artifactHashes": [
+          "4bcd3e86b6ea95da7e2f6d973cee80ccaff4a5e2bce85e3aa4a1a126648bef19"
+        ]
+      },
+      {
+        "assertionId": "step-roundtrip:assembly-preservation",
+        "status": "not_run",
+        "reason": "Authoritative native extractor or reviewed ground truth is unavailable.",
+        "artifactHashes": [
+          "4bcd3e86b6ea95da7e2f6d973cee80ccaff4a5e2bce85e3aa4a1a126648bef19"
+        ]
+      }
+    ]
+  }
+]

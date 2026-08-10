@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { sendEmail } from '@/lib/nexyfab-email';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { randomBytes, createHash } from 'crypto';
 import { z } from 'zod';
 import { getTrustedClientIp } from '@/lib/client-ip';
@@ -18,7 +18,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? (() => {
 
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
-  if (!rateLimit(`forgot-pw:${ip}`, 3, 60_000).allowed) {
+  if (!(await rateLimitAsync(`forgot-pw:${ip}`, 3, 60_000)).allowed) {
     return NextResponse.json({ ok: true }); // 열거 공격 방지: 항상 200 반환
   }
 
@@ -29,6 +29,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { email } = parsed.data;
+  const emailKey = createHash('sha256').update(email.trim().toLowerCase()).digest('hex');
+  if (!(await rateLimitAsync(`forgot-pw-account:${emailKey}`, 3, 15 * 60_000)).allowed) {
+    return NextResponse.json({ ok: true });
+  }
   const db = getDbAdapter();
 
   const user = await db.queryOne<{ id: string; name: string }>(

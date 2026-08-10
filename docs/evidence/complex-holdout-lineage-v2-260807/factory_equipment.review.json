@@ -1,0 +1,462 @@
+{
+  "schema": "nexyfab.complex-holdout-review.v1",
+  "family": "factory_equipment",
+  "policy": {
+    "selectedDoesNotMeanApproved": true,
+    "scoreEligible": false,
+    "oneCasePerLineage": true,
+    "requiredApprovedCases": 20
+  },
+  "candidates": 32,
+  "selected": 20,
+  "shortfall": 0,
+  "structurallyRejected": [
+    {
+      "lineageGroup": "factory_equipment:10-cement-mill-department-1",
+      "relativePath": "참고파일들4/10-cement-mill-department-1.snapshot.1.zip",
+      "reason": "supported_product_cad_missing"
+    },
+    {
+      "lineageGroup": "factory_equipment:aluminum-conveyor-01-1",
+      "relativePath": "참고파일들4/aluminum-conveyor-01-1.snapshot.3.zip",
+      "reason": "archive_preflight_budget_exceeded"
+    },
+    {
+      "lineageGroup": "factory_equipment:aluminum-tin-foil-cup-forming-packaging-production-line-1",
+      "relativePath": "참고파일들4/aluminum-tin-foil-cup-forming-packaging-production-line-1.snapshot.2.zip",
+      "reason": "supported_product_cad_missing"
+    },
+    {
+      "lineageGroup": "factory_equipment:curve-90-pu-belt-conveyor-1",
+      "relativePath": "참고파일들4/curve-90-pu-belt-conveyor-1.snapshot.6.zip",
+      "reason": "supported_product_cad_missing"
+    },
+    {
+      "lineageGroup": "factory_equipment:roller-chain-conveyor-pallet-1",
+      "relativePath": "참고파일들4/roller-chain-conveyor-pallet-1.snapshot.3.zip",
+      "reason": "archive_preflight_budget_exceeded"
+    }
+  ],
+  "items": [
+    {
+      "caseId": "factory_equipment-review-01",
+      "family": "factory_equipment",
+      "tierCandidate": "T3",
+      "holdoutGroup": "factory_equipment:20-ton-excavator-skeleton-bucket-design-solidworks-2023-tutorial-heavy-cad-modelling-1",
+      "sourceHash": "51065e8b330c411341ea4ac0ac3b25a7819adfca2be3ed8b36a3cc8cdd9f85f3",
+      "bytes": 5414328,
+      "extension": "zip",
+      "localLocator": "참고파일들2/20-ton-excavator-skeleton-bucket-design-solidworks-2023-tutorial-heavy-cad-modelling-1.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-02",
+      "family": "factory_equipment",
+      "tierCandidate": "T1",
+      "holdoutGroup": "factory_equipment:30-tool-hsk-a63-chain-type-tool-magazine-for-cnc-machining-center-1",
+      "sourceHash": "be671d888bcd072fd3b2bc6365577cd8624f31836fd377df69710b15578f35c2",
+      "bytes": 16466678,
+      "extension": "stp",
+      "localLocator": "참고파일들4/30-tool-hsk-a63-chain-type-tool-magazine-for-cnc-machining-center-1.snapshot.2/Assembly.stp",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-03",
+      "family": "factory_equipment",
+      "tierCandidate": "T1",
+      "holdoutGroup": "factory_equipment:8-deep-pan-conveyor-clinker-silo",
+      "sourceHash": "6621350c24376a1c26f330d876d433b3ecde213e8672f51239ea527ac2d81805",
+      "bytes": 241418004,
+      "extension": "iges",
+      "localLocator": "참고파일들4/8-deep-pan-conveyor-clinker-silo.snapshot.2/8-Clinker Silo.iges",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-04",
+      "family": "factory_equipment",
+      "tierCandidate": "T1",
+      "holdoutGroup": "factory_equipment:a-c-axis-tilt-rotary-table-assembly-for-5-axis-cnc-machining-center-1",
+      "sourceHash": "df26ce90dd327d6c525e6c5e4eee4f8b563a92aef2a35fff05cdf124728a159e",
+      "bytes": 43122236,
+      "extension": "stp",
+      "localLocator": "참고파일들4/a-c-axis-tilt-rotary-table-assembly-for-5-axis-cnc-machining-center-1.snapshot.2/tilting rotary table.stp",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-05",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:automatic-sorting-conveyor-with-pop-up-mechanism-1",
+      "sourceHash": "88912d84be2213989efbadb1581de32e544bf5f6fb32ae432248af21c29101b9",
+      "bytes": 624128,
+      "extension": "iam",
+      "localLocator": "참고파일들4/automatic-sorting-conveyor-with-pop-up-mechanism-1.snapshot.3/Assembly1.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-06",
+      "family": "factory_equipment",
+      "tierCandidate": "T3",
+      "holdoutGroup": "factory_equipment:automatic-wafer-transfer-equipment-machine-1",
+      "sourceHash": "96e34f6fd9ee85168fc5feab775d2ff942b8cabfd25ce30c59f11d3d11bc542c",
+      "bytes": 7177343,
+      "extension": "zip",
+      "localLocator": "참고파일들4/automatic-wafer-transfer-equipment-machine-1.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-07",
+      "family": "factory_equipment",
+      "tierCandidate": "T3",
+      "holdoutGroup": "factory_equipment:automatic-wet-wipes-paper-packaging-laminating-machine-1",
+      "sourceHash": "561f749936b8aef95df4d623da1046d73852ceebf272768055d1016a43266918",
+      "bytes": 3725864,
+      "extension": "zip",
+      "localLocator": "참고파일들4/automatic-wet-wipes-paper-packaging-laminating-machine-1.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-08",
+      "family": "factory_equipment",
+      "tierCandidate": "T1",
+      "holdoutGroup": "factory_equipment:cnc-mini-mill-made-out-of-sheet-metal-1",
+      "sourceHash": "7e8d0ebe475b2e7f304b419271ae298147609ec675cac3f6468b4519d7bedd96",
+      "bytes": 12617865,
+      "extension": "stp",
+      "localLocator": "참고파일들2/cnc-mini-mill-made-out-of-sheet-metal-1.snapshot.2/Mini mill sheet metal.stp",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-09",
+      "family": "factory_equipment",
+      "tierCandidate": "T3",
+      "holdoutGroup": "factory_equipment:hbb-30-twinshaft-mixer-1",
+      "sourceHash": "077edfb8f8b0c1e0dde59121f7269be1efc61f658971a46bd6a76c2ff1b30f3a",
+      "bytes": 54999224,
+      "extension": "zip",
+      "localLocator": "참고파일들4/hbb-30-twinshaft-mixer-1.snapshot.6.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-10",
+      "family": "factory_equipment",
+      "tierCandidate": "T3",
+      "holdoutGroup": "factory_equipment:helical-gear-for-paper-printing-machine-1",
+      "sourceHash": "76f57ce127aa10f77ab70300bc28f25a58c5dfefc0354cb2bf26b94b239b308b",
+      "bytes": 24668233,
+      "extension": "zip",
+      "localLocator": "참고파일들4/helical-gear-for-paper-printing-machine-1.snapshot.1.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-11",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:hmc-02-mesh-chain-conveyor-1",
+      "sourceHash": "30be3ac734504e58ab9344c5208846b8f1782f8f7406e2ed90e141527554ce5c",
+      "bytes": 4366680,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-00.sldasm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-12",
+      "family": "factory_equipment",
+      "tierCandidate": "T1",
+      "holdoutGroup": "factory_equipment:hsk-a63-motor-spindle-unit-for-5-axis-cnc-machining-center-1",
+      "sourceHash": "c1f82d1b2f963f08383693ef8152be1644afa7e060c4ef8dad9c94af7df39229",
+      "bytes": 33044947,
+      "extension": "stp",
+      "localLocator": "참고파일들4/hsk-a63-motor-spindle-unit-for-5-axis-cnc-machining-center-1.snapshot.1/Spindle.stp",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-13",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:multipurpose-pepper-grinding-machine-efficient-durable-1",
+      "sourceHash": "92f82d46f6fee897f600d01a5d6c968b3cbb9b37b08f81315ddec434c767714d",
+      "bytes": 3225014,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/multipurpose-pepper-grinding-machine-efficient-durable-1.snapshot.1/Pepper Blending Machine.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-14",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:packaging-and-cutting-tape-1",
+      "sourceHash": "c6cdb94657144b004f886c52ae3c7f72911c82349be30c08b7183e87ffa4f64b",
+      "bytes": 2047488,
+      "extension": "iam",
+      "localLocator": "참고파일들/packaging-and-cutting-tape-1.snapshot.9/Assembly Full.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-15",
+      "family": "factory_equipment",
+      "tierCandidate": "T3",
+      "holdoutGroup": "factory_equipment:packing-machine-4-lines-for-liquid-packaging-1",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "bytes": 21498483,
+      "extension": "zip",
+      "localLocator": "참고파일들2/packing-machine-4-lines-for-liquid-packaging-1.snapshot.5.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-16",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:pustelga-adaptive-open-source-cnc-by-ariadne-in-process-1",
+      "sourceHash": "d75f089909348a73adf8e9390d85275343b0020eca508fde136b81b8ad44315b",
+      "bytes": 48183834,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/pustelga-adaptive-open-source-cnc-by-ariadne-in-process-1.snapshot.9/PUS_low_part.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-17",
+      "family": "factory_equipment",
+      "tierCandidate": "T1",
+      "holdoutGroup": "factory_equipment:roll-forming-machine-3",
+      "sourceHash": "4fe8b865f124b0330bcb60252b325c3cc0cbe58e9f15f0720b8e8c5276e0b728",
+      "bytes": 29188877,
+      "extension": "step",
+      "localLocator": "참고파일들4/roll-forming-machine-3.snapshot.1/rollformmachine.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-18",
+      "family": "factory_equipment",
+      "tierCandidate": "T3",
+      "holdoutGroup": "factory_equipment:smr-30-3m-feed-mixer-1",
+      "sourceHash": "2a8f7c9d98fe751187425be49c45d5328cc064eafdd8c92bf73bf0cbcae286a4",
+      "bytes": 28910600,
+      "extension": "zip",
+      "localLocator": "참고파일들4/smr-30-3m-feed-mixer-1.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-19",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:tower-crane-12",
+      "sourceHash": "e8565c6221d06274798e33d292f8334caa04c2079b9c1e551e3f4d7a518106fe",
+      "bytes": 3418292,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/tower-crane-12.snapshot.3/Montaj2.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-20",
+      "family": "factory_equipment",
+      "tierCandidate": "T1",
+      "holdoutGroup": "factory_equipment:tower-crane-13",
+      "sourceHash": "1df6c8c4933697cce90f5c692384457d7a887d29b2fac13b72bac3bad89ae7d9",
+      "bytes": 82765134,
+      "extension": "stp",
+      "localLocator": "참고파일들4/tower-crane-13.snapshot.3/Tower Crane.stp",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    }
+  ]
+}

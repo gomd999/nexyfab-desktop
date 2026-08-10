@@ -415,12 +415,12 @@ function applyAnalyticalPlacement(
     const targetRad = (mate.value * Math.PI) / 180;
     const cos = clamp(dot(a, b), -1, 1);
     const currentAngle = Math.acos(cos);
-    const axis = normalizeSafe(crossVec(a, b));
+    const delta = currentAngle - targetRad;
+    const axis = normalizeSafe(crossVec(a, b)) ?? (Math.abs(delta) > 1e-12 ? stablePerpendicular(a) : null);
     if (!axis) return null;
     // Same right-hand-rule convention as perpendicular: positive rotation
     // around (a × b) reduces the angle. Negate to move from currentAngle
     // to targetAngle.
-    const delta = currentAngle - targetRad;
     const rot = quatAxisAngle(axis, delta);
     return { position: curPos, orientation: quatNormalize(quatMul(rot, curOri)) };
   }
@@ -500,6 +500,15 @@ function applyAnalyticalPlacement(
   if (mate.kind === 'rack_pinion') return null;
 
   return null;
+}
+
+/** Deterministic rotation axis for parallel/anti-parallel angle mates. */
+function stablePerpendicular(direction: Vec3): Vec3 | null {
+  const ax = Math.abs(direction.x), ay = Math.abs(direction.y), az = Math.abs(direction.z);
+  const basis = ax <= ay && ax <= az ? { x: 1, y: 0, z: 0 }
+    : ay <= az ? { x: 0, y: 1, z: 0 }
+      : { x: 0, y: 0, z: 1 };
+  return normalizeSafe(crossVec(direction, basis));
 }
 
 // ─── small helpers for the analytical block above ────────────────────────

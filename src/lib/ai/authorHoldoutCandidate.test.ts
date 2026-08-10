@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { authorCandidate as authorCandidateRaw, summarizeArtifact } from '../../../scripts/author-holdout-candidate.mjs';
+import { DOMAIN_ACCURACY_PROFILES } from './domainAccuracyProgram';
 // mjs 기본값 추론이 옵션 타입을 좁혀버려(artifactFile: null) 호출측에서 재선언
 const authorCandidate = authorCandidateRaw as (
   spec: Record<string, unknown>,
@@ -32,10 +33,8 @@ const SPEC_BASE = {
   sourceKind: 'public-standard',
   sourceRights: { basis: 'public-license', reference: 'TEST 공공누리 제1유형', benchmarkingAllowed: true },
   sourceSpec: '높이 3m 길이 10m 역T형 옹벽',
-  assertions: [
-    'requirements', 'dimensions', 'features', 'part_definitions', 'hierarchy',
-    'transforms', 'collision_clearance', 'manufacturing', 'step_roundtrip', 'repair',
-  ].map(axis => ({ axis, tolerancePolicy: '±1mm', provenance: 'standard' })),
+  assertions: DOMAIN_ACCURACY_PROFILES.civil.requiredAxes
+    .map(axis => ({ axis, tolerancePolicy: '±1mm', provenance: 'standard' })),
 };
 
 describe('author-holdout-candidate (M-C4)', () => {
@@ -43,7 +42,7 @@ describe('author-holdout-candidate (M-C4)', () => {
     const { src, artifact } = fixture();
     const r = await authorCandidate({ ...SPEC_BASE, sourceFiles: [src] }, { artifactFile: artifact });
     expect(r.errors).toEqual([]);
-    expect(r.ready).toBe(true);
+    expect(r.ready, r.issues?.join('\n')).toBe(true);
     expect(r.candidate.sourceHash).toMatch(/^[a-f0-9]{64}$/);
     expect(r.candidate.sourceSpec).toContain('옹벽');
     expect(r.candidate.artifactSummary.partCount).toBe(2);

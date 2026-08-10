@@ -1,12 +1,18 @@
 import type { CrossDomainVerificationResult } from './crossDomainVerification';
 import type { ComplexProductAssessment } from './complexProductAccuracy';
-import type { ComplexAccuracyAxis, ComplexAssertionStatus } from './complexProductBenchmarkV2';
+import type { ComplexAssertionStatus } from './complexProductBenchmarkV2';
+import type { DomainEvidenceAxis } from './domainProfile';
 import { DOMAIN_ACCURACY_PROFILES, type DomainAccuracyDomain } from './domainAccuracyProgram';
 import type { DomainAccuracyAssertionResult } from './domainAccuracyEvidence';
+import type { MechanicalReleaseCertificate } from './mechanicalReleaseCertificate';
+import type { BuildingReleaseCertificate } from './buildingReleaseCertificate';
+import type { CivilReleaseCertificate } from './civilReleaseCertificate';
+import type { LandscapeReleaseCertificate } from './landscapeReleaseCertificate';
+import type { InteriorReleaseCertificate } from './interiorReleaseCertificate';
 
 export interface ExplicitDomainGateResult {
   id: string;
-  axis: ComplexAccuracyAxis;
+  axis: DomainEvidenceAxis;
   status: 'passed' | 'failed' | 'not_run';
   reason: string;
 }
@@ -16,7 +22,7 @@ const status = (value: 'passed' | 'failed' | 'not_run'): ComplexAssertionStatus 
   value === 'passed' ? 'pass' : value === 'failed' ? 'fail' : 'not_run';
 
 function merge(results: readonly DomainAccuracyAssertionResult[]): DomainAccuracyAssertionResult[] {
-  const grouped = new Map<ComplexAccuracyAxis, DomainAccuracyAssertionResult[]>();
+  const grouped = new Map<DomainEvidenceAxis, DomainAccuracyAssertionResult[]>();
   for (const result of results) grouped.set(result.axis, [...(grouped.get(result.axis) ?? []), result]);
   return [...grouped.entries()].map(([axis, values]) => ({
     axis,
@@ -38,15 +44,15 @@ export function completeDomainAssertions(
   }));
 }
 
-const CROSS_DOMAIN_AXIS: Record<CrossDomainVerificationResult['gates'][number]['id'], ComplexAccuracyAxis> = {
-  structure: 'hierarchy',
-  placement: 'transforms',
+const CROSS_DOMAIN_AXIS: Record<CrossDomainVerificationResult['gates'][number]['id'], DomainEvidenceAxis> = {
+  structure: 'semantic_objects',
+  placement: 'relationships',
   'assembly-dof': 'joints',
   'precise-interference': 'collision_clearance',
-  'space-boundary': 'body_membership',
-  egress: 'manufacturing',
-  'door-swing': 'motion',
-  'mep-interference': 'collision_clearance',
+  'space-boundary': 'space_closure',
+  egress: 'egress',
+  'door-swing': 'door_swing',
+  'mep-interference': 'mep_coordination',
 };
 
 export function assertionsFromCrossDomain(
@@ -54,13 +60,13 @@ export function assertionsFromCrossDomain(
   result: CrossDomainVerificationResult,
 ): DomainAccuracyAssertionResult[] {
   return completeDomainAssertions(domain, result.gates.map(gate => ({
-    axis: CROSS_DOMAIN_AXIS[gate.id],
+    axis: domain === 'interior' && gate.id === 'mep-interference' ? 'ceiling_mep' : CROSS_DOMAIN_AXIS[gate.id],
     status: status(gate.status),
     reason: `${gate.id}: ${gate.reason}`,
   })));
 }
 
-const COMPLEX_PRODUCT_AXIS: Record<ComplexProductAssessment['gates'][number]['id'], ComplexAccuracyAxis> = {
+const COMPLEX_PRODUCT_AXIS: Record<ComplexProductAssessment['gates'][number]['id'], DomainEvidenceAxis> = {
   decomposition: 'part_definitions',
   'part-evidence': 'features',
   interfaces: 'joints',
@@ -73,6 +79,7 @@ export function assertionsFromComplexProduct(
   domain: DomainAccuracyDomain,
   result: ComplexProductAssessment,
 ): DomainAccuracyAssertionResult[] {
+  if (domain !== 'mechanical') return completeDomainAssertions(domain, []);
   return completeDomainAssertions(domain, result.gates.map(gate => ({
     axis: COMPLEX_PRODUCT_AXIS[gate.id],
     status: gate.passed ? 'pass' : 'fail',
@@ -92,3 +99,33 @@ export function assertionsFromExplicitGates(
   })));
 }
 
+/** Mechanical release assertions are already exact-revision and artifact-hash bound. */
+export function assertionsFromMechanicalRelease(
+  certificate: MechanicalReleaseCertificate,
+): DomainAccuracyAssertionResult[] {
+  return completeDomainAssertions('mechanical', certificate.assertions);
+}
+
+export function assertionsFromBuildingRelease(
+  certificate: BuildingReleaseCertificate,
+): DomainAccuracyAssertionResult[] {
+  return completeDomainAssertions('building', certificate.assertions);
+}
+
+export function assertionsFromCivilRelease(
+  certificate: CivilReleaseCertificate,
+): DomainAccuracyAssertionResult[] {
+  return completeDomainAssertions('civil', certificate.assertions);
+}
+
+export function assertionsFromLandscapeRelease(
+  certificate: LandscapeReleaseCertificate,
+): DomainAccuracyAssertionResult[] {
+  return completeDomainAssertions('landscape', certificate.assertions);
+}
+
+export function assertionsFromInteriorRelease(
+  certificate: InteriorReleaseCertificate,
+): DomainAccuracyAssertionResult[] {
+  return completeDomainAssertions('interior', certificate.assertions);
+}

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail, welcomeHtml, welcomeEmailSubject, nexyfabEmailLocaleFromLanguageTag } from '@/lib/nexyfab-email';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { signJWT } from '@/lib/jwt';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { checkOrigin } from '@/lib/csrf';
 import bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   // Rate limit: 5 requests/minute per IP
   const ip = getTrustedClientIp(req.headers);
-  if (!rateLimit(`signup:${ip}`, 5, 60_000).allowed) {
+  if (!(await rateLimitAsync(`signup:${ip}`, 5, 60_000)).allowed) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
   }
 

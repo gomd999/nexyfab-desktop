@@ -1,0 +1,194 @@
+{
+  "schema": "nexyfab.ifc-fidelity-evidence.v1",
+  "generatedAt": "2026-08-09T22:17:02.371Z",
+  "scoreEligible": false,
+  "releaseReady": false,
+  "policy": {
+    "excludedContainersAreNotPhysicalFailures": true,
+    "exactMeshVolumeDoesNotImplyExactDisplayGeometry": true,
+    "openSurfaceMeshDoesNotImplyManufacturingSolid": true,
+    "aabbOnlyCannotPassManufacturingGeometry": true
+  },
+  "summary": {
+    "cases": 3,
+    "failures": 0,
+    "totals": {
+      "imported": 1690,
+      "exactExtrusionDisplay": 0,
+      "exactMeshVolume": 723,
+      "exactDisplayMesh": 1690,
+      "openSurfaceMesh": 967,
+      "releaseCriticalOpenSurfaces": 108,
+      "topologyPromotedClosedMesh": 0,
+      "degenerateRepairParts": 497,
+      "removedDegenerateFaces": 6039,
+      "boundaryEdges": 197936,
+      "boundaryComponents": 29851,
+      "closedBoundaryLoops": 29213,
+      "openBoundaryChains": 0,
+      "branchedBoundaryComponents": 638,
+      "planarClosedBoundaryLoops": 26540,
+      "microGapCandidates": 0,
+      "totalBoundaryLengthMm": 21254852.087694734,
+      "nonManifoldEdges": 416,
+      "degenerateFaces": 0,
+      "aabbOnly": 0,
+      "excludedContainers": 161,
+      "unsupportedPhysical": 0
+    },
+    "physicalImportCoverage": 1,
+    "exactVolumeCoverage": 0.427810650887574,
+    "exactDisplayGeometryCoverage": 1
+  },
+  "cases": [
+    {
+      "caseId": "interior-review-07",
+      "status": "pass",
+      "releaseReady": false,
+      "counts": {
+        "imported": 277,
+        "exactExtrusionDisplay": 0,
+        "exactMeshVolume": 61,
+        "exactDisplayMesh": 277,
+        "openSurfaceMesh": 216,
+        "releaseCriticalOpenSurfaces": 27,
+        "openSurfaceMeshByClass": {
+          "IFCWALL": 23,
+          "IFCWINDOW": 18,
+          "IFCDOOR": 16,
+          "IFCFURNISHINGELEMENT": 36,
+          "IFCBUILDINGELEMENTPROXY": 119,
+          "IFCSLAB": 2,
+          "IFCCOLUMN": 2
+        },
+        "topologyPromotedClosedMesh": 0,
+        "degenerateRepairParts": 68,
+        "removedDegenerateFaces": 512,
+        "boundaryEdges": 92630,
+        "boundaryComponents": 21934,
+        "closedBoundaryLoops": 21836,
+        "openBoundaryChains": 0,
+        "branchedBoundaryComponents": 98,
+        "planarClosedBoundaryLoops": 21587,
+        "microGapCandidates": 0,
+        "totalBoundaryLengthMm": 8267797.670233657,
+        "nonManifoldEdges": 209,
+        "degenerateFaces": 0,
+        "aabbOnly": 0,
+        "excludedContainers": 19,
+        "unsupportedPhysical": 0
+      },
+      "coverage": {
+        "physicalImportCoverage": 1,
+        "exactVolumeCoverage": 0.22021660649819494,
+        "exactDisplayGeometryCoverage": 1
+      },
+      "gates": {
+        "physicalImport": "pass",
+        "exactVolume": "fail",
+        "exactDisplayGeometry": "pass",
+        "closedManufacturingSolids": "fail",
+        "releaseCriticalHostSolids": "fail"
+      }
+    },
+    {
+      "caseId": "interior-review-11",
+      "status": "pass",
+      "releaseReady": false,
+      "counts": {
+        "imported": 223,
+        "exactExtrusionDisplay": 0,
+        "exactMeshVolume": 119,
+        "exactDisplayMesh": 223,
+        "openSurfaceMesh": 104,
+        "releaseCriticalOpenSurfaces": 18,
+        "openSurfaceMeshByClass": {
+          "IFCWINDOW": 10,
+          "IFCDOOR": 24,
+          "IFCWALL": 14,
+          "IFCFURNISHINGELEMENT": 47,
+          "IFCBUILDINGELEMENTPROXY": 5,
+          "IFCSLAB": 3,
+          "IFCROOF": 1
+        },
+        "topologyPromotedClosedMesh": 0,
+        "degenerateRepairParts": 81,
+        "removedDegenerateFaces": 1387,
+        "boundaryEdges": 10135,
+        "boundaryComponents": 1805,
+        "closedBoundaryLoops": 1760,
+        "openBoundaryChains": 0,
+        "branchedBoundaryComponents": 45,
+        "planarClosedBoundaryLoops": 675,
+        "microGapCandidates": 0,
+        "totalBoundaryLengthMm": 1752293.6194844788,
+        "nonManifoldEdges": 207,
+        "degenerateFaces": 0,
+        "aabbOnly": 0,
+        "excludedContainers": 41,
+        "unsupportedPhysical": 0
+      },
+      "coverage": {
+        "physicalImportCoverage": 1,
+        "exactVolumeCoverage": 0.5336322869955157,
+        "exactDisplayGeometryCoverage": 1
+      },
+      "gates": {
+        "physicalImport": "pass",
+        "exactVolume": "fail",
+        "exactDisplayGeometry": "pass",
+        "closedManufacturingSolids": "fail",
+        "releaseCriticalHostSolids": "fail"
+      }
+    },
+    {
+      "caseId": "interior-review-13",
+      "status": "pass",
+      "releaseReady": false,
+      "counts": {
+        "imported": 1190,
+        "exactExtrusionDisplay": 0,
+        "exactMeshVolume": 543,
+        "exactDisplayMesh": 1190,
+        "openSurfaceMesh": 647,
+        "releaseCriticalOpenSurfaces": 63,
+        "openSurfaceMeshByClass": {
+          "IFCDOOR": 126,
+          "IFCFURNISHINGELEMENT": 387,
+          "IFCWALL": 61,
+          "IFCBUILDINGELEMENTPROXY": 26,
+          "IFCSLAB": 2,
+          "IFCWINDOW": 45
+        },
+        "topologyPromotedClosedMesh": 0,
+        "degenerateRepairParts": 348,
+        "removedDegenerateFaces": 4140,
+        "boundaryEdges": 95171,
+        "boundaryComponents": 6112,
+        "closedBoundaryLoops": 5617,
+        "openBoundaryChains": 0,
+        "branchedBoundaryComponents": 495,
+        "planarClosedBoundaryLoops": 4278,
+        "microGapCandidates": 0,
+        "totalBoundaryLengthMm": 11234760.797976596,
+        "nonManifoldEdges": 0,
+        "degenerateFaces": 0,
+        "aabbOnly": 0,
+        "excludedContainers": 101,
+        "unsupportedPhysical": 0
+      },
+      "coverage": {
+        "physicalImportCoverage": 1,
+        "exactVolumeCoverage": 0.45630252100840335,
+        "exactDisplayGeometryCoverage": 1
+      },
+      "gates": {
+        "physicalImport": "pass",
+        "exactVolume": "fail",
+        "exactDisplayGeometry": "pass",
+        "closedManufacturingSolids": "fail",
+        "releaseCriticalHostSolids": "fail"
+      }
+    }
+  ]
+}

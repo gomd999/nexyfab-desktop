@@ -1,0 +1,171 @@
+{
+  "evidence": {
+    "domain": "civil",
+    "approvedCases": 20,
+    "independentReviewers": 2,
+    "campaigns": 3,
+    "minimumRepeatsPerCase": 15,
+    "minimumRepeatsPerCampaign": 5,
+    "requiredGateRuns": 300,
+    "requiredGatePasses": 300,
+    "falseVerified": 0,
+    "falseClear": 0,
+    "destructivePartMerge": 0,
+    "axes": [
+      {
+        "axis": "requirements",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "dimensions",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "features",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "part_definitions",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "hierarchy",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "transforms",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "collision_clearance",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "manufacturing",
+        "expected": 300,
+        "measured": 105,
+        "passed": 105
+      },
+      {
+        "axis": "step_roundtrip",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "repair",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      }
+    ]
+  },
+  "assessment": {
+    "domain": "civil",
+    "eligible": false,
+    "axes": [
+      {
+        "axis": "requirements",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "dimensions",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "features",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "part_definitions",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "hierarchy",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "transforms",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "collision_clearance",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "manufacturing",
+        "expected": 300,
+        "measured": 105,
+        "passed": 105,
+        "accuracy": 1,
+        "coverage": 0.35
+      },
+      {
+        "axis": "step_roundtrip",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "repair",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      }
+    ],
+    "blockers": [
+      "accuracy:features",
+      "coverage:features",
+      "accuracy:hierarchy",
+      "coverage:hierarchy",
+      "coverage:manufacturing"
+    ]
+  },
+  "issues": []
+}

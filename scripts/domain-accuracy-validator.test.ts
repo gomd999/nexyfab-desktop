@@ -41,26 +41,26 @@ describe('domain-accuracy-validator', () => {
     expect(run.requiredGatesPassed).toBe(true);
     const byAxis = new Map(run.assertions.map((item: { axis: string }) => [item.axis, item]));
     expect(byAxis.size).toBe(CIVIL_AXES.length); // 케이스 축 전량, 중복 없음
-    for (const axis of ['requirements', 'dimensions', 'part_definitions', 'collision_clearance', 'transforms', 'manufacturing']) {
-      expect(byAxis.get(axis)).toMatchObject({ status: 'pass' }); // manufacturing=W2-1 왕복
+    for (const axis of ['requirements', 'geometry', 'semantic_objects', 'relationships', 'output_consistency', 'structures']) {
+      expect(byAxis.get(axis)).toMatchObject({ status: 'pass' });
     }
     // W1-3 — 측정 대상이 자명하게 없는 축은 사유 있는 not_run(0==0 부풀리기 금지)
-    expect(byAxis.get('features')).toMatchObject({ status: 'not_run', reason: 'no_feature_vocabulary_in_template' });
-    expect(byAxis.get('hierarchy')).toMatchObject({ status: 'not_run', reason: 'template_without_hierarchy' });
+    expect(byAxis.get('survey_control')).toMatchObject({ status: 'not_run', reason: 'dryrun_v1_out_of_scope:survey_control' });
+    expect(byAxis.get('alignment')).toMatchObject({ status: 'not_run', reason: 'dryrun_v1_out_of_scope:alignment' });
     expect(byAxis.get('repair')).toMatchObject({ status: 'not_run', reason: 'dryrun_v1_out_of_scope:repair' });
   });
 
-  it('ground-truth artifact hash mismatch → dimensions fails loudly', async () => {
+  it('ground-truth artifact hash mismatch → geometry fails loudly', async () => {
     const tampered = { ...candidate, artifactHash: 'f'.repeat(64) };
     const run = await validateCase(tampered, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
-    const dims = run.assertions.find((item: { axis: string }) => item.axis === 'dimensions');
+    const dims = run.assertions.find((item: { axis: string }) => item.axis === 'geometry');
     expect(dims).toMatchObject({ status: 'fail' });
     expect(run.requiredGatesPassed).toBe(false);
   });
 
   it('missing corpus entry → measured axes all fail, never silently pass', async () => {
     const run = await validateCase(undefined, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
-    for (const axis of ['requirements', 'dimensions', 'part_definitions', 'collision_clearance']) {
+    for (const axis of ['requirements', 'geometry', 'semantic_objects', 'relationships']) {
       expect(run.assertions.find((item: { axis: string }) => item.axis === axis)).toMatchObject({ status: 'fail' });
     }
     expect(run.requiredGatesPassed).toBe(false);
@@ -90,7 +90,7 @@ describe('W1-1: AI-subject mode', () => {
   const byAxis = (run: { assertions: Array<{ axis: string; status: string; reason: string }> }) =>
     new Map(run.assertions.map(item => [item.axis, item]));
 
-  it('judges via the injected generator: requirements/part_defs/collision measured, dimensions honestly not_run', async () => {
+  it('judges via the injected generator: requirements/semantics/relationships measured, geometry honestly not_run', async () => {
     const generate = async () => ({
       assembly: {
         parts: Array.from({ length: candidate.artifactSummary.partCount }, (_v, i) => ({
@@ -103,9 +103,9 @@ describe('W1-1: AI-subject mode', () => {
     const run = await validateCase({ ...candidate, sourceSpec: '옹벽 3m' }, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 }, { subject: 'ai', generate });
     const axes = byAxis(run);
     expect(axes.get('requirements')).toMatchObject({ status: 'pass' });
-    expect(axes.get('part_definitions')).toMatchObject({ status: 'pass' });
-    expect(axes.get('collision_clearance')).toMatchObject({ status: 'pass' });
-    expect(axes.get('dimensions')).toMatchObject({ status: 'not_run', reason: 'ai_subject_dimension_gt_requires_holdout_assertions' });
+    expect(axes.get('semantic_objects')).toMatchObject({ status: 'pass' });
+    expect(axes.get('relationships')).toMatchObject({ status: 'pass' });
+    expect(axes.get('geometry')).toMatchObject({ status: 'not_run', reason: 'ai_subject_geometry_gt_requires_holdout_assertions' });
   });
 
   it('missing sourceSpec → loud fail, never a fabricated generation', async () => {
@@ -125,21 +125,20 @@ describe('W1-1: AI-subject mode', () => {
   });
 });
 
-describe('W1-2: step_roundtrip axis', () => {
+describe('W1-2: civil exchange axis isolation', () => {
   const candidate = buildDomainCandidates('civil', 1)[0]!;
   const axisOf = (run: { assertions: Array<{ axis: string; status: string; reason: string }> }, axis: string) =>
     run.assertions.find(item => item.axis === axis)!;
 
-  it('opt-in roundtrip measures the axis with a real STEP emit+reimport', async () => {
+  it('does not count mechanical STEP roundtrip as civil release evidence', async () => {
     const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 }, { roundtrip: true });
-    const rt = axisOf(run, 'step_roundtrip');
-    expect(rt.status).toBe('pass');
-    expect(rt.reason).toContain('reimport_ok_volume_');
-  }, 120_000);
+    expect(run.assertions.some((item: { axis: string }) => item.axis === 'step_roundtrip')).toBe(false);
+    expect(axisOf(run, 'ifc_landxml_roundtrip')).toMatchObject({ status: 'not_run' });
+  });
 
   it('default (no flag) keeps the axis honestly not_run', async () => {
     const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
-    expect(axisOf(run, 'step_roundtrip')).toMatchObject({ status: 'not_run' });
+    expect(axisOf(run, 'ifc_landxml_roundtrip')).toMatchObject({ status: 'not_run' });
   });
 });
 
@@ -161,19 +160,19 @@ describe('W1-4: repair axis (defect-injection drill)', () => {
   });
 });
 
-describe('W2-1: manufacturing axis (shape→check roundtrip, civil v1)', () => {
+describe('W2-1: structures axis (shape→check roundtrip, civil v1)', () => {
   const axisOf = (run: { assertions: Array<{ axis: string; status: string; reason: string }> }, axis: string) =>
     run.assertions.find(item => item.axis === axis)!;
 
   it('retaining-wall family: parts-derived dims match check meta and preliminary check reruns clean', async () => {
     const candidate = buildDomainCandidates('civil', 3).find(c => c.templateId === 'retaining_wall_run')!;
     const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
-    expect(axisOf(run, 'manufacturing')).toMatchObject({ status: 'pass', reason: 'shape_to_check_roundtrip_ok' });
+    expect(axisOf(run, 'structures')).toMatchObject({ status: 'pass', reason: 'shape_to_check_roundtrip_ok' });
   });
 
   it('out-of-vocabulary templates stay honestly not_run', async () => {
     const candidate = buildDomainCandidates('civil', 3).find(c => c.templateId === 'box_culvert')!;
     const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
-    expect(axisOf(run, 'manufacturing')).toMatchObject({ status: 'not_run', reason: 'shape_to_check_roundtrip_vocabulary_pending' });
+    expect(axisOf(run, 'structures')).toMatchObject({ status: 'not_run', reason: 'shape_to_check_roundtrip_vocabulary_pending' });
   });
 });

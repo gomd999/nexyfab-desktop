@@ -3,11 +3,15 @@
  *
  * Validates the POST heartbeat / GET roster contract used by the
  * SCAD agent panel's presence indicator. The endpoint is intentionally
- * cheap (no plan gate) so tests focus on input validation, roster
+ * cheap (no AI spend); the authenticated plan boundary is mocked so tests focus on input validation, roster
  * accumulation across multiple registrants, and TTL eviction.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('@/lib/plan-guard', () => ({
+  checkPlan: vi.fn(async () => ({ ok: true, userId: 'presence-test-user', plan: 'free' })),
+}));
 
 // We poke private TTL state via vi.useFakeTimers + fresh module import.
 // The PARTICIPANTS map in serverCollab is process-singleton; reset it

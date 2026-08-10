@@ -120,6 +120,15 @@ describe("advanceGenerationRun", () => {
     expect(verifier).not.toHaveBeenCalled();
   });
 
+  it('blocks concept-only programs before kernel geometry instead of promoting assumptions', async () => {
+    const verifier = vi.fn();
+    const concept = { ...program(), classification: 'concept_only' as const, unresolved: ['authoritative shaft tolerance required'] };
+    const result = await advanceGenerationRun(preparedRun(), concept, verifier);
+    expect(result.stoppedAt).toBe('kernel');
+    expect(result.state.stages.kernel).toMatchObject({ status: 'blocked', errorCodes: ['AUTHORITATIVE_INPUT_REQUIRED'], metrics: { unresolvedInputs: 1 } });
+    expect(verifier).not.toHaveBeenCalled();
+  });
+
   it("preserves a non-release-ready assembly verdict as a failed checkpoint", async () => {
     const result = await advanceGenerationRun(
       preparedRun(),

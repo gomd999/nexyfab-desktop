@@ -1,0 +1,845 @@
+{
+  "schema": "nexyfab.joint-evidence-boundary-report.v1",
+  "releaseReady": false,
+  "policy": {
+    "inferredGeometryUsage": "visualization-only",
+    "userConfirmedUsage": "editable-unverified",
+    "onlyReviewedCompleteNativeCadCountsForKpi": true,
+    "emptyNativeJointSetDoesNotReleaseManufacturing": true
+  },
+  "summary": {
+    "cases": 88,
+    "geometryStructureAvailable": 31,
+    "nativeSemanticsComplete": 0,
+    "nativeJointCount": 0,
+    "nativeKpiEligible": 0,
+    "manufacturingReleaseEligible": 0,
+    "notRun": 88,
+    "fail": 0
+  },
+  "cases": [
+    {
+      "caseId": "robot-review-01",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "robot-review-02",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "robot-review-03",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "robot-review-04",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "robot-review-05",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "robot-review-06",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "robot-review-07",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "robot-review-08",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "robot-review-09",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "gearbox-review-01",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "gearbox-review-02",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "gearbox-review-03",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "gearbox-review-04",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "gearbox-review-05",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "gearbox-review-06",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "gearbox-review-07",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "gearbox-review-08",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "gearbox-review-09",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "gearbox-review-10",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "gearbox-review-11",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "gearbox-review-12",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "gearbox-review-13",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "gearbox-review-14",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "gearbox-review-15",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "gearbox-review-16",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "gearbox-review-17",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "pressure_vessel-review-01",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "pressure_vessel-review-02",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "pressure_vessel-review-03",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "pressure_vessel-review-04",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "pressure_vessel-review-05",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "pressure_vessel-review-06",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "pressure_vessel-review-07",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "pressure_vessel-review-08",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "pressure_vessel-review-09",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "pressure_vessel-review-10",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "pressure_vessel-review-11",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "turbomachinery-review-01",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "turbomachinery-review-02",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "turbomachinery-review-03",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "turbomachinery-review-04",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "turbomachinery-review-05",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "turbomachinery-review-06",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "turbomachinery-review-07",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "turbomachinery-review-08",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "turbomachinery-review-09",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "turbomachinery-review-10",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "turbomachinery-review-11",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "factory_equipment-review-01",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-02",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "factory_equipment-review-03",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-04",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "factory_equipment-review-05",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-06",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-07",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-08",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "factory_equipment-review-09",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-10",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-11",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-12",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "factory_equipment-review-13",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-14",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-15",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-16",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-17",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "factory_equipment-review-18",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-19",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "factory_equipment-review-20",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "interior-review-01",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-02",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-03",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-04",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-05",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-06",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "interior-review-07",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-08",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-09",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-10",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "interior-review-11",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-12",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "interior-review-13",
+      "status": "not_run",
+      "reason": "native_joint_semantics_incomplete",
+      "geometryStructureAvailable": true,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false,
+      "errors": []
+    },
+    {
+      "caseId": "interior-review-14",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-15",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-16",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-17",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-18",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-19",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    },
+    {
+      "caseId": "interior-review-20",
+      "status": "not_run",
+      "reason": "native_extraction_unavailable",
+      "geometryStructureAvailable": false,
+      "nativeJointCount": 0,
+      "nativeKpiEligible": false,
+      "manufacturingReleaseEligible": false
+    }
+  ]
+}

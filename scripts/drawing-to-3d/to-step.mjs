@@ -634,15 +634,33 @@ export async function exportAssemblySTEP(nodes, { unit = 'MM', name = 'ASSEMBLY'
 export async function exportOccurrenceAssemblySTEP(definitions, occurrences, { unit = 'MM', name = 'ASSEMBLY' } = {}) {
   if (!definitions?.length || !occurrences?.length) throw new Error('exportOccurrenceAssemblySTEP: definitions/occurrences required');
   const oc = await ensureOC(), str = (value) => new oc.TCollection_ExtendedString_2(String(value), true);
-  const doc = new oc.TDocStd_Document(str('XmlOcaf'));
+  const native = (stage, operation) => {
+    try { return operation(); }
+    catch (cause) { throw new Error(`exportOccurrenceAssemblySTEP:${stage}: ${cause instanceof Error ? cause.message : String(cause)}`, { cause }); }
+  };
+  const doc = native('document', () => new oc.TDocStd_Document(str('XmlOcaf')));
   oc.XCAFDoc_ShapeTool.SetAutoNaming(false);
-  const tool = oc.XCAFDoc_DocumentTool.ShapeTool(doc.Main()).get();
-  const root = tool.NewShape(); oc.TDataStd_Name.Set_1(root, str(name));
+  const main = doc.Main();
+  const tool = native('shape-tool', () => oc.XCAFDoc_DocumentTool.ShapeTool(main).get());
+  const colorTool = native('color-tool', () => oc.XCAFDoc_DocumentTool.ColorTool(main).get());
+  const root = native('root-shape', () => tool.NewShape()); oc.TDataStd_Name.Set_1(root, str(name));
   const labels = new Map();
   for (const definition of definitions) {
     if (!definition.shape?.wrapped) throw new Error(`exportOccurrenceAssemblySTEP: ${definition.id} has no local wrapped shape`);
-    const label = tool.AddShape(definition.shape.wrapped, false, false);
-    oc.TDataStd_Name.Set_1(label, str(definition.name ?? definition.id)); labels.set(definition.id, label);
+    const label = native(`definition:${definition.id}`, () => tool.AddShape(definition.shape.wrapped, false, false));
+    oc.TDataStd_Name.Set_1(label, str(definition.name ?? definition.id));
+    if (definition.color) {
+      const match = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(definition.color));
+      if (match) {
+        const channel = value => parseInt(value, 16) / 255;
+        native(`definition-color:${definition.id}`, () => colorTool.SetColor_3(
+          label,
+          new oc.Quantity_ColorRGBA_5(channel(match[1]), channel(match[2]), channel(match[3]), 1),
+          oc.XCAFDoc_ColorType.XCAFDoc_ColorSurf,
+        ));
+      }
+    }
+    labels.set(definition.id, label);
   }
   for (const occurrence of occurrences) {
     const label = labels.get(occurrence.definitionId), matrix = occurrence.matrix;
@@ -655,17 +673,18 @@ export async function exportOccurrenceAssemblySTEP(definitions, occurrences, { u
     const location = [r00,r10,r20,-(r00*tx+r10*ty+r20*tz), r01,r11,r21,-(r01*tx+r11*ty+r21*tz), r02,r12,r22,-(r02*tx+r12*ty+r22*tz)];
     const transform = new oc.gp_Trsf_1();
     transform.SetValues(...location);
-    tool.AddComponent_1(root, label, new oc.TopLoc_Location_2(transform));
+    native(`occurrence:${occurrence.id}`, () => tool.AddComponent_1(root, label, new oc.TopLoc_Location_2(transform)));
   }
   tool.UpdateAssemblies();
   oc.Interface_Static.SetCVal('xstep.cascade.unit', unit.toUpperCase()); oc.Interface_Static.SetCVal('write.step.unit', unit.toUpperCase());
   oc.Interface_Static.SetIVal('write.step.assembly', 1); oc.Interface_Static.SetIVal('write.step.schema', 5);
-  const session = new oc.XSControl_WorkSession();
-  const writer = new oc.STEPCAFControl_Writer_2(new oc.Handle_XSControl_WorkSession_2(session), false);
+  const session = native('work-session', () => new oc.XSControl_WorkSession());
+  const writer = native('writer', () => new oc.STEPCAFControl_Writer_2(new oc.Handle_XSControl_WorkSession_2(session), false));
   writer.SetNameMode(true);
-  writer.Transfer_1(new oc.Handle_TDocStd_Document_2(doc), oc.STEPControl_StepModelType.STEPControl_AsIs, null, new oc.Message_ProgressRange_1());
+  writer.SetColorMode(true);
+  native('transfer', () => writer.Transfer_1(new oc.Handle_TDocStd_Document_2(doc), oc.STEPControl_StepModelType.STEPControl_AsIs, null, new oc.Message_ProgressRange_1()));
   const file = 'occurrence-assembly.step';
-  if (writer.Write(file) !== oc.IFSelect_ReturnStatus.IFSelect_RetDone) throw new Error('exportOccurrenceAssemblySTEP: write failed');
+  if (native('write', () => writer.Write(file)) !== oc.IFSelect_ReturnStatus.IFSelect_RetDone) throw new Error('exportOccurrenceAssemblySTEP: write failed');
   const step = escapeStepNonAscii(new TextDecoder().decode(oc.FS.readFile('/' + file))); oc.FS.unlink('/' + file);
   return { step, products: (step.match(/\bPRODUCT\s*\(/g) ?? []).length, nauo: (step.match(/NEXT_ASSEMBLY_USAGE_OCCURRENCE/g) ?? []).length };
 }

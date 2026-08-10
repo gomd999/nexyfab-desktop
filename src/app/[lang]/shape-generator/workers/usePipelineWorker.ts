@@ -24,6 +24,11 @@ import {
   applyFaceProvenance,
   faceProvenanceTransferables,
 } from './faceProvenanceTransfer';
+import {
+  settlePendingProjections,
+  type DrawingViewName,
+  type ProjectedViewData,
+} from './projectViewsRpc';
 
 export interface PipelineRunOptions {
   occtMode?: boolean;
@@ -71,7 +76,7 @@ function deserializeGeometry(
 }
 
 /** 뷰별 SVG 경로(워커 직렬화 그대로) — DrawingView HLR 소비 형태와 동일. */
-export type ProjectedViewsResult = Record<string, { visible: unknown[]; hidden: unknown[]; viewBox: string | null }>;
+export type ProjectedViewsResult = Record<string, ProjectedViewData>;
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
@@ -84,6 +89,8 @@ export function usePipelineWorker() {
   /** PROJECT_VIEWS RPC pending — requestId → resolve(null=실패/워커소멸). */
   const projPendingRef = useRef<Map<number, (v: ProjectedViewsResult | null) => void>>(new Map());
   const projSeqRef = useRef(0);
+  const stepPendingRef = useRef<Map<number, (v: string | null) => void>>(new Map());
+  const stepSeqRef = useRef(0);
 
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -109,6 +116,12 @@ export function usePipelineWorker() {
           const req = data.requestId !== undefined ? projPendingRef.current.get(data.requestId) : undefined;
           if (data.requestId !== undefined) projPendingRef.current.delete(data.requestId);
           req?.(data.projectedViews ?? null);
+          return;
+        }
+        if (data.type === 'EXPORT_STEP_RESULT') {
+          const req = data.requestId !== undefined ? stepPendingRef.current.get(data.requestId) : undefined;
+          if (data.requestId !== undefined) stepPendingRef.current.delete(data.requestId);
+          req?.(data.stepText ?? null);
           return;
         }
 
@@ -153,6 +166,8 @@ export function usePipelineWorker() {
         setProgress(0);
         setProgressLabel('');
         if (pending) pending.reject(new Error(event.message || 'Pipeline worker error'));
+        settlePendingProjections(projPendingRef.current);
+        settlePendingProjections(stepPendingRef.current);
       });
 
       workerRef.current = worker;
@@ -172,8 +187,8 @@ export function usePipelineWorker() {
         pendingRef.current = null;
         pending.reject(new Error('Pipeline worker terminated'));
       }
-      for (const [, resolveProj] of projPendingRef.current) resolveProj(null);
-      projPendingRef.current.clear();
+      settlePendingProjections(projPendingRef.current);
+      settlePendingProjections(stepPendingRef.current);
     };
   }, [spawnWorker]);
 
@@ -197,8 +212,8 @@ export function usePipelineWorker() {
         setProgressLabel('');
         stale.reject(new Error('Pipeline superseded'));
         // 워커 교체 = 투영 RPC pending·핸들 레지스트리 소멸 — null 로 정리.
-        for (const [, resolveProj] of projPendingRef.current) resolveProj(null);
-        projPendingRef.current.clear();
+        settlePendingProjections(projPendingRef.current);
+        settlePendingProjections(stepPendingRef.current);
         workerRef.current.terminate();
         workerRef.current = null;
         spawnWorker();
@@ -269,6 +284,8 @@ export function usePipelineWorker() {
       pendingRef.current = null;
       pending.reject(new Error('Pipeline cancelled'));
     }
+    settlePendingProjections(projPendingRef.current);
+    settlePendingProjections(stepPendingRef.current);
     setLoading(false);
     setProgress(0);
     setProgressLabel('');
@@ -279,7 +296,7 @@ export function usePipelineWorker() {
    *  워커 부재/실패/10s 초과 → null(호출측 fail-closed). */
   const projectViews = useCallback((
     handle: string,
-    views: Array<'front' | 'top' | 'right' | 'left' | 'back' | 'bottom'>,
+    views: DrawingViewName[],
   ): Promise<ProjectedViewsResult | null> => {
     const worker = workerRef.current;
     if (!worker) return Promise.resolve(null);
@@ -300,5 +317,25 @@ export function usePipelineWorker() {
     });
   }, []);
 
-  return { runPipeline, loading, progress, progressLabel, cancel, projectViews };
+  const exportStep = useCallback((handle: string): Promise<string | null> => {
+    const worker = workerRef.current;
+    if (!worker) return Promise.resolve(null);
+    const requestId = ++stepSeqRef.current;
+    return new Promise<string | null>(resolve => {
+      const timeoutId = setTimeout(() => {
+        stepPendingRef.current.delete(requestId);
+        resolve(null);
+      }, 30_000);
+      stepPendingRef.current.set(requestId, value => { clearTimeout(timeoutId); resolve(value); });
+      try {
+        worker.postMessage({ type: 'EXPORT_STEP', payload: { requestId, handle } });
+      } catch {
+        clearTimeout(timeoutId);
+        stepPendingRef.current.delete(requestId);
+        resolve(null);
+      }
+    });
+  }, []);
+
+  return { runPipeline, loading, progress, progressLabel, cancel, projectViews, exportStep };
 }

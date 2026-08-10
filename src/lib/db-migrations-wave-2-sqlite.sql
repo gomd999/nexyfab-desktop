@@ -216,3 +216,28 @@ CREATE INDEX IF NOT EXISTS idx_nf_document_audit_action
   ON nf_document_audit_log (action, created_at DESC);
 
 -- End wave-2 SQLite migration.
+
+-- Immutable common CAD workspace revisions. Kept structurally identical to
+-- the PostgreSQL schema so the same optimistic revision protocol is exercised
+-- in local and production adapters.
+CREATE TABLE IF NOT EXISTS nf_cad_workspace_revisions (
+  id              TEXT PRIMARY KEY,
+  project_id      TEXT NOT NULL,
+  lineage_id      TEXT NOT NULL,
+  revision        INTEGER NOT NULL,
+  parent_revision INTEGER,
+  domain          TEXT NOT NULL,
+  content_hash    TEXT NOT NULL,
+  payload_json    TEXT NOT NULL,
+  created_by      TEXT NOT NULL,
+  created_at      BIGINT NOT NULL,
+  UNIQUE(project_id, revision)
+);
+CREATE INDEX IF NOT EXISTS idx_nf_cad_revision_project
+  ON nf_cad_workspace_revisions(project_id, revision DESC);
+CREATE TABLE IF NOT EXISTS nf_cad_workspace_heads (
+  project_id   TEXT PRIMARY KEY,
+  revision     INTEGER NOT NULL,
+  content_hash TEXT NOT NULL,
+  updated_at   BIGINT NOT NULL
+);

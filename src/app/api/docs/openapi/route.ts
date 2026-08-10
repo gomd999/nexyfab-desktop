@@ -90,7 +90,7 @@ const SPEC = {
         description:
           "Returns independent FeatureTrees, reusable part definitions, instances, subassemblies and mates. This endpoint has no quote or RFQ side effects.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -120,7 +120,7 @@ const SPEC = {
       get: {
         summary: "List shared CAD v1 capabilities and CLI/MCP mappings",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         responses: {
           "200": { description: "Capability and legacy compatibility matrix" },
         },
@@ -130,7 +130,7 @@ const SPEC = {
       post: {
         summary: "Create or selection-edit an exact CAD feature program",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -161,7 +161,7 @@ const SPEC = {
       post: {
         summary: "Replay FeatureTree to STL",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -185,7 +185,7 @@ const SPEC = {
       post: {
         summary: "Export analytic B-rep STEP with manufacturing evidence",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -218,7 +218,7 @@ const SPEC = {
         description:
           "Runs the real assembly solver when FeatureTrees are supplied. Spatial AABB interference is checked at rest and at every motion frame. With preciseInterference enabled, terminal FeatureTree bodies use direct tessellation or the server OCCT B-rep path for boolean/fillet/chamfer and drilled/counterbore/countersink holes, then triangle SAT and closed-mesh containment. Unsupported geometry retains the conservative failing verdict.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -262,13 +262,33 @@ const SPEC = {
         },
       },
     },
+    "/api/cad/v1/generation/state": {
+      post: {
+        summary: "Create, update or inspect an AI complete-product generation run",
+        description: "Maintains immutable stage checkpoints for intent through release and returns an adaptive execution plan. AI remains the default executor and manages conditional precision CAD for general users; experts may optionally open the same precise model for direct editing. Authoritative input and final expert review remain separate outcomes.",
+        tags: ["CAD"],
+        security: [{ bearerAuth: [] }],
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["action"], properties: { action: { enum: ["initialize", "record", "recover", "invalidate_edit", "plan"] }, state: { type: "object" }, runId: { type: "string" } } } } } },
+        responses: { "200": { description: "Generation state and adaptive complete-product execution plan" }, "409": { description: "Invalid stage transition" }, "429": { description: "Rate limited" } },
+      },
+    },
+    "/api/cad/v1/generation/advance": {
+      post: {
+        summary: "Advance AI-generated geometry through kernel, topology and assembly verification",
+        description: "Continues toward a complete manufacturing product. The executionPlan runs AI-managed precision CAD only for governed exact geometry, topology, assembly, motion, collision, clearance or STEP-roundtrip risk. General users are not forced into manual CAD; the expert workspace remains optional.",
+        tags: ["CAD"],
+        security: [{ bearerAuth: [] }],
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["state", "program"], properties: { state: { type: "object" }, program: { type: "object" }, allowedDoF: { type: "integer", minimum: 0 }, topologyRebind: { type: "object" } } } } } },
+        responses: { "200": { description: "Advanced state, canonical parity contract and adaptive execution plan" }, "409": { description: "Generation advancement failed" }, "429": { description: "Rate limited" } },
+      },
+    },
     "/api/cad/v1/generation/finalize": {
       post: {
         summary: "Finalize an AI CAD run with server-derived evidence",
         description:
-          "Verifies animation frames, per-part G0-G7 manufacturing gates, optional reference STEP domain evidence, STEP round-trip measurements, and exact-artifact G9. referenceStep accepts raw STEP source plus required checks (flat_pattern, bend_table, member_identity, miter_lengths, cut_list); caller pass claims are ignored. Failures identify only affected parts and do not create quotes or RFQs.",
+          "Continues AI product implementation through animation, per-part G0-G7 manufacturing gates, optional reference STEP domain evidence, STEP round-trip measurements, and exact-artifact G9. It returns an adaptive execution plan instead of treating every result as a draft or forcing every product into precision CAD. Caller pass claims are ignored; failures identify only affected parts and do not create quotes or RFQs.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -317,7 +337,7 @@ const SPEC = {
         responses: {
           "200": {
             description:
-              "Release verdict, server-derived STEP manufacturing reports, affected parts, and stage-local recovery guidance",
+              "Design-completion/release verdict, adaptive execution plan, server-derived STEP manufacturing reports, affected parts, and stage-local recovery guidance",
           },
           "400": { description: "Invalid finalization evidence" },
           "429": { description: "Rate limited" },
@@ -328,7 +348,7 @@ const SPEC = {
       post: {
         summary: "Evaluate a deterministic multi-part animation pose",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -357,7 +377,7 @@ const SPEC = {
         description:
           "Fail-closed command adapter for one identified part, a frame range, X/Y/Z translation and millimetres. Unsupported intent is rejected rather than guessed.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -389,7 +409,7 @@ const SPEC = {
         description:
           "Deterministic fail-closed edit planning for selected part topology or one selected mate. Set verifyBrep=true to replay before/after trees in OCCT and return exact volume, bounds, topology counts and BRepCheck validity. Returns no quote/RFQ side effects.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -426,7 +446,7 @@ const SPEC = {
         description:
           "Assigns deterministic f.import.i face references, executes bidirectional-normal OCCT fuse/cut candidates, requires a volume change and valid B-rep, and returns a base64 STEP artifact. No quote/RFQ side effects.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -463,7 +483,7 @@ const SPEC = {
         description:
           "Accepts only an inline base64 or UTF-8 STEP body; server paths, URLs and fixture locators are forbidden. Returns Evidence IR v2 and the scale-aware tolerance policy without creating a quote or RFQ.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -545,7 +565,7 @@ const SPEC = {
         description:
           "Compares two inline IFC SPF documents for GlobalId, spatial parents, property/quantity/material definitions and ProjectedCRS/MapConversion. Source documents are not returned and no quote or RFQ is created.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -577,7 +597,7 @@ const SPEC = {
         description:
           "Measures occurrence-transformed analytic cylinder axes, repeated placements, constant-thickness panels, and elongated structural members without synthesizing missing manufacturing semantics.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -609,7 +629,7 @@ const SPEC = {
         description:
           "Builds governed alignment horizontal/vertical/cant IR or structural node/member/connectivity IR. CUBIC is evaluated only for a line-to-arc transition; VIENNESEBEND additionally requires matched cant, RailHeadDistance, and provenance-bearing gravity-center input.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -658,7 +678,7 @@ const SPEC = {
         description:
           "Returns missing axes, governed recovery action and required authoritative inputs without inventing dimensions.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -686,7 +706,7 @@ const SPEC = {
         description:
           "Validates operator-provided physical widths against exact GlobalId recovery requests, applies only one missing axis, and returns before/after evidence without quote or RFQ side effects.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -732,7 +752,7 @@ const SPEC = {
         description:
           "Uses swept/adaptive AABB coverage followed by FeatureTree mesh or OCCT tessellation distance proofs. For confirmed collisions it searches left-to-right and returns a conservative first-possible to confirmed-collision frame bracket. Missing geometry or exhausted CCD/TOI budgets block release.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -773,7 +793,7 @@ const SPEC = {
         description:
           "Fail-closed read-only gate across intent, independent part generation, manufacturing evidence, mate residuals, declared DoF, precise interference, motion and STEP roundtrip. No quote or RFQ is created.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -808,9 +828,9 @@ const SPEC = {
       post: {
         summary: "Generate and engineering-check a parametric 6-axis robot",
         description:
-          "Creates independent editable structural FeatureTrees and evaluates FK workspace, velocity-Jacobian singularities, sampled self-collision, static gravity torque and cable bend/twist. Unselected catalog components remain explicit release blockers.",
+          "Starts a complete-manufacturing-product run, creates independent editable structural FeatureTrees, checkpoints intent through part programs, and continues toward kernel verification. It evaluates FK workspace, velocity-Jacobian singularities, sampled self-collision, static gravity torque and cable bend/twist. Unselected authoritative catalog components remain explicit later-stage blockers rather than redefining the product as a draft.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -846,7 +866,7 @@ const SPEC = {
         responses: {
           "200": {
             description:
-              "Editable robot program, engineering report and release blockers",
+              "Editable robot program, generation state, adaptive execution plan, engineering report and release blockers",
           },
           "400": { description: "Missing robot specification" },
           "422": { description: "Invalid robot specification" },
@@ -859,7 +879,7 @@ const SPEC = {
         description:
           "Read-only evidence evaluation. Missing gates are not_run and block designOk. No quote, RFQ, or artifact release is created.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: { "application/json": { schema: { type: "object" } } },
@@ -880,7 +900,7 @@ const SPEC = {
         description:
           "Returns measured developed length, bend table, warnings, and flat DXF without quote/RFQ side effects.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -908,7 +928,7 @@ const SPEC = {
         description:
           "Returns real mitered member lengths, stock total, mass, and cut-list evidence without quote/RFQ side effects.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -936,7 +956,7 @@ const SPEC = {
         description:
           "Returns deterministic worst-case and RSS bounds. Worst-case is used for designOk release.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -966,7 +986,7 @@ const SPEC = {
         description:
           "Validates GD&T and moves unresolved stable topology targets to an explicit review queue.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -989,7 +1009,7 @@ const SPEC = {
         description:
           "Conservatively remaps topology and propagates safe references to mates, dimensions, GD&T and PMI. Ambiguous or broken consumers are returned in review lists.",
         tags: ["CAD"],
-        security: [],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {

@@ -8,6 +8,8 @@ export type ProductRequirement = {
   text: string;
   category: 'function' | 'interface' | 'load' | 'motion' | 'material' | 'process' | 'safety';
   source: 'user' | 'manual' | 'derived';
+  /** Stable provenance such as user:prompt, manual:MAN-ASM-001 or a reviewed artifact hash. */
+  sourceRef?: string;
   acceptance?: string;
 };
 
@@ -19,6 +21,20 @@ export type ComponentDefinition = {
   featureTree: FeatureTree;
   metadata: Omit<AiPartMetadata, 'quantity'>;
   requirementIds: string[];
+  parameterEvidence: GeometryParameterEvidence[];
+};
+
+export type GeometryParameterEvidence = {
+  /** Stable numeric leaf path such as featureTree.nodes.body.payload.depth. */
+  path: string;
+  value: number;
+  unit: 'mm' | 'deg' | 'ratio' | 'count';
+  tolerance?: number;
+  status: 'confirmed' | 'derived' | 'catalog';
+  sourceRef: string;
+  derivation?: string;
+  inputSourceRefs?: string[];
+  locked: boolean;
 };
 
 export type ComponentInstance = {
@@ -126,7 +142,7 @@ export function compileProductDecomposition(plan: ProductDecompositionPlan):
     program: {
       version: 1,
       units: 'mm',
-      classification: plan.unresolved.length || plan.assumptions.length ? 'concept_only' : 'review_required',
+      classification: plan.unresolved.length || plan.assumptions.length || plan.definitions.some(definition => definition.metadata.source === 'assumed') ? 'concept_only' : 'review_required',
       name: plan.productName,
       assembly: { parts: plan.instances.map(toPartInstance), mates: plan.mates },
       parts: plan.instances.map(instance => {

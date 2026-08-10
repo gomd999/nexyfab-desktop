@@ -1,0 +1,205 @@
+{
+  "schema": "nexyfab.complex-holdout-review.v1",
+  "family": "robot",
+  "policy": {
+    "selectedDoesNotMeanApproved": true,
+    "scoreEligible": false,
+    "oneCasePerLineage": true,
+    "requiredApprovedCases": 20
+  },
+  "candidates": 9,
+  "selected": 9,
+  "shortfall": 11,
+  "structurallyRejected": [],
+  "items": [
+    {
+      "caseId": "robot-review-01",
+      "family": "robot",
+      "tierCandidate": "T1",
+      "holdoutGroup": "robot:epson-c4-a601s-6-axis-robot-arm-1",
+      "sourceHash": "4efda040359eb9600af0c4a11e1b8b382f57f44891be4bd8c009dbcaab6cda2c",
+      "bytes": 23236392,
+      "extension": "step",
+      "localLocator": "참고파일들4/epson-c4-a601s-6-axis-robot-arm-1.snapshot.2/Robot c 4 a 601 s.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-02",
+      "family": "robot",
+      "tierCandidate": "T1",
+      "holdoutGroup": "robot:mearm-robotic-arm-1",
+      "sourceHash": "fabf997b27909c9ac626892bdc8ff580cdbf21dc601d0ba666a4fa9d69a7f718",
+      "bytes": 13873151,
+      "extension": "x_t",
+      "localLocator": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Final Assembly.x_t",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-03",
+      "family": "robot",
+      "tierCandidate": "T1",
+      "holdoutGroup": "robot:mitsubishi-rv-2f-d1-s16-6-axis-robot-arm-1",
+      "sourceHash": "4a3a0286de2990bab162f2f4b69308972b2f49db5c029483ad0d13d0f4a8147b",
+      "bytes": 8645424,
+      "extension": "step",
+      "localLocator": "참고파일들4/mitsubishi-rv-2f-d1-s16-6-axis-robot-arm-1.snapshot.1/Robot rv.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-04",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:mrl-work-dynamixelpro-based-precision-manipulator-1",
+      "sourceHash": "383c2165e393e3a49ad8c65258c4237e64e73403b53822d03a0683c15b62709d",
+      "bytes": 2579904,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/mrl-work-dynamixelpro-based-precision-manipulator-1.snapshot.1/New2017_ARM_[At]WorkMRL_V4.4-STY.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-05",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:robot-5-dof-1",
+      "sourceHash": "c99aa30f426054651f33f1790f8c6c2e3dcaf228a45bb45b37f362df692f8bb6",
+      "bytes": 2058240,
+      "extension": "iam",
+      "localLocator": "참고파일들3/robot-5-dof-1.snapshot.2/Assembly FULL.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-06",
+      "family": "robot",
+      "tierCandidate": "T1",
+      "holdoutGroup": "robot:robot-5-dof-2",
+      "sourceHash": "b4a254af13a0e1552b38be11fd3004cf80301c76e3e6a920e031a9c6e04d86e9",
+      "bytes": 10002080,
+      "extension": "stp",
+      "localLocator": "참고파일들3/robot-5-dof-2.snapshot.2/Lắp FULL.stp",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-07",
+      "family": "robot",
+      "tierCandidate": "T1",
+      "holdoutGroup": "robot:robotic-arm-466",
+      "sourceHash": "39717c9473cce636f07fc4d5c8054a7c3b44f9f3fbcede613322577b0e1ee2be",
+      "bytes": 104015,
+      "extension": "step",
+      "localLocator": "참고파일들3/robotic-arm-466.snapshot.3/ROBOTIC ARM.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-08",
+      "family": "robot",
+      "tierCandidate": "T1",
+      "holdoutGroup": "robot:two-wheel-self-balancing-robot-v1-1",
+      "sourceHash": "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103",
+      "bytes": 3339756,
+      "extension": "stp",
+      "localLocator": "참고파일들4/two-wheel-self-balancing-robot-v1-1.snapshot.4/CAD/reference-components/arduino-uno-sensor-shield-1.snapshot.6/Arduino Sensor Board V1.stp",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "robot-review-09",
+      "family": "robot",
+      "tierCandidate": "T2",
+      "holdoutGroup": "robot:vacuum-gripper-6",
+      "sourceHash": "c07e39cb9b19f9ae8e23751b2d70d24fedb2acce30b9acefc0684515fa8197b9",
+      "bytes": 7907204,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/vacuum-gripper-6.snapshot.3/Epick Vacuum.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    }
+  ]
+}

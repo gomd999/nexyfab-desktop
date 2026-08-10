@@ -4,15 +4,19 @@ import { collisionGeometryFromFeatureTree } from '@/lib/assembly/featureTreePrec
 import { validateAiAssemblyProgram, type AiAssemblyProgram } from '@/lib/ai/aiAssemblyProgram';
 import { finalizeGenerationRun, type PartFinalizationEvidence } from '@/lib/ai/finalizeGenerationRun';
 import { buildGenerationCanonicalResponse } from '@/lib/ai/generationCanonicalResponse';
+import { buildAdaptiveComplexProductExecutionPlan } from '@/lib/ai/adaptiveComplexProductExecution';
 import type { GenerationRunState } from '@/lib/ai/generationRunState';
 import type { AssemblyAnimation } from '@/lib/assembly/assemblyAnimation';
+import type { JointEvidenceClaim } from '@/lib/reference/jointEvidenceReleaseGate';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
+import { loadServerGenerationState, saveServerGenerationState } from '@/lib/ai/generationStateStore';
+import { generationRequestOwner } from '@/lib/ai/generationRequestOwner';
 
 export const runtime = 'nodejs'; export const dynamic = 'force-dynamic';
 type Body = {
   state?: GenerationRunState; program?: AiAssemblyProgram;
-  motion?: { required: boolean; animation?: AssemblyAnimation; frameStep?: number };
+  motion?: { required: boolean; animation?: AssemblyAnimation; frameStep?: number; jointEvidence?: JointEvidenceClaim };
   parts?: PartFinalizationEvidence[];
 };
 
@@ -25,13 +29,15 @@ export async function POST(req: NextRequest) {
   }
   const issues = validateAiAssemblyProgram(body.program);
   if (issues.length) return NextResponse.json({ ok: false, code: 'INVALID_PROGRAM', issues }, { status: 422 });
-  if (body.motion.required && !body.motion.animation) {
-    try {
-      const result = finalizeGenerationRun(body.state, { motion: { required: true }, parts: body.parts });
-      return NextResponse.json({ ok: true, ...result, canonical: buildGenerationCanonicalResponse(result), recovery: { action: 'request_input', stage: 'motion', reason: 'A governed animation is required.' }, quoteOrRfqSideEffects: false });
-    } catch (error) { return transitionError(error); }
-  }
   try {
+    const owner = await generationRequestOwner(req, ip);
+    const stored = await loadServerGenerationState(owner, body.state.runId);
+    if (stored.revision !== body.state.revision) throw new Error('GENERATION_REVISION_CONFLICT');
+    if (body.motion.required && !body.motion.animation) {
+      const result = finalizeGenerationRun(stored, { motion: { required: true }, parts: body.parts });
+      await saveServerGenerationState(owner, result.state, stored.revision);
+      return NextResponse.json({ ok: true, ...result, canonical: buildGenerationCanonicalResponse(result), executionPlan: buildAdaptiveComplexProductExecutionPlan(result.state), recovery: { action: 'request_input', stage: 'motion', reason: 'A governed animation is required.' }, quoteOrRfqSideEffects: false });
+    }
     let motionVerification: { ok?: boolean; releaseReady?: boolean; precise?: unknown; broad?: unknown; code?: string; message?: string } | undefined;
     if (body.motion.required && body.motion.animation) {
       const built = await Promise.all(body.program.parts.map(async part => [part.instanceId, await collisionGeometryFromFeatureTree(part.instanceId, part.featureTree)] as const));
@@ -43,12 +49,13 @@ export async function POST(req: NextRequest) {
         }));
         const animationRequest = new NextRequest(new URL('/api/cad/v1/assembly/animation/verify', req.url), {
           method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
-          body: JSON.stringify({ state: body.program.assembly, animation: body.motion.animation, localBoxes, featureTrees: Object.fromEntries(body.program.parts.map(part => [part.instanceId, part.featureTree])), frameStep: body.motion.frameStep }),
+          body: JSON.stringify({ state: body.program.assembly, animation: body.motion.animation, localBoxes, featureTrees: Object.fromEntries(body.program.parts.map(part => [part.instanceId, part.featureTree])), frameStep: body.motion.frameStep, jointEvidence: body.motion.jointEvidence }),
         });
         const response = await verifyAnimationPost(animationRequest); motionVerification = await response.json();
       }
     }
-    const result = finalizeGenerationRun(body.state, { motion: { required: body.motion.required, verification: motionVerification }, parts: body.parts });
+    const result = finalizeGenerationRun(stored, { motion: { required: body.motion.required, verification: motionVerification }, parts: body.parts });
+    await saveServerGenerationState(owner, result.state, stored.revision);
     const stopped = result.stoppedAt;
     const recovery = stopped === 'complete' ? undefined : {
       action: stopped === 'motion' ? 'retry_stage' : stopped === 'release' ? 'request_input' : 'retry_affected_parts',
@@ -56,10 +63,12 @@ export async function POST(req: NextRequest) {
       affectedPartIds: result.state.stages[stopped].affectedPartIds,
       reason: result.state.stages[stopped].unresolved.join(' '),
     };
-    return NextResponse.json({ ok: true, ...result, canonical: buildGenerationCanonicalResponse(result), recovery, quoteOrRfqSideEffects: false });
+    return NextResponse.json({ ok: true, ...result, canonical: buildGenerationCanonicalResponse(result), executionPlan: buildAdaptiveComplexProductExecutionPlan(result.state), recovery, quoteOrRfqSideEffects: false });
   } catch (error) { return transitionError(error); }
 }
 
 function transitionError(error: unknown) {
-  return NextResponse.json({ ok: false, code: 'FINALIZE_FAILED', message: error instanceof Error ? error.message : 'Generation finalization failed' }, { status: 409 });
+  const message = error instanceof Error ? error.message : 'Generation finalization failed';
+  const status = message === 'GENERATION_RUN_NOT_FOUND' ? 404 : message === 'GENERATION_STATE_REDIS_REQUIRED' ? 503 : 409;
+  return NextResponse.json({ ok: false, code: message.startsWith('GENERATION_') ? message : 'FINALIZE_FAILED', message }, { status });
 }

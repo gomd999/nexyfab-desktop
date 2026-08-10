@@ -146,14 +146,21 @@ export interface Ir {
 }
 
 const KNOWN_UNITS = new Set(['mm', 'cm', 'm', 'in', 'ft']);
+const KNOWN_FORMATS = new Set<CadFormat>(['STEP', 'IFC', 'DXF', 'IGES', 'X_T', 'SAT', 'OBJ', 'WRL', 'DAE', '3MF', 'STL']);
+const KNOWN_ASPECTS = new Set<IrExtent['aspect']>(['rod', 'plate', 'block', 'shell', 'complex']);
+type UnknownRecord = Record<string, unknown>;
+const asRecord = (value: unknown): UnknownRecord =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as UnknownRecord
+    : {};
 
 /**
  * Normalize a raw parsed `.ir.json` object into a well-typed `Ir`, enforcing the honesty rules.
  * Anything uncertain collapses to `null` rather than a plausible fill-in.
  */
 export function normalizeIr(raw: unknown): Ir {
-  const r = (raw ?? {}) as Record<string, any>;
-  const extentRaw = r.extent as Record<string, any> | null | undefined;
+  const r = asRecord(raw);
+  const extentRaw = r.extent == null ? null : asRecord(r.extent);
 
   let extent: IrExtent | null = null;
   if (extentRaw) {
@@ -170,26 +177,28 @@ export function normalizeIr(raw: unknown): Ir {
       bbox_max: asVec3(extentRaw.bbox_max),
       size: asVec3(extentRaw.size),
       centroid: asVec3(extentRaw.centroid),
-      aspect: extentRaw.aspect ?? null,
+      aspect: typeof extentRaw.aspect === 'string' && KNOWN_ASPECTS.has(extentRaw.aspect as IrExtent['aspect'])
+        ? extentRaw.aspect as IrExtent['aspect']
+        : null,
       is_2d: Boolean(extentRaw.is_2d),
     };
   }
 
-  const featRaw = r.features as Record<string, any> | null | undefined;
+  const featRaw = r.features == null ? null : asRecord(r.features);
   const features: IrFeatures | null = featRaw
     ? {
         holes: Array.isArray(featRaw.holes) ? featRaw.holes.map(normalizeHole) : [],
         hole_diameters: numArr(featRaw.hole_diameters),
         fillet_radii: numArr(featRaw.fillet_radii),
-        chamfers: Array.isArray(featRaw.chamfers) ? featRaw.chamfers : [],
-        patterns: Array.isArray(featRaw.patterns) ? featRaw.patterns : [],
+        chamfers: Array.isArray(featRaw.chamfers) ? featRaw.chamfers as IrFeatures['chamfers'] : [],
+        patterns: Array.isArray(featRaw.patterns) ? featRaw.patterns as IrFeatures['patterns'] : [],
         revolution_profile: featRaw.revolution_profile ?? null,
         extrusion_profile: featRaw.extrusion_profile ?? null,
-        primitive_fit: featRaw.primitive_fit ?? null,
+        primitive_fit: normalizePrimitiveFit(featRaw.primitive_fit),
       }
     : null;
 
-  const parseRaw = (r.parse ?? {}) as Record<string, any>;
+  const parseRaw = asRecord(r.parse);
   const parse: IrParse = {
     status: parseRaw.status === 'partial' || parseRaw.status === 'failed' ? parseRaw.status : 'ok',
     parser: String(parseRaw.parser ?? 'unknown'),
@@ -197,17 +206,19 @@ export function normalizeIr(raw: unknown): Ir {
     truncated: Boolean(parseRaw.truncated),
     sampled_ratio: typeof parseRaw.sampled_ratio === 'number' ? parseRaw.sampled_ratio : 1.0,
     warnings: Array.isArray(parseRaw.warnings) ? parseRaw.warnings.map(String) : [],
-    error: parseRaw.error ?? null,
+    error: typeof parseRaw.error === 'string' ? parseRaw.error : null,
   };
 
-  const idRaw = (r.identity ?? {}) as Record<string, any>;
+  const idRaw = asRecord(r.identity);
   const identity: IrIdentity = {
     path: String(idRaw.path ?? ''),
     name: String(idRaw.name ?? ''),
-    format: idRaw.format ?? 'STL',
+    format: typeof idRaw.format === 'string' && KNOWN_FORMATS.has(idRaw.format as CadFormat)
+      ? idRaw.format as CadFormat
+      : 'STL',
     bytes: Number(idRaw.bytes ?? 0),
-    sha256: idRaw.sha256 ?? null,
-    source_hint: idRaw.source_hint ?? null,
+    sha256: typeof idRaw.sha256 === 'string' ? idRaw.sha256 : null,
+    source_hint: typeof idRaw.source_hint === 'string' ? idRaw.source_hint : null,
   };
 
   return {
@@ -225,14 +236,28 @@ export function normalizeIr(raw: unknown): Ir {
   };
 }
 
-function normalizeHole(h: any): IrHole {
+function normalizePrimitiveFit(value: unknown): IrFeatures['primitive_fit'] {
+  const raw = asRecord(value);
+  const paramsRaw = asRecord(raw.params);
+  const params = Object.fromEntries(
+    Object.entries(paramsRaw).filter((entry): entry is [string, number] =>
+      typeof entry[1] === 'number' && Number.isFinite(entry[1])),
+  );
+  return typeof raw.kind === 'string' &&
+    typeof raw.residual_pct === 'number' && Number.isFinite(raw.residual_pct)
+    ? { kind: raw.kind, params, residual_pct: raw.residual_pct }
+    : null;
+}
+
+function normalizeHole(h: unknown): IrHole {
+  const value = asRecord(h);
   return {
-    axis: asVec3(h?.axis),
-    diameter: numOrNull(h?.diameter),
-    depth: numOrNull(h?.depth),
-    center: asVec3(h?.center),
-    through: h?.through === true ? true : h?.through === false ? false : null,
-    count_in_pattern: numOrNull(h?.count_in_pattern),
+    axis: asVec3(value.axis),
+    diameter: numOrNull(value.diameter),
+    depth: numOrNull(value.depth),
+    center: asVec3(value.center),
+    through: value.through === true ? true : value.through === false ? false : null,
+    count_in_pattern: numOrNull(value.count_in_pattern),
   };
 }
 

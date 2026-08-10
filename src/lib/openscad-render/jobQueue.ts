@@ -44,6 +44,10 @@ function redisQueueEnabled(): boolean {
   return isOpenscadRedisJobsEnabled();
 }
 
+function externalWorkerEnabled(): boolean {
+  return process.env.OPENSCAD_EXTERNAL_WORKER === '1';
+}
+
 function toSerialized(job: OpenScadJobRecord, scad?: string): SerializedOpenScadJob {
   return {
     id: job.id,
@@ -203,14 +207,30 @@ export async function enqueueOpenScadJob(input: {
   if (redisQueueEnabled()) {
     const saved = await redisOpenscadSaveJob(toSerialized(job, input.scad));
     if (saved) {
-      await redisOpenscadQueuePush(id);
+      const queued = await redisOpenscadQueuePush(id);
+      if (!queued && externalWorkerEnabled()) {
+        job.status = 'failed';
+        job.errorMessage = 'OpenSCAD worker queue unavailable';
+        job.updatedAt = Date.now();
+        await redisOpenscadSaveJob(toSerialized(job));
+      } else if (!queued) {
+        queue.push(id);
+      }
+    } else if (externalWorkerEnabled()) {
+      job.status = 'failed';
+      job.errorMessage = 'OpenSCAD job storage unavailable';
+      job.updatedAt = Date.now();
     } else {
       queue.push(id);
     }
+  } else if (externalWorkerEnabled()) {
+    job.status = 'failed';
+    job.errorMessage = 'OpenSCAD external worker requires REDIS_URL';
+    job.updatedAt = Date.now();
   } else {
     queue.push(id);
   }
-  kickWorker();
+  if (!externalWorkerEnabled()) kickWorker();
   return job;
 }
 

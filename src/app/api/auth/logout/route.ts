@@ -49,6 +49,7 @@ function clearAuthCookies(res: NextResponse): void {
   res.cookies.set('nf_refresh_token', '', { ...withDomain, path: '/api/auth' });
   // 관리자 상승도 함께 끊는다 — 세션이 끝났는데 상승만 남으면 안 된다.
   res.cookies.set('nf_admin_elev', '', { ...withDomain, path: '/' });
+  res.cookies.set('nf_admin_token', '', { ...withDomain, path: '/' });
 
   /**
    * ⚠ 도메인 없이 구워진 **과거 쿠키**도 지운다. `COOKIE_DOMAIN` 을 나중에 켰다면
@@ -58,6 +59,7 @@ function clearAuthCookies(res: NextResponse): void {
     res.cookies.set('nf_access_token', '', { ...base, path: '/' });
     res.cookies.set('nf_refresh_token', '', { ...base, path: '/api/auth' });
     res.cookies.set('nf_admin_elev', '', { ...base, path: '/' });
+    res.cookies.set('nf_admin_token', '', { ...base, path: '/' });
   }
 }
 

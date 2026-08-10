@@ -1,0 +1,34 @@
+{
+  "schema": "nexyfab.complex-native-extraction-result-batch.v1",
+  "extractorCapability": {
+    "formats": [
+      "step",
+      "stp",
+      "ifc",
+      "zip-contained-step",
+      "zip-contained-ifc"
+    ],
+    "jointSemanticsComplete": false,
+    "nativeSolidWorksOrInventor": false
+  },
+  "results": [],
+  "skipped": [],
+  "failures": [
+    {
+      "caseId": "interior-review-06",
+      "reason": "freecad_result_missing:Exception while processing file: C:/Users/gomd9/Downloads/nexysys_1/nexyfab.com/new/scripts/reference/freecad-extract-step.py [no supported file format]\n:FreeCAD 1.1.3, Libs: 1.1.3R20260725 (Git shallow)\n(C) 2001-2026 FreeCAD contributors\nFreeCAD is free and open-source software licensed under the terms of LGPL2+ license.\n\n"
+    },
+    {
+      "caseId": "interior-review-10",
+      "reason": "freecad_result_missing:Exception while processing file: C:/Users/gomd9/Downloads/nexysys_1/nexyfab.com/new/scripts/reference/freecad-extract-step.py [no supported file format]\n:FreeCAD 1.1.3, Libs: 1.1.3R20260725 (Git shallow)\n(C) 2001-2026 FreeCAD contributors\nFreeCAD is free and open-source software licensed under the terms of LGPL2+ license.\n\n"
+    },
+    {
+      "caseId": "interior-review-12",
+      "reason": "freecad_result_missing:Exception while processing file: C:/Users/gomd9/Downloads/nexysys_1/nexyfab.com/new/scripts/reference/freecad-extract-step.py [no supported file format]\n:FreeCAD 1.1.3, Libs: 1.1.3R20260725 (Git shallow)\n(C) 2001-2026 FreeCAD contributors\nFreeCAD is free and open-source software licensed under the terms of LGPL2+ license.\n\n"
+    },
+    {
+      "caseId": "interior-review-13",
+      "reason": "freecad_result_missing:Exception while processing file: C:/Users/gomd9/Downloads/nexysys_1/nexyfab.com/new/scripts/reference/freecad-extract-step.py [no supported file format]\n:FreeCAD 1.1.3, Libs: 1.1.3R20260725 (Git shallow)\n(C) 2001-2026 FreeCAD contributors\nFreeCAD is free and open-source software licensed under the terms of LGPL2+ license.\n\n"
+    }
+  ]
+}

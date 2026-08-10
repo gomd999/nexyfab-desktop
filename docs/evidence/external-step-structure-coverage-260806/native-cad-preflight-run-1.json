@@ -1,0 +1,54 @@
+{
+  "schema": "nexyfab.native-cad-capability-preflight.v1",
+  "generatedAt": "2026-08-06T13:42:58.441Z",
+  "scoreEligible": false,
+  "probe": {
+    "platform": "win32",
+    "registeredProgIds": [],
+    "exchangerConfigured": false,
+    "probeExitCode": 0
+  },
+  "summary": {
+    "readyExecutors": 0,
+    "notRunExecutors": 5,
+    "readyCases": 0,
+    "notRunCases": 61
+  },
+  "verdicts": [
+    {
+      "executor": "solidworks-com",
+      "status": "not_run",
+      "reason": "native_cad_com_unregistered",
+      "matchedProgId": null,
+      "queuedCases": 44
+    },
+    {
+      "executor": "inventor-com",
+      "status": "not_run",
+      "reason": "native_cad_com_unregistered",
+      "matchedProgId": null,
+      "queuedCases": 13
+    },
+    {
+      "executor": "parasolid-cad-exchanger",
+      "status": "not_run",
+      "reason": "native_cad_or_licensed_exchanger_unavailable",
+      "matchedProgId": null,
+      "queuedCases": 1
+    },
+    {
+      "executor": "creo-or-solid-edge-native",
+      "status": "not_run",
+      "reason": "native_cad_com_unregistered",
+      "matchedProgId": null,
+      "queuedCases": 2
+    },
+    {
+      "executor": "catia-com-or-cad-exchanger",
+      "status": "not_run",
+      "reason": "native_cad_or_licensed_exchanger_unavailable",
+      "matchedProgId": null,
+      "queuedCases": 1
+    }
+  ]
+}

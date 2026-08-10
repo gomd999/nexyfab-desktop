@@ -1,0 +1,25 @@
+{
+  "schema": "nexyfab.complex-native-extraction-result-batch.v1",
+  "extractorCapability": {
+    "formats": [
+      "step",
+      "stp",
+      "iges",
+      "igs",
+      "zip-contained-step",
+      "zip-contained-stp",
+      "zip-contained-iges",
+      "zip-contained-igs"
+    ],
+    "jointSemanticsComplete": false,
+    "nativeSolidWorksOrInventor": false
+  },
+  "results": [],
+  "skipped": [],
+  "failures": [
+    {
+      "caseId": "factory_equipment-review-03",
+      "reason": "spawnSync C:\\Program Files\\FreeCAD 1.1\\bin\\FreeCADCmd.exe ETIMEDOUT"
+    }
+  ]
+}

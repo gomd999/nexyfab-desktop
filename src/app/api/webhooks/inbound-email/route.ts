@@ -25,7 +25,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'crypto';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { createNotification } from '@/app/lib/notify';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
@@ -36,6 +36,13 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ADDRESS_PATTERN = /^thread\+(?:(rfq|order))-([a-zA-Z0-9_-]+)@/;
+const MAX_INBOUND_BODY_BYTES = 1024 * 1024;
+
+function secretsEqual(left: string, right: string): boolean {
+  const leftDigest = createHash('sha256').update(left, 'utf8').digest();
+  const rightDigest = createHash('sha256').update(right, 'utf8').digest();
+  return timingSafeEqual(leftDigest, rightDigest);
+}
 
 interface InboundPayload {
   // Resend / Postmark
@@ -162,18 +169,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
 
-  // Optional shared-secret auth (dev runs without it; set in prod).
+  // Production is fail-closed. Development may omit the secret for local fixtures.
   const expected = process.env.INBOUND_EMAIL_SHARED_SECRET;
+  if (!expected && process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Inbound email secret is not configured' }, { status: 503 });
+  }
   if (expected) {
-    const got = req.headers.get('x-inbound-secret');
-    if (got !== expected) {
+    const got = req.headers.get('x-inbound-secret') ?? '';
+    if (!secretsEqual(got, expected)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
   }
 
+  const declaredLength = Number(req.headers.get('content-length') ?? '0');
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_INBOUND_BODY_BYTES) {
+    return NextResponse.json({ error: 'payload too large' }, { status: 413 });
+  }
+  const raw = await req.text();
+  if (Buffer.byteLength(raw, 'utf8') > MAX_INBOUND_BODY_BYTES) {
+    return NextResponse.json({ error: 'payload too large' }, { status: 413 });
+  }
   let payload: InboundPayload;
   try {
-    payload = await req.json();
+    payload = JSON.parse(raw) as InboundPayload;
   } catch {
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }

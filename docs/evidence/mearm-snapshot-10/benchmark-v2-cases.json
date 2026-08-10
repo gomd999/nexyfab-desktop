@@ -1,0 +1,125 @@
+[
+  {
+    "schema": "nexyfab.complex-benchmark-case.v2",
+    "caseId": "mearm-snapshot-10",
+    "family": "robot",
+    "tier": "T2",
+    "holdoutGroup": "참고파일들4/mearm-robotic-arm-1.snapshot.10",
+    "sourceHash": "fabf997b27909c9ac626892bdc8ff580cdbf21dc601d0ba666a4fa9d69a7f718",
+    "split": "holdout",
+    "assertions": [
+      {
+        "id": "occurrences:exported-mesh-count",
+        "axis": "occurrences",
+        "required": true,
+        "kpiEligible": true,
+        "provenance": "authoritative-cad",
+        "tolerancePolicy": "exact-count-and-source-hash",
+        "artifactHashes": [
+          "c676a2ca918b574406a43af8291eb5e6b2b1aa79db87e260ef902d3fb7cfcbe5",
+          "4bcd3e86b6ea95da7e2f6d973cee80ccaff4a5e2bce85e3aa4a1a126648bef19"
+        ]
+      },
+      {
+        "id": "part-definitions:semantic-groups",
+        "axis": "part_definitions",
+        "required": true,
+        "kpiEligible": false,
+        "provenance": "legacy-unreviewed",
+        "tolerancePolicy": "ground-truth-review-or-native-extractor-required",
+        "artifactHashes": [
+          "8064877de90b2d714ba8c60ee2699e37fc5ecd5ec3cefcddafa569d7351274e7"
+        ]
+      },
+      {
+        "id": "body-membership:x_t-to-part",
+        "axis": "body_membership",
+        "required": true,
+        "kpiEligible": false,
+        "provenance": "legacy-unreviewed",
+        "tolerancePolicy": "ground-truth-review-or-native-extractor-required",
+        "artifactHashes": [
+          "8064877de90b2d714ba8c60ee2699e37fc5ecd5ec3cefcddafa569d7351274e7"
+        ]
+      },
+      {
+        "id": "hierarchy:native-subassemblies",
+        "axis": "hierarchy",
+        "required": true,
+        "kpiEligible": false,
+        "provenance": "legacy-unreviewed",
+        "tolerancePolicy": "ground-truth-review-or-native-extractor-required",
+        "artifactHashes": [
+          "4704cb60213ec78ffae22cb777986ac556c905a9c30b113ca732ed3686b74ee8"
+        ]
+      },
+      {
+        "id": "transforms:native-occurrences",
+        "axis": "transforms",
+        "required": true,
+        "kpiEligible": false,
+        "provenance": "legacy-unreviewed",
+        "tolerancePolicy": "ground-truth-review-or-native-extractor-required",
+        "artifactHashes": [
+          "4704cb60213ec78ffae22cb777986ac556c905a9c30b113ca732ed3686b74ee8"
+        ]
+      },
+      {
+        "id": "joints:native-mates",
+        "axis": "joints",
+        "required": true,
+        "kpiEligible": false,
+        "provenance": "legacy-unreviewed",
+        "tolerancePolicy": "ground-truth-review-or-native-extractor-required",
+        "artifactHashes": [
+          "4704cb60213ec78ffae22cb777986ac556c905a9c30b113ca732ed3686b74ee8"
+        ]
+      },
+      {
+        "id": "motion:joint-operating-range",
+        "axis": "motion",
+        "required": true,
+        "kpiEligible": false,
+        "provenance": "legacy-unreviewed",
+        "tolerancePolicy": "ground-truth-review-or-native-extractor-required",
+        "artifactHashes": [
+          "4704cb60213ec78ffae22cb777986ac556c905a9c30b113ca732ed3686b74ee8"
+        ]
+      },
+      {
+        "id": "collision-clearance:operating-range",
+        "axis": "collision_clearance",
+        "required": true,
+        "kpiEligible": false,
+        "provenance": "legacy-unreviewed",
+        "tolerancePolicy": "ground-truth-review-or-native-extractor-required",
+        "artifactHashes": [
+          "4704cb60213ec78ffae22cb777986ac556c905a9c30b113ca732ed3686b74ee8",
+          "c676a2ca918b574406a43af8291eb5e6b2b1aa79db87e260ef902d3fb7cfcbe5"
+        ]
+      },
+      {
+        "id": "manufacturing:material-mass",
+        "axis": "manufacturing",
+        "required": true,
+        "kpiEligible": false,
+        "provenance": "legacy-unreviewed",
+        "tolerancePolicy": "ground-truth-review-or-native-extractor-required",
+        "artifactHashes": [
+          "4bcd3e86b6ea95da7e2f6d973cee80ccaff4a5e2bce85e3aa4a1a126648bef19"
+        ]
+      },
+      {
+        "id": "step-roundtrip:assembly-preservation",
+        "axis": "step_roundtrip",
+        "required": true,
+        "kpiEligible": false,
+        "provenance": "legacy-unreviewed",
+        "tolerancePolicy": "ground-truth-review-or-native-extractor-required",
+        "artifactHashes": [
+          "4bcd3e86b6ea95da7e2f6d973cee80ccaff4a5e2bce85e3aa4a1a126648bef19"
+        ]
+      }
+    ]
+  }
+]

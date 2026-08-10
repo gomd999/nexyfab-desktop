@@ -1,0 +1,1286 @@
+{
+  "schema": "nexyfab.cad-assembly-fusion.v1",
+  "status": "not_run",
+  "releaseReady": false,
+  "lineageId": "참고파일들4/mearm-robotic-arm-1.snapshot.10",
+  "definitions": [
+    {
+      "id": "definition:all",
+      "displayName": "All",
+      "meshMembers": [],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/All.SLDPRT"
+      ],
+      "occurrenceCount": 0
+    },
+    {
+      "id": "definition:hex-thin-nut-chamfered-gradeab-iso",
+      "displayName": "hex thin nut chamfered gradeab_iso",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-1.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-2.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-3.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-4.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-5.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-6.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-7.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-8.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 8
+    },
+    {
+      "id": "definition:pan-head-cross-recess-screw-iso",
+      "displayName": "pan head cross recess screw_iso",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-1.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-10.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-11.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-12.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-13.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-14.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-15.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-16.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-17.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-18.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-19.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-2.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-20.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-21.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-22.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-3.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-31.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-32.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-33.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-34.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-35.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-36.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-37.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-38.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-4.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-40.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-42.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-45.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-5.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-6.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-7.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-8.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-9.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 33
+    },
+    {
+      "id": "definition:part",
+      "displayName": "Part",
+      "meshMembers": [],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 01.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 02.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 04.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 06.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 07.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 09.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 14.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 15.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 16.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 20.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 21.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 22.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 23.SLDPRT"
+      ],
+      "occurrenceCount": 0
+    },
+    {
+      "id": "definition:part-01",
+      "displayName": "Part 01",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 01-2.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-02",
+      "displayName": "Part 02",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 02-2.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-03-right-hand-side",
+      "displayName": "Part 03 - Right Hand Side",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 03 - Right Hand Side-1.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 03 - Right Hand Side.SLDPRT"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-04",
+      "displayName": "Part 04",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-1.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-4.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-5.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-6.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-7.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 5
+    },
+    {
+      "id": "definition:part-05-rectangular-side-part",
+      "displayName": "Part 05 - Rectangular Side Part",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 05 - Rectangular Side Part-1.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 05 - Rectangular Side Part.SLDPRT"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-06",
+      "displayName": "Part 06",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 06-1.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-07",
+      "displayName": "Part 07",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 07-1.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-08-long-servo-mounting-arm",
+      "displayName": "Part 08 - Long Servo Mounting Arm",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 08 - Long Servo Mounting Arm-1.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 08 - Long Servo Mounting Arm.SLDPRT"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-10-the-pig",
+      "displayName": "Part 10 - the Pig",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 10 - the Pig-1.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 10 - the Pig.SLDPRT"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-11-central-section-of-central-lever",
+      "displayName": "Part 11 - Central Section Of Central Lever",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 11 - Central Section Of Central Lever-1.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 11 - Central Section Of Central Lever.SLDPRT"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-12-cradle-ends",
+      "displayName": "Part 12 - Cradle Ends",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 12 - Cradle Ends-1.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 12 - Cradle Ends-2.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 12 - Cradle Ends.SLDPRT"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "id": "definition:part-13-cradle-base",
+      "displayName": "Part 13 - Cradle Base",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 13 - Cradle Base-1.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 13 - Cradle Base.SLDPRT"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-14",
+      "displayName": "Part 14",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 14-1.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-15",
+      "displayName": "Part 15",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 15-2.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-16",
+      "displayName": "Part 16",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 16-2.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-17-base",
+      "displayName": "Part 17 - Base",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 17 - Base-1.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 17 - Base.SLDPRT"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-18-square-servo-mount",
+      "displayName": "Part 18 - Square Servo Mount",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 18 - Square Servo Mount-1.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 18 - Square Servo Mount.SLDPRT"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-19-collar",
+      "displayName": "Part 19 - Collar",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 19 - Collar-1.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 19 - Collar-2.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 19 - Collar-3.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 19 - Collar.SLDPRT"
+      ],
+      "occurrenceCount": 3
+    },
+    {
+      "id": "definition:part-20",
+      "displayName": "Part 20",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 20-2.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-21",
+      "displayName": "Part 21",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 21-2.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-22",
+      "displayName": "Part 22",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 22-2.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-24-central-lever-rhs",
+      "displayName": "Part 24 - Central lever RHS",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 24 - Central lever RHS-1.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 24 - Central lever RHS.SLDPRT"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-25-left-hand-central-lever",
+      "displayName": "Part 25 - Left Hand Central lever",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 25 - Left Hand Central lever-1.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 25 - Left Hand Central lever.SLDPRT"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:part-26-straight-lever",
+      "displayName": "Part 26 - Straight Lever",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 26 - Straight Lever-1.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 26 - Straight Lever-2.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 26 - Straight Lever-3.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 26 - Straight Lever.SLDPRT"
+      ],
+      "occurrenceCount": 3
+    },
+    {
+      "id": "definition:part-27-sticky-foot",
+      "displayName": "Part 27 - Sticky Foot",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-1.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-2.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-3.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-4.STL"
+      ],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 27 - Sticky Foot.SLDPRT"
+      ],
+      "occurrenceCount": 4
+    },
+    {
+      "id": "definition:sg90-micro-servo-9g-tower-pro",
+      "displayName": "SG90 - Micro Servo 9g - Tower Pro",
+      "meshMembers": [],
+      "nativePartMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/servo-models/SG90 - Micro Servo 9g - Tower Pro.1.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/servo-models/SG90 - Micro Servo 9g - Tower Pro.2.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/servo-models/SG90 - Micro Servo 9g - Tower Pro.3.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/servo-models/SG90 - Micro Servo 9g - Tower Pro.4.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/servo-models/SG90 - Micro Servo 9g - Tower Pro.5.SLDPRT",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/servo-models/SG90 - Micro Servo 9g - Tower Pro.6.SLDPRT"
+      ],
+      "occurrenceCount": 0
+    },
+    {
+      "id": "definition:sg90-micro-servo-9g-tower-pro-1",
+      "displayName": "SG90 - Micro Servo 9g - Tower Pro.1",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-1.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-2.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-3.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-5.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 4
+    },
+    {
+      "id": "definition:sg90-micro-servo-9g-tower-pro-2",
+      "displayName": "SG90 - Micro Servo 9g - Tower Pro.2",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.2-1.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.2-2.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.2-4.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 3
+    },
+    {
+      "id": "definition:sg90-micro-servo-9g-tower-pro-3",
+      "displayName": "SG90 - Micro Servo 9g - Tower Pro.3",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.3-1.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 1
+    },
+    {
+      "id": "definition:sg90-micro-servo-9g-tower-pro-5",
+      "displayName": "SG90 - Micro Servo 9g - Tower Pro.5",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-1.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-2.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-3.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-4.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 4
+    },
+    {
+      "id": "definition:sg90-micro-servo-9g-tower-pro-6",
+      "displayName": "SG90 - Micro Servo 9g - Tower Pro.6",
+      "meshMembers": [
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.6-1.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.6-2.STL",
+        "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.6-3.STL"
+      ],
+      "nativePartMembers": [],
+      "occurrenceCount": 3
+    }
+  ],
+  "occurrences": [
+    {
+      "id": "occurrence:hex-thin-nut-chamfered-gradeab-iso:1",
+      "definitionId": "definition:hex-thin-nut-chamfered-gradeab-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:hex-thin-nut-chamfered-gradeab-iso:2",
+      "definitionId": "definition:hex-thin-nut-chamfered-gradeab-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:hex-thin-nut-chamfered-gradeab-iso:3",
+      "definitionId": "definition:hex-thin-nut-chamfered-gradeab-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-3.STL",
+      "sourceOccurrenceOrdinal": 3,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:hex-thin-nut-chamfered-gradeab-iso:4",
+      "definitionId": "definition:hex-thin-nut-chamfered-gradeab-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-4.STL",
+      "sourceOccurrenceOrdinal": 4,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:hex-thin-nut-chamfered-gradeab-iso:5",
+      "definitionId": "definition:hex-thin-nut-chamfered-gradeab-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-5.STL",
+      "sourceOccurrenceOrdinal": 5,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:hex-thin-nut-chamfered-gradeab-iso:6",
+      "definitionId": "definition:hex-thin-nut-chamfered-gradeab-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-6.STL",
+      "sourceOccurrenceOrdinal": 6,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:hex-thin-nut-chamfered-gradeab-iso:7",
+      "definitionId": "definition:hex-thin-nut-chamfered-gradeab-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-7.STL",
+      "sourceOccurrenceOrdinal": 7,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:hex-thin-nut-chamfered-gradeab-iso:8",
+      "definitionId": "definition:hex-thin-nut-chamfered-gradeab-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-8.STL",
+      "sourceOccurrenceOrdinal": 8,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:1",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:2",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-10.STL",
+      "sourceOccurrenceOrdinal": 10,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:3",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-11.STL",
+      "sourceOccurrenceOrdinal": 11,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:4",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-12.STL",
+      "sourceOccurrenceOrdinal": 12,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:5",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-13.STL",
+      "sourceOccurrenceOrdinal": 13,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:6",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-14.STL",
+      "sourceOccurrenceOrdinal": 14,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:7",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-15.STL",
+      "sourceOccurrenceOrdinal": 15,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:8",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-16.STL",
+      "sourceOccurrenceOrdinal": 16,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:9",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-17.STL",
+      "sourceOccurrenceOrdinal": 17,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:10",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-18.STL",
+      "sourceOccurrenceOrdinal": 18,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:11",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-19.STL",
+      "sourceOccurrenceOrdinal": 19,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:12",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:13",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-20.STL",
+      "sourceOccurrenceOrdinal": 20,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:14",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-21.STL",
+      "sourceOccurrenceOrdinal": 21,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:15",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-22.STL",
+      "sourceOccurrenceOrdinal": 22,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:16",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-3.STL",
+      "sourceOccurrenceOrdinal": 3,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:17",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-31.STL",
+      "sourceOccurrenceOrdinal": 31,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:18",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-32.STL",
+      "sourceOccurrenceOrdinal": 32,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:19",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-33.STL",
+      "sourceOccurrenceOrdinal": 33,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "not_run",
+      "geometryFidelity": "mesh-open-approximation"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:20",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-34.STL",
+      "sourceOccurrenceOrdinal": 34,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:21",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-35.STL",
+      "sourceOccurrenceOrdinal": 35,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:22",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-36.STL",
+      "sourceOccurrenceOrdinal": 36,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:23",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-37.STL",
+      "sourceOccurrenceOrdinal": 37,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:24",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-38.STL",
+      "sourceOccurrenceOrdinal": 38,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:25",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-4.STL",
+      "sourceOccurrenceOrdinal": 4,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:26",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-40.STL",
+      "sourceOccurrenceOrdinal": 40,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:27",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-42.STL",
+      "sourceOccurrenceOrdinal": 42,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:28",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-45.STL",
+      "sourceOccurrenceOrdinal": 45,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:29",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-5.STL",
+      "sourceOccurrenceOrdinal": 5,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:30",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-6.STL",
+      "sourceOccurrenceOrdinal": 6,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:31",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-7.STL",
+      "sourceOccurrenceOrdinal": 7,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:32",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-8.STL",
+      "sourceOccurrenceOrdinal": 8,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:pan-head-cross-recess-screw-iso:33",
+      "definitionId": "definition:pan-head-cross-recess-screw-iso",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-9.STL",
+      "sourceOccurrenceOrdinal": 9,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "not_run",
+      "geometryFidelity": "mesh-open-approximation"
+    },
+    {
+      "id": "occurrence:part-01:1",
+      "definitionId": "definition:part-01",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 01-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-02:1",
+      "definitionId": "definition:part-02",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 02-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-03-right-hand-side:1",
+      "definitionId": "definition:part-03-right-hand-side",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 03 - Right Hand Side-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-04:1",
+      "definitionId": "definition:part-04",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-04:2",
+      "definitionId": "definition:part-04",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-4.STL",
+      "sourceOccurrenceOrdinal": 4,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-04:3",
+      "definitionId": "definition:part-04",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-5.STL",
+      "sourceOccurrenceOrdinal": 5,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-04:4",
+      "definitionId": "definition:part-04",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-6.STL",
+      "sourceOccurrenceOrdinal": 6,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-04:5",
+      "definitionId": "definition:part-04",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-7.STL",
+      "sourceOccurrenceOrdinal": 7,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-05-rectangular-side-part:1",
+      "definitionId": "definition:part-05-rectangular-side-part",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 05 - Rectangular Side Part-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-06:1",
+      "definitionId": "definition:part-06",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 06-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-07:1",
+      "definitionId": "definition:part-07",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 07-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-08-long-servo-mounting-arm:1",
+      "definitionId": "definition:part-08-long-servo-mounting-arm",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 08 - Long Servo Mounting Arm-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-10-the-pig:1",
+      "definitionId": "definition:part-10-the-pig",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 10 - the Pig-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-11-central-section-of-central-lever:1",
+      "definitionId": "definition:part-11-central-section-of-central-lever",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 11 - Central Section Of Central Lever-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-12-cradle-ends:1",
+      "definitionId": "definition:part-12-cradle-ends",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 12 - Cradle Ends-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-12-cradle-ends:2",
+      "definitionId": "definition:part-12-cradle-ends",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 12 - Cradle Ends-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-13-cradle-base:1",
+      "definitionId": "definition:part-13-cradle-base",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 13 - Cradle Base-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-14:1",
+      "definitionId": "definition:part-14",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 14-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-15:1",
+      "definitionId": "definition:part-15",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 15-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-16:1",
+      "definitionId": "definition:part-16",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 16-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-17-base:1",
+      "definitionId": "definition:part-17-base",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 17 - Base-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-18-square-servo-mount:1",
+      "definitionId": "definition:part-18-square-servo-mount",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 18 - Square Servo Mount-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-19-collar:1",
+      "definitionId": "definition:part-19-collar",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 19 - Collar-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-19-collar:2",
+      "definitionId": "definition:part-19-collar",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 19 - Collar-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-19-collar:3",
+      "definitionId": "definition:part-19-collar",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 19 - Collar-3.STL",
+      "sourceOccurrenceOrdinal": 3,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-20:1",
+      "definitionId": "definition:part-20",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 20-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-21:1",
+      "definitionId": "definition:part-21",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 21-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-22:1",
+      "definitionId": "definition:part-22",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 22-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-24-central-lever-rhs:1",
+      "definitionId": "definition:part-24-central-lever-rhs",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 24 - Central lever RHS-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-25-left-hand-central-lever:1",
+      "definitionId": "definition:part-25-left-hand-central-lever",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 25 - Left Hand Central lever-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-26-straight-lever:1",
+      "definitionId": "definition:part-26-straight-lever",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 26 - Straight Lever-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-26-straight-lever:2",
+      "definitionId": "definition:part-26-straight-lever",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 26 - Straight Lever-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-26-straight-lever:3",
+      "definitionId": "definition:part-26-straight-lever",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 26 - Straight Lever-3.STL",
+      "sourceOccurrenceOrdinal": 3,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-27-sticky-foot:1",
+      "definitionId": "definition:part-27-sticky-foot",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-27-sticky-foot:2",
+      "definitionId": "definition:part-27-sticky-foot",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-27-sticky-foot:3",
+      "definitionId": "definition:part-27-sticky-foot",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-3.STL",
+      "sourceOccurrenceOrdinal": 3,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:part-27-sticky-foot:4",
+      "definitionId": "definition:part-27-sticky-foot",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-4.STL",
+      "sourceOccurrenceOrdinal": 4,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-1:1",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-1",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "not_run",
+      "geometryFidelity": "mesh-open-approximation"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-1:2",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-1",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "not_run",
+      "geometryFidelity": "mesh-open-approximation"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-1:3",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-1",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-3.STL",
+      "sourceOccurrenceOrdinal": 3,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "not_run",
+      "geometryFidelity": "mesh-open-approximation"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-1:4",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-1",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-5.STL",
+      "sourceOccurrenceOrdinal": 5,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "not_run",
+      "geometryFidelity": "mesh-open-approximation"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-2:1",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-2",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.2-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-2:2",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-2",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.2-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-2:3",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-2",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.2-4.STL",
+      "sourceOccurrenceOrdinal": 4,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-3:1",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-3",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.3-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-5:1",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-5",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-5:2",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-5",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-5:3",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-5",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-3.STL",
+      "sourceOccurrenceOrdinal": 3,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-5:4",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-5",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-4.STL",
+      "sourceOccurrenceOrdinal": 4,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-6:1",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-6",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.6-1.STL",
+      "sourceOccurrenceOrdinal": 1,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-6:2",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-6",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.6-2.STL",
+      "sourceOccurrenceOrdinal": 2,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    },
+    {
+      "id": "occurrence:sg90-micro-servo-9g-tower-pro-6:3",
+      "definitionId": "definition:sg90-micro-servo-9g-tower-pro-6",
+      "sourceMember": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.6-3.STL",
+      "sourceOccurrenceOrdinal": 3,
+      "transformStatus": "not_run",
+      "geometryEvidenceStatus": "pass",
+      "geometryFidelity": "mesh-exact"
+    }
+  ],
+  "authoritativeBodyCount": 141,
+  "mappedMeshOccurrenceCount": 93,
+  "unmatchedAuthoritativeBodyCount": 48,
+  "bodyMembershipStatus": "not_run",
+  "nativeAssemblyMemberCount": 9,
+  "nativeAssemblyExtractionStatus": "not_run",
+  "nativeOccurrenceCount": 0,
+  "nativeJointCount": 0,
+  "meshEvidenceStatus": "not_run",
+  "errors": [
+    "native_assembly_extractor_not_run"
+  ],
+  "warnings": [
+    "mesh_occurrence_evidence_incomplete",
+    "compound_part_body_membership_not_run:141/93",
+    "definition_source_pairing_incomplete",
+    "mesh_occurrence_transforms_not_authoritative"
+  ]
+}

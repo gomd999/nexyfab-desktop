@@ -6,7 +6,7 @@ This is the single doc to read first when picking the project back up. It points
 
 ## Where we are
 
-Phase 1 (Month 1) of [ADR-010](adr/010-wave-2-b-full-collab.md) is **code-complete**. Eight PRs are stacked on `main`, awaiting the three review signals required to enter Phase 2.
+Phase 1 (Month 1) of ADR-010 (historical decision record; not present in this repository snapshot) is **code-complete**. Eight PRs are stacked on `main`, awaiting the three review signals required to enter Phase 2.
 
 ## The PR stack (8 PRs, all open)
 
@@ -27,7 +27,7 @@ Merge order is bottom-to-top. Each PR's base is the previous PR's head — squas
 
 ## The three review signals
 
-[ADR-010 §"Phase 1 review checkpoint"](adr/010-wave-2-b-full-collab.md) defines the gate.
+ADR-010 §"Phase 1 review checkpoint" (historical decision record; not present in this repository snapshot) defines the gate.
 
 ### Signal #1 — CRDT prototype browser smoke test
 

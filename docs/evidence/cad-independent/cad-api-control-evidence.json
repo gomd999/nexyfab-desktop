@@ -1,0 +1,55 @@
+{
+  "schema": "nexyfab.cad-api-control-evidence.v1",
+  "status": "pass",
+  "externalCadRequired": false,
+  "routeFiles": 58,
+  "exportedHandlers": 58,
+  "documentedCadOperations": 28,
+  "publicExceptions": [
+    {
+      "method": "GET",
+      "path": "/api/cad/v1/capabilities",
+      "purpose": "read-only capability discovery"
+    }
+  ],
+  "commercialRuntimeRequirements": [
+    "JWT_SECRET",
+    "REDIS_URL",
+    "NEXYFAB_CAD_INDEPENDENT_MODE=1"
+  ],
+  "controls": {
+    "authentication": "signed JWT required before CAD compute",
+    "authorization": "authenticated account entitlement with plan-bound quota; Closed Beta accounts are preserved",
+    "rateLimit": "IP ceiling plus per-account atomic Redis quota; commercial mode fails closed without Redis",
+    "metering": "request-id-bound production access record without request body or bearer token"
+  },
+  "checks": {
+    "allCadRoutesBehindActiveProxy": true,
+    "onlyCapabilityGetIsPublic": true,
+    "accountQuotaPresent": true,
+    "distributedQuotaFailClosedInCommercial": true,
+    "productionAccessMeteringPresent": true,
+    "openApiHasNoAnonymousCadOverride": true,
+    "everyDocumentedCadOperationUsesBearer": true,
+    "regressionTestsCoverBoundary": true
+  },
+  "issues": [],
+  "sources": [
+    {
+      "file": "src/proxy.ts",
+      "sha256": "46e058437bf966f0df017243c7368f4b3188034fb9a3ef2e58d0069860b8f6cf"
+    },
+    {
+      "file": "src/lib/cad-api-proxy-boundary.ts",
+      "sha256": "1184e490eded8941936e5ba8a7a6f46e9f40b10e28085611c55eed3771f6d0a8"
+    },
+    {
+      "file": "src/app/api/docs/openapi/route.ts",
+      "sha256": "d0e19cb82fa1fa0f534e30542f442dc1b91620d30cf74e59d21eef79887acc4a"
+    },
+    {
+      "file": "src/middleware.cad-security.test.ts",
+      "sha256": "c24274d85e91451d515689a4c0df0a807138deadb043317718dcb17c7ec82f8c"
+    }
+  ]
+}

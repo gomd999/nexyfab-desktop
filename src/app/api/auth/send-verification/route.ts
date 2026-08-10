@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   const email = authUser.email;
 
   // Rate limit: 3 requests per 15 minutes per userId
-  if (!rateLimit(`send-verification:${userId}`, 3, 15 * 60_000).allowed) {
+  if (!(await rateLimitAsync(`send-verification:${userId}`, 3, 15 * 60_000)).allowed) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 15분 후 다시 시도하세요.' }, { status: 429 });
   }
 

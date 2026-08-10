@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { NATIVE_WORKER_HOST_REQUIREMENTS, validateNativeWorkerHealth, type ExternalNativeWorkerKind, type NativeWorkerHealth } from '../../src/lib/reference/nativeWorkerHostContract';
+import { writeLatestArtifactAtomic } from '../../src/lib/reference/immutableArtifactStore';
 
 const value = (name: string) => process.argv.find(item => item.startsWith(`--${name}=`))?.slice(name.length + 3);
 const output = path.resolve(value('output') ?? 'docs/evidence/complex-holdout-lineage-v2-260807/native-worker-health-probe.json');
@@ -26,7 +27,7 @@ for (const [kind, requirement] of Object.entries(NATIVE_WORKER_HOST_REQUIREMENTS
   } catch (error) { results.push({ workerKind: kind, status: 'fail', reason: error instanceof Error ? error.message : String(error) }); }
   finally { fs.rmSync(temp, { recursive: true, force: true }); }
 }
-const artifact = { schema: 'nexyfab.native-worker-health-probe-batch.v1', releaseReady: results.every(item => item.status === 'pass'), summary: { workers: results.length, pass: results.filter(item => item.status === 'pass').length, fail: results.filter(item => item.status === 'fail').length, notRun: results.filter(item => item.status === 'not_run').length }, results };
-fs.mkdirSync(path.dirname(output), { recursive: true }); fs.writeFileSync(output, `${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
+const artifact = { schema: 'nexyfab.native-worker-health-probe-batch.v1', generatedAt: new Date().toISOString(), releaseReady: results.every(item => item.status === 'pass'), summary: { workers: results.length, pass: results.filter(item => item.status === 'pass').length, fail: results.filter(item => item.status === 'fail').length, notRun: results.filter(item => item.status === 'not_run').length }, results };
+writeLatestArtifactAtomic(output, Buffer.from(`${JSON.stringify(artifact, null, 2)}\n`));
 console.log(JSON.stringify({ output: path.relative(process.cwd(), output), ...artifact.summary, releaseReady: artifact.releaseReady }));
 if (artifact.summary.fail) process.exitCode = 4;

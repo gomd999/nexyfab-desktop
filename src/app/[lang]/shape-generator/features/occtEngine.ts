@@ -27,6 +27,7 @@ import { publicWasmUrl } from '../lib/publicWasmUrl';
 import { reportWarning } from '../lib/telemetry';
 import { buildExtrudeTopo, namesOf, edgeMidpoint } from '@/lib/cad/topoNaming';
 import { composeBooleanTopo, isLegacySeamName } from '@/lib/cad/composedTopo';
+import { projectReplicadShapeExact } from '@/lib/drawing/replicadExactProjection';
 import type { EdgeSig, FaceSig } from './edgeCorrespondence';
 
 let ocInstance: unknown = null;
@@ -1215,7 +1216,11 @@ export function occtProjectViews(
   if (!shape || typeof project !== 'function') return null;
   const out: Record<string, { visible: string[]; hidden: string[]; viewBox: string | null }> = {};
   for (const view of views) {
-    const projected = project(shape, view);
+    const projected = projectReplicadShapeExact(
+      { ...(rc as object), drawProjection: project } as Parameters<typeof projectReplicadShapeExact>[0],
+      shape as Parameters<typeof projectReplicadShapeExact>[1],
+      view,
+    );
     out[view] = {
       visible: projected.visible.toSVGPaths(),
       hidden: projected.hidden.toSVGPaths(),

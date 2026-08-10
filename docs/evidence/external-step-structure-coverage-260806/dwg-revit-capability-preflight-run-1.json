@@ -1,0 +1,41 @@
+{
+  "schema": "nexyfab.dwg-revit-capability-preflight.v1",
+  "generatedAt": "2026-08-06T14:45:50.631Z",
+  "scoreEligible": false,
+  "probe": {
+    "platform": "win32",
+    "registeredProgIds": [],
+    "odaCommandConfigured": false,
+    "revitWorkerConfigured": false,
+    "probeExitCode": 0
+  },
+  "summary": {
+    "readyExecutors": 0,
+    "notRunExecutors": 3,
+    "exactDwgRecoveryCases": 8,
+    "revitNativeCases": 5
+  },
+  "verdicts": [
+    {
+      "executor": "autocad-com",
+      "status": "not_run",
+      "reason": "autocad_com_unregistered",
+      "matchedProgId": null,
+      "queuedCases": 8
+    },
+    {
+      "executor": "oda-file-converter",
+      "status": "not_run",
+      "reason": "oda_converter_command_unconfigured",
+      "matchedProgId": null,
+      "queuedCases": 8
+    },
+    {
+      "executor": "revit-worker",
+      "status": "not_run",
+      "reason": "revit_native_worker_unconfigured",
+      "matchedProgId": null,
+      "queuedCases": 5
+    }
+  ]
+}

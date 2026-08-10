@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import { parseSTL } from './importers';
-import { BREP_STEP_SYNC_MAX_BYTES } from '@/lib/brep-bridge/constants';
+import { BREP_STEP_MAX_BYTES, BREP_STEP_SYNC_MAX_BYTES } from '@/lib/brep-bridge/constants';
 import { StepImportApiError } from './stepImportApiError';
 
 export { StepImportApiError } from './stepImportApiError';
@@ -102,9 +102,34 @@ export interface ServerStepImportOk {
   geometry: THREE.BufferGeometry;
 }
 
+async function consumeStepImportResponse(res: Response): Promise<ServerStepImportOk | null> {
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (res.status === 401) return null;
+  if (!res.ok) {
+    const msg = typeof data.error === 'string' ? data.error : `HTTP ${res.status}`;
+    const code = typeof data.code === 'string' ? data.code : undefined;
+    throw new StepImportApiError(msg, code, res.status);
+  }
+  if (data.mode === 'async' && typeof data.jobId === 'string') {
+    const geo = await pollJob(data.jobId);
+    return geo ? { geometry: geo } : null;
+  }
+  if (data.mode === 'sync') {
+    const geo = await geometryFromPreview({
+      previewMeshBase64: typeof data.previewMeshBase64 === 'string' ? data.previewMeshBase64 : undefined,
+      artifactUrl: typeof data.artifactUrl === 'string' ? data.artifactUrl : undefined,
+    });
+    return geo ? { geometry: geo } : null;
+  }
+  return null;
+}
+
 /** Returns geometry when the API produced a mesh; otherwise `null` → caller uses client STEP. */
 export async function tryServerStepImport(filename: string, buffer: ArrayBuffer): Promise<ServerStepImportOk | null> {
   if (serverImportDisabled()) return null;
+  // The inline API duplicates the payload as ArrayBuffer + base64 + JSON +
+  // decoded Buffer. Never attempt it beyond its explicit capacity.
+  if (buffer.byteLength > BREP_STEP_MAX_BYTES) return null;
 
   let base64: string;
   try {
@@ -126,36 +151,15 @@ export async function tryServerStepImport(filename: string, buffer: ArrayBuffer)
     }),
   });
 
-  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  return consumeStepImportResponse(res);
+}
 
-  if (res.status === 401) return null;
-
-  if (res.status === 403) {
-    const msg = typeof data.error === 'string' ? data.error : 'Forbidden';
-    const code = typeof data.code === 'string' ? data.code : undefined;
-    throw new StepImportApiError(msg, code, res.status);
-  }
-
-  if (!res.ok) {
-    const msg = typeof data.error === 'string' ? data.error : `HTTP ${res.status}`;
-    const code = typeof data.code === 'string' ? data.code : undefined;
-    throw new StepImportApiError(msg, code, res.status);
-  }
-
-  if (data.mode === 'async' && typeof data.jobId === 'string') {
-    const geo = await pollJob(data.jobId);
-    if (!geo) return null;
-    return { geometry: geo };
-  }
-
-  if (data.mode === 'sync') {
-    const geo = await geometryFromPreview({
-      previewMeshBase64: typeof data.previewMeshBase64 === 'string' ? data.previewMeshBase64 : undefined,
-      artifactUrl: typeof data.artifactUrl === 'string' ? data.artifactUrl : undefined,
-    });
-    if (!geo) return null;
-    return { geometry: geo };
-  }
-
-  return null;
+/** Start an async STEP job from an already-owned private object key. */
+export async function tryServerStepObjectImport(filename: string, key: string): Promise<ServerStepImportOk | null> {
+  if (serverImportDisabled()) return null;
+  const res = await fetch('/api/nexyfab/brep/step-import', {
+    method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input: { kind: 'objectKey', key, filename }, async: true }),
+  });
+  return consumeStepImportResponse(res);
 }

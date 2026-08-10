@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync } from 'node:fs';
 import { parseLandXml, parseLandXmlFile } from './landxml-import.mjs';
+import { landxmlAlignment } from './landxml-export.mjs';
+import { buildAssemblyTemplate } from './domain-assemblies.mjs';
 
 // 합성 스니펫(구조만 재현 — 코퍼스 미포함): 미터 단위, L-C-L 체인 + PVI
 const SNIPPET = `<?xml version="1.0"?>
@@ -33,7 +35,22 @@ describe('landxml-import — 도로 선형(R2-③)', () => {
     expect(r.profiles[0].pvis[1]).toMatchObject({ kind: 'paracurve', staMm: 150000, elevMm: 103000 });
   });
 
-  const SAMPLE = 'C:/Users/gomd9/Downloads/참고파일들/LandXML-samples/landxml_road_sample.xml';
+  it('exported clothoid elements round-trip without being downgraded to unsupported', () => {
+    const assembly = buildAssemblyTemplate('civil', 'retaining_wall_alignment', {
+      ips: [[0, 0], [400000, 0], [800000, 300000], [1300000, 300000]],
+      curves: [{ ip: 1, R: 200000, Ls: 60000 }, { ip: 2, R: 150000 }],
+    });
+    const xml = landxmlAlignment(assembly);
+    const parsed = parseLandXml(xml) as { alignments: Array<{ elements: Array<{ kind: string; radiusStart?: number | null; radiusEnd?: number | null }>; unsupported: unknown[]; checks: { lengthMatch: boolean | null } }> };
+    const alignment = parsed.alignments[0]!;
+    expect(alignment.elements.filter(item => item.kind === 'Spiral')).toHaveLength(2);
+    expect(alignment.elements.filter(item => item.kind === 'Spiral').map(item => [item.radiusStart, item.radiusEnd]))
+      .toEqual([[null, 200000], [200000, null]]);
+    expect(alignment.unsupported).toEqual([]);
+    expect(alignment.checks.lengthMatch).toBe(true);
+  });
+
+  const SAMPLE = 'C:/Users/gomd9/Downloads/참고파일들/참고파일들/LandXML-samples/landxml_road_sample.xml';
   it.skipIf(!existsSync(SAMPLE))('실파일(로컬 코퍼스) — 길이 검산 일치 + 엔진 투입 형식', () => {
     const r = parseLandXmlFile(SAMPLE) as { alignments: Array<{ ips: number[][]; curves: unknown[]; checks: { lengthMatch: boolean | null } }> };
     const a = r.alignments[0];

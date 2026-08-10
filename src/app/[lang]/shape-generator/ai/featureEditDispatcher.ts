@@ -20,6 +20,9 @@
 
 import type { FeatureInstance, FeatureType } from '../features/types';
 import type { FaceSelectionInfo, EdgeSelectionInfo } from '../editing/selectionInfo';
+import { lockProtectsTarget, type DesignLockTarget, type DesignValueLock } from '@/lib/ai/designWorkspaceRevision';
+
+export type FeatureEditLock = Pick<DesignValueLock, 'id' | 'target'>;
 
 export type FeatureEditIntent =
   | { kind: 'add_feature'; featureType: FeatureType; params: Record<string, number> }
@@ -218,16 +221,66 @@ export function dispatchFeatureEdit(
 export function dispatchFeatureEditBatch(
   intents: FeatureEditIntent[],
   store: FeatureStoreApi,
-  options: { stopOnError?: boolean } = {},
+  options: { stopOnError?: boolean; locks?: readonly FeatureEditLock[] } = {},
 ): DispatchResult[] {
   const stopOnError = options.stopOnError ?? false;
   const results: DispatchResult[] = [];
   for (const intent of intents) {
+    const protection = protectFeatureEditIntent(intent, options.locks ?? []);
+    if (!protection.allowed) {
+      results.push({ applied: false, summary: 'Protected edit blocked', errorReason: protection.errorReason });
+      if (stopOnError) break;
+      continue;
+    }
     const r = dispatchFeatureEdit(intent, store);
     results.push(r);
     if (!r.applied && stopOnError) break;
   }
   return results;
+}
+
+export interface FeatureEditProtectionResult {
+  allowed: boolean;
+  changedTargets: DesignLockTarget[];
+  blockedLockIds: string[];
+  errorReason?: string;
+}
+
+/** Maps an AI feature action to the shared workspace targets it can mutate. */
+export function featureEditChangedTargets(intent: FeatureEditIntent): DesignLockTarget[] {
+  switch (intent.kind) {
+    case 'set_base_shape':
+      return [
+        { kind: 'base_shape', objectId: 'main' },
+        ...Object.keys(intent.params).map(field => ({ kind: 'parameter' as const, objectId: 'base_shape:main', field })),
+      ];
+    case 'set_assembly_parts': return [{ kind: 'assembly', objectId: 'main' }];
+    case 'update_param': return [{ kind: 'parameter', objectId: intent.featureId, field: intent.paramKey }];
+    case 'remove_feature':
+    case 'reorder_feature':
+    case 'toggle_feature': return [{ kind: 'feature', objectId: intent.featureId }];
+    case 'clear_all':
+    case 'replace_pipeline': return [{ kind: 'workspace', objectId: 'feature_tree' }];
+    case 'add_feature':
+    case 'add_feature_on_selection':
+    case 'add_sketch_extrude': return [];
+  }
+}
+
+/** Fail-closed AI guard. A tree replacement cannot bypass a child value lock. */
+export function protectFeatureEditIntent(
+  intent: FeatureEditIntent,
+  locks: readonly FeatureEditLock[],
+): FeatureEditProtectionResult {
+  const changedTargets = featureEditChangedTargets(intent);
+  const destructiveTreeChange = intent.kind === 'clear_all' || intent.kind === 'replace_pipeline';
+  const blockers = locks.filter(lock => destructiveTreeChange
+    ? true
+    : changedTargets.some(target => lockProtectsTarget(lock as DesignValueLock, target)));
+  const blockedLockIds = blockers.map(lock => lock.id).sort();
+  return blockedLockIds.length
+    ? { allowed: false, changedTargets, blockedLockIds, errorReason: `Protected manual or authoritative values: ${blockedLockIds.join(', ')}` }
+    : { allowed: true, changedTargets, blockedLockIds: [] };
 }
 
 export interface AtomicDispatchResult<TSnapshot> {
@@ -247,10 +300,11 @@ export async function dispatchFeatureEditBatchAtomic<TSnapshot>(
   store: FeatureStoreApi,
   capture: () => TSnapshot,
   restore: (snapshot: TSnapshot) => void | Promise<void>,
+  options: { locks?: readonly FeatureEditLock[] } = {},
 ): Promise<AtomicDispatchResult<TSnapshot>> {
   const snapshot = capture();
   try {
-    const results = dispatchFeatureEditBatch(intents, store, { stopOnError: true });
+    const results = dispatchFeatureEditBatch(intents, store, { stopOnError: true, locks: options.locks });
     const failed = results.find(result => !result.applied);
     if (failed || results.length !== intents.length) {
       await restore(snapshot);

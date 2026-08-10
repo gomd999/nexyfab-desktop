@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildCadProductBundleManifest } from './cadCorpusProductBundle';
 import { validateCadNativeAssemblyEvidence, type CadNativeAssemblyEvidence } from './cadNativeAssemblyEvidence';
 const bytes = (value: string) => new TextEncoder().encode(value);
+const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 describe('native assembly evidence', () => {
   const bundle = buildCadProductBundleManifest([{ relativePath: 'set/robot.snapshot.1/root.SLDASM', bytes: bytes('asm') }, { relativePath: 'set/robot.snapshot.1/link.SLDPRT', bytes: bytes('part') }]);
   const source = bundle.members.find(item => item.role === 'native_assembly')!;
@@ -20,5 +21,13 @@ describe('native assembly evidence', () => {
   it('rejects parent cycles even when every parent id exists', () => {
     const cyclic = structuredClone(valid); cyclic.occurrences[0]!.parentOccurrenceId = 'link-1';
     expect(validateCadNativeAssemblyEvidence(bundle, cyclic)).toMatchObject({ status: 'fail', errors: expect.arrayContaining([expect.stringContaining('parent_cycle')]) });
+  });
+  it('validates a 20k-occurrence governed assembly without recursive stack growth', () => {
+    const large = structuredClone(valid); large.schema = 'nexyfab.native-assembly-evidence.v1.1'; large.coordinateSystem = { handedness: 'right', upAxis: 'z', forwardAxis: '+x', matrixLayout: 'row-major', vectorConvention: 'column-vector', transformScope: 'local-to-parent' }; large.units = { length: 'mm', angle: 'deg' };
+    large.definitions = large.definitions.map(item => ({ ...item, kind: item.id === 'root' ? 'assembly' : 'part' })); large.joints = [];
+    const state = { resolved: true, suppressed: false, lightweight: false, flexible: false, hidden: false, mirrored: false };
+    large.occurrences = [{ id: 'root-1', definitionId: 'root', parentOccurrenceId: null, transform: [...identity], suppressed: false, state }];
+    for (let index = 1; index <= 20_000; index += 1) large.occurrences.push({ id: `link-${index}`, definitionId: 'link', parentOccurrenceId: index === 1 ? 'root-1' : `link-${index - 1}`, transform: [...identity], suppressed: false, state });
+    expect(validateCadNativeAssemblyEvidence(bundle, large)).toMatchObject({ status: 'pass', releaseReady: true, errors: [] });
   });
 });

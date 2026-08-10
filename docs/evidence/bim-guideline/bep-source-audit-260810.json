@@ -1,0 +1,233 @@
+{
+  "schema": "nexyfab.bim-bep-source-audit.v1",
+  "generatedAt": "2026-08-09T21:31:05.457Z",
+  "sourcePolicy": {
+    "access": "read_only",
+    "sourceMutation": false,
+    "extractedTextPersisted": false
+  },
+  "source": {
+    "path": "03. 단지분야 BIM 수행계획서(BEP) 양식(예시)\\부속서-03_단지분야 BIM 수행계획서(BEP) 양식(예시).hwp",
+    "bytes": 456192,
+    "sha256": "ce86ed0ade690d96a0a1bbd7a53e9ca791713038eeece94a5397f4ec97e04865",
+    "extractedTextCharacters": 2561,
+    "extractedTextSha256": "2de4e2681fdb7363da9ec8d0e8be0f94efa339709160d7f44eac935036d7aa8d",
+    "parser": "pyhwp:hwp5txt"
+  },
+  "catalog": {
+    "requirementCount": 16,
+    "bindings": [
+      {
+        "key": "projectOverview",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "BIM 사업개요",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "bimGoals",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "BIM 활용목표 및 활용방안",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "workScope",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "BIM 업무수행 범위",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "milestones",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "주요업무 추진일정",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "authoringScope",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "BIM 데이터 작성대상",
+            "found": true
+          },
+          {
+            "heading": "BIM 데이터 작성범위 및 작성내용",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "lodPlan",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "BIM 데이터 작성수준(LOD)",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "modelStandards",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "BIM 적용표준",
+            "found": true
+          },
+          {
+            "heading": "BIM 모델 구성체계",
+            "found": true
+          },
+          {
+            "heading": "BIM 라이브러리 작성",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "organization",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "BIM 사업수행 조직도",
+            "found": true
+          },
+          {
+            "heading": "BIM 사업수행 조직표",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "responsibilityMatrix",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "BIM 수행자의 역할 및 책임",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "technologyEnvironment",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "BIM 수행 인프라(S/W)",
+            "found": true
+          },
+          {
+            "heading": "BIM 수행 인프라(H/W)",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "workflow",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "BIM 업무 추진절차",
+            "found": true
+          },
+          {
+            "heading": "BIM 업무 협업절차",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "cdePlan",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "공통정보관리환경(CDE) 구성 및 활용",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "exchangeRequirements",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "파일교환 요구사항 관리",
+            "found": true
+          },
+          {
+            "heading": "BIM 데이터 교환",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "qualityPlan",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "BIM 품질검토",
+            "found": true
+          },
+          {
+            "heading": "품질검토 체크리스트",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "deliverablePlan",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "BIM 성과품 납품 계획",
+            "found": true
+          },
+          {
+            "heading": "BIM 성과품 목록",
+            "found": true
+          },
+          {
+            "heading": "BIM 성과품 폴더체계",
+            "found": true
+          },
+          {
+            "heading": "BIM 성과품 파일명 구조",
+            "found": true
+          },
+          {
+            "heading": "표준파일 형식",
+            "found": true
+          }
+        ]
+      },
+      {
+        "key": "securityPlan",
+        "catalogued": true,
+        "headings": [
+          {
+            "heading": "데이터 보안 및 관리",
+            "found": true
+          }
+        ]
+      }
+    ],
+    "missing": [],
+    "uncatalogued": []
+  },
+  "status": "verified"
+}

@@ -1,0 +1,1313 @@
+{
+  "schema": "nexyfab.scad-validation-assembly-evidence.v1",
+  "generatedAt": "2026-08-06T10:52:42.741Z",
+  "sourceReport": "validation-reports/scad-agent-2026-08-06T09-10-47-repaired.json",
+  "sourceGeneratedAt": "2026-08-06T10:52:40.682Z",
+  "summary": {
+    "total": 4,
+    "pass": 4,
+    "fail": 0
+  },
+  "assemblies": [
+    {
+      "scenarioId": "sc7_gear_train",
+      "validationPassed": true,
+      "bridge": {
+        "schema": "nexyfab.scad-assembly-bridge.v1",
+        "status": "pass",
+        "architecture": {
+          "schema": "nexyfab.complex-product-architecture.v1",
+          "requirements": [
+            {
+              "id": "scad:req:source",
+              "kind": "manufacturing",
+              "text": "Preserve independent SCAD modules and placements for sc7_gear_train.",
+              "status": "confirmed",
+              "sourceRefs": [
+                "scad-agent:session"
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "id": "scad:def:product",
+              "name": "sc7_gear_train",
+              "kind": "product",
+              "sourcing": "make",
+              "independentlyReplaceable": false,
+              "bodyIntent": {
+                "policy": "multi_body",
+                "expectedBodies": null
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:gear20",
+              "name": "gear20",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:gear30",
+              "name": "gear30",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:gear_base",
+              "name": "gear_base",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:shaft20",
+              "name": "shaft20",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:shaft30",
+              "name": "shaft30",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            }
+          ],
+          "occurrences": [
+            {
+              "id": "scad:occ:root",
+              "definitionId": "scad:def:product",
+              "parentOccurrenceId": null,
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:gear20:1",
+              "definitionId": "scad:def:gear20",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:gear30:2",
+              "definitionId": "scad:def:gear30",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:gear_base:3",
+              "definitionId": "scad:def:gear_base",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:shaft20:4",
+              "definitionId": "scad:def:shaft20",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:shaft30:5",
+              "definitionId": "scad:def:shaft30",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            }
+          ],
+          "interfaces": [],
+          "interfaceExpectation": "unknown"
+        },
+        "transforms": [
+          {
+            "occurrenceId": "scad:occ:root",
+            "matrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:gear20:1",
+            "matrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:gear30:2",
+            "matrix": [
+              0.9945218953682733,
+              -0.10452846326765346,
+              0,
+              50,
+              0.10452846326765346,
+              0.9945218953682733,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:gear_base:3",
+            "matrix": [
+              1,
+              0,
+              0,
+              25,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              -10,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:shaft20:4",
+            "matrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:shaft30:5",
+            "matrix": [
+              1,
+              0,
+              0,
+              50,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          }
+        ],
+        "codes": []
+      }
+    },
+    {
+      "scenarioId": "sc8_pipe_joint",
+      "validationPassed": true,
+      "bridge": {
+        "schema": "nexyfab.scad-assembly-bridge.v1",
+        "status": "pass",
+        "architecture": {
+          "schema": "nexyfab.complex-product-architecture.v1",
+          "requirements": [
+            {
+              "id": "scad:req:source",
+              "kind": "manufacturing",
+              "text": "Preserve independent SCAD modules and placements for sc8_pipe_joint.",
+              "status": "confirmed",
+              "sourceRefs": [
+                "scad-agent:session"
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "id": "scad:def:product",
+              "name": "sc8_pipe_joint",
+              "kind": "product",
+              "sourcing": "make",
+              "independentlyReplaceable": false,
+              "bodyIntent": {
+                "policy": "multi_body",
+                "expectedBodies": null
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:main_pipe_left",
+              "name": "main_pipe_left",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:main_pipe_right",
+              "name": "main_pipe_right",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:branch_pipe",
+              "name": "branch_pipe",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            }
+          ],
+          "occurrences": [
+            {
+              "id": "scad:occ:root",
+              "definitionId": "scad:def:product",
+              "parentOccurrenceId": null,
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:main_pipe_left:1",
+              "definitionId": "scad:def:main_pipe_left",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:main_pipe_right:2",
+              "definitionId": "scad:def:main_pipe_right",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:branch_pipe:3",
+              "definitionId": "scad:def:branch_pipe",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            }
+          ],
+          "interfaces": [],
+          "interfaceExpectation": "unknown"
+        },
+        "transforms": [
+          {
+            "occurrenceId": "scad:occ:root",
+            "matrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:main_pipe_left:1",
+            "matrix": [
+              6.123233995736766e-17,
+              0,
+              1,
+              -50,
+              0,
+              1,
+              0,
+              0,
+              -1,
+              0,
+              6.123233995736766e-17,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:main_pipe_right:2",
+            "matrix": [
+              6.123233995736766e-17,
+              0,
+              1,
+              0,
+              0,
+              1,
+              0,
+              0,
+              -1,
+              0,
+              6.123233995736766e-17,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:branch_pipe:3",
+            "matrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          }
+        ],
+        "codes": []
+      }
+    },
+    {
+      "scenarioId": "sc9_simple_car",
+      "validationPassed": true,
+      "bridge": {
+        "schema": "nexyfab.scad-assembly-bridge.v1",
+        "status": "pass",
+        "architecture": {
+          "schema": "nexyfab.complex-product-architecture.v1",
+          "requirements": [
+            {
+              "id": "scad:req:source",
+              "kind": "manufacturing",
+              "text": "Preserve independent SCAD modules and placements for sc9_simple_car.",
+              "status": "confirmed",
+              "sourceRefs": [
+                "scad-agent:session"
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "id": "scad:def:product",
+              "name": "sc9_simple_car",
+              "kind": "product",
+              "sourcing": "make",
+              "independentlyReplaceable": false,
+              "bodyIntent": {
+                "policy": "multi_body",
+                "expectedBodies": null
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:body",
+              "name": "body",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:wheel",
+              "name": "wheel",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:window",
+              "name": "window",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            }
+          ],
+          "occurrences": [
+            {
+              "id": "scad:occ:root",
+              "definitionId": "scad:def:product",
+              "parentOccurrenceId": null,
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:body:1",
+              "definitionId": "scad:def:body",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:wheel:2",
+              "definitionId": "scad:def:wheel",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:wheel:3",
+              "definitionId": "scad:def:wheel",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 2
+            },
+            {
+              "id": "scad:occ:wheel:4",
+              "definitionId": "scad:def:wheel",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 3
+            },
+            {
+              "id": "scad:occ:wheel:5",
+              "definitionId": "scad:def:wheel",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 4
+            },
+            {
+              "id": "scad:occ:window:6",
+              "definitionId": "scad:def:window",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            }
+          ],
+          "interfaces": [],
+          "interfaceExpectation": "unknown"
+        },
+        "transforms": [
+          {
+            "occurrenceId": "scad:occ:root",
+            "matrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:body:1",
+            "matrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:wheel:2",
+            "matrix": [
+              1,
+              0,
+              0,
+              20,
+              0,
+              1,
+              0,
+              18,
+              0,
+              0,
+              1,
+              7,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:wheel:3",
+            "matrix": [
+              1,
+              0,
+              0,
+              20,
+              0,
+              1,
+              0,
+              -18,
+              0,
+              0,
+              1,
+              7,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:wheel:4",
+            "matrix": [
+              1,
+              0,
+              0,
+              -20,
+              0,
+              1,
+              0,
+              18,
+              0,
+              0,
+              1,
+              7,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:wheel:5",
+            "matrix": [
+              1,
+              0,
+              0,
+              -20,
+              0,
+              1,
+              0,
+              -18,
+              0,
+              0,
+              1,
+              7,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:window:6",
+            "matrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              6,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          }
+        ],
+        "codes": []
+      }
+    },
+    {
+      "scenarioId": "sc10_brackets_grid",
+      "validationPassed": true,
+      "bridge": {
+        "schema": "nexyfab.scad-assembly-bridge.v1",
+        "status": "pass",
+        "architecture": {
+          "schema": "nexyfab.complex-product-architecture.v1",
+          "requirements": [
+            {
+              "id": "scad:req:source",
+              "kind": "manufacturing",
+              "text": "Preserve independent SCAD modules and placements for sc10_brackets_grid.",
+              "status": "confirmed",
+              "sourceRefs": [
+                "scad-agent:session"
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "id": "scad:def:product",
+              "name": "sc10_brackets_grid",
+              "kind": "product",
+              "sourcing": "make",
+              "independentlyReplaceable": false,
+              "bodyIntent": {
+                "policy": "multi_body",
+                "expectedBodies": null
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:bracket",
+              "name": "bracket",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            }
+          ],
+          "occurrences": [
+            {
+              "id": "scad:occ:root",
+              "definitionId": "scad:def:product",
+              "parentOccurrenceId": null,
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:bracket:1",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:bracket:2",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 2
+            },
+            {
+              "id": "scad:occ:bracket:3",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 3
+            },
+            {
+              "id": "scad:occ:bracket:4",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 4
+            },
+            {
+              "id": "scad:occ:bracket:5",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 5
+            },
+            {
+              "id": "scad:occ:bracket:6",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 6
+            },
+            {
+              "id": "scad:occ:bracket:7",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 7
+            },
+            {
+              "id": "scad:occ:bracket:8",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 8
+            },
+            {
+              "id": "scad:occ:bracket:9",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 9
+            },
+            {
+              "id": "scad:occ:bracket:10",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 10
+            },
+            {
+              "id": "scad:occ:bracket:11",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 11
+            },
+            {
+              "id": "scad:occ:bracket:12",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 12
+            },
+            {
+              "id": "scad:occ:bracket:13",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 13
+            },
+            {
+              "id": "scad:occ:bracket:14",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 14
+            },
+            {
+              "id": "scad:occ:bracket:15",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 15
+            },
+            {
+              "id": "scad:occ:bracket:16",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 16
+            }
+          ],
+          "interfaces": [],
+          "interfaceExpectation": "unknown"
+        },
+        "transforms": [
+          {
+            "occurrenceId": "scad:occ:root",
+            "matrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:1",
+            "matrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:2",
+            "matrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              50,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:3",
+            "matrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              100,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:4",
+            "matrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              150,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:5",
+            "matrix": [
+              1,
+              0,
+              0,
+              50,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:6",
+            "matrix": [
+              1,
+              0,
+              0,
+              50,
+              0,
+              1,
+              0,
+              50,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:7",
+            "matrix": [
+              1,
+              0,
+              0,
+              50,
+              0,
+              1,
+              0,
+              100,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:8",
+            "matrix": [
+              1,
+              0,
+              0,
+              50,
+              0,
+              1,
+              0,
+              150,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:9",
+            "matrix": [
+              1,
+              0,
+              0,
+              100,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:10",
+            "matrix": [
+              1,
+              0,
+              0,
+              100,
+              0,
+              1,
+              0,
+              50,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:11",
+            "matrix": [
+              1,
+              0,
+              0,
+              100,
+              0,
+              1,
+              0,
+              100,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:12",
+            "matrix": [
+              1,
+              0,
+              0,
+              100,
+              0,
+              1,
+              0,
+              150,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:13",
+            "matrix": [
+              1,
+              0,
+              0,
+              150,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:14",
+            "matrix": [
+              1,
+              0,
+              0,
+              150,
+              0,
+              1,
+              0,
+              50,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:15",
+            "matrix": [
+              1,
+              0,
+              0,
+              150,
+              0,
+              1,
+              0,
+              100,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:16",
+            "matrix": [
+              1,
+              0,
+              0,
+              150,
+              0,
+              1,
+              0,
+              150,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "source": "assembly_solver"
+          }
+        ],
+        "codes": []
+      }
+    }
+  ]
+}

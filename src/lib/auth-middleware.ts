@@ -13,10 +13,11 @@ export interface AuthUser {
   roles: UserRole[];         // per-product roles from nf_user_roles
   orgIds: string[];          // org IDs the user belongs to
   emailVerified: boolean;
+  apiKey?: { id: string; scopes: string[] };
 }
 
 /** Enrich base user info with roles and org membership */
-async function enrichAuthUser(base: { userId: string; email: string; plan: string }): Promise<AuthUser> {
+async function enrichAuthUser(base: { userId: string; email: string; plan: string }): Promise<AuthUser | null> {
   const db = getDbAdapter();
   const [roleRows, orgRows, userRow] = await Promise.all([
     db.queryAll<{ product: string; role: string; org_id: string | null }>(
@@ -25,23 +26,42 @@ async function enrichAuthUser(base: { userId: string; email: string; plan: strin
     db.queryAll<{ org_id: string }>(
       'SELECT org_id FROM nf_org_members WHERE user_id = ?', base.userId,
     ),
-    db.queryOne<{ role: string; email_verified: number; pro_grace_until: number | null; plan_expires_at: number | null; plan_fallback: string | null }>(
-      'SELECT role, email_verified, pro_grace_until, plan_expires_at, plan_fallback FROM nf_users WHERE id = ?', base.userId,
+    db.queryOne<{
+      email: string;
+      plan: string;
+      role: string;
+      email_verified: number;
+      locked_until: number | null;
+      pro_grace_until: number | null;
+      plan_expires_at: number | null;
+      plan_fallback: string | null;
+    }>(
+      `SELECT email, plan, role, email_verified, locked_until,
+              pro_grace_until, plan_expires_at, plan_fallback
+         FROM nf_users WHERE id = ?`,
+      base.userId,
     ),
   ]);
+  // A valid stateless access token must not resurrect a deleted account or
+  // bypass an administrator lock. Roles and plan are likewise read from the
+  // current row so privilege changes take effect immediately.
+  if (!userRow || (userRow.locked_until !== null && userRow.locked_until > Date.now())) {
+    return null;
+  }
   // Partner Pro grace: if the stored plan is free but a deal-driven grace
   // window is still active, surface 'pro' so downstream tier checks let
   // the partner use Pro tooling to evaluate the customer's 3D model.
   const { resolveEffectivePlan } = await import('./partner-pro-grace');
   // ⚠ 260802: 만료(plan_expires_at)를 함께 넘긴다 — 안 넘기면 관리자가 부여한 Pro 가 영구가 된다.
   const effectivePlan = resolveEffectivePlan(
-    base.plan,
+    userRow.plan,
     userRow?.pro_grace_until ?? null,
     userRow?.plan_expires_at ?? null,
     userRow?.plan_fallback ?? null,
   );
   return {
-    ...base,
+    userId: base.userId,
+    email: userRow.email,
     plan: effectivePlan,
     globalRole: userRow?.role ?? 'user',
     roles: roleRows.map(r => ({ product: r.product, role: r.role, orgId: r.org_id }) as UserRole),
@@ -101,9 +121,9 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
     const keyHash = createHash('sha256').update(token).digest('hex');
     const db = getDbAdapter();
     const apiKey = await db.queryOne<{
-      user_id: string; scopes: string; ip_whitelist: string; status: string; expires_at: number | null;
+      id: string; user_id: string; scopes: string; ip_whitelist: string; status: string; expires_at: number | null;
     }>(
-      "SELECT user_id, scopes, ip_whitelist, status, expires_at FROM nf_api_keys WHERE key_hash = ? AND status = 'active'",
+      "SELECT id, user_id, scopes, ip_whitelist, status, expires_at FROM nf_api_keys WHERE key_hash = ? AND status = 'active'",
       keyHash,
     ).catch(() => null);
 
@@ -128,7 +148,14 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
       );
       if (!user) return null;
 
-      return enrichAuthUser({ userId: user.id, email: user.email, plan: user.plan });
+      const enriched = await enrichAuthUser({ userId: user.id, email: user.email, plan: user.plan });
+      if (!enriched) return null;
+      let scopes: string[] = [];
+      try {
+        const parsed = JSON.parse(apiKey.scopes ?? '[]');
+        if (Array.isArray(parsed)) scopes = parsed.filter((scope): scope is string => typeof scope === 'string');
+      } catch { /* malformed legacy scope means no privileges */ }
+      return { ...enriched, apiKey: { id: apiKey.id, scopes } };
     }
   }
 

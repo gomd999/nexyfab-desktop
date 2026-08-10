@@ -13,9 +13,12 @@ import {
 } from "@/lib/ai/multiStageRefinement";
 import type { GenerationCanonicalResponse } from "@/lib/ai/generationCanonicalResponse";
 import type { GenerationTopologyRebindGate } from "@/lib/ai/advanceGenerationRun";
+import type { AdaptiveComplexProductExecutionPlan } from "@/lib/ai/adaptiveComplexProductExecution";
+import type { JointEvidenceClaim } from "@/lib/reference/jointEvidenceReleaseGate";
 
 export const GENERATION_SESSION_KEY = "nexyfab:ai-generation-state:v1";
 export const GENERATION_CANONICAL_KEY = "nexyfab:ai-generation-canonical:v1";
+export const GENERATION_EXECUTION_PLAN_KEY = "nexyfab:ai-complex-execution-plan:v1";
 export const REFINEMENT_SESSION_KEY = "nexyfab:ai-refinement-session:v1";
 type FetchLike = typeof fetch;
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
@@ -38,6 +41,15 @@ function persistCanonical(
     window.dispatchEvent(
       new CustomEvent("nexyfab:generation-canonical", { detail: canonical }),
     );
+}
+
+function persistExecutionPlan(storage: StorageLike, executionPlan: AdaptiveComplexProductExecutionPlan | undefined): void {
+  if (!executionPlan) return;
+  if (executionPlan.schema !== 'nexyfab.adaptive-complex-product-execution.v1' || executionPlan.objective !== 'complete_manufacturing_product') {
+    throw new Error('Generation returned an invalid complex-product execution plan.');
+  }
+  storage.setItem(GENERATION_EXECUTION_PLAN_KEY, JSON.stringify(executionPlan));
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('nexyfab:complex-execution-plan', { detail: executionPlan }));
 }
 
 export type BrowserRefinementResult =
@@ -255,52 +267,16 @@ export function updateGenerationSessionForEdit(
   return result;
 }
 
-/** Records initial-generation stages in order and persists after every accepted checkpoint. */
+/** Browser-authored pass records are forbidden. Initial stages must be
+ * produced by refineGenerationSession so the server owns every checkpoint. */
 export function recordGenerationSessionStages(
   completions: StageCompletion[],
   options: { fetcher?: FetchLike; storage?: StorageLike; runId?: string } = {},
 ): Promise<GenerationRunState> {
   const task = async () => {
-    const fetcher = options.fetcher ?? fetch;
-    const storage = options.storage ?? window.sessionStorage;
-    let state: GenerationRunState | undefined;
-    const stored = storage.getItem(GENERATION_SESSION_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as GenerationRunState;
-        if (parsed.schema === "nexyfab.generation-run.v1") state = parsed;
-      } catch {
-        /* initialize below */
-      }
-    }
-    if (!state)
-      state = (
-        await post(fetcher, {
-          action: "initialize",
-          runId: options.runId ?? `web-${crypto.randomUUID()}`,
-        })
-      ).state;
-    if (!state)
-      throw new Error("Generation state initialization returned no state.");
-    for (const completion of completions) {
-      const response = await post(fetcher, {
-        action: "record",
-        state,
-        completion,
-      });
-      if (!response.state)
-        throw new Error(
-          `Generation stage ${completion.stage} returned no state.`,
-        );
-      state = response.state;
-      storage.setItem(GENERATION_SESSION_KEY, JSON.stringify(state));
-      if (completion.status !== "passed") break;
-    }
-    if (typeof window !== "undefined")
-      window.dispatchEvent(
-        new CustomEvent("nexyfab:generation-state", { detail: state }),
-      );
-    return state;
+    void completions;
+    void options;
+    throw new Error("SERVER_STAGE_EXECUTOR_REQUIRED");
   };
   const result = transitionQueue.then(task, task);
   transitionQueue = result.catch(() => undefined);
@@ -344,6 +320,7 @@ export function advanceGenerationSession(
       ok?: boolean;
       state?: GenerationRunState;
       canonical?: GenerationCanonicalResponse;
+      executionPlan?: AdaptiveComplexProductExecutionPlan;
       message?: string;
     };
     if (!response.ok || !json.ok || !json.state)
@@ -352,6 +329,7 @@ export function advanceGenerationSession(
       );
     storage.setItem(GENERATION_SESSION_KEY, JSON.stringify(json.state));
     persistCanonical(storage, json.canonical, "Generation advancement");
+    persistExecutionPlan(storage, json.executionPlan);
     if (typeof window !== "undefined")
       window.dispatchEvent(
         new CustomEvent("nexyfab:generation-state", { detail: json.state }),
@@ -371,6 +349,7 @@ export function finalizeGenerationSession(
       required: boolean;
       animation?: AssemblyAnimation;
       frameStep?: number;
+      jointEvidence?: JointEvidenceClaim;
     };
     parts: PartFinalizationEvidence[];
   },
@@ -391,6 +370,7 @@ export function finalizeGenerationSession(
       ok?: boolean;
       state?: GenerationRunState;
       canonical?: GenerationCanonicalResponse;
+      executionPlan?: AdaptiveComplexProductExecutionPlan;
       message?: string;
     };
     if (!response.ok || !json.ok || !json.state)
@@ -398,6 +378,7 @@ export function finalizeGenerationSession(
         json.message ?? `Generation finalization failed (${response.status}).`,
       );
     persistCanonical(storage, json.canonical, "Generation finalization");
+    persistExecutionPlan(storage, json.executionPlan);
     storage.setItem(GENERATION_SESSION_KEY, JSON.stringify(json.state));
     if (typeof window !== "undefined")
       window.dispatchEvent(

@@ -42,7 +42,13 @@ const REQUIRED_ENV: Array<{ key: string; reason: string; critical: boolean }> = 
   { key: 'SMTP_HOST',            reason: 'Email send',                  critical: true },
   { key: 'SMTP_USER',            reason: 'Email auth',                  critical: true },
   { key: 'SMTP_PASS',            reason: 'Email auth',                  critical: true },
+  { key: 'REDIS_URL',            reason: 'Distributed rate limiting',   critical: true },
+  { key: 'RECAPTCHA_SECRET_KEY', reason: 'Public form bot protection',  critical: true },
+  { key: 'NEXT_PUBLIC_RECAPTCHA_SITE_KEY', reason: 'Browser bot challenge', critical: true },
+  { key: 'RECAPTCHA_ALLOWED_HOSTNAMES', reason: 'Challenge hostname binding', critical: true },
+  { key: 'SECURITY_GATE_MODE',   reason: 'Explicit security rollout mode', critical: true },
   { key: 'JWT_SECRET',           reason: 'Legacy HS256 fallback',       critical: false },
+  { key: 'SCAD_AGENT_SESSION_SECRET', reason: 'User-bound AI CAD session signatures', critical: true },
   { key: 'NEXT_PUBLIC_NEXYSYS_URL', reason: 'Cross-product links',      critical: false },
 ];
 
@@ -87,6 +93,9 @@ async function checkEnv(): Promise<Result> {
   if (process.env.TOSS_SECRET_KEY?.startsWith('test_')) {
     warnings.push('TOSS_SECRET_KEY is a TEST key — fine for staging, swap to live before launch');
   }
+  if (!['1', 'true'].includes(process.env.OPENSCAD_USE_DOCKER?.trim().toLowerCase() ?? '')) {
+    failures.push('OPENSCAD_USE_DOCKER must be 1/true — production CAD execution requires network-isolated containers');
+  }
   return { ok: failures.length === 0, failures, warnings };
 }
 
@@ -127,14 +136,48 @@ async function checkMigrations(): Promise<Result> {
   return { ok: failures.length === 0, failures, warnings };
 }
 
+async function checkRedis(): Promise<Result> {
+  if (!process.env.REDIS_URL) {
+    return { ok: false, failures: ['REDIS_URL missing — distributed rate limiting unavailable'], warnings: [] };
+  }
+  try {
+    const { default: Redis } = await import('ioredis');
+    const redis = new Redis(process.env.REDIS_URL, {
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+      connectTimeout: 3_000,
+    });
+    try {
+      await redis.connect();
+      const pong = await redis.ping();
+      if (pong !== 'PONG') throw new Error('unexpected PING response');
+    } finally {
+      redis.disconnect();
+    }
+    return { ok: true, failures: [], warnings: [] };
+  } catch (error) {
+    return { ok: false, failures: [`Redis connection failed: ${(error as Error).message}`], warnings: [] };
+  }
+}
+
 async function main() {
   console.log('[preflight] env check…');
   const env = await checkEnv();
   console.log('[preflight] migration check…');
   const mig = await checkMigrations();
+  console.log('[preflight] Redis check…');
+  const redis = await checkRedis();
 
-  const allFailures = [...env.failures.map(f => `ENV: ${f}`), ...mig.failures.map(f => `DB: ${f}`)];
-  const allWarnings = [...env.warnings.map(w => `ENV: ${w}`), ...mig.warnings.map(w => `DB: ${w}`)];
+  const allFailures = [
+    ...env.failures.map(f => `ENV: ${f}`),
+    ...mig.failures.map(f => `DB: ${f}`),
+    ...redis.failures.map(f => `REDIS: ${f}`),
+  ];
+  const allWarnings = [
+    ...env.warnings.map(w => `ENV: ${w}`),
+    ...mig.warnings.map(w => `DB: ${w}`),
+    ...redis.warnings.map(w => `REDIS: ${w}`),
+  ];
 
   if (allFailures.length === 0) {
     console.log('\n✓ All preflight checks passed.');

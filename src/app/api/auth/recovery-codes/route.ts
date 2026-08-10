@@ -15,7 +15,7 @@ import bcrypt from 'bcryptjs';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { logAudit } from '@/lib/audit';
 import { issueRecoveryCodes, remainingRecoveryCodes, RECOVERY_CODE_COUNT } from '@/lib/recovery-codes';
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const ip = getTrustedClientIp(req.headers);
-  if (!rateLimit(`recovery-issue:${user.userId}`, 5, 3_600_000).allowed) {
+  if (!(await rateLimitAsync(`recovery-issue:${user.userId}:${ip}`, 5, 3_600_000)).allowed) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
   }
 

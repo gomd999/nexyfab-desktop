@@ -17,7 +17,7 @@
 import { NextRequest } from 'next/server';
 import { checkPlan, consumeMonthlyMetricSlot } from '@/lib/plan-guard';
 import { checkUserBudget } from '@/lib/ai/userBudget';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { recordPromptCall } from '@/lib/ai/telemetry';
 import { CadAuditAction, logCadPipelineAudit } from '@/lib/enterprise-cad-audit';
@@ -31,6 +31,7 @@ import {
   makeVisionCritic,
 } from '@/lib/ai/scad-agent/repairLoop';
 import type { AgentEvent, AgentSession } from '@/lib/ai/scad-agent/types';
+import { signAgentSession, verifyAgentSession } from '@/lib/ai/scad-agent/sessionIntegrity';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
   // P1 — Rate limit (parity with shape-chat / openscad-render). Tight cap
   // because each agent run can fan out to many model + render calls.
   const ip = getTrustedClientIp(req.headers);
-  const rl = rateLimit(`scad-agent:${ip}:${planCheck.userId}`, 30, 3_600_000);
+  const rl = await rateLimitAsync(`scad-agent:${ip}:${planCheck.userId}`, 30, 3_600_000);
   if (!rl.allowed) {
     return Response.json({ error: 'Rate limit exceeded', code: 'RATE_LIMIT' }, { status: 429 });
   }
@@ -108,6 +109,16 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: 'session must be an object or omitted' }, { status: 400 });
     }
     session = body.session as AgentSession;
+    try {
+      if (!verifyAgentSession(session, planCheck.userId)) {
+        return Response.json({
+          error: 'Agent session is invalid or belongs to another user. Start a new session.',
+          code: 'INVALID_SESSION',
+        }, { status: 409 });
+      }
+    } catch {
+      return Response.json({ error: 'Agent session validation failed', code: 'INVALID_SESSION' }, { status: 409 });
+    }
   }
 
   // Free tier gets a tighter budget — Pro callers default to BUDGET_DEFAULTS.
@@ -124,6 +135,9 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const sendEvent = (ev: AgentEvent) => {
+        if (ev.type === 'done' || ev.type === 'awaiting_user') {
+          signAgentSession(ev.session, planCheck.userId);
+        }
         const line = `data: ${JSON.stringify(ev)}\n\n`;
         controller.enqueue(encoder.encode(line));
       };

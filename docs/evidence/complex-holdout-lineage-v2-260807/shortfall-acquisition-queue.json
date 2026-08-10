@@ -1,0 +1,1336 @@
+{
+  "schema": "nexyfab.holdout-shortfall-acquisition-queue.v1",
+  "generatedAt": "2026-08-06T15:30:15.513Z",
+  "policy": {
+    "placeholdersAreNotCases": true,
+    "grantsApproval": false,
+    "scoreEligible": false,
+    "crossFamilyReuseForbidden": true,
+    "snapshotArchiveAndMembersShareLineage": true
+  },
+  "summary": {
+    "required": 32,
+    "acquired": 0,
+    "remaining": 32,
+    "byFamily": {
+      "robot": 11,
+      "gearbox": 3,
+      "pressure_vessel": 9,
+      "turbomachinery": 9
+    }
+  },
+  "slots": [
+    {
+      "slotId": "robot-acquire-10",
+      "family": "robot",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "robot-acquire-11",
+      "family": "robot",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "robot-acquire-12",
+      "family": "robot",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "robot-acquire-13",
+      "family": "robot",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "robot-acquire-14",
+      "family": "robot",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "robot-acquire-15",
+      "family": "robot",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "robot-acquire-16",
+      "family": "robot",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "robot-acquire-17",
+      "family": "robot",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "robot-acquire-18",
+      "family": "robot",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "robot-acquire-19",
+      "family": "robot",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "robot-acquire-20",
+      "family": "robot",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "gearbox-acquire-18",
+      "family": "gearbox",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "gearbox-acquire-19",
+      "family": "gearbox",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "gearbox-acquire-20",
+      "family": "gearbox",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-12",
+      "family": "pressure_vessel",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-13",
+      "family": "pressure_vessel",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-14",
+      "family": "pressure_vessel",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-15",
+      "family": "pressure_vessel",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-16",
+      "family": "pressure_vessel",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-17",
+      "family": "pressure_vessel",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-18",
+      "family": "pressure_vessel",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-19",
+      "family": "pressure_vessel",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-20",
+      "family": "pressure_vessel",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-12",
+      "family": "turbomachinery",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-13",
+      "family": "turbomachinery",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-14",
+      "family": "turbomachinery",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-15",
+      "family": "turbomachinery",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-16",
+      "family": "turbomachinery",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-17",
+      "family": "turbomachinery",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-18",
+      "family": "turbomachinery",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-19",
+      "family": "turbomachinery",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-20",
+      "family": "turbomachinery",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    }
+  ]
+}

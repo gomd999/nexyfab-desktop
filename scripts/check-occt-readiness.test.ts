@@ -24,11 +24,14 @@ const guard = req('./check-occt-readiness.js') as {
   parseModeArg: (argv: string[]) => string;
   WORKER_JS_REL: string;
   WASM_REL: string;
+  COMMERCIAL_WORKER_REL: string;
+  REAL_WORKER_REL: string;
+  LOADER_REL: string;
   MIN_WASM_BYTES: number;
   VALID_MODES: Set<string>;
 };
 
-const { checkOcctReadiness, parseModeArg, WORKER_JS_REL, WASM_REL, MIN_WASM_BYTES } = guard;
+const { checkOcctReadiness, parseModeArg, WORKER_JS_REL, WASM_REL, COMMERCIAL_WORKER_REL, REAL_WORKER_REL, LOADER_REL, MIN_WASM_BYTES } = guard;
 
 const ROOT = path.resolve('/fake-repo-root');
 
@@ -72,15 +75,32 @@ describe('checkOcctReadiness', () => {
       expect(out.mode).toBe('stub');
     });
 
-    it('accepts the three valid modes without an "invalid mode" error', () => {
-      for (const mode of ['stub', 'wasm', 'auto']) {
+    it('accepts the four valid modes without an "invalid mode" error', () => {
+      for (const mode of ['stub', 'wasm', 'commercial', 'auto']) {
         const fs = makeFs({
           [WORKER_JS_REL]: 12_000,
           [WASM_REL]: MIN_WASM_BYTES + 1,
+          [COMMERCIAL_WORKER_REL]: 1_000,
+          [REAL_WORKER_REL]: 10_000,
+          [LOADER_REL]: 10_000,
         });
         const out = checkOcctReadiness({ mode, root: ROOT, fs });
         expect(out.errors.some((e) => e.includes('invalid mode'))).toBe(false);
       }
+    });
+  });
+
+  describe('mode=commercial', () => {
+    it('requires the no-fallback launcher, real dispatcher, loader and WASM', () => {
+      const complete = makeFs({
+        [WASM_REL]: 12 * 1024 * 1024,
+        [COMMERCIAL_WORKER_REL]: 1_000,
+        [REAL_WORKER_REL]: 10_000,
+        [LOADER_REL]: 10_000,
+      });
+      expect(checkOcctReadiness({ mode: 'commercial', root: ROOT, fs: complete }).errors).toEqual([]);
+      const missingLauncher = makeFs({ [WASM_REL]: 12 * 1024 * 1024, [REAL_WORKER_REL]: 10_000, [LOADER_REL]: 10_000 });
+      expect(checkOcctReadiness({ mode: 'commercial', root: ROOT, fs: missingLauncher }).errors.some(error => error.includes(COMMERCIAL_WORKER_REL))).toBe(true);
     });
   });
 

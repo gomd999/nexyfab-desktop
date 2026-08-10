@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { guardStudioAi } from '@/lib/studio-ai-guard';
 import { AiNotConfiguredError, AiProviderError } from '@/lib/ai';
 import {
   expandBrief,
@@ -45,6 +46,8 @@ export async function POST(req: NextRequest) {
   if (!rl.allowed) {
     return NextResponse.json({ ok: false, error: 'Too many requests — try again later.', code: 'RATE_LIMIT' }, { status: 429 });
   }
+  const planGuard = await guardStudioAi(req);
+  if (planGuard) return planGuard;
 
   try {
     const brief = await expandBrief(text, domain ? { domain } : {});

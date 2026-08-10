@@ -1,0 +1,820 @@
+[
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-interior_floor-01",
+    "domain": "interior",
+    "sourceHash": "47ebe098a0ac446709b499a528e495afbd6b623b03496d0524723791556d806e",
+    "sourceKind": "internal-template",
+    "templateId": "interior_floor",
+    "parameters": {
+      "unitsPerSide": 3.2,
+      "unitW": 4800,
+      "unitD": 3200,
+      "corridorW": 1440,
+      "doorW": 720
+    },
+    "artifactHash": "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da",
+    "artifactSummary": {
+      "name": "interior_floor_3x2",
+      "partCount": 30,
+      "pipeCount": 0,
+      "roles": [
+        "counter",
+        "marker",
+        "table",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        14700,
+        8140,
+        2700
+      ],
+      "holeTotal": 0,
+      "occCount": 26
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-apartment_unit-01",
+    "domain": "interior",
+    "sourceHash": "44976469398aba5ac2f5d4bf20458229d4cbc7edc2fa87049fe8a2dc4502c894",
+    "sourceKind": "internal-template",
+    "templateId": "apartment_unit",
+    "parameters": {
+      "width": 7200,
+      "depth": 5760,
+      "bedZoneW": 2880,
+      "doorWidth": 800,
+      "innerDoorWidth": 700,
+      "bathW": 1440,
+      "bathD": 1280,
+      "windowWidth": 1200
+    },
+    "artifactHash": "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21",
+    "artifactSummary": {
+      "name": "아파트 유닛",
+      "partCount": 18,
+      "pipeCount": 5,
+      "roles": [
+        "basin",
+        "bed",
+        "counter",
+        "floor",
+        "sink",
+        "sofa",
+        "stack",
+        "table",
+        "toilet",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        7500,
+        6060,
+        2800
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-studio_unit-01",
+    "domain": "interior",
+    "sourceHash": "87405ec33f8b183a8ea47c4412f1ad26d4b5f9fecf1886ae53656edaa40e6fea",
+    "sourceKind": "internal-template",
+    "templateId": "studio_unit",
+    "parameters": {
+      "width": 4800,
+      "depth": 3600,
+      "doorWidth": 800,
+      "windowWidth": 1200,
+      "bathW": 1400,
+      "bathD": 1200
+    },
+    "artifactHash": "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5",
+    "artifactSummary": {
+      "name": "원룸 유닛",
+      "partCount": 14,
+      "pipeCount": 5,
+      "roles": [
+        "basin",
+        "bed",
+        "counter",
+        "floor",
+        "sink",
+        "stack",
+        "table",
+        "toilet",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        5100,
+        3900,
+        2800
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-three_room_unit-01",
+    "domain": "interior",
+    "sourceHash": "51157ff66d641338faf49061d055d56cc1c11c967ef3cf2515308fc8ee8f6125",
+    "sourceKind": "internal-template",
+    "templateId": "three_room_unit",
+    "parameters": {
+      "width": 8800,
+      "depth": 6240,
+      "bedZoneW": 2880,
+      "room3W": 2400,
+      "room3D": 2640,
+      "doorWidth": 800,
+      "innerDoorWidth": 700,
+      "windowWidth": 1200,
+      "bathW": 1440,
+      "bathD": 1280
+    },
+    "artifactHash": "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7",
+    "artifactSummary": {
+      "name": "3룸 유닛",
+      "partCount": 22,
+      "pipeCount": 5,
+      "roles": [
+        "basin",
+        "bed",
+        "counter",
+        "floor",
+        "sink",
+        "sofa",
+        "stack",
+        "table",
+        "toilet",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        9100,
+        6540,
+        2800
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-two_room-01",
+    "domain": "interior",
+    "sourceHash": "76c3245c1cf0312c951dbe0955c9d2bb88b7aec935f0eb9b403a2c0710c8f17e",
+    "sourceKind": "internal-template",
+    "templateId": "two_room",
+    "parameters": {
+      "width": 9600,
+      "depth": 4800,
+      "room1W": 5600,
+      "doorWidth": 800,
+      "innerDoorWidth": 720
+    },
+    "artifactHash": "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3",
+    "artifactSummary": {
+      "name": "2실 평면",
+      "partCount": 16,
+      "pipeCount": 0,
+      "roles": [
+        "floor",
+        "table",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        9900,
+        5100,
+        2800
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-cafe_room-01",
+    "domain": "interior",
+    "sourceHash": "94f657b039770504a6161678059c08ddfd6946c1dc9eee76e91ab3974de5ddd9",
+    "sourceKind": "internal-template",
+    "templateId": "cafe_room",
+    "parameters": {
+      "width": 6400,
+      "depth": 4800,
+      "tableRows": 1.6,
+      "tableCols": 2.4,
+      "seatsPerTable": 3.2,
+      "doorWidth": 800,
+      "exitCount": 1
+    },
+    "artifactHash": "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5",
+    "artifactSummary": {
+      "name": "카페 레이아웃",
+      "partCount": 33,
+      "pipeCount": 4,
+      "roles": [
+        "basin",
+        "counter",
+        "floor",
+        "sink",
+        "stack",
+        "table",
+        "toilet",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        6700,
+        5100,
+        2800
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-built_in_closet-01",
+    "domain": "interior",
+    "sourceHash": "d4b4a97fcb0299804d8c5e2852b46dd56eb01732f3f67345d92cf91610453889",
+    "sourceKind": "internal-template",
+    "templateId": "built_in_closet",
+    "parameters": {
+      "width": 1920,
+      "depth": 480,
+      "height": 1920,
+      "bays": 1.6,
+      "shelfCount": 3.2,
+      "panelThk": 15,
+      "plinthHeight": 64
+    },
+    "artifactHash": "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358",
+    "artifactSummary": {
+      "name": "붙박이장 1.92m (2베이)",
+      "partCount": 12,
+      "pipeCount": 0,
+      "roles": [
+        "mount",
+        "panel",
+        "plinth"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        1920,
+        495,
+        1920
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-counter_bar-01",
+    "domain": "interior",
+    "sourceHash": "49a716003d99d46534f17d3274eed96d4031891964bf02f049953ba0545ee73a",
+    "sourceKind": "internal-template",
+    "templateId": "counter_bar",
+    "parameters": {
+      "length": 1920,
+      "depth": 560,
+      "height": 840,
+      "topThk": 32,
+      "overhang": 200,
+      "footRailDia": 40,
+      "footRailHeight": 160
+    },
+    "artifactHash": "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f",
+    "artifactSummary": {
+      "name": "카운터/바 1.92m",
+      "partCount": 10,
+      "pipeCount": 0,
+      "roles": [
+        "cabinet",
+        "countertop",
+        "mount",
+        "plinth",
+        "rail"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        2000,
+        778,
+        840
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-partition_wall-01",
+    "domain": "interior",
+    "sourceHash": "542fe0379ee847cd8fbfe8e50d33a15dbc604dd4e75927e193bdf7d84b03a6cc",
+    "sourceKind": "internal-template",
+    "templateId": "partition_wall",
+    "parameters": {
+      "length": 3200,
+      "height": 2160,
+      "studWidth": 52,
+      "studPitch": 360,
+      "boardThk": 10,
+      "openingWidth": 720,
+      "openingHeight": 1800
+    },
+    "artifactHash": "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd",
+    "artifactSummary": {
+      "name": "경량 파티션 3.2m (개구 1)",
+      "partCount": 19,
+      "pipeCount": 0,
+      "roles": [
+        "header",
+        "mount",
+        "stud",
+        "track"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3200,
+        1862,
+        2160
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-ceiling_grid-01",
+    "domain": "interior",
+    "sourceHash": "7fc45b3e16cb372eb150f791408c92a9f8204fb8b37134850a37654fdd971073",
+    "sourceKind": "internal-template",
+    "templateId": "ceiling_grid",
+    "parameters": {
+      "width": 2880,
+      "depth": 2400,
+      "tileWidth": 480,
+      "tileDepth": 480,
+      "tileThk": 12,
+      "lightCount": 3.2,
+      "hangerHeight": 320
+    },
+    "artifactHash": "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26",
+    "artifactSummary": {
+      "name": "천장 그리드 2.88×2.4m",
+      "partCount": 89,
+      "pipeCount": 0,
+      "roles": [
+        "hanger",
+        "light",
+        "tee",
+        "tile"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        2904,
+        2424,
+        358
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-interior_floor-02",
+    "domain": "interior",
+    "sourceHash": "51f8cc732f4fa161605c5088db7f7efcfdd4c7eedbd36dd1b38bed80fb6b7921",
+    "sourceKind": "internal-template",
+    "templateId": "interior_floor",
+    "parameters": {
+      "unitsPerSide": 3.36,
+      "unitW": 5040,
+      "unitD": 3360,
+      "corridorW": 1512,
+      "doorW": 756
+    },
+    "artifactHash": "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829",
+    "artifactSummary": {
+      "name": "interior_floor_3x2",
+      "partCount": 30,
+      "pipeCount": 0,
+      "roles": [
+        "counter",
+        "marker",
+        "table",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        15420,
+        8532,
+        2700
+      ],
+      "holeTotal": 0,
+      "occCount": 26
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-apartment_unit-02",
+    "domain": "interior",
+    "sourceHash": "32e3921ebde8eee37d3509e5a266e71fad3e180f737d29712c2f50cf01c91510",
+    "sourceKind": "internal-template",
+    "templateId": "apartment_unit",
+    "parameters": {
+      "width": 7560,
+      "depth": 6048,
+      "bedZoneW": 3024,
+      "doorWidth": 840,
+      "innerDoorWidth": 700,
+      "bathW": 1512,
+      "bathD": 1344,
+      "windowWidth": 1260
+    },
+    "artifactHash": "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437",
+    "artifactSummary": {
+      "name": "아파트 유닛",
+      "partCount": 18,
+      "pipeCount": 5,
+      "roles": [
+        "basin",
+        "bed",
+        "counter",
+        "floor",
+        "sink",
+        "sofa",
+        "stack",
+        "table",
+        "toilet",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        7860,
+        6348,
+        2800
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-studio_unit-02",
+    "domain": "interior",
+    "sourceHash": "8ebedb848ba0570300d618fe2ffa76da01d5c671c0e28dbf7bef3aaa88f8c300",
+    "sourceKind": "internal-template",
+    "templateId": "studio_unit",
+    "parameters": {
+      "width": 5040,
+      "depth": 3780,
+      "doorWidth": 840,
+      "windowWidth": 1260,
+      "bathW": 1400,
+      "bathD": 1200
+    },
+    "artifactHash": "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc",
+    "artifactSummary": {
+      "name": "원룸 유닛",
+      "partCount": 14,
+      "pipeCount": 5,
+      "roles": [
+        "basin",
+        "bed",
+        "counter",
+        "floor",
+        "sink",
+        "stack",
+        "table",
+        "toilet",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        5340,
+        4080,
+        2800
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-three_room_unit-02",
+    "domain": "interior",
+    "sourceHash": "1a3dac6d95f1a43614deb64cd2368b926d3cee7e37e74aac9af58c843804c1e3",
+    "sourceKind": "internal-template",
+    "templateId": "three_room_unit",
+    "parameters": {
+      "width": 9240,
+      "depth": 6552,
+      "bedZoneW": 3024,
+      "room3W": 2520,
+      "room3D": 2772,
+      "doorWidth": 840,
+      "innerDoorWidth": 700,
+      "windowWidth": 1260,
+      "bathW": 1512,
+      "bathD": 1344
+    },
+    "artifactHash": "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18",
+    "artifactSummary": {
+      "name": "3룸 유닛",
+      "partCount": 22,
+      "pipeCount": 5,
+      "roles": [
+        "basin",
+        "bed",
+        "counter",
+        "floor",
+        "sink",
+        "sofa",
+        "stack",
+        "table",
+        "toilet",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        9540,
+        6852,
+        2800
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-two_room-02",
+    "domain": "interior",
+    "sourceHash": "c8df32f6701552e858a818a870896193667f51e8dbf8ea70f25c75154736b22c",
+    "sourceKind": "internal-template",
+    "templateId": "two_room",
+    "parameters": {
+      "width": 10080,
+      "depth": 5040,
+      "room1W": 5880,
+      "doorWidth": 840,
+      "innerDoorWidth": 756
+    },
+    "artifactHash": "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2",
+    "artifactSummary": {
+      "name": "2실 평면",
+      "partCount": 16,
+      "pipeCount": 0,
+      "roles": [
+        "floor",
+        "table",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        10380,
+        5340,
+        2800
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-cafe_room-02",
+    "domain": "interior",
+    "sourceHash": "463318d4426e1fa0f106d50d832408b535ca2ecb65f5e40e89cce3f6991f263a",
+    "sourceKind": "internal-template",
+    "templateId": "cafe_room",
+    "parameters": {
+      "width": 6720,
+      "depth": 5040,
+      "tableRows": 1.68,
+      "tableCols": 2.52,
+      "seatsPerTable": 3.36,
+      "doorWidth": 840,
+      "exitCount": 1
+    },
+    "artifactHash": "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8",
+    "artifactSummary": {
+      "name": "카페 레이아웃",
+      "partCount": 43,
+      "pipeCount": 4,
+      "roles": [
+        "basin",
+        "counter",
+        "floor",
+        "sink",
+        "stack",
+        "table",
+        "toilet",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        7020,
+        5340,
+        2800
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-built_in_closet-02",
+    "domain": "interior",
+    "sourceHash": "16a19c55b94c2fb7c79e72b3876fcf74de79b05cd57db5ad0d05efb5ebec638c",
+    "sourceKind": "internal-template",
+    "templateId": "built_in_closet",
+    "parameters": {
+      "width": 2016,
+      "depth": 504,
+      "height": 2016,
+      "bays": 1.68,
+      "shelfCount": 3.36,
+      "panelThk": 15.12,
+      "plinthHeight": 67.2
+    },
+    "artifactHash": "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c",
+    "artifactSummary": {
+      "name": "붙박이장 2.016m (2베이)",
+      "partCount": 12,
+      "pipeCount": 0,
+      "roles": [
+        "mount",
+        "panel",
+        "plinth"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        2016,
+        519.12,
+        2016
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-counter_bar-02",
+    "domain": "interior",
+    "sourceHash": "8303574afc8e6aa02c2530db86fccbdca1c0a97ad22b00ebbde3e04351a3eed0",
+    "sourceKind": "internal-template",
+    "templateId": "counter_bar",
+    "parameters": {
+      "length": 2016,
+      "depth": 588,
+      "height": 882,
+      "topThk": 33.6,
+      "overhang": 210,
+      "footRailDia": 42,
+      "footRailHeight": 168
+    },
+    "artifactHash": "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64",
+    "artifactSummary": {
+      "name": "카운터/바 2.016m",
+      "partCount": 10,
+      "pipeCount": 0,
+      "roles": [
+        "cabinet",
+        "countertop",
+        "mount",
+        "plinth",
+        "rail"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        2096,
+        816,
+        882
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-partition_wall-02",
+    "domain": "interior",
+    "sourceHash": "7931e9bb879cb42ee4daad180bd020c0dedffb7da12099e0fc24592631cec717",
+    "sourceKind": "internal-template",
+    "templateId": "partition_wall",
+    "parameters": {
+      "length": 3360,
+      "height": 2268,
+      "studWidth": 54.6,
+      "studPitch": 378,
+      "boardThk": 10.5,
+      "openingWidth": 756,
+      "openingHeight": 1800
+    },
+    "artifactHash": "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f",
+    "artifactSummary": {
+      "name": "경량 파티션 3.36m (개구 1)",
+      "partCount": 19,
+      "pipeCount": 0,
+      "roles": [
+        "header",
+        "mount",
+        "stud",
+        "track"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3360,
+        1865.1,
+        2268
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-interior-ceiling_grid-02",
+    "domain": "interior",
+    "sourceHash": "832b07f0864c8671e1429be45fcccb375c6edfdb99be42ac20563609ac6d1ee4",
+    "sourceKind": "internal-template",
+    "templateId": "ceiling_grid",
+    "parameters": {
+      "width": 3024,
+      "depth": 2520,
+      "tileWidth": 504,
+      "tileDepth": 504,
+      "tileThk": 12.6,
+      "lightCount": 3.36,
+      "hangerHeight": 336
+    },
+    "artifactHash": "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0",
+    "artifactSummary": {
+      "name": "천장 그리드 3.024×2.52m",
+      "partCount": 89,
+      "pipeCount": 0,
+      "roles": [
+        "hanger",
+        "light",
+        "tee",
+        "tile"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3048,
+        2544,
+        374
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  }
+]

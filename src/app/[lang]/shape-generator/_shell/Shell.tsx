@@ -24,6 +24,9 @@ export interface ShellProps {
     onTool: RibbonHandler;
     isActive?: RibbonActiveCheck;
   };
+  /** AI complete-product build → conditional precise CAD → verification → release evidence guidance. */
+  workflow?: ReactNode;
+  domainWorkspace?: ReactNode;
   left?: ReactNode;
   right?: ReactNode;
   viewport: ReactNode;
@@ -44,6 +47,8 @@ export function Shell({
   mode,
   titleBar,
   ribbon,
+  workflow,
+  domainWorkspace,
   left,
   right,
   viewport,
@@ -113,6 +118,8 @@ export function Shell({
   return (
     <div className="nx-app">
       <TitleBar {...titleBar} />
+      {domainWorkspace}
+      {workflow}
       <ModeRibbon
         mode={mode}
         tabs={tabs}

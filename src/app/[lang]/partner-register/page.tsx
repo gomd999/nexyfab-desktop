@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { analytics } from '@/lib/analytics';
 import { useToast } from '@/components/ToastProvider';
 import { richText } from '@/lib/richText';
+import { executeRecaptchaV3 } from '@/lib/recaptcha-client';
 
 const dict = {
   ko: {
@@ -213,16 +214,7 @@ export default function PartnerRegisterPage() {
     const form = e.currentTarget;
     try {
       // reCAPTCHA v3
-      const token = await new Promise<string>((resolve, reject) => {
-        const g = window.grecaptcha;
-        if (!g) {
-          reject(new Error('reCAPTCHA unavailable'));
-          return;
-        }
-        g.ready(() => {
-          void g.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!, { action: 'submit' }).then(resolve).catch(reject);
-        });
-      });
+      const token = await executeRecaptchaV3('submit');
       formData.append('g-recaptcha-response', token);
 
       const res = await fetch('/api/send-mail', {

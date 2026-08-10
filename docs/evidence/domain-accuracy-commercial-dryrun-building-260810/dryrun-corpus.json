@@ -1,0 +1,789 @@
+[
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-hi_rise_tower-01",
+    "domain": "building",
+    "sourceHash": "3a2fce9814b0780777ceb1fc5aa3a91aa9966c95ce9f709c146f8069d1969cf4",
+    "sourceKind": "internal-template",
+    "templateId": "hi_rise_tower",
+    "parameters": {
+      "floors": 8,
+      "baysX": 2.4,
+      "baysY": 1.6,
+      "bayX": 6400,
+      "bayY": 6400,
+      "floorH": 2800,
+      "withUnits": 0.8
+    },
+    "artifactHash": "c6ec52dd8f33e1691b930f890dd366384eb6038e70255da076e3f09ba250a83a",
+    "artifactSummary": {
+      "name": "tower_8f_2x2",
+      "partCount": 308,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "core_wall",
+        "furniture",
+        "parapet",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        13300,
+        13300,
+        24600
+      ],
+      "holeTotal": 0,
+      "occCount": 308
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-water_tank-01",
+    "domain": "building",
+    "sourceHash": "c2d5b867570e219c120c32d1d9b8951e81018cf27bbae0693f70cca1ffd424bc",
+    "sourceKind": "internal-template",
+    "templateId": "water_tank",
+    "parameters": {
+      "innerWidth": 3200,
+      "innerDepth": 2400,
+      "wallHeight": 2000,
+      "wallThk": 240,
+      "baseThk": 320
+    },
+    "artifactHash": "1129e48dbf0e3beb343f013333cfeb18f087fdd0f30b32940486eb3afb6136d3",
+    "artifactSummary": {
+      "name": "RC 물탱크 (내공 3200×2400×2000)",
+      "partCount": 5,
+      "pipeCount": 0,
+      "roles": [
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3680,
+        2880,
+        2320
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-steel_canopy-01",
+    "domain": "building",
+    "sourceHash": "ce2a7dfa1792d34b74f867c903b4a63185bdacf298c81ea4a9027443e6f24eab",
+    "sourceKind": "internal-template",
+    "templateId": "steel_canopy",
+    "parameters": {
+      "baysX": 4.8,
+      "bayX": 4800,
+      "spanY": 9600,
+      "colH": 3200,
+      "pitchDeg": 9.6,
+      "purlinSpacing": 1200
+    },
+    "artifactHash": "f20b5ebf6f0ed8f747e45b1354135719ace382ea2f4ad8cbfb629e8571a36c48",
+    "artifactSummary": {
+      "name": "강구조 캐노피 24×9.6m",
+      "partCount": 33,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "purlin",
+        "rafter"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        24250,
+        9600,
+        4256.889595
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-rc_frame-01",
+    "domain": "building",
+    "sourceHash": "583c53bd83359a6fe4e8adf2d93aa45069e46a88ffb5f65656969fc7a462df20",
+    "sourceKind": "internal-template",
+    "templateId": "rc_frame",
+    "parameters": {
+      "baysX": 1,
+      "baysY": 1,
+      "floors": 1,
+      "bayX": 4800,
+      "bayY": 4800,
+      "storyH": 2640,
+      "colSize": 400,
+      "beamWidth": 240,
+      "beamHeight": 480,
+      "slabThk": 120
+    },
+    "artifactHash": "4f110334275aea2a567c3a896348d32730dd83ac1ed7f1c95baa5a00c08dc4a4",
+    "artifactSummary": {
+      "name": "RC 라멘 골조 (1×1베이 1층)",
+      "partCount": 9,
+      "pipeCount": 1,
+      "roles": [
+        "beam",
+        "column",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        5200,
+        5200,
+        2760
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-industrial_stair-01",
+    "domain": "building",
+    "sourceHash": "e8aa765541fb0647a9ae7a8a5a847170d7895777360b7f723418ab2e1ce6661f",
+    "sourceKind": "internal-template",
+    "templateId": "industrial_stair",
+    "parameters": {
+      "totalRise": 3200,
+      "flights": 1,
+      "width": 720,
+      "treadDepth": 220,
+      "riserH": 144,
+      "handrailH": 960
+    },
+    "artifactHash": "c87c52f05d74c83fbdc0d8c0bbd15435a5c204dd62bd5a6d92cc31294e2bdaba",
+    "artifactSummary": {
+      "name": "산업 계단 H3.2m×22단",
+      "partCount": 39,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "handrail",
+        "landing",
+        "post",
+        "stringer",
+        "tread"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        5280,
+        720,
+        4065.369665
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-masonry_wall-01",
+    "domain": "building",
+    "sourceHash": "6270e6ca1b30eced07a2ad37ca92cfd0f391153e914cb78e701d99cdf0911b44",
+    "sourceKind": "internal-template",
+    "templateId": "masonry_wall",
+    "parameters": {
+      "length": 3120,
+      "height": 1760,
+      "thickness": 152,
+      "blockL": 312,
+      "blockH": 152,
+      "joint": 8,
+      "coreCount": 1.6,
+      "coreW": 84,
+      "coreD": 92,
+      "openingW": 0,
+      "openingH": 1680,
+      "lintelH": 152
+    },
+    "artifactHash": "39a8758a2c4e2474362852a577acdaa37389a9d2d3e7e7b1d9c8f0d54cbcafdc",
+    "artifactSummary": {
+      "name": "조적 벽체 (블록 99장 · 11단)",
+      "partCount": 99,
+      "pipeCount": 0,
+      "roles": [
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3032,
+        152,
+        1752
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-elevator_shaft-01",
+    "domain": "building",
+    "sourceHash": "9c37720a71359a6efd7a99e9e03ddd70039d49d6c9a2b7a38c33599c90c29f85",
+    "sourceKind": "internal-template",
+    "templateId": "elevator_shaft",
+    "parameters": {
+      "floors": 3.2,
+      "shape": "rect",
+      "floorH": 2640,
+      "carW": 1280,
+      "carD": 1200,
+      "doorW": 720
+    },
+    "artifactHash": "787468a5c2b5cc3afad77d9553769c993872a9f241a8d3a7a4f18d357f0ade4e",
+    "artifactSummary": {
+      "name": "엘리베이터 샤프트 3층",
+      "partCount": 19,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "buffer",
+        "car",
+        "guiderail",
+        "header",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        1980,
+        1900,
+        12420
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-plant_room-01",
+    "domain": "building",
+    "sourceHash": "1cf6e63ceadfe8409897aa57a394b88b29db3c431ba9091079453b9f4ece11ff",
+    "sourceKind": "internal-template",
+    "templateId": "plant_room",
+    "parameters": {
+      "width": 6400,
+      "depth": 4800,
+      "ceilingH": 2880,
+      "wallThk": 160,
+      "ductW": 640,
+      "ductH": 400,
+      "pipeDia": 120
+    },
+    "artifactHash": "64cef5f3548a6401f8c0757c5165eaa47e956d9c304bff76de166de2f1de3d22",
+    "artifactSummary": {
+      "name": "설비 기계실",
+      "partCount": 15,
+      "pipeCount": 0,
+      "roles": [
+        "duct",
+        "equipment",
+        "pad",
+        "pipe",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        7360,
+        5520,
+        3380
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-duct_run-01",
+    "domain": "building",
+    "sourceHash": "e175e077994087876d39d6f491116ae1862936fe8c1f1b592aad9582eb2834be",
+    "sourceKind": "internal-template",
+    "templateId": "duct_run",
+    "parameters": {
+      "length": 14400,
+      "trunkW": 640,
+      "trunkH": 320,
+      "branches": 3.2,
+      "ceilingH": 2880
+    },
+    "artifactHash": "9d883ebfa47b4e598e782383d14ec4d68c062fe0fef84faf164ce6039a3d5f3b",
+    "artifactSummary": {
+      "name": "HVAC 덕트런 14.4m·분기 3",
+      "partCount": 30,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "duct",
+        "hanger",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        16400,
+        7640,
+        3080
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-gable_house-01",
+    "domain": "building",
+    "sourceHash": "9e456d2a31f86e97eb0df4613d619c98e13b7b43ccd84e040bc4532e8d5a7de2",
+    "sourceKind": "internal-template",
+    "templateId": "gable_house",
+    "parameters": {
+      "width": 7200,
+      "depth": 5600,
+      "wallH": 2200,
+      "pitchDeg": 24
+    },
+    "artifactHash": "328e7b076e25ec44d213084cd1dd7b0b271e79bf3860600e94b1a49345f3d42d",
+    "artifactSummary": {
+      "name": "박공 주택 7.2×5.6m",
+      "partCount": 19,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "roof",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        7800,
+        6200,
+        3783.672138
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-commercial_massing-01",
+    "domain": "building",
+    "sourceHash": "4a958c03418f4c17d05e060f62890ff4f72799217facaa070a57107080a62c13",
+    "sourceKind": "internal-template",
+    "templateId": "commercial_massing",
+    "parameters": {
+      "width": 12000,
+      "depth": 9600,
+      "floors": 3.2,
+      "facade": "flat",
+      "balcony": "false",
+      "groundH": 3360,
+      "floorH": 2880
+    },
+    "artifactHash": "1b17d23bcfcd26e5420aea7c6afc1d5d8fffb3074fc5c8fd5f53892c21f4e723",
+    "artifactSummary": {
+      "name": "상가 매스 3층 12×9.6m",
+      "partCount": 51,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "parapet",
+        "pipe",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        12000,
+        9600,
+        10470
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-hi_rise_tower-02",
+    "domain": "building",
+    "sourceHash": "eba0923eeaf41ba9a8c2fb8927dd1b50dc63710455daba4e904255f6532d878a",
+    "sourceKind": "internal-template",
+    "templateId": "hi_rise_tower",
+    "parameters": {
+      "floors": 8.4,
+      "baysX": 2.52,
+      "baysY": 1.68,
+      "bayX": 6720,
+      "bayY": 6720,
+      "floorH": 2856,
+      "withUnits": 0.84
+    },
+    "artifactHash": "2d152b4e0c4f282b9a682dd985717635994c5ed012dfffb8153f753e42e102c9",
+    "artifactSummary": {
+      "name": "tower_8f_3x2",
+      "partCount": 436,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "core_wall",
+        "furniture",
+        "parapet",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        20660,
+        13940,
+        25048
+      ],
+      "holeTotal": 0,
+      "occCount": 436
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-water_tank-02",
+    "domain": "building",
+    "sourceHash": "7fce32d8c6f4f5d567d112fcd1859221bbfd77a068adad4006664cd0e18057b7",
+    "sourceKind": "internal-template",
+    "templateId": "water_tank",
+    "parameters": {
+      "innerWidth": 3360,
+      "innerDepth": 2520,
+      "wallHeight": 2100,
+      "wallThk": 252,
+      "baseThk": 336
+    },
+    "artifactHash": "f9393c3a7769e64f32512a8dadc0b0d74fe840a1a7c039b644554d7a16d65a9d",
+    "artifactSummary": {
+      "name": "RC 물탱크 (내공 3360×2520×2100)",
+      "partCount": 5,
+      "pipeCount": 0,
+      "roles": [
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3864,
+        3024,
+        2436
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-steel_canopy-02",
+    "domain": "building",
+    "sourceHash": "c3b1fc0bb732ea7af96375862f4ccdd06d0de14229f9ed2cd8ab44a4db1e7ff1",
+    "sourceKind": "internal-template",
+    "templateId": "steel_canopy",
+    "parameters": {
+      "baysX": 5.04,
+      "bayX": 5040,
+      "spanY": 10080,
+      "colH": 3360,
+      "pitchDeg": 10.08,
+      "purlinSpacing": 1260
+    },
+    "artifactHash": "6c2c306cfe82824330b9cc22b07686e36838ceb954f6562426fd5007da613d70",
+    "artifactSummary": {
+      "name": "강구조 캐노피 25.2×10.08m",
+      "partCount": 33,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "purlin",
+        "rafter"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        25450,
+        10080,
+        4498.171457
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-rc_frame-02",
+    "domain": "building",
+    "sourceHash": "5491c8debb5082e30737383ac9f4ca6234eb091c46ae7beb85b90bfd1d5e89b5",
+    "sourceKind": "internal-template",
+    "templateId": "rc_frame",
+    "parameters": {
+      "baysX": 1,
+      "baysY": 1,
+      "floors": 1,
+      "bayX": 5040,
+      "bayY": 5040,
+      "storyH": 2772,
+      "colSize": 420,
+      "beamWidth": 252,
+      "beamHeight": 504,
+      "slabThk": 126
+    },
+    "artifactHash": "eb5f757aa83c3caec9aaa0c84d16b5699002a9850863a4bd3a5d6cd04e96a7ba",
+    "artifactSummary": {
+      "name": "RC 라멘 골조 (1×1베이 1층)",
+      "partCount": 9,
+      "pipeCount": 1,
+      "roles": [
+        "beam",
+        "column",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        5460,
+        5460,
+        2898
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-industrial_stair-02",
+    "domain": "building",
+    "sourceHash": "c888811f836bf42619ac5e330fc69321bfe0d5adade7ed10c0dfe9bd3e8fad97",
+    "sourceKind": "internal-template",
+    "templateId": "industrial_stair",
+    "parameters": {
+      "totalRise": 3360,
+      "flights": 1,
+      "width": 756,
+      "treadDepth": 220,
+      "riserH": 151.2,
+      "handrailH": 1008
+    },
+    "artifactHash": "d53889be27e722ede212976ea872f81f4c94cc424bce6be8087c005048df6cd7",
+    "artifactSummary": {
+      "name": "산업 계단 H3.36m×22단",
+      "partCount": 39,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "handrail",
+        "landing",
+        "post",
+        "stringer",
+        "tread"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        5280,
+        756,
+        4266.242866
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-masonry_wall-02",
+    "domain": "building",
+    "sourceHash": "c61aa9dd19eb77ec26b871a346725e700b73edf8cc1290d0ca0be4c0d7d385f4",
+    "sourceKind": "internal-template",
+    "templateId": "masonry_wall",
+    "parameters": {
+      "length": 3276,
+      "height": 1848,
+      "thickness": 159.6,
+      "blockL": 327.6,
+      "blockH": 159.6,
+      "joint": 8.4,
+      "coreCount": 1.68,
+      "coreW": 88.2,
+      "coreD": 96.6,
+      "openingW": 0,
+      "openingH": 1764,
+      "lintelH": 159.6
+    },
+    "artifactHash": "347157b8b16dc033a7e42a23ee1897dacad850be63d85b2265cc58a76f51721a",
+    "artifactSummary": {
+      "name": "조적 벽체 (블록 99장 · 11단)",
+      "partCount": 99,
+      "pipeCount": 0,
+      "roles": [
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3183.6,
+        159.6,
+        1839.6
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-elevator_shaft-02",
+    "domain": "building",
+    "sourceHash": "6bfc36c3fe7388b7eee7535e1c3e46589fa995f0326e58d6ab3db702114cdb6d",
+    "sourceKind": "internal-template",
+    "templateId": "elevator_shaft",
+    "parameters": {
+      "floors": 3.36,
+      "shape": "rect",
+      "floorH": 2772,
+      "carW": 1344,
+      "carD": 1260,
+      "doorW": 756
+    },
+    "artifactHash": "f347e8bec6ca998a05880541010621276d5c0335ef850c4b56ae531c7ace6a41",
+    "artifactSummary": {
+      "name": "엘리베이터 샤프트 3층",
+      "partCount": 19,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "buffer",
+        "car",
+        "guiderail",
+        "header",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        2044,
+        1960,
+        12816
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-plant_room-02",
+    "domain": "building",
+    "sourceHash": "810626b7818cea67c201eccff2eb332cf4d26f64427b9f68215b8ba156bc4846",
+    "sourceKind": "internal-template",
+    "templateId": "plant_room",
+    "parameters": {
+      "width": 6720,
+      "depth": 5040,
+      "ceilingH": 3024,
+      "wallThk": 168,
+      "ductW": 672,
+      "ductH": 420,
+      "pipeDia": 126
+    },
+    "artifactHash": "31956b87f2ef5a098345c8e2ddb0d6ee0d42003fd577f320faa372fed8228641",
+    "artifactSummary": {
+      "name": "설비 기계실",
+      "partCount": 15,
+      "pipeCount": 0,
+      "roles": [
+        "duct",
+        "equipment",
+        "pad",
+        "pipe",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        7688,
+        5776,
+        3524
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-building-duct_run-02",
+    "domain": "building",
+    "sourceHash": "1ac54636ea0d052a1d817bfcfba4830dbac40e438ee8926e024b5ff5a3b0f1c9",
+    "sourceKind": "internal-template",
+    "templateId": "duct_run",
+    "parameters": {
+      "length": 15120,
+      "trunkW": 672,
+      "trunkH": 336,
+      "branches": 3.36,
+      "ceilingH": 3024
+    },
+    "artifactHash": "d02abc009424cdd53b319a543c2762f3a061e36778872b81596867dda3815432",
+    "artifactSummary": {
+      "name": "HVAC 덕트런 15.12m·분기 3",
+      "partCount": 30,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "duct",
+        "hanger",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        17120,
+        7672,
+        3224
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  }
+]

@@ -40,7 +40,11 @@ export function verifyArchitectureTopology(document: ArchitectureDocument, toler
       if (!wall) loopReasons.push(`${space.id}: wall ${wallId} is missing.`);
       else if (wall.kind === 'arc' && !space.boundaryEdges) curvedSpaces.push(space.id);
       else if (wall.kind !== edge.kind) loopReasons.push(`${space.id}: wall ${wallId} and boundary edge ${index} have different geometry kinds.`);
-      else if (wall.kind === 'line' && edge.kind === 'line' && (!close(wall.startMm, edge.startMm, toleranceMm) || !close(wall.endMm, edge.endMm, toleranceMm))) loopReasons.push(`${space.id}: wall ${wallId} does not match boundary edge ${index}.`);
+      else if (wall.kind === 'line' && edge.kind === 'line') {
+        const forward = close(wall.startMm, edge.startMm, toleranceMm) && close(wall.endMm, edge.endMm, toleranceMm);
+        const reverse = close(wall.startMm, edge.endMm, toleranceMm) && close(wall.endMm, edge.startMm, toleranceMm);
+        if (!forward && !reverse) loopReasons.push(`${space.id}: wall ${wallId} does not match boundary edge ${index}.`);
+      }
       else if (wall.kind === 'arc' && edge.kind === 'arc') {
         const angularTolerance = Math.max(1e-9, toleranceMm / Math.max(wall.radiusMm, edge.radiusMm) * 180 / Math.PI);
         if (!close(wall.centerMm, edge.centerMm, toleranceMm) || Math.abs(wall.radiusMm - edge.radiusMm) > toleranceMm || !angleClose(wall.startAngleDeg, edge.startAngleDeg, angularTolerance) || !angleClose(wall.endAngleDeg, edge.endAngleDeg, angularTolerance)) loopReasons.push(`${space.id}: arc wall ${wallId} does not match boundary arc ${index}.`);

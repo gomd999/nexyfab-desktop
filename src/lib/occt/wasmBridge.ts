@@ -132,6 +132,8 @@ const DEFAULT_WORKER_URL = '/occt-worker/occt-worker.js';
  * burn-in against the real binary (see occt-worker/PHASE_5_INTEGRATION.md).
  */
 export const LAUNCHER_WORKER_URL = '/occt-worker/occt-worker-launcher.js';
+/** Production/commercial URL: real OCCT only; it never imports the bbox stub. */
+export const COMMERCIAL_WORKER_URL = '/occt-worker/occt-worker-commercial.js';
 
 /**
  * Build a WASM-backed `OcctBridge`. The bridge spawns a worker (real `Worker`

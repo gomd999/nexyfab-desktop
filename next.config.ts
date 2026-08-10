@@ -6,7 +6,10 @@ require('./scripts/load-parent-env.cjs');
 
 import type { NextConfig } from "next";
 import { withSentryConfig } from '@sentry/nextjs';
-import { buildSecurityHeaders } from './src/lib/security/cspHeaders';
+import {
+  buildExactCadCspHeaders,
+  buildSecurityHeaders,
+} from './src/lib/security/cspHeaders';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -102,8 +105,17 @@ const nextConfig: NextConfig = {
       includeUpgradeInsecure: CSP_INCLUDE_UPGRADE_INSECURE,
       corsAllowedOrigins: CORS_ALLOWED_ORIGINS,
     });
+    const exactCadCspHeaders = buildExactCadCspHeaders({
+      isDev,
+      extraConnectSrc: CSP_EXTRA_CONNECT_SRC,
+      includeUpgradeInsecure: CSP_INCLUDE_UPGRADE_INSECURE,
+    });
     return [
       ...securityHeaders,
+      // Must follow the global group: Next uses the later value when the same
+      // header key matches. This exception is limited to the authenticated
+      // precision-CAD editor; all other production routes remain eval-free.
+      ...exactCadCspHeaders,
       {
         // These files are not content-hashed, so use a bounded cache instead
         // of immutable. This prevents a 65+ MB download on every editor visit
@@ -144,6 +156,11 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
+    // Proxy clones API bodies so both the security boundary and route can
+    // consume them. Complex CAD uploads need more than Next's 10MB default;
+    // src/proxy.ts still rejects ordinary API bodies above 16MB and permits
+    // 64MB only for the named upload surfaces.
+    proxyClientMaxBodySize: '64mb',
     optimizePackageImports: ['three', '@react-three/fiber', '@react-three/drei', 'lucide-react'],
     serverActions: {
       bodySizeLimit: '10mb',
@@ -223,9 +240,16 @@ const nextConfig: NextConfig = {
 // its own plugin (not our code) instead of a clean skip when org/project/token
 // are all unset, crashing `next build` entirely on any machine without the
 // token configured (every local/dev machine — Railway sets it as a secret).
-// Skip the wrapper entirely in that case; production builds (which always
-// have the token) are unaffected.
-export default process.env.SENTRY_AUTH_TOKEN
+// Skip the wrapper unless all three upload coordinates are present. A token
+// inherited by itself (common on developer machines) must not crash a build
+// that has no destination org/project.
+const sentryBuildConfigured = [
+  process.env.SENTRY_AUTH_TOKEN,
+  process.env.SENTRY_ORG,
+  process.env.SENTRY_PROJECT,
+].every((value) => typeof value === 'string' && value.trim().length > 0);
+
+export default sentryBuildConfigured
   ? withSentryConfig(nextConfig, {
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,

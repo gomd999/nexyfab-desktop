@@ -1,4 +1,5 @@
-import type { ComplexAccuracyAxis, ComplexAssertionStatus } from './complexProductBenchmarkV2';
+import type { ComplexAssertionStatus } from './complexProductBenchmarkV2';
+import type { DomainEvidenceAxis } from './domainProfile';
 import {
   DOMAIN_ACCURACY_PROFILES,
   assessDomainAccuracy,
@@ -17,14 +18,14 @@ export interface DomainAccuracyCase {
 }
 
 export interface DomainAccuracyGroundTruthAssertion {
-  axis: ComplexAccuracyAxis;
+  axis: DomainEvidenceAxis;
   tolerancePolicy: string;
   provenance: string;
   artifactHashes: readonly string[];
 }
 
 export interface DomainAccuracyAssertionResult {
-  axis: ComplexAccuracyAxis;
+  axis: DomainEvidenceAxis;
   status: ComplexAssertionStatus;
   reason: string;
 }
@@ -74,7 +75,7 @@ export function buildDomainAccuracyEvidence(
     const reviewers = new Set(item.approvalReviewerIds.filter(Boolean));
     if (reviewers.size < 2) issues.push(`case_approval_incomplete:${item.caseId}`);
     const requiredAxes = new Set(DOMAIN_ACCURACY_PROFILES[domain].requiredAxes);
-    const truthAxes = new Set<ComplexAccuracyAxis>();
+    const truthAxes = new Set<DomainEvidenceAxis>();
     for (const truth of item.groundTruthAssertions ?? []) {
       if (truthAxes.has(truth.axis)) issues.push(`case_ground_truth_axis_duplicate:${item.caseId}:${truth.axis}`);
       truthAxes.add(truth.axis);
@@ -108,7 +109,7 @@ export function buildDomainAccuracyEvidence(
     if (run.usedForTuning !== false) { issues.push(`run_tuning_forbidden:${key}`); valid = false; }
     const approvedCase = validCases.get(run.caseId);
     if (!SHA256.test(run.sourceHash) || run.sourceHash !== approvedCase?.sourceHash) { issues.push(`run_source_hash_mismatch:${key}`); valid = false; }
-    const seenAxes = new Set<ComplexAccuracyAxis>();
+    const seenAxes = new Set<DomainEvidenceAxis>();
     for (const assertion of run.assertions) {
       if (seenAxes.has(assertion.axis)) { issues.push(`run_axis_duplicate:${key}:${assertion.axis}`); valid = false; }
       seenAxes.add(assertion.axis);

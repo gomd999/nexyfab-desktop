@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { dispatchFeatureEdit, dispatchFeatureEditBatch, dispatchFeatureEditBatchAtomic, type FeatureStoreApi, type FeatureEditIntent } from './featureEditDispatcher';
+import { dispatchFeatureEdit, dispatchFeatureEditBatch, dispatchFeatureEditBatchAtomic, protectFeatureEditIntent, type FeatureStoreApi, type FeatureEditIntent } from './featureEditDispatcher';
 import type { FeatureInstance } from '../features/types';
+import type { DesignValueLock } from '@/lib/ai/designWorkspaceRevision';
 
 function mockStore(initial: FeatureInstance[] = []): FeatureStoreApi & {
   log: Array<[string, ...unknown[]]>;
@@ -251,5 +252,38 @@ describe('dispatchFeatureEditBatchAtomic', () => {
     expect(result.committed).toBe(false);
     expect(restore).toHaveBeenCalledOnce();
     expect(restore).toHaveBeenCalledWith(snapshot);
+  });
+
+  it('blocks a protected manual dimension before mutation and restores atomically', async () => {
+    const store = mockStore([{ id: 'f_0', type: 'fillet', params: { radius: 2 }, enabled: true }]);
+    const snapshot = structuredClone(store.features);
+    const restore = vi.fn();
+    const locks: DesignValueLock[] = [{
+      id: 'manual-radius',
+      target: { kind: 'parameter', objectId: 'f_0', field: 'radius' },
+      source: 'human',
+      reason: 'User-entered exact value',
+      valueHash: 'a'.repeat(64),
+      lockedAtRevision: 1,
+    }];
+    const result = await dispatchFeatureEditBatchAtomic([
+      { kind: 'update_param', featureId: 'f_0', paramKey: 'radius', value: 9 },
+    ], store, () => snapshot, restore, { locks });
+    expect(result).toMatchObject({ committed: false, results: [{ applied: false, summary: 'Protected edit blocked' }] });
+    expect(store.features[0]!.params.radius).toBe(2);
+    expect(restore).toHaveBeenCalledWith(snapshot);
+  });
+});
+
+describe('protectFeatureEditIntent', () => {
+  const lock: DesignValueLock = {
+    id: 'human-height', target: { kind: 'parameter', objectId: 'boss-1', field: 'height' },
+    source: 'human', reason: 'Manual dimension', valueHash: 'b'.repeat(64), lockedAtRevision: 2,
+  };
+
+  it('allows unrelated edits and blocks exact or destructive edits', () => {
+    expect(protectFeatureEditIntent({ kind: 'update_param', featureId: 'boss-1', paramKey: 'width', value: 3 }, [lock]).allowed).toBe(true);
+    expect(protectFeatureEditIntent({ kind: 'update_param', featureId: 'boss-1', paramKey: 'height', value: 3 }, [lock])).toMatchObject({ allowed: false, blockedLockIds: ['human-height'] });
+    expect(protectFeatureEditIntent({ kind: 'clear_all' }, [lock])).toMatchObject({ allowed: false, blockedLockIds: ['human-height'] });
   });
 });

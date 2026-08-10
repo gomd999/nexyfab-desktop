@@ -1,6 +1,15 @@
 {
-  "shared": 781651,
-  "worstFirstPaint": 781651,
-  "routes": {},
+  "shared": 812808,
+  "worstFirstPaint": 2320969,
+  "routes": {
+    "/[lang]": 77788,
+    "/[lang]/nexyfab/design": 951910,
+    "/[lang]/shape-generator": 7875
+  },
+  "requiredAppRoutes": [
+    "/[lang]",
+    "/[lang]/nexyfab/design",
+    "/[lang]/shape-generator"
+  ],
   "note": "10% headroom over the build that created this file. Run `npm run bundle:budget -- --update` after intentional growth."
 }

@@ -1,0 +1,949 @@
+{
+  "summary": {
+    "candidates": 20,
+    "ready": 0,
+    "incomplete": 20
+  },
+  "packets": [
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-retaining_wall_run-01",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "dac503bf593979b86957bd8bd79164dd8a7b61e2d42cf5a0ceffc565c859158f",
+        "artifactHash": "91d6adb39a00e7cf61cf9df689629a3da44bfd372195e7bf392e215b1bb9429b",
+        "groundTruthHash": "471ca54eff5d06e0eed77c537ab4c7eae7635535f1edac861fb412b761b62d27"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-retaining_wall_run-01",
+        "sourceHash": "dac503bf593979b86957bd8bd79164dd8a7b61e2d42cf5a0ceffc565c859158f",
+        "artifactHash": "91d6adb39a00e7cf61cf9df689629a3da44bfd372195e7bf392e215b1bb9429b",
+        "groundTruthHash": "471ca54eff5d06e0eed77c537ab4c7eae7635535f1edac861fb412b761b62d27",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-box_culvert-01",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "64bc7b6e6da263025f8cc1e4ac2fdb4a9d7ac87af212ea1c253f6bf9f5b57def",
+        "artifactHash": "7c504028cfbb58e2676655d2568397e0e3d1b53b73e334b360d01ffd2a8ab4e9",
+        "groundTruthHash": "b09656095f47ded9cc95659e78b989b5fbe1b7078d288c312a754d669431ec02"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-box_culvert-01",
+        "sourceHash": "64bc7b6e6da263025f8cc1e4ac2fdb4a9d7ac87af212ea1c253f6bf9f5b57def",
+        "artifactHash": "7c504028cfbb58e2676655d2568397e0e3d1b53b73e334b360d01ffd2a8ab4e9",
+        "groundTruthHash": "b09656095f47ded9cc95659e78b989b5fbe1b7078d288c312a754d669431ec02",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-retaining_wall_alignment-01",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "0d2f7f145a3acd843418ecad728ddc935314c861cf747f3db023906b74db190d",
+        "artifactHash": "2ff5850fd67f974571f056b1d83b7ebab87f3e4014bff6f3232e3c5ddefd9e1c",
+        "groundTruthHash": "8808e068ac0e21a05b4160958b042277ffdaf38a0f5326f19d9e373368c14c51"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-retaining_wall_alignment-01",
+        "sourceHash": "0d2f7f145a3acd843418ecad728ddc935314c861cf747f3db023906b74db190d",
+        "artifactHash": "2ff5850fd67f974571f056b1d83b7ebab87f3e4014bff6f3232e3c5ddefd9e1c",
+        "groundTruthHash": "8808e068ac0e21a05b4160958b042277ffdaf38a0f5326f19d9e373368c14c51",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-retaining_wall_run-02",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "20872a123497e10277c775d3d1f8b070a41ed9c695885e404f8e7dd6eb53d339",
+        "artifactHash": "087ab700e3d6f690e426d84ab357f42bcd40252ad4c92843008281a1b3a27b37",
+        "groundTruthHash": "3fcd59120a502312e2d28b1b2f12f8f3270ac7e9ad3073eba327cee03e45f149"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-retaining_wall_run-02",
+        "sourceHash": "20872a123497e10277c775d3d1f8b070a41ed9c695885e404f8e7dd6eb53d339",
+        "artifactHash": "087ab700e3d6f690e426d84ab357f42bcd40252ad4c92843008281a1b3a27b37",
+        "groundTruthHash": "3fcd59120a502312e2d28b1b2f12f8f3270ac7e9ad3073eba327cee03e45f149",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-box_culvert-02",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "17f69ba1c4ec2c5e07d6ed2b8d3450c612374dea4e11c323eb6d2c00e0b954f2",
+        "artifactHash": "2560c57e523daed7b2cc579ddac23096a80f0b7a821c838c150805d46ac1c3fc",
+        "groundTruthHash": "a988670072d07a020ba83005ef4d6a2f443120ecdef7d1d230bc8eec523bf12d"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-box_culvert-02",
+        "sourceHash": "17f69ba1c4ec2c5e07d6ed2b8d3450c612374dea4e11c323eb6d2c00e0b954f2",
+        "artifactHash": "2560c57e523daed7b2cc579ddac23096a80f0b7a821c838c150805d46ac1c3fc",
+        "groundTruthHash": "a988670072d07a020ba83005ef4d6a2f443120ecdef7d1d230bc8eec523bf12d",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-retaining_wall_alignment-02",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "8ac3343ee64cce27eca0d0100298c10671826a3d1f61a42776634e32a53373a1",
+        "artifactHash": "f59a26d9099c43d4bee7ab1bdfd2d4ece702eb148c39667f1406af0c2ad62b7a",
+        "groundTruthHash": "3f50baf51fff071a3f8c14695b853eb253c27ab8dca91e9ae3e9115dbcb3fb2f"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-retaining_wall_alignment-02",
+        "sourceHash": "8ac3343ee64cce27eca0d0100298c10671826a3d1f61a42776634e32a53373a1",
+        "artifactHash": "f59a26d9099c43d4bee7ab1bdfd2d4ece702eb148c39667f1406af0c2ad62b7a",
+        "groundTruthHash": "3f50baf51fff071a3f8c14695b853eb253c27ab8dca91e9ae3e9115dbcb3fb2f",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-retaining_wall_run-03",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "457b1716a8408d8fab732141987ad088eecb3964e20a7fc2111e9a4c459200ea",
+        "artifactHash": "853584b4656c1159634f791e162e0a981b63e8f28ea282bbee5faf94f66ba3c1",
+        "groundTruthHash": "68d642d4f6e97cad9a2ab5e0b68005227d525d40cddf07042e883831f5c4708c"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-retaining_wall_run-03",
+        "sourceHash": "457b1716a8408d8fab732141987ad088eecb3964e20a7fc2111e9a4c459200ea",
+        "artifactHash": "853584b4656c1159634f791e162e0a981b63e8f28ea282bbee5faf94f66ba3c1",
+        "groundTruthHash": "68d642d4f6e97cad9a2ab5e0b68005227d525d40cddf07042e883831f5c4708c",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-box_culvert-03",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "7ea52798359cb6debb39e659f53bc331e5045979987917457f054c1a68d2006d",
+        "artifactHash": "00136e80ccd3ec2ab8fca45430d18c3bc855acc8fa29b15f11cc3eea172ba985",
+        "groundTruthHash": "66e2111a2fbfa1c0ab8145bfe9bbe08d92b8bc766991dcd8c8ae3ea148aed342"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-box_culvert-03",
+        "sourceHash": "7ea52798359cb6debb39e659f53bc331e5045979987917457f054c1a68d2006d",
+        "artifactHash": "00136e80ccd3ec2ab8fca45430d18c3bc855acc8fa29b15f11cc3eea172ba985",
+        "groundTruthHash": "66e2111a2fbfa1c0ab8145bfe9bbe08d92b8bc766991dcd8c8ae3ea148aed342",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-retaining_wall_alignment-03",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "66bcca82ad258edb1ef1c302da4993956adf9b97eddd12bc7a74a9a84e04e431",
+        "artifactHash": "7ef6b11cec2795dcb95ac7f18ebf1bc160ccf694c9ded3622c87aa905c3d9e31",
+        "groundTruthHash": "2ffa3aa169f2de0382822253af1e78238a0c06dac7ef06a81219632328380617"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-retaining_wall_alignment-03",
+        "sourceHash": "66bcca82ad258edb1ef1c302da4993956adf9b97eddd12bc7a74a9a84e04e431",
+        "artifactHash": "7ef6b11cec2795dcb95ac7f18ebf1bc160ccf694c9ded3622c87aa905c3d9e31",
+        "groundTruthHash": "2ffa3aa169f2de0382822253af1e78238a0c06dac7ef06a81219632328380617",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-retaining_wall_run-04",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "20b3039b22dd97ad0a9cd6f66a1efa9b3503ccf6faa7166ebb2682999b272ca3",
+        "artifactHash": "ef9db06657ba76d021b61e685a69435f3b256fa49328b8b9e2f9e510ba758ae9",
+        "groundTruthHash": "053f7706dea1e925022c06acc460f34433abc0929d01051720b9d0ccdd148bfa"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-retaining_wall_run-04",
+        "sourceHash": "20b3039b22dd97ad0a9cd6f66a1efa9b3503ccf6faa7166ebb2682999b272ca3",
+        "artifactHash": "ef9db06657ba76d021b61e685a69435f3b256fa49328b8b9e2f9e510ba758ae9",
+        "groundTruthHash": "053f7706dea1e925022c06acc460f34433abc0929d01051720b9d0ccdd148bfa",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-box_culvert-04",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "22a2b6dac1f8203593449377a05563fc26c13bfbed20a41a0678b010c9ef364d",
+        "artifactHash": "658a923b613acf8ade5b2f5f98c138177dd304b70a16a1d7afbe7752116753ca",
+        "groundTruthHash": "e60003c145d0d27e16aea5905d9d1caf6292d1de8df4f4f581698771f6494fd5"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-box_culvert-04",
+        "sourceHash": "22a2b6dac1f8203593449377a05563fc26c13bfbed20a41a0678b010c9ef364d",
+        "artifactHash": "658a923b613acf8ade5b2f5f98c138177dd304b70a16a1d7afbe7752116753ca",
+        "groundTruthHash": "e60003c145d0d27e16aea5905d9d1caf6292d1de8df4f4f581698771f6494fd5",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-retaining_wall_alignment-04",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "fffd89e0c13385a3c6186ad4e2f44ce17ba8e083c034bf3980bd078221f69f4c",
+        "artifactHash": "6ab5ac9778ef9c685c70b9603721bf2aeb1854d31d00b196c9c796ff169d76d0",
+        "groundTruthHash": "2240bb0c13ce904d9bd00aa8dbde5831813221d4c05f60660499fe73dad3250d"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-retaining_wall_alignment-04",
+        "sourceHash": "fffd89e0c13385a3c6186ad4e2f44ce17ba8e083c034bf3980bd078221f69f4c",
+        "artifactHash": "6ab5ac9778ef9c685c70b9603721bf2aeb1854d31d00b196c9c796ff169d76d0",
+        "groundTruthHash": "2240bb0c13ce904d9bd00aa8dbde5831813221d4c05f60660499fe73dad3250d",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-retaining_wall_run-05",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "0c9cc318d2ae389b710e24e1a4344b9348841fe78714cee8631de3cdecb47f7a",
+        "artifactHash": "1ff9dcbb4bf2a915a21ee3f299016fa0f9ca0e5813fa4b71ca52aaa004a6cf19",
+        "groundTruthHash": "87ba51070bedbb361df037c39dd7e4d6b3deb175420e1d9beaf86e808459e939"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-retaining_wall_run-05",
+        "sourceHash": "0c9cc318d2ae389b710e24e1a4344b9348841fe78714cee8631de3cdecb47f7a",
+        "artifactHash": "1ff9dcbb4bf2a915a21ee3f299016fa0f9ca0e5813fa4b71ca52aaa004a6cf19",
+        "groundTruthHash": "87ba51070bedbb361df037c39dd7e4d6b3deb175420e1d9beaf86e808459e939",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-box_culvert-05",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "82ddbad568fa626bdf61daa11b44add28190e20184be05d3c054a94e6316577c",
+        "artifactHash": "3e6740db5613ab0528aaf705cfba6ff6a374e7225d60350bc995fb84fcecaa27",
+        "groundTruthHash": "b53b5f4c298d0627e66eac498900c8d1f433505c075a49961dfc4c6d6b1ddb3d"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-box_culvert-05",
+        "sourceHash": "82ddbad568fa626bdf61daa11b44add28190e20184be05d3c054a94e6316577c",
+        "artifactHash": "3e6740db5613ab0528aaf705cfba6ff6a374e7225d60350bc995fb84fcecaa27",
+        "groundTruthHash": "b53b5f4c298d0627e66eac498900c8d1f433505c075a49961dfc4c6d6b1ddb3d",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-retaining_wall_alignment-05",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "ce1ad3b3403f0bb4b34ee0a2d7f5f025d5d3cfcfa2a07ce556278f72deae58c3",
+        "artifactHash": "eaabdb78a0eccea77b98b699aad4df016fd85d4c81a5b2615ee1cc4ab3c25744",
+        "groundTruthHash": "1f8e59250718933aad3178d2169df54b0b2a12e446b93ce032688e33cb2904b6"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-retaining_wall_alignment-05",
+        "sourceHash": "ce1ad3b3403f0bb4b34ee0a2d7f5f025d5d3cfcfa2a07ce556278f72deae58c3",
+        "artifactHash": "eaabdb78a0eccea77b98b699aad4df016fd85d4c81a5b2615ee1cc4ab3c25744",
+        "groundTruthHash": "1f8e59250718933aad3178d2169df54b0b2a12e446b93ce032688e33cb2904b6",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-retaining_wall_run-06",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "f9fcac8d7e97227c2a92dc2150481e59f3c212ad72036891832b16260f4f4c33",
+        "artifactHash": "8e6eb8dbd2b27e137d6e4d3bc32e3254621cf5609bd0281bd3f400454e0ce9b8",
+        "groundTruthHash": "62fa20c86471b0717e45afdc885090af3a3ae657259b911f39158d74aaca5613"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-retaining_wall_run-06",
+        "sourceHash": "f9fcac8d7e97227c2a92dc2150481e59f3c212ad72036891832b16260f4f4c33",
+        "artifactHash": "8e6eb8dbd2b27e137d6e4d3bc32e3254621cf5609bd0281bd3f400454e0ce9b8",
+        "groundTruthHash": "62fa20c86471b0717e45afdc885090af3a3ae657259b911f39158d74aaca5613",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-box_culvert-06",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "4b2693b5d7e45c6fc5554895b96fb1fb04fc616977589668a2c66ae4f5269bcb",
+        "artifactHash": "7bc8555bde9edeb7b610c3ae68766aa035d3b8a4514d4f10752f561b3b59a680",
+        "groundTruthHash": "4eca97792773019b38d8bbaa37fff616e20bdb7419311da7bc627df0ef5bd4ce"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-box_culvert-06",
+        "sourceHash": "4b2693b5d7e45c6fc5554895b96fb1fb04fc616977589668a2c66ae4f5269bcb",
+        "artifactHash": "7bc8555bde9edeb7b610c3ae68766aa035d3b8a4514d4f10752f561b3b59a680",
+        "groundTruthHash": "4eca97792773019b38d8bbaa37fff616e20bdb7419311da7bc627df0ef5bd4ce",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-retaining_wall_alignment-06",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "4b8c56378c98c784ed60216b76df9b69eaaf8dfb18e03ed69c7b85570650c4f4",
+        "artifactHash": "5636b7397213bf135415a1cb2303e01bd0f721894aad196935bc4603c846d82c",
+        "groundTruthHash": "d8c504496d0dae4ed7ee1eb4bb901130caa3fabb5e3e4a00308672499feabdde"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-retaining_wall_alignment-06",
+        "sourceHash": "4b8c56378c98c784ed60216b76df9b69eaaf8dfb18e03ed69c7b85570650c4f4",
+        "artifactHash": "5636b7397213bf135415a1cb2303e01bd0f721894aad196935bc4603c846d82c",
+        "groundTruthHash": "d8c504496d0dae4ed7ee1eb4bb901130caa3fabb5e3e4a00308672499feabdde",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-retaining_wall_run-07",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "f2cc61d9596568ae5a1afb8749a70cd21e5643e0bd855df6dd1eac8e8895863a",
+        "artifactHash": "a31e04da191d1232b831a16377f24b87ea882a5b5c84be9cdb5fc71ed2784be2",
+        "groundTruthHash": "a3a5b573b4eceeb20a09eacba685090d63a3541a322d804a20f074a6ece6e6a7"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-retaining_wall_run-07",
+        "sourceHash": "f2cc61d9596568ae5a1afb8749a70cd21e5643e0bd855df6dd1eac8e8895863a",
+        "artifactHash": "a31e04da191d1232b831a16377f24b87ea882a5b5c84be9cdb5fc71ed2784be2",
+        "groundTruthHash": "a3a5b573b4eceeb20a09eacba685090d63a3541a322d804a20f074a6ece6e6a7",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    },
+    {
+      "schema": "nexyfab.domain-accuracy-review-packet.v1",
+      "caseId": "civil-box_culvert-07",
+      "domain": "civil",
+      "scoreReadyForReview": false,
+      "issues": [
+        "independent_holdout_source_required",
+        "benchmark_rights_required",
+        "ground_truth_required",
+        "ground_truth_axis_missing:requirements",
+        "ground_truth_axis_missing:dimensions",
+        "ground_truth_axis_missing:features",
+        "ground_truth_axis_missing:part_definitions",
+        "ground_truth_axis_missing:hierarchy",
+        "ground_truth_axis_missing:transforms",
+        "ground_truth_axis_missing:collision_clearance",
+        "ground_truth_axis_missing:manufacturing",
+        "ground_truth_axis_missing:step_roundtrip",
+        "ground_truth_axis_missing:repair"
+      ],
+      "signedTarget": {
+        "sourceHash": "4741952d41ed31ad3b267431ff208acc96c60fd656b8248808f60b64dc0eb60f",
+        "artifactHash": "e0f0b679f20474a3255f426e7685aa0b2a0a6a5b0dd6f22a12fa29ee03b2316d",
+        "groundTruthHash": "926b7b17fda87c102c925fcb7d765ff5256127e313578999fc9cbfafc19c2206"
+      },
+      "sourceRights": null,
+      "assertions": [],
+      "checklist": [
+        "source_identity_and_commercial_benchmark_rights",
+        "holdout_not_used_for_prompting_or_tuning",
+        "artifact_matches_source_and_domain_intent",
+        "every_required_axis_has_authoritative_ground_truth",
+        "tolerances_are_domain-appropriate_and_not_result-fitted",
+        "reviewer_is_independent_from_author_and_other_reviewer"
+      ],
+      "approvalTemplate": {
+        "schema": "nexyfab.domain-accuracy-approval.v1",
+        "caseId": "civil-box_culvert-07",
+        "sourceHash": "4741952d41ed31ad3b267431ff208acc96c60fd656b8248808f60b64dc0eb60f",
+        "artifactHash": "e0f0b679f20474a3255f426e7685aa0b2a0a6a5b0dd6f22a12fa29ee03b2316d",
+        "groundTruthHash": "926b7b17fda87c102c925fcb7d765ff5256127e313578999fc9cbfafc19c2206",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "decision": "approve",
+        "independent": true
+      }
+    }
+  ]
+}

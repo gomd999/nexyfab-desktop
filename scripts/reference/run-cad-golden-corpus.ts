@@ -9,10 +9,9 @@ import {
 } from "../../src/lib/reference/cadCorpusGovernance";
 
 const args = process.argv.slice(2);
-const root = path.resolve(
-  args.find((arg) => !arg.startsWith("--")) ||
-    "C:/Users/gomd9/Downloads/참고파일들",
-);
+const rootInput = args.find((arg) => !arg.startsWith("--")) ?? process.env.NEXYFAB_REFERENCE_CORPUS_ROOT?.trim();
+if (!rootInput) throw new Error("reference_corpus_root_required");
+const root = path.resolve(rootInput);
 const output = args.find((arg) => arg.startsWith("--output="))?.slice(9);
 const scenarioFilter = args
   .find((arg) => arg.startsWith("--scenario="))

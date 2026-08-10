@@ -1,0 +1,112 @@
+{
+  "schema": "nexyfab.domain-accuracy-dryrun.v1",
+  "kind": "DRYRUN — toolchain drill, NOT certification evidence",
+  "domain": "mechanical",
+  "reviewers": [
+    "DRYRUN-virtual-reviewer-1",
+    "DRYRUN-virtual-reviewer-2"
+  ],
+  "subject": "template-engine cross-process rebuild determinism (no AI subject)",
+  "checks": [
+    {
+      "ok": true,
+      "label": "candidates generated 20/20"
+    },
+    {
+      "ok": true,
+      "label": "every review packet flags independent_holdout_source_required"
+    },
+    {
+      "ok": true,
+      "label": "promote refuses certification path (exit 1)"
+    },
+    {
+      "ok": true,
+      "label": "promote scoreEligible=0 (internal-template locked out)"
+    },
+    {
+      "ok": true,
+      "label": "promote emits zero benchmark cases"
+    },
+    {
+      "ok": true,
+      "label": "required axes discovered from packets (24)"
+    },
+    {
+      "ok": true,
+      "label": "campaign completed (exit 0)"
+    },
+    {
+      "ok": true,
+      "label": "campaign runs 300/300"
+    },
+    {
+      "ok": true,
+      "label": "campaign resume on completed state is a clean no-op"
+    },
+    {
+      "ok": true,
+      "label": "report refuses eligibility (DRYRUN must not certify)"
+    },
+    {
+      "ok": true,
+      "label": "evidence integrity issues: 0"
+    },
+    {
+      "ok": false,
+      "label": "measured axes accuracy 1, core 5 full-coverage (requirements@1,semantic_objects@1,geometry@1,relationships@1,output_consistency@0.95,features@0.15,hierarchy@0.1,step_roundtrip@1,repair@0.85)"
+    },
+    {
+      "ok": true,
+      "label": "unmeasured axes surface as coverage blockers"
+    },
+    {
+      "ok": false,
+      "label": "gate passes 285/300"
+    }
+  ],
+  "passed": "12/14",
+  "campaign": {
+    "domain": "mechanical",
+    "suiteHash": "8705520edf81e3ebf216c335ff9dee09e1fd9407c1328595877d6a19afe2f4a2",
+    "slots": 300,
+    "completed": 300,
+    "failed": 0
+  },
+  "blockers": [
+    "accuracy:coordinate_units",
+    "coverage:coordinate_units",
+    "accuracy:provenance",
+    "coverage:provenance",
+    "accuracy:revision_integrity",
+    "coverage:revision_integrity",
+    "accuracy:dimensions",
+    "coverage:dimensions",
+    "coverage:features",
+    "accuracy:part_definitions",
+    "coverage:part_definitions",
+    "accuracy:occurrences",
+    "coverage:occurrences",
+    "accuracy:body_membership",
+    "coverage:body_membership",
+    "coverage:hierarchy",
+    "accuracy:transforms",
+    "coverage:transforms",
+    "accuracy:joints",
+    "coverage:joints",
+    "accuracy:motion",
+    "coverage:motion",
+    "accuracy:tolerance",
+    "coverage:tolerance",
+    "accuracy:collision_clearance",
+    "coverage:collision_clearance",
+    "accuracy:materials",
+    "coverage:materials",
+    "accuracy:manufacturing",
+    "coverage:manufacturing",
+    "accuracy:drawing_consistency",
+    "coverage:drawing_consistency",
+    "coverage:repair",
+    "required_gate_pass_rate"
+  ]
+}

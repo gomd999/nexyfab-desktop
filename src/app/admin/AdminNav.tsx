@@ -56,6 +56,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/anti-poach', label: '거래우회 감시', group: 'concierge' },
   // Platform observability + runtime config
   { href: '/admin/api-health', label: '🔌 API Health', group: 'platform' },
+  { href: '/admin/native-cad-workers', label: 'CAD Workers', exact: true, group: 'platform' },
+  { href: '/admin/native-cad-workers/expert-review', label: 'CAD Review', group: 'platform' },
   { href: '/admin/settings', label: '🔐 Settings', group: 'platform' },
   { href: '/admin/security', label: '보안', danger: true, group: 'security' },
 ];

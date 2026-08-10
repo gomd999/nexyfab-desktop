@@ -97,7 +97,10 @@ import { encodeAssemblyGlb } from '@/lib/assembly/assemblyGlbExport';
 import { downloadBlob } from '@/lib/platform';
 import type { ViewportPickMode } from '@/lib/assembly/viewportTopologyPick';
 import { assertAssemblySelectionEditCurrent, planAssemblySelectionEdits, type AssemblySelectionEditPreview } from '@/lib/ai/assemblySelectionEdit';
+import { ASSEMBLY_FOCUS_PARTS_EVENT, ASSEMBLY_FOCUS_RESULT_EVENT, resolveAssemblyFocusPartIds, type AssemblyFocusPartsDetail } from '@/lib/assembly/assemblyFocusEvent';
 import { advanceGenerationSession } from '../ai/generationSessionClient';
+import { buildEditedAiAssemblyProgram, packageAiAssemblyRevision } from '@/lib/ai/aiAssemblyRevision';
+import { AI_ASSEMBLY_REVISION_REQUEST_EVENT, AI_ASSEMBLY_REVISION_RESULT_EVENT, type AiAssemblyRevisionRequest, type AiAssemblyRevisionResult } from '@/lib/ai/aiAssemblyRevisionEvent';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -2951,6 +2954,24 @@ export default function AssemblyBrowserModal({
    */
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
   const [selectedPartIds, setSelectedPartIds] = useState<Set<string>>(new Set());
+  const selectedPartIdList = useMemo(() => [...selectedPartIds], [selectedPartIds]);
+  const latestAiPartIdMapRef = useRef<Map<string, string>>(new Map());
+  const latestAiAppliedProgramRef = useRef<AiAssemblyProgram | null>(null);
+  const [evidenceFocusRevision, setEvidenceFocusRevision] = useState(0);
+  useEffect(() => {
+    const focusEvidenceParts = (event: Event) => {
+      const detail = (event as CustomEvent<AssemblyFocusPartsDetail>).detail;
+      if (!detail || detail.source !== 'robot-evidence' || !Array.isArray(detail.partIds)) return;
+      const available = new Set(state.parts.map(part => part.id));
+      const { selectedPartIds: selected, missingPartIds: missing } = resolveAssemblyFocusPartIds(detail.partIds, available, latestAiPartIdMapRef.current);
+      setSelectedPartIds(new Set(selected));
+      setSelectedPartId(selected[0] ?? null);
+      if (selected.length) { setShow3DView(true); setEvidenceFocusRevision(value => value + 1); }
+      window.dispatchEvent(new CustomEvent(ASSEMBLY_FOCUS_RESULT_EVENT, { detail: { queueItemId: detail.queueItemId, selectedPartIds: selected, missingPartIds: missing } }));
+    };
+    window.addEventListener(ASSEMBLY_FOCUS_PARTS_EVENT, focusEvidenceParts);
+    return () => window.removeEventListener(ASSEMBLY_FOCUS_PARTS_EVENT, focusEvidenceParts);
+  }, [state.parts]);
   const onSelectPartFromViewer = useCallback((partId: string, options?: {additive:boolean}) => {
     if(!options?.additive){const next=selectedPartId===partId?null:partId;setSelectedPartId(next);setSelectedPartIds(next?new Set([next]):new Set());return;}
     const next=new Set(selectedPartIds);if(next.has(partId))next.delete(partId);else next.add(partId);setSelectedPartIds(next);setSelectedPartId(next.has(partId)?partId:next.values().next().value??null);
@@ -3259,6 +3280,7 @@ export default function AssemblyBrowserModal({
       used.add(id);
       idMap.set(part.id, id);
     }
+    latestAiPartIdMapRef.current = new Map(idMap);
     const parts = program.assembly.parts.map(part => ({
       ...part,
       id: idMap.get(part.id)!,
@@ -3298,10 +3320,33 @@ export default function AssemblyBrowserModal({
       parts: program.parts.map(part => ({ ...part, instanceId: idMap.get(part.instanceId) ?? part.instanceId })),
       structure: program.structure?.map(group => ({ ...group, instanceIds: group.instanceIds.map(id => idMap.get(id) ?? id) })),
     };
+    latestAiAppliedProgramRef.current = appliedProgram;
     void advanceGenerationSession(appliedProgram).catch(error => {
       window.dispatchEvent(new CustomEvent('nexyfab:generation-state-error', { detail: error instanceof Error ? error.message : String(error) }));
     });
   }, [overrideState, history, setFeatureTrees]);
+
+  useEffect(() => {
+    const exportRevision = (event: Event) => {
+      const detail = (event as CustomEvent<AiAssemblyRevisionRequest>).detail;
+      if (!detail?.requestId) return;
+      void (async () => {
+        let response: AiAssemblyRevisionResult;
+        try {
+          const base = latestAiAppliedProgramRef.current;
+          if (!base) throw new Error('no AI program has been handed off to this CAD document');
+          const revised = buildEditedAiAssemblyProgram(base, state, featureTrees);
+          const packaged = await packageAiAssemblyRevision(revised, detail);
+          response = { requestId: detail.requestId, ok: true, ...packaged };
+        } catch (cause) {
+          response = { requestId: detail.requestId, ok: false, error: cause instanceof Error ? cause.message : String(cause) };
+        }
+        window.dispatchEvent(new CustomEvent(AI_ASSEMBLY_REVISION_RESULT_EVENT, { detail: response }));
+      })();
+    };
+    window.addEventListener(AI_ASSEMBLY_REVISION_REQUEST_EVENT, exportRevision);
+    return () => window.removeEventListener(AI_ASSEMBLY_REVISION_REQUEST_EVENT, exportRevision);
+  }, [featureTrees, state]);
 
   // ── Part manipulator gizmo (RRRRR Agent integration) ──────────────────
   //
@@ -4050,6 +4095,8 @@ export default function AssemblyBrowserModal({
                 state={viewerState}
                 featureTrees={featureTrees}
                 selectedPartId={selectedPartId ?? undefined}
+                selectedPartIds={selectedPartIdList}
+                focusRevision={evidenceFocusRevision}
                 onSelectPart={onSelectPartFromViewer}
                 pickMode={viewportPickMode}
                 onSelectReference={reference=>setSelection(previous=>toggleSelection(previous,reference))}

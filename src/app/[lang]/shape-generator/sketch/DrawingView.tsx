@@ -375,7 +375,12 @@ function HlrViewPanel({ data, cx, cy, w, h, label, view, ext, unitSystem }: {
         const c = cs[0];
         const lx = c.cx + c.r * 0.75, ly = c.cy - c.r * 0.75;
         dims.push(
-          <g key={`dia${gi}`}>
+          <g
+            key={`dia${gi}`}
+            data-testid={`hlr-diameter-${view}-${gi}`}
+            data-diameter-mm={rnd(2 * c.r)}
+            data-count={cs.length}
+          >
             <line x1={lx} y1={ly} x2={lx + pad * 0.9} y2={ly - pad * 0.55} stroke="#2563eb" strokeWidth={0.3} vectorEffect="non-scaling-stroke" />
             <text x={lx + pad} y={ly - pad * 0.6} fill="#2563eb" fontSize={fs} fontFamily="ui-monospace, monospace">
               {`⌀${fmtV(rnd(2 * c.r))}${cs.length > 1 ? ` ×${cs.length}` : ''}`}
@@ -403,7 +408,7 @@ function HlrViewPanel({ data, cx, cy, w, h, label, view, ext, unitSystem }: {
   }
   const vb = vx + ' ' + vy + ' ' + vw + ' ' + vh;
   return (
-    <g>
+    <g data-testid={`hlr-view-${view}`}>
       <svg x={cx - w / 2} y={cy - h / 2} width={w} height={h} viewBox={vb} preserveAspectRatio="xMidYMid meet">
         {data.hidden.map((d, i) => (
           <path key={'h' + i} d={d} fill="none" stroke="#777" strokeWidth={0.5} strokeDasharray="4 2" vectorEffect="non-scaling-stroke" />
@@ -866,6 +871,7 @@ export default function DrawingView({
       }}>
         {occtHandle && (
           <button
+            data-testid="drawing-hlr-toggle"
             onClick={() => { void toggleHlr(); }}
             disabled={hlrBusy}
             style={{

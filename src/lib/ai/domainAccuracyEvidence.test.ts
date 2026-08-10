@@ -61,14 +61,14 @@ describe('domain accuracy evidence adapter', () => {
   it('turns not_run into missing coverage rather than a pass', () => {
     const input = campaign('interior');
     for (const run of input.runs.slice(0, 16)) {
-      run.assertions = run.assertions.map(item => item.axis === 'motion'
+      run.assertions = run.assertions.map(item => item.axis === 'door_swing'
         ? { ...item, status: 'not_run', reason: 'door operation geometry missing' }
         : item);
     }
     const result = buildDomainAccuracyEvidence('interior', input.cases, input.runs);
-    const metric = result.assessment.axes.find(item => item.axis === 'motion');
+    const metric = result.assessment.axes.find(item => item.axis === 'door_swing');
     expect(metric).toMatchObject({ expected: 300, measured: 284, passed: 284 });
-    expect(result.assessment.blockers).toContain('coverage:motion');
+    expect(result.assessment.blockers).toContain('coverage:door_swing');
   });
 
   it('rejects duplicate runs and out-of-scope assertions', () => {

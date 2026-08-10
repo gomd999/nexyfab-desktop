@@ -2,10 +2,10 @@ import { applyArchitectureInteriorEdit, validateArchitectureDocument, validateIn
 import { executeUnifiedProjectBatchTransaction, type DomainDocument, type UnifiedDesignProject, type UnifiedProjectTransactionResult } from './unifiedDesignProject';
 
 export function architectureDomainDocument(model: ArchitectureDocument, id = 'architecture'): DomainDocument<ArchitectureDocument> {
-  return { id, domain: 'architecture', schema: model.schema, revision: model.revision, coordinateSystemId: 'project-local', representations: ['bim', 'surface', 'graph'], objectIds: [...model.storeys, ...model.spaces, ...model.walls, ...model.slabs, ...model.ceilings, ...model.openings, ...(model.serviceOpenings ?? [])].map(item => item.id), payload: structuredClone(model) };
+  return { id, domain: 'architecture', profileId: 'building', profileVersion: 1, schema: model.schema, revision: model.revision, coordinateSystemId: model.siteCoordinateSystemId ?? 'project-local', representations: ['bim', 'surface', 'graph'], objectIds: [...model.storeys, ...model.spaces, ...model.walls, ...model.slabs, ...model.ceilings, ...model.openings, ...(model.serviceOpenings ?? []), ...(model.grids ?? []), ...(model.roofs ?? []), ...(model.stairs ?? []), ...(model.zones ?? [])].map(item => item.id), payload: structuredClone(model) };
 }
 export function interiorDomainDocument(model: InteriorDocument, id = 'interior'): DomainDocument<InteriorDocument> {
-  return { id, domain: 'interior', schema: model.schema, revision: model.revision, coordinateSystemId: 'project-local', representations: ['bim', 'graph', 'procedural'], objectIds: [...model.lights, ...model.furniture, ...model.finishes].map(item => item.id), payload: structuredClone(model) };
+  return { id, domain: 'interior', profileId: 'interior', profileVersion: 1, schema: model.schema, revision: model.revision, coordinateSystemId: 'project-local', representations: ['bim', 'graph', 'procedural'], objectIds: [...model.lights, ...model.furniture, ...model.finishes, ...(model.millwork ?? []), ...(model.ceilingSystems ?? []), ...(model.acousticZones ?? [])].map(item => item.id), payload: structuredClone(model) };
 }
 
 export function editArchitectureInteriorProject(project: UnifiedDesignProject, architectureDocumentId: string, interiorDocumentId: string, edit: ArchitectureEdit): UnifiedProjectTransactionResult {

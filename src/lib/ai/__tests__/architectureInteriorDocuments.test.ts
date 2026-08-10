@@ -45,4 +45,18 @@ describe('separate architecture and interior semantic documents', () => {
     expect(validateArchitectureDocument(arch).some(issue => issue.includes('offset'))).toBe(true);
     expect(validateInteriorDocument(interior(), architecture())).toEqual([]);
   });
+  it('validates building grids, stairs, zones and field-verified interior systems', () => {
+    const arch = architecture();
+    arch.grids = [{ id: 'grid-a', name: 'A', axis: 'x', startMm: [0, 0], endMm: [4000, 0] }];
+    arch.storeys.push({ id: 'level-2', name: 'L2', elevationMm: 3000, heightMm: 3000 });
+    arch.stairs = [{ id: 'stair-1', fromStoreyId: 'level-1', toStoreyId: 'level-2', widthMm: 1200, riserCount: 18, treadDepthMm: 280, pathMm: [[0, 0, 0], [3000, 0, 3000]] }];
+    arch.zones = [{ id: 'fire-zone', name: 'F1', kind: 'fire', spaceIds: ['room-1'] }];
+    const fitout = interior();
+    fitout.millwork = [{ id: 'casework-1', spaceId: 'room-1', hostWallId: 'wall-1', positionMm: [500, 0, 0], sizeMm: [1800, 600, 900], material: 'plywood', clearanceMm: 600 }];
+    fitout.ceilingSystems = [{ id: 'grid-ceiling', spaceId: 'room-1', hostCeilingId: 'ceiling-1', kind: 'grid', elevationMm: 2600, moduleMm: [600, 600] }];
+    fitout.acousticZones = [{ id: 'acoustic-1', spaceId: 'room-1', targetRt60Sec: 0.6 }];
+    fitout.fieldMeasurement = { sourceRef: 'scan://survey-1', measuredAt: '2026-08-09T00:00:00Z', architectureRevision: 0, toleranceMm: 5 };
+    expect(validateArchitectureDocument(arch)).toEqual([]);
+    expect(validateInteriorDocument(fitout, arch)).toEqual([]);
+  });
 });

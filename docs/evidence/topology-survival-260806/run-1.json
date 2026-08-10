@@ -1,0 +1,2665 @@
+{
+  "schema": "nexyfab.topology-survival-campaign.v1",
+  "generatedAt": "2026-08-06T11:39:00.723Z",
+  "scope": "20 calibrated rectangular-extrude depth edits; not a complex-product 95% accuracy claim.",
+  "fixtureCount": 20,
+  "aggregate": {
+    "schema": "nexyfab.topology-survival-evidence.v1",
+    "status": "passed",
+    "targetRate": 0.95,
+    "minimumSamples": 20,
+    "sampleCount": 360,
+    "resolvedCount": 360,
+    "persistentCount": 360,
+    "derivedCount": 0,
+    "ambiguousCount": 0,
+    "brokenCount": 0,
+    "survivalRate": 1,
+    "persistentRate": 1,
+    "results": [
+      {
+        "previousRef": "extrude-depth-01:f.cap.bottom",
+        "mappedRef": "extrude-depth-01:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:f.cap.top",
+        "mappedRef": "extrude-depth-01:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:f.side.0",
+        "mappedRef": "extrude-depth-01:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:f.side.1",
+        "mappedRef": "extrude-depth-01:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:f.side.2",
+        "mappedRef": "extrude-depth-01:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:f.side.3",
+        "mappedRef": "extrude-depth-01:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:e.bottom.2-3",
+        "mappedRef": "extrude-depth-01:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:e.bottom.1-2",
+        "mappedRef": "extrude-depth-01:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:e.bottom.0-1",
+        "mappedRef": "extrude-depth-01:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:e.bottom.0-3",
+        "mappedRef": "extrude-depth-01:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:e.top.0-1",
+        "mappedRef": "extrude-depth-01:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:e.top.1-2",
+        "mappedRef": "extrude-depth-01:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:e.top.2-3",
+        "mappedRef": "extrude-depth-01:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:e.top.0-3",
+        "mappedRef": "extrude-depth-01:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:e.vert.1",
+        "mappedRef": "extrude-depth-01:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:e.vert.0",
+        "mappedRef": "extrude-depth-01:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:e.vert.2",
+        "mappedRef": "extrude-depth-01:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-01:e.vert.3",
+        "mappedRef": "extrude-depth-01:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:f.cap.bottom",
+        "mappedRef": "extrude-depth-02:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:f.cap.top",
+        "mappedRef": "extrude-depth-02:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:f.side.0",
+        "mappedRef": "extrude-depth-02:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:f.side.1",
+        "mappedRef": "extrude-depth-02:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:f.side.2",
+        "mappedRef": "extrude-depth-02:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:f.side.3",
+        "mappedRef": "extrude-depth-02:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:e.bottom.2-3",
+        "mappedRef": "extrude-depth-02:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:e.bottom.1-2",
+        "mappedRef": "extrude-depth-02:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:e.bottom.0-1",
+        "mappedRef": "extrude-depth-02:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:e.bottom.0-3",
+        "mappedRef": "extrude-depth-02:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:e.top.0-1",
+        "mappedRef": "extrude-depth-02:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:e.top.1-2",
+        "mappedRef": "extrude-depth-02:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:e.top.2-3",
+        "mappedRef": "extrude-depth-02:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:e.top.0-3",
+        "mappedRef": "extrude-depth-02:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:e.vert.1",
+        "mappedRef": "extrude-depth-02:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:e.vert.0",
+        "mappedRef": "extrude-depth-02:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:e.vert.2",
+        "mappedRef": "extrude-depth-02:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-02:e.vert.3",
+        "mappedRef": "extrude-depth-02:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:f.cap.bottom",
+        "mappedRef": "extrude-depth-03:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:f.cap.top",
+        "mappedRef": "extrude-depth-03:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:f.side.0",
+        "mappedRef": "extrude-depth-03:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:f.side.1",
+        "mappedRef": "extrude-depth-03:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:f.side.2",
+        "mappedRef": "extrude-depth-03:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:f.side.3",
+        "mappedRef": "extrude-depth-03:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:e.bottom.2-3",
+        "mappedRef": "extrude-depth-03:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:e.bottom.1-2",
+        "mappedRef": "extrude-depth-03:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:e.bottom.0-1",
+        "mappedRef": "extrude-depth-03:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:e.bottom.0-3",
+        "mappedRef": "extrude-depth-03:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:e.top.0-1",
+        "mappedRef": "extrude-depth-03:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:e.top.1-2",
+        "mappedRef": "extrude-depth-03:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:e.top.2-3",
+        "mappedRef": "extrude-depth-03:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:e.top.0-3",
+        "mappedRef": "extrude-depth-03:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:e.vert.1",
+        "mappedRef": "extrude-depth-03:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:e.vert.0",
+        "mappedRef": "extrude-depth-03:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:e.vert.2",
+        "mappedRef": "extrude-depth-03:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-03:e.vert.3",
+        "mappedRef": "extrude-depth-03:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:f.cap.bottom",
+        "mappedRef": "extrude-depth-04:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:f.cap.top",
+        "mappedRef": "extrude-depth-04:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:f.side.0",
+        "mappedRef": "extrude-depth-04:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:f.side.1",
+        "mappedRef": "extrude-depth-04:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:f.side.2",
+        "mappedRef": "extrude-depth-04:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:f.side.3",
+        "mappedRef": "extrude-depth-04:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:e.bottom.2-3",
+        "mappedRef": "extrude-depth-04:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:e.bottom.1-2",
+        "mappedRef": "extrude-depth-04:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:e.bottom.0-1",
+        "mappedRef": "extrude-depth-04:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:e.bottom.0-3",
+        "mappedRef": "extrude-depth-04:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:e.top.0-1",
+        "mappedRef": "extrude-depth-04:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:e.top.1-2",
+        "mappedRef": "extrude-depth-04:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:e.top.2-3",
+        "mappedRef": "extrude-depth-04:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:e.top.0-3",
+        "mappedRef": "extrude-depth-04:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:e.vert.1",
+        "mappedRef": "extrude-depth-04:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:e.vert.0",
+        "mappedRef": "extrude-depth-04:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:e.vert.2",
+        "mappedRef": "extrude-depth-04:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-04:e.vert.3",
+        "mappedRef": "extrude-depth-04:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:f.cap.bottom",
+        "mappedRef": "extrude-depth-05:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:f.cap.top",
+        "mappedRef": "extrude-depth-05:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:f.side.0",
+        "mappedRef": "extrude-depth-05:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:f.side.1",
+        "mappedRef": "extrude-depth-05:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:f.side.2",
+        "mappedRef": "extrude-depth-05:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:f.side.3",
+        "mappedRef": "extrude-depth-05:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:e.bottom.2-3",
+        "mappedRef": "extrude-depth-05:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:e.bottom.1-2",
+        "mappedRef": "extrude-depth-05:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:e.bottom.0-1",
+        "mappedRef": "extrude-depth-05:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:e.bottom.0-3",
+        "mappedRef": "extrude-depth-05:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:e.top.0-1",
+        "mappedRef": "extrude-depth-05:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:e.top.1-2",
+        "mappedRef": "extrude-depth-05:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:e.top.2-3",
+        "mappedRef": "extrude-depth-05:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:e.top.0-3",
+        "mappedRef": "extrude-depth-05:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:e.vert.1",
+        "mappedRef": "extrude-depth-05:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:e.vert.0",
+        "mappedRef": "extrude-depth-05:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:e.vert.2",
+        "mappedRef": "extrude-depth-05:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-05:e.vert.3",
+        "mappedRef": "extrude-depth-05:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:f.cap.bottom",
+        "mappedRef": "extrude-depth-06:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:f.cap.top",
+        "mappedRef": "extrude-depth-06:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:f.side.0",
+        "mappedRef": "extrude-depth-06:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:f.side.1",
+        "mappedRef": "extrude-depth-06:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:f.side.2",
+        "mappedRef": "extrude-depth-06:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:f.side.3",
+        "mappedRef": "extrude-depth-06:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:e.bottom.2-3",
+        "mappedRef": "extrude-depth-06:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:e.bottom.1-2",
+        "mappedRef": "extrude-depth-06:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:e.bottom.0-1",
+        "mappedRef": "extrude-depth-06:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:e.bottom.0-3",
+        "mappedRef": "extrude-depth-06:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:e.top.0-1",
+        "mappedRef": "extrude-depth-06:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:e.top.1-2",
+        "mappedRef": "extrude-depth-06:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:e.top.2-3",
+        "mappedRef": "extrude-depth-06:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:e.top.0-3",
+        "mappedRef": "extrude-depth-06:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:e.vert.1",
+        "mappedRef": "extrude-depth-06:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:e.vert.0",
+        "mappedRef": "extrude-depth-06:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:e.vert.2",
+        "mappedRef": "extrude-depth-06:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-06:e.vert.3",
+        "mappedRef": "extrude-depth-06:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:f.cap.bottom",
+        "mappedRef": "extrude-depth-07:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:f.cap.top",
+        "mappedRef": "extrude-depth-07:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:f.side.0",
+        "mappedRef": "extrude-depth-07:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:f.side.1",
+        "mappedRef": "extrude-depth-07:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:f.side.2",
+        "mappedRef": "extrude-depth-07:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:f.side.3",
+        "mappedRef": "extrude-depth-07:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:e.bottom.2-3",
+        "mappedRef": "extrude-depth-07:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:e.bottom.1-2",
+        "mappedRef": "extrude-depth-07:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:e.bottom.0-1",
+        "mappedRef": "extrude-depth-07:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:e.bottom.0-3",
+        "mappedRef": "extrude-depth-07:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:e.top.0-1",
+        "mappedRef": "extrude-depth-07:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:e.top.1-2",
+        "mappedRef": "extrude-depth-07:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:e.top.2-3",
+        "mappedRef": "extrude-depth-07:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:e.top.0-3",
+        "mappedRef": "extrude-depth-07:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:e.vert.1",
+        "mappedRef": "extrude-depth-07:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:e.vert.0",
+        "mappedRef": "extrude-depth-07:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:e.vert.2",
+        "mappedRef": "extrude-depth-07:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-07:e.vert.3",
+        "mappedRef": "extrude-depth-07:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:f.cap.bottom",
+        "mappedRef": "extrude-depth-08:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:f.cap.top",
+        "mappedRef": "extrude-depth-08:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:f.side.0",
+        "mappedRef": "extrude-depth-08:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:f.side.1",
+        "mappedRef": "extrude-depth-08:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:f.side.2",
+        "mappedRef": "extrude-depth-08:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:f.side.3",
+        "mappedRef": "extrude-depth-08:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:e.bottom.2-3",
+        "mappedRef": "extrude-depth-08:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:e.bottom.1-2",
+        "mappedRef": "extrude-depth-08:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:e.bottom.0-1",
+        "mappedRef": "extrude-depth-08:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:e.bottom.0-3",
+        "mappedRef": "extrude-depth-08:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:e.top.0-1",
+        "mappedRef": "extrude-depth-08:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:e.top.1-2",
+        "mappedRef": "extrude-depth-08:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:e.top.2-3",
+        "mappedRef": "extrude-depth-08:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:e.top.0-3",
+        "mappedRef": "extrude-depth-08:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:e.vert.1",
+        "mappedRef": "extrude-depth-08:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:e.vert.0",
+        "mappedRef": "extrude-depth-08:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:e.vert.2",
+        "mappedRef": "extrude-depth-08:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-08:e.vert.3",
+        "mappedRef": "extrude-depth-08:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:f.cap.bottom",
+        "mappedRef": "extrude-depth-09:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:f.cap.top",
+        "mappedRef": "extrude-depth-09:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:f.side.0",
+        "mappedRef": "extrude-depth-09:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:f.side.1",
+        "mappedRef": "extrude-depth-09:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:f.side.2",
+        "mappedRef": "extrude-depth-09:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:f.side.3",
+        "mappedRef": "extrude-depth-09:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:e.bottom.2-3",
+        "mappedRef": "extrude-depth-09:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:e.bottom.1-2",
+        "mappedRef": "extrude-depth-09:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:e.bottom.0-1",
+        "mappedRef": "extrude-depth-09:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:e.bottom.0-3",
+        "mappedRef": "extrude-depth-09:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:e.top.0-1",
+        "mappedRef": "extrude-depth-09:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:e.top.1-2",
+        "mappedRef": "extrude-depth-09:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:e.top.2-3",
+        "mappedRef": "extrude-depth-09:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:e.top.0-3",
+        "mappedRef": "extrude-depth-09:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:e.vert.1",
+        "mappedRef": "extrude-depth-09:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:e.vert.0",
+        "mappedRef": "extrude-depth-09:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:e.vert.2",
+        "mappedRef": "extrude-depth-09:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-09:e.vert.3",
+        "mappedRef": "extrude-depth-09:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:f.cap.bottom",
+        "mappedRef": "extrude-depth-10:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:f.cap.top",
+        "mappedRef": "extrude-depth-10:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:f.side.0",
+        "mappedRef": "extrude-depth-10:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:f.side.1",
+        "mappedRef": "extrude-depth-10:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:f.side.2",
+        "mappedRef": "extrude-depth-10:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:f.side.3",
+        "mappedRef": "extrude-depth-10:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:e.bottom.2-3",
+        "mappedRef": "extrude-depth-10:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:e.bottom.1-2",
+        "mappedRef": "extrude-depth-10:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:e.bottom.0-1",
+        "mappedRef": "extrude-depth-10:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:e.bottom.0-3",
+        "mappedRef": "extrude-depth-10:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:e.top.0-1",
+        "mappedRef": "extrude-depth-10:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:e.top.1-2",
+        "mappedRef": "extrude-depth-10:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:e.top.2-3",
+        "mappedRef": "extrude-depth-10:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:e.top.0-3",
+        "mappedRef": "extrude-depth-10:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:e.vert.1",
+        "mappedRef": "extrude-depth-10:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:e.vert.0",
+        "mappedRef": "extrude-depth-10:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:e.vert.2",
+        "mappedRef": "extrude-depth-10:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-10:e.vert.3",
+        "mappedRef": "extrude-depth-10:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:f.cap.bottom",
+        "mappedRef": "extrude-depth-11:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:f.cap.top",
+        "mappedRef": "extrude-depth-11:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:f.side.0",
+        "mappedRef": "extrude-depth-11:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:f.side.1",
+        "mappedRef": "extrude-depth-11:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:f.side.2",
+        "mappedRef": "extrude-depth-11:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:f.side.3",
+        "mappedRef": "extrude-depth-11:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:e.bottom.2-3",
+        "mappedRef": "extrude-depth-11:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:e.bottom.1-2",
+        "mappedRef": "extrude-depth-11:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:e.bottom.0-1",
+        "mappedRef": "extrude-depth-11:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:e.bottom.0-3",
+        "mappedRef": "extrude-depth-11:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:e.top.0-1",
+        "mappedRef": "extrude-depth-11:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:e.top.1-2",
+        "mappedRef": "extrude-depth-11:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:e.top.2-3",
+        "mappedRef": "extrude-depth-11:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:e.top.0-3",
+        "mappedRef": "extrude-depth-11:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:e.vert.1",
+        "mappedRef": "extrude-depth-11:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:e.vert.0",
+        "mappedRef": "extrude-depth-11:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:e.vert.2",
+        "mappedRef": "extrude-depth-11:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-11:e.vert.3",
+        "mappedRef": "extrude-depth-11:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:f.cap.bottom",
+        "mappedRef": "extrude-depth-12:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:f.cap.top",
+        "mappedRef": "extrude-depth-12:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:f.side.0",
+        "mappedRef": "extrude-depth-12:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:f.side.1",
+        "mappedRef": "extrude-depth-12:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:f.side.2",
+        "mappedRef": "extrude-depth-12:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:f.side.3",
+        "mappedRef": "extrude-depth-12:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:e.bottom.2-3",
+        "mappedRef": "extrude-depth-12:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:e.bottom.1-2",
+        "mappedRef": "extrude-depth-12:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:e.bottom.0-1",
+        "mappedRef": "extrude-depth-12:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:e.bottom.0-3",
+        "mappedRef": "extrude-depth-12:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:e.top.0-1",
+        "mappedRef": "extrude-depth-12:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:e.top.1-2",
+        "mappedRef": "extrude-depth-12:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:e.top.2-3",
+        "mappedRef": "extrude-depth-12:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:e.top.0-3",
+        "mappedRef": "extrude-depth-12:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:e.vert.1",
+        "mappedRef": "extrude-depth-12:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:e.vert.0",
+        "mappedRef": "extrude-depth-12:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:e.vert.2",
+        "mappedRef": "extrude-depth-12:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-12:e.vert.3",
+        "mappedRef": "extrude-depth-12:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:f.cap.bottom",
+        "mappedRef": "extrude-depth-13:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:f.cap.top",
+        "mappedRef": "extrude-depth-13:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:f.side.0",
+        "mappedRef": "extrude-depth-13:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:f.side.1",
+        "mappedRef": "extrude-depth-13:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:f.side.2",
+        "mappedRef": "extrude-depth-13:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:f.side.3",
+        "mappedRef": "extrude-depth-13:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:e.bottom.2-3",
+        "mappedRef": "extrude-depth-13:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:e.bottom.1-2",
+        "mappedRef": "extrude-depth-13:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:e.bottom.0-1",
+        "mappedRef": "extrude-depth-13:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:e.bottom.0-3",
+        "mappedRef": "extrude-depth-13:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:e.top.0-1",
+        "mappedRef": "extrude-depth-13:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:e.top.1-2",
+        "mappedRef": "extrude-depth-13:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:e.top.2-3",
+        "mappedRef": "extrude-depth-13:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:e.top.0-3",
+        "mappedRef": "extrude-depth-13:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:e.vert.1",
+        "mappedRef": "extrude-depth-13:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:e.vert.0",
+        "mappedRef": "extrude-depth-13:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:e.vert.2",
+        "mappedRef": "extrude-depth-13:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-13:e.vert.3",
+        "mappedRef": "extrude-depth-13:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:f.cap.bottom",
+        "mappedRef": "extrude-depth-14:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:f.cap.top",
+        "mappedRef": "extrude-depth-14:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:f.side.0",
+        "mappedRef": "extrude-depth-14:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:f.side.1",
+        "mappedRef": "extrude-depth-14:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:f.side.2",
+        "mappedRef": "extrude-depth-14:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:f.side.3",
+        "mappedRef": "extrude-depth-14:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:e.bottom.2-3",
+        "mappedRef": "extrude-depth-14:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:e.bottom.1-2",
+        "mappedRef": "extrude-depth-14:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:e.bottom.0-1",
+        "mappedRef": "extrude-depth-14:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:e.bottom.0-3",
+        "mappedRef": "extrude-depth-14:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:e.top.0-1",
+        "mappedRef": "extrude-depth-14:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:e.top.1-2",
+        "mappedRef": "extrude-depth-14:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:e.top.2-3",
+        "mappedRef": "extrude-depth-14:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:e.top.0-3",
+        "mappedRef": "extrude-depth-14:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:e.vert.1",
+        "mappedRef": "extrude-depth-14:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:e.vert.0",
+        "mappedRef": "extrude-depth-14:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:e.vert.2",
+        "mappedRef": "extrude-depth-14:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-14:e.vert.3",
+        "mappedRef": "extrude-depth-14:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:f.cap.bottom",
+        "mappedRef": "extrude-depth-15:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:f.cap.top",
+        "mappedRef": "extrude-depth-15:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:f.side.0",
+        "mappedRef": "extrude-depth-15:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:f.side.1",
+        "mappedRef": "extrude-depth-15:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:f.side.2",
+        "mappedRef": "extrude-depth-15:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:f.side.3",
+        "mappedRef": "extrude-depth-15:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:e.bottom.2-3",
+        "mappedRef": "extrude-depth-15:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:e.bottom.1-2",
+        "mappedRef": "extrude-depth-15:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:e.bottom.0-1",
+        "mappedRef": "extrude-depth-15:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:e.bottom.0-3",
+        "mappedRef": "extrude-depth-15:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:e.top.0-1",
+        "mappedRef": "extrude-depth-15:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:e.top.1-2",
+        "mappedRef": "extrude-depth-15:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:e.top.2-3",
+        "mappedRef": "extrude-depth-15:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:e.top.0-3",
+        "mappedRef": "extrude-depth-15:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:e.vert.1",
+        "mappedRef": "extrude-depth-15:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:e.vert.0",
+        "mappedRef": "extrude-depth-15:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:e.vert.2",
+        "mappedRef": "extrude-depth-15:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-15:e.vert.3",
+        "mappedRef": "extrude-depth-15:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:f.cap.bottom",
+        "mappedRef": "extrude-depth-16:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:f.cap.top",
+        "mappedRef": "extrude-depth-16:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:f.side.0",
+        "mappedRef": "extrude-depth-16:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:f.side.1",
+        "mappedRef": "extrude-depth-16:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:f.side.2",
+        "mappedRef": "extrude-depth-16:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:f.side.3",
+        "mappedRef": "extrude-depth-16:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:e.bottom.2-3",
+        "mappedRef": "extrude-depth-16:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:e.bottom.1-2",
+        "mappedRef": "extrude-depth-16:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:e.bottom.0-1",
+        "mappedRef": "extrude-depth-16:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:e.bottom.0-3",
+        "mappedRef": "extrude-depth-16:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:e.top.0-1",
+        "mappedRef": "extrude-depth-16:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:e.top.1-2",
+        "mappedRef": "extrude-depth-16:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:e.top.2-3",
+        "mappedRef": "extrude-depth-16:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:e.top.0-3",
+        "mappedRef": "extrude-depth-16:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:e.vert.1",
+        "mappedRef": "extrude-depth-16:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:e.vert.0",
+        "mappedRef": "extrude-depth-16:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:e.vert.2",
+        "mappedRef": "extrude-depth-16:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-16:e.vert.3",
+        "mappedRef": "extrude-depth-16:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:f.cap.bottom",
+        "mappedRef": "extrude-depth-17:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:f.cap.top",
+        "mappedRef": "extrude-depth-17:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:f.side.0",
+        "mappedRef": "extrude-depth-17:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:f.side.1",
+        "mappedRef": "extrude-depth-17:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:f.side.2",
+        "mappedRef": "extrude-depth-17:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:f.side.3",
+        "mappedRef": "extrude-depth-17:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:e.bottom.2-3",
+        "mappedRef": "extrude-depth-17:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:e.bottom.1-2",
+        "mappedRef": "extrude-depth-17:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:e.bottom.0-1",
+        "mappedRef": "extrude-depth-17:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:e.bottom.0-3",
+        "mappedRef": "extrude-depth-17:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:e.top.0-1",
+        "mappedRef": "extrude-depth-17:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:e.top.1-2",
+        "mappedRef": "extrude-depth-17:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:e.top.2-3",
+        "mappedRef": "extrude-depth-17:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:e.top.0-3",
+        "mappedRef": "extrude-depth-17:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:e.vert.1",
+        "mappedRef": "extrude-depth-17:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:e.vert.0",
+        "mappedRef": "extrude-depth-17:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:e.vert.2",
+        "mappedRef": "extrude-depth-17:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-17:e.vert.3",
+        "mappedRef": "extrude-depth-17:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:f.cap.bottom",
+        "mappedRef": "extrude-depth-18:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:f.cap.top",
+        "mappedRef": "extrude-depth-18:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:f.side.0",
+        "mappedRef": "extrude-depth-18:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:f.side.1",
+        "mappedRef": "extrude-depth-18:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:f.side.2",
+        "mappedRef": "extrude-depth-18:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:f.side.3",
+        "mappedRef": "extrude-depth-18:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:e.bottom.2-3",
+        "mappedRef": "extrude-depth-18:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:e.bottom.1-2",
+        "mappedRef": "extrude-depth-18:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:e.bottom.0-1",
+        "mappedRef": "extrude-depth-18:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:e.bottom.0-3",
+        "mappedRef": "extrude-depth-18:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:e.top.0-1",
+        "mappedRef": "extrude-depth-18:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:e.top.1-2",
+        "mappedRef": "extrude-depth-18:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:e.top.2-3",
+        "mappedRef": "extrude-depth-18:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:e.top.0-3",
+        "mappedRef": "extrude-depth-18:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:e.vert.1",
+        "mappedRef": "extrude-depth-18:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:e.vert.0",
+        "mappedRef": "extrude-depth-18:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:e.vert.2",
+        "mappedRef": "extrude-depth-18:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-18:e.vert.3",
+        "mappedRef": "extrude-depth-18:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:f.cap.bottom",
+        "mappedRef": "extrude-depth-19:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:f.cap.top",
+        "mappedRef": "extrude-depth-19:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:f.side.0",
+        "mappedRef": "extrude-depth-19:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:f.side.1",
+        "mappedRef": "extrude-depth-19:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:f.side.2",
+        "mappedRef": "extrude-depth-19:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:f.side.3",
+        "mappedRef": "extrude-depth-19:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:e.bottom.2-3",
+        "mappedRef": "extrude-depth-19:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:e.bottom.1-2",
+        "mappedRef": "extrude-depth-19:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:e.bottom.0-1",
+        "mappedRef": "extrude-depth-19:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:e.bottom.0-3",
+        "mappedRef": "extrude-depth-19:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:e.top.0-1",
+        "mappedRef": "extrude-depth-19:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:e.top.1-2",
+        "mappedRef": "extrude-depth-19:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:e.top.2-3",
+        "mappedRef": "extrude-depth-19:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:e.top.0-3",
+        "mappedRef": "extrude-depth-19:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:e.vert.1",
+        "mappedRef": "extrude-depth-19:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:e.vert.0",
+        "mappedRef": "extrude-depth-19:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:e.vert.2",
+        "mappedRef": "extrude-depth-19:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-19:e.vert.3",
+        "mappedRef": "extrude-depth-19:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:f.cap.bottom",
+        "mappedRef": "extrude-depth-20:f.cap.bottom",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:f.cap.top",
+        "mappedRef": "extrude-depth-20:f.cap.top",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:f.side.0",
+        "mappedRef": "extrude-depth-20:f.side.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:f.side.1",
+        "mappedRef": "extrude-depth-20:f.side.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:f.side.2",
+        "mappedRef": "extrude-depth-20:f.side.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:f.side.3",
+        "mappedRef": "extrude-depth-20:f.side.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:e.bottom.2-3",
+        "mappedRef": "extrude-depth-20:e.bottom.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:e.bottom.1-2",
+        "mappedRef": "extrude-depth-20:e.bottom.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:e.bottom.0-1",
+        "mappedRef": "extrude-depth-20:e.bottom.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:e.bottom.0-3",
+        "mappedRef": "extrude-depth-20:e.bottom.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:e.top.0-1",
+        "mappedRef": "extrude-depth-20:e.top.0-1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:e.top.1-2",
+        "mappedRef": "extrude-depth-20:e.top.1-2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:e.top.2-3",
+        "mappedRef": "extrude-depth-20:e.top.2-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:e.top.0-3",
+        "mappedRef": "extrude-depth-20:e.top.0-3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:e.vert.1",
+        "mappedRef": "extrude-depth-20:e.vert.1",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:e.vert.0",
+        "mappedRef": "extrude-depth-20:e.vert.0",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:e.vert.2",
+        "mappedRef": "extrude-depth-20:e.vert.2",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      },
+      {
+        "previousRef": "extrude-depth-20:e.vert.3",
+        "mappedRef": "extrude-depth-20:e.vert.3",
+        "quality": "persistent",
+        "score": 1,
+        "reason": "generative provenance id survived regeneration"
+      }
+    ],
+    "reasons": []
+  },
+  "fixtures": [
+    {
+      "id": "extrude-depth-01",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-02",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-03",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-04",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-05",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-06",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-07",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-08",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-09",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-10",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-11",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-12",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-13",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-14",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-15",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-16",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-17",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-18",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-19",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    },
+    {
+      "id": "extrude-depth-20",
+      "status": "passed",
+      "sampleCount": 18,
+      "survivalRate": 1
+    }
+  ]
+}

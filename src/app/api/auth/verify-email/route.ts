@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbAdapter } from '@/lib/db-adapter';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { z } from 'zod';
 import { timingSafeEqual } from 'crypto';
 import { getTrustedClientIp } from '@/lib/client-ip';
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const { code, userId } = parsed.data;
 
   // Rate limit: IP × userId 조합으로 브루트포스 차단 (5회/15분)
-  if (!rateLimit(`verify-email:${ip}:${userId}`, 5, 15 * 60_000).allowed) {
+  if (!(await rateLimitAsync(`verify-email:${ip}:${userId}`, 5, 15 * 60_000)).allowed) {
     return NextResponse.json({ error: '시도 횟수 초과. 15분 후 다시 시도하세요.' }, { status: 429 });
   }
 

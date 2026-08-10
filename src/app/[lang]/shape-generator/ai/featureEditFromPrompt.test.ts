@@ -141,9 +141,11 @@ describe('resolveFeatureEditPrompt', () => {
       expect(context?.selectionContext?.topology[0]).toMatchObject({
         kind: 'face', persistentRef: 'face:extrude-1:top', referenceQuality: 'persistent',
       });
+      expect(context?.domainWorkspace).toEqual({ domain: 'building', experience: 'expert' });
       return null;
     });
     await resolveFeatureEditPrompt('perform an unusual operation', [], fetchPlan, {
+      domainWorkspace: { domain: 'building', experience: 'expert' },
       selection: {
         type: 'face', normal: [0, 0, 1], position: [0, 0, 10], area: 100,
         triangleCount: 2, normalLabel: 'Top', triangleIndices: [0, 1],

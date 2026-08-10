@@ -1,0 +1,396 @@
+{
+  "evidence": {
+    "domain": "mechanical",
+    "approvedCases": 20,
+    "independentReviewers": 2,
+    "campaigns": 3,
+    "minimumRepeatsPerCase": 15,
+    "minimumRepeatsPerCampaign": 5,
+    "requiredGateRuns": 300,
+    "requiredGatePasses": 285,
+    "falseVerified": 0,
+    "falseClear": 0,
+    "destructivePartMerge": 0,
+    "axes": [
+      {
+        "axis": "requirements",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "coordinate_units",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "semantic_objects",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "geometry",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "relationships",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300
+      },
+      {
+        "axis": "provenance",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "revision_integrity",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "output_consistency",
+        "expected": 300,
+        "measured": 285,
+        "passed": 285
+      },
+      {
+        "axis": "dimensions",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "features",
+        "expected": 300,
+        "measured": 45,
+        "passed": 45
+      },
+      {
+        "axis": "part_definitions",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "occurrences",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "body_membership",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "hierarchy",
+        "expected": 300,
+        "measured": 30,
+        "passed": 30
+      },
+      {
+        "axis": "transforms",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "joints",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "motion",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "tolerance",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "collision_clearance",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "materials",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "manufacturing",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "step_roundtrip",
+        "expected": 300,
+        "measured": 300,
+        "passed": 285
+      },
+      {
+        "axis": "drawing_consistency",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0
+      },
+      {
+        "axis": "repair",
+        "expected": 300,
+        "measured": 255,
+        "passed": 255
+      }
+    ]
+  },
+  "assessment": {
+    "domain": "mechanical",
+    "eligible": false,
+    "axes": [
+      {
+        "axis": "requirements",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "coordinate_units",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "semantic_objects",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "geometry",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "relationships",
+        "expected": 300,
+        "measured": 300,
+        "passed": 300,
+        "accuracy": 1,
+        "coverage": 1
+      },
+      {
+        "axis": "provenance",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "revision_integrity",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "output_consistency",
+        "expected": 300,
+        "measured": 285,
+        "passed": 285,
+        "accuracy": 1,
+        "coverage": 0.95
+      },
+      {
+        "axis": "dimensions",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "features",
+        "expected": 300,
+        "measured": 45,
+        "passed": 45,
+        "accuracy": 1,
+        "coverage": 0.15
+      },
+      {
+        "axis": "part_definitions",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "occurrences",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "body_membership",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "hierarchy",
+        "expected": 300,
+        "measured": 30,
+        "passed": 30,
+        "accuracy": 1,
+        "coverage": 0.1
+      },
+      {
+        "axis": "transforms",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "joints",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "motion",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "tolerance",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "collision_clearance",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "materials",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "manufacturing",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "step_roundtrip",
+        "expected": 300,
+        "measured": 300,
+        "passed": 285,
+        "accuracy": 0.95,
+        "coverage": 1
+      },
+      {
+        "axis": "drawing_consistency",
+        "expected": 300,
+        "measured": 0,
+        "passed": 0,
+        "accuracy": null,
+        "coverage": 0
+      },
+      {
+        "axis": "repair",
+        "expected": 300,
+        "measured": 255,
+        "passed": 255,
+        "accuracy": 1,
+        "coverage": 0.85
+      }
+    ],
+    "blockers": [
+      "accuracy:coordinate_units",
+      "coverage:coordinate_units",
+      "accuracy:provenance",
+      "coverage:provenance",
+      "accuracy:revision_integrity",
+      "coverage:revision_integrity",
+      "accuracy:dimensions",
+      "coverage:dimensions",
+      "coverage:features",
+      "accuracy:part_definitions",
+      "coverage:part_definitions",
+      "accuracy:occurrences",
+      "coverage:occurrences",
+      "accuracy:body_membership",
+      "coverage:body_membership",
+      "coverage:hierarchy",
+      "accuracy:transforms",
+      "coverage:transforms",
+      "accuracy:joints",
+      "coverage:joints",
+      "accuracy:motion",
+      "coverage:motion",
+      "accuracy:tolerance",
+      "coverage:tolerance",
+      "accuracy:collision_clearance",
+      "coverage:collision_clearance",
+      "accuracy:materials",
+      "coverage:materials",
+      "accuracy:manufacturing",
+      "coverage:manufacturing",
+      "accuracy:drawing_consistency",
+      "coverage:drawing_consistency",
+      "coverage:repair",
+      "required_gate_pass_rate"
+    ]
+  },
+  "issues": []
+}

@@ -47,6 +47,7 @@ export function parseLandXml(text) {
     const geo = (body.match(/<CoordGeom>([\s\S]*?)<\/CoordGeom>/) ?? [])[1] ?? '';
     const elems = [];
     const unsupported = [];
+    const legacyProjectionIssues = [];
     for (const em of geo.matchAll(/<(Line|Curve|Spiral)\b([^>]*)>([\s\S]*?)<\/\1>/g)) {
       const kind = em[1];
       const eattrs = em[2];
@@ -55,14 +56,41 @@ export function parseLandXml(text) {
       const end = parseXY((ebody.match(/<End>([\s\S]*?)<\/End>/) ?? [, ''])[1]);
       if (kind === 'Line') {
         elems.push({ kind, start, end, length: num((eattrs.match(/length="([^"]*)"/) ?? [])[1] ?? 'NaN') });
-      } else if (kind === 'Curve' && /crvType="arc"/.test(eattrs)) {
+      } else if (kind === 'Curve' && !/crvType="(?!arc")[^"]+"/i.test(eattrs)) {
         elems.push({
           kind, start, end,
           radius: num((eattrs.match(/radius="([^"]*)"/) ?? [])[1] ?? 'NaN'),
           length: num((eattrs.match(/length="([^"]*)"/) ?? [])[1] ?? 'NaN'),
         });
+      } else if (kind === 'Spiral') {
+        const length = num((eattrs.match(/length="([^"]*)"/) ?? [])[1] ?? 'NaN');
+        const radius = (name) => {
+          const raw = (eattrs.match(new RegExp(`${name}="([^"]*)"`)) ?? [])[1];
+          return raw === 'INF' ? null : num(raw ?? 'NaN');
+        };
+        const piText = (ebody.match(/<PI>([\s\S]*?)<\/PI>/) ?? [])[1];
+        const spiral = {
+          kind,
+          start,
+          end,
+          pi: piText ? parseXY(piText) : null,
+          length,
+          radiusStart: radius('radiusStart'),
+          radiusEnd: radius('radiusEnd'),
+          rot: (eattrs.match(/rot="([^"]*)"/) ?? [])[1] ?? null,
+          spiType: (eattrs.match(/spiType="([^"]*)"/) ?? [])[1] ?? null,
+        };
+        const validRadius = (value) => value === null || (Number.isFinite(value) && value > 0);
+        if (spiral.spiType?.toLowerCase() === 'clothoid' && Number.isFinite(length) && length > 0
+          && validRadius(spiral.radiusStart) && validRadius(spiral.radiusEnd)
+          && (spiral.radiusStart !== null || spiral.radiusEnd !== null)
+          && ['cw', 'ccw'].includes(spiral.rot) && start.every(Number.isFinite) && end.every(Number.isFinite)) {
+          elems.push(spiral);
+        } else {
+          unsupported.push({ kind, why: 'clothoid 필수 속성(length/radius/rot/spiType) 불완전' });
+        }
       } else {
-        unsupported.push({ kind, why: kind === 'Spiral' ? 'clothoid v1 범위 외(정직)' : 'arc 외 crvType' });
+        unsupported.push({ kind, why: 'arc 외 crvType' });
       }
     }
 
@@ -81,7 +109,7 @@ export function parseLandXml(text) {
           if (ip) { ips.push(ip); curves.push({ ip: ips.length - 1, R: e.radius }); }
           else unsupported.push({ kind: 'Curve', why: '탄젠트 평행 — IP 미정' });
         } else {
-          unsupported.push({ kind: 'Curve', why: 'Line 비인접(복합 곡선) v1 범위 외' });
+          legacyProjectionIssues.push({ kind: 'Curve', why: 'legacy ips/curves 투영 불가 — exact elements 사용' });
         }
       }
     }
@@ -95,9 +123,23 @@ export function parseLandXml(text) {
       name, staStart: S(staStart), lengthDeclaredMm: S(lengthDeclared),
       ips: ips.map((p) => [S(p[0]), S(p[1])]),
       curves: curves.map((c) => ({ ip: c.ip, R: S(c.R) })),
+      elements: elems.map((element) => ({
+        ...element,
+        start: element.start.map(S),
+        end: element.end.map(S),
+        ...(element.kind === 'Curve' ? { radius: S(element.radius), length: S(element.length) } : {}),
+        ...(element.kind === 'Line' ? { length: S(element.length) } : {}),
+        ...(element.kind === 'Spiral' ? {
+          length: S(element.length),
+          radiusStart: element.radiusStart === null ? null : S(element.radiusStart),
+          radiusEnd: element.radiusEnd === null ? null : S(element.radiusEnd),
+          pi: element.pi ? element.pi.map(S) : null,
+        } : {}),
+      })),
       unitScaleToMm: scale,
       checks: { elemCount: elems.length, elemLengthSumMm: S(+sum.toFixed(3)), lengthMatch: lenOk },
       unsupported,
+      legacyProjectionIssues,
     });
 
     // 종단(Profile) — PVI/ParaCurve
@@ -115,7 +157,7 @@ export function parseLandXml(text) {
   }
   return {
     alignments, profiles,
-    note: 'LandXML→엔진 선형(ips/curves) 변환 — clothoid·복합곡선=unsupported 정직 보고. 좌표=원값(CRS 해석 후속). 종단(PVI)=판독만(템플릿 소비 후속 명시).',
+    note: 'LandXML exact elements(Line/Curve/Clothoid) 보존 + legacy ips/curves 투영. 좌표=원값이며 CRS/datum은 상위 CivilDocument 계약이 소유한다.',
   };
 }
 

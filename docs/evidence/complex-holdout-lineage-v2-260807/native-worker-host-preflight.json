@@ -1,0 +1,117 @@
+{
+  "schema": "nexyfab.native-worker-host-preflight.v1",
+  "scoreEligible": false,
+  "releaseReady": false,
+  "policy": {
+    "commandPresenceIsNotHealthProof": true,
+    "licenseMustBeValidatedByHealthProbe": true,
+    "noSilentFallback": true
+  },
+  "summary": {
+    "workers": 7,
+    "jobs": 108,
+    "readyToProbe": 0,
+    "notRun": 7,
+    "fail": 0
+  },
+  "results": [
+    {
+      "workerKind": "solidworks-native",
+      "jobs": 35,
+      "status": "not_run",
+      "reason": "worker_command_unconfigured",
+      "requirement": {
+        "environment": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND",
+        "hostOs": "windows",
+        "licenseRequired": true,
+        "nativeApplication": "SOLIDWORKS"
+      },
+      "configured": false,
+      "executable": null
+    },
+    {
+      "workerKind": "inventor-native",
+      "jobs": 33,
+      "status": "not_run",
+      "reason": "worker_command_unconfigured",
+      "requirement": {
+        "environment": "NEXYFAB_INVENTOR_WORKER_COMMAND",
+        "hostOs": "windows",
+        "licenseRequired": true,
+        "nativeApplication": "Autodesk Inventor"
+      },
+      "configured": false,
+      "executable": null
+    },
+    {
+      "workerKind": "catia-native",
+      "jobs": 1,
+      "status": "not_run",
+      "reason": "worker_command_unconfigured",
+      "requirement": {
+        "environment": "NEXYFAB_CATIA_WORKER_COMMAND",
+        "hostOs": "windows",
+        "licenseRequired": true,
+        "nativeApplication": "CATIA"
+      },
+      "configured": false,
+      "executable": null
+    },
+    {
+      "workerKind": "creo-native",
+      "jobs": 16,
+      "status": "not_run",
+      "reason": "worker_command_unconfigured",
+      "requirement": {
+        "environment": "NEXYFAB_CREO_WORKER_COMMAND",
+        "hostOs": "windows",
+        "licenseRequired": true,
+        "nativeApplication": "PTC Creo"
+      },
+      "configured": false,
+      "executable": null
+    },
+    {
+      "workerKind": "parasolid-native",
+      "jobs": 1,
+      "status": "not_run",
+      "reason": "worker_command_unconfigured",
+      "requirement": {
+        "environment": "NEXYFAB_PARASOLID_WORKER_COMMAND",
+        "hostOs": "windows-or-linux",
+        "licenseRequired": true,
+        "nativeApplication": "Parasolid-enabled translator"
+      },
+      "configured": false,
+      "executable": null
+    },
+    {
+      "workerKind": "dwg-exact",
+      "jobs": 16,
+      "status": "not_run",
+      "reason": "worker_command_unconfigured",
+      "requirement": {
+        "environment": "NEXYFAB_DWG_WORKER_COMMAND",
+        "hostOs": "windows-or-linux",
+        "licenseRequired": true,
+        "nativeApplication": "ODA/AutoCAD-compatible exact DWG engine"
+      },
+      "configured": false,
+      "executable": null
+    },
+    {
+      "workerKind": "revit-native",
+      "jobs": 6,
+      "status": "not_run",
+      "reason": "worker_command_unconfigured",
+      "requirement": {
+        "environment": "NEXYFAB_REVIT_WORKER_COMMAND",
+        "hostOs": "windows",
+        "licenseRequired": true,
+        "nativeApplication": "Autodesk Revit"
+      },
+      "configured": false,
+      "executable": null
+    }
+  ]
+}

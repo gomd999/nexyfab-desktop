@@ -21,6 +21,9 @@ import { randomUUID, scrypt as scryptCb } from 'crypto';
 import { promisify } from 'util';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { checkOrigin } from '@/lib/csrf';
+import { rateLimitAsync, rateLimitHeaders } from '@/lib/rate-limit';
+import { partnerInviteTokenLookupCandidates } from '@/lib/partner-invite-token';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,12 +68,19 @@ function validatePhone(input: string): string | null {
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const token = url.searchParams.get('token');
-  if (!token) return NextResponse.json({ error: 'token required' }, { status: 400 });
+  if (!token || token.length > 512) return NextResponse.json({ error: 'token required' }, { status: 400 });
+  const limit = await rateLimitAsync(
+    `partner-onboard-read:${getTrustedClientIp(req.headers)}`, 60, 60 * 60 * 1000,
+  );
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'too many attempts' },
+      { status: 429, headers: rateLimitHeaders(limit, 60) },
+    );
+  }
 
   const db = getDbAdapter();
-  const invite = await db.queryOne<InviteRow>(
-    'SELECT * FROM nf_partner_invites WHERE token = ?', token,
-  ).catch(() => null);
+  const invite = await findInviteByToken(db, token).catch(() => null);
   if (!invite) return NextResponse.json({ error: 'invalid token' }, { status: 404 });
   if (invite.accepted_at) return NextResponse.json({ error: 'invite already used' }, { status: 410 });
   if (Date.now() > invite.expires_at) {
@@ -119,7 +129,42 @@ interface AcceptBody {
   agreementAccepted?: unknown;
 }
 
+class InviteAcceptanceError extends Error {
+  constructor(
+    readonly code: 'invalid' | 'used' | 'expired' | 'email_mismatch' | 'factory_conflict',
+  ) {
+    super(code);
+  }
+}
+
+function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+async function findInviteByToken(
+  db: ReturnType<typeof getDbAdapter>,
+  token: string,
+): Promise<InviteRow | undefined> {
+  const [hashed, legacyRaw] = partnerInviteTokenLookupCandidates(token);
+  return db.queryOne<InviteRow>(
+    'SELECT * FROM nf_partner_invites WHERE token IN (?, ?) LIMIT 1', hashed, legacyRaw,
+  );
+}
+
 export async function POST(req: NextRequest) {
+  if (!checkOrigin(req)) {
+    return NextResponse.json({ error: 'forbidden origin' }, { status: 403 });
+  }
+
+  const ip = getTrustedClientIp(req.headers);
+  const limit = await rateLimitAsync(`partner-onboard:${ip}`, 10, 15 * 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'too many attempts' },
+      { status: 429, headers: rateLimitHeaders(limit, 10) },
+    );
+  }
+
   let body: AcceptBody;
   try {
     body = await req.json();
@@ -127,9 +172,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
 
-  const token = typeof body.token === 'string' ? body.token : '';
+  const token = typeof body.token === 'string' ? body.token.trim() : '';
   const password = typeof body.password === 'string' ? body.password : '';
-  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+  const email = typeof body.email === 'string' ? normalizeEmail(body.email) : '';
   const name = typeof body.name === 'string' ? body.name.trim().slice(0, 80) : '';
   const company = typeof body.company === 'string' ? body.company.trim().slice(0, 120) : '';
   const phoneRaw = typeof body.phone === 'string' ? body.phone : '';
@@ -137,7 +182,8 @@ export async function POST(req: NextRequest) {
   const agreementVersion = typeof body.agreementVersion === 'string' ? body.agreementVersion : '';
   const agreementAccepted = body.agreementAccepted === true;
 
-  if (!token || password.length < 10 || !email || !email.includes('@')) {
+  if (!token || token.length > 512 || password.length < 10 || password.length > 256
+      || !email || email.length > 254 || !email.includes('@')) {
     return NextResponse.json({ error: 'token, email, password (≥10) required' }, { status: 400 });
   }
   if (!name || !company) {
@@ -156,50 +202,21 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDbAdapter();
-  const invite = await db.queryOne<InviteRow>(
-    'SELECT * FROM nf_partner_invites WHERE token = ?', token,
-  ).catch(() => null);
+  const invite = await findInviteByToken(db, token).catch(() => null);
   if (!invite) return NextResponse.json({ error: 'invalid token' }, { status: 404 });
   if (invite.accepted_at) return NextResponse.json({ error: 'invite already used' }, { status: 410 });
   if (Date.now() > invite.expires_at) return NextResponse.json({ error: 'invite expired' }, { status: 410 });
+  if (invite.prefill_email && normalizeEmail(invite.prefill_email) !== email) {
+    return NextResponse.json({ error: 'invite email mismatch' }, { status: 403 });
+  }
 
   // Hash password with scrypt (compatible with rest of nf_users password storage).
   const salt = randomUUID().replace(/-/g, '');
   const derived = await scrypt(password, salt, 64) as Buffer;
   const passwordHash = `scrypt:${salt}:${derived.toString('hex')}`;
 
-  const userId = `user_${randomUUID()}`;
   const now = Date.now();
-  const ip = getTrustedClientIp(req.headers);
 
-  // Create the partner user (idempotent on email — if user exists, we link instead of duplicating).
-  // For simplicity v1 assumes email is fresh; production will need email-existence check.
-  await db.execute(
-    `INSERT INTO nf_users (id, email, name, plan, password_hash, created_at, role,
-                           biz_reg_no, contact_phone, company_name)
-     VALUES (?, ?, ?, ?, ?, ?, 'partner', ?, ?, ?)`,
-    userId, email, name, 'free', passwordHash, now, bizRegNo, phone, company,
-  ).catch(async () => {
-    // If columns biz_reg_no etc. don't exist yet, fall back to base columns
-    // and store the biz info separately (defensive — schema may lag).
-    await db.execute(
-      `INSERT INTO nf_users (id, email, name, plan, password_hash, created_at, role)
-       VALUES (?, ?, ?, ?, ?, ?, 'partner')`,
-      userId, email, name, 'free', passwordHash, now,
-    ).catch(() => {});
-  });
-
-  // Mark invite accepted with the final captured values.
-  await db.execute(
-    `UPDATE nf_partner_invites
-        SET accepted_at = ?, accepted_by_email = ?, accepted_by_ip = ?,
-            final_biz_reg_no = ?, final_phone = ?, final_company = ?,
-            resulting_user_id = ?
-      WHERE id = ?`,
-    now, email, ip, bizRegNo, phone, company, userId, invite.id,
-  );
-
-  // Record agreement consent for legal trail.
   await db.execute(`
     CREATE TABLE IF NOT EXISTS nf_partner_agreement_consents (
       id TEXT PRIMARY KEY,
@@ -211,21 +228,68 @@ export async function POST(req: NextRequest) {
       user_agent TEXT,
       invite_id TEXT
     )
-  `).catch(() => {});
-  await db.execute(
-    `INSERT INTO nf_partner_agreement_consents
-       (id, user_id, partner_email, agreement_version, accepted_at, ip_address, user_agent, invite_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    `consent_${randomUUID()}`, userId, email, agreementVersion, now,
-    ip, req.headers.get('user-agent') ?? '', invite.id,
-  );
+  `);
 
-  // Link user to factory record (so partner profile resolves correctly).
-  if (invite.factory_id) {
-    await db.execute(
-      'UPDATE nf_factories SET partner_email = ? WHERE id = ?',
-      email, invite.factory_id,
-    ).catch(() => {});
+  let userId: string;
+  try {
+    userId = await db.transaction(async (tx) => {
+      const current = await findInviteByToken(tx, token);
+      if (!current) throw new InviteAcceptanceError('invalid');
+      if (current.accepted_at) throw new InviteAcceptanceError('used');
+      if (Date.now() > current.expires_at) throw new InviteAcceptanceError('expired');
+      if (current.prefill_email && normalizeEmail(current.prefill_email) !== email) {
+        throw new InviteAcceptanceError('email_mismatch');
+      }
+
+      // Existing Closed Beta accounts are linked, never overwritten.
+      const existing = await tx.queryOne<{ id: string }>(
+        'SELECT id FROM nf_users WHERE LOWER(email) = ? LIMIT 1', email,
+      );
+      const resultingUserId = existing?.id ?? `user_${randomUUID()}`;
+      if (!existing) {
+        await tx.execute(
+          `INSERT INTO nf_users (id, email, name, plan, password_hash, created_at, role)
+           VALUES (?, ?, ?, ?, ?, ?, 'partner')`,
+          resultingUserId, email, name, 'free', passwordHash, now,
+        );
+      }
+
+      const accepted = await tx.execute(
+        `UPDATE nf_partner_invites
+            SET accepted_at = ?, accepted_by_email = ?, accepted_by_ip = ?,
+                final_biz_reg_no = ?, final_phone = ?, final_company = ?,
+                resulting_user_id = ?
+          WHERE id = ? AND accepted_at IS NULL AND expires_at >= ?`,
+        now, email, ip, bizRegNo, phone, company, resultingUserId, current.id, now,
+      );
+      if (accepted.changes !== 1) throw new InviteAcceptanceError('used');
+
+      await tx.execute(
+        `INSERT INTO nf_partner_agreement_consents
+           (id, user_id, partner_email, agreement_version, accepted_at, ip_address, user_agent, invite_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `consent_${randomUUID()}`, resultingUserId, email, agreementVersion, now,
+        ip, req.headers.get('user-agent')?.slice(0, 512) ?? '', current.id,
+      );
+
+      if (current.factory_id) {
+        const linked = await tx.execute(
+          `UPDATE nf_factories SET partner_email = ?
+            WHERE id = ? AND (partner_email IS NULL OR LOWER(TRIM(partner_email)) = ?)`,
+          email, current.factory_id, email,
+        );
+        if (linked.changes !== 1) throw new InviteAcceptanceError('factory_conflict');
+      }
+      return resultingUserId;
+    });
+  } catch (error) {
+    if (error instanceof InviteAcceptanceError) {
+      const status = error.code === 'invalid' ? 404
+        : error.code === 'email_mismatch' ? 403
+          : error.code === 'factory_conflict' ? 409 : 410;
+      return NextResponse.json({ error: `invite ${error.code.replace('_', ' ')}` }, { status });
+    }
+    throw error;
   }
 
   // Funnel signal — concierge → partner conversion. The /admin/funnel

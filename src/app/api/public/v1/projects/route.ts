@@ -4,7 +4,7 @@
 //
 // Auth: API token via `Authorization: Bearer <token>` header. Tokens are
 // issued from the user's settings page and stored as Personal Access Tokens
-// in nf_api_tokens. Falls back to session cookie auth so the same endpoint
+// in nf_api_keys. Falls back to session cookie auth so the same endpoint
 // powers in-app dashboards.
 //
 // Rate limited by client IP at 60 req/min; tokens count against the user's
@@ -15,6 +15,10 @@ import { z } from 'zod';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { sanitizeText } from '@/lib/sanitize';
+import { rateLimit, rateLimitHeaders } from '@/lib/rate-limit';
+import { logAudit } from '@/lib/audit';
+import { getTrustedClientIp } from '@/lib/client-ip';
+import type { AuthUser } from '@/lib/auth-middleware';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -26,40 +30,28 @@ export function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
 
-async function authenticate(req: NextRequest): Promise<{ userId: string } | null> {
-  // Bearer token first.
-  const auth = req.headers.get('authorization');
-  if (auth?.startsWith('Bearer ')) {
-    const token = auth.slice(7).trim();
-    if (token.length > 0) {
-      const db = getDbAdapter();
-      // The api_tokens table is set up elsewhere; fall back to null if not.
-      try {
-        const row = await db.queryOne<Record<string, unknown>>(
-          'SELECT user_id, revoked_at FROM nf_api_tokens WHERE token_hash = ? LIMIT 1',
-          await hashToken(token),
-        );
-        if (row && !row.revoked_at) return { userId: row.user_id as string };
-      } catch { /* table may not exist yet */ }
-    }
-  }
-  // Session cookie.
-  const u = await getAuthUser(req);
-  if (u) return { userId: u.userId };
-  return null;
-}
+type ProjectApiAccess =
+  | { ok: false; response: NextResponse }
+  | { ok: true; user: AuthUser; headers: Record<string, string> };
 
-async function hashToken(t: string): Promise<string> {
-  // SHA-256 base64. Tokens are never stored plain; the user sees them once
-  // at issue time.
-  const data = new TextEncoder().encode(t);
-  const buf = await crypto.subtle.digest('SHA-256', data);
-  return Buffer.from(buf).toString('base64');
+async function authorize(req: NextRequest, scope: 'read:projects' | 'write:projects'): Promise<ProjectApiAccess> {
+  const user = await getAuthUser(req);
+  if (!user) return { ok: false, response: NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: CORS_HEADERS }) };
+  if (user.apiKey && !user.apiKey.scopes.includes(scope)) {
+    return { ok: false, response: NextResponse.json({ error: 'Insufficient API key scope', requiredScope: scope }, { status: 403, headers: CORS_HEADERS }) };
+  }
+  const identity = user.apiKey?.id ?? user.userId;
+  const limit = rateLimit(`public-v1:projects:${identity}`, 60, 60_000);
+  if (!limit.allowed) {
+    return { ok: false, response: NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429, headers: { ...CORS_HEADERS, ...rateLimitHeaders(limit, 60) } }) };
+  }
+  return { ok: true, user, headers: { ...CORS_HEADERS, ...rateLimitHeaders(limit, 60) } };
 }
 
 export async function GET(req: NextRequest) {
-  const auth = await authenticate(req);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: CORS_HEADERS });
+  const access = await authorize(req, 'read:projects');
+  if (!access.ok) return access.response;
+  const auth = access.user;
   const db = getDbAdapter();
   const rows = await db.queryAll<Record<string, unknown>>(
     'SELECT id, name, shape_id, material_id, created_at, updated_at FROM nf_projects WHERE user_id = ? AND archived_at IS NULL ORDER BY updated_at DESC LIMIT 100',
@@ -76,7 +68,7 @@ export async function GET(req: NextRequest) {
         updatedAt: r.updated_at,
       })),
     },
-    { headers: CORS_HEADERS },
+    { headers: access.headers },
   );
 }
 
@@ -88,8 +80,9 @@ const createSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const auth = await authenticate(req);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: CORS_HEADERS });
+  const access = await authorize(req, 'write:projects');
+  if (!access.ok) return access.response;
+  const auth = access.user;
   const raw = await req.json().catch(() => null);
   const parsed = createSchema.safeParse(raw);
   if (!parsed.success) {
@@ -110,8 +103,15 @@ export async function POST(req: NextRequest) {
     now,
     now,
   );
+  logAudit({
+    userId: auth.userId,
+    action: 'public_api.projects.create',
+    resourceId: id,
+    metadata: { apiKeyId: auth.apiKey?.id ?? 'session', scope: 'write:projects' },
+    ip: getTrustedClientIp(req.headers),
+  });
   return NextResponse.json(
     { id, createdAt: now },
-    { status: 201, headers: CORS_HEADERS },
+    { status: 201, headers: access.headers },
   );
 }

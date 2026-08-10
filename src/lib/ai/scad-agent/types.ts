@@ -876,6 +876,15 @@ export interface BudgetState {
 }
 
 export interface AgentSession {
+  /**
+   * Server-issued integrity envelope. API callers must not create or edit it;
+   * the signature is bound to the authenticated user and complete session.
+   */
+  integrity?: {
+    version: 1;
+    issuedAt: number;
+    signature: string;
+  };
   id: string;
   /**
    * Top-level OpenSCAD source. Used by `write_scad` / `apply_diff` for the

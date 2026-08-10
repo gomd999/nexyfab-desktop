@@ -9,8 +9,9 @@ const ShapeGeneratorApp = dynamic(() => import('./ShapeGeneratorApp'), {
   ssr: false,
   loading: () => <WorkspaceLoading variant="page" />,
 });
-// The free-form Studio is the DEFAULT face — the wide funnel. The heavy B-rep
-// modeler is the expert mode you graduate into.
+// The AI-guided Studio is the default surface for every user. It can use the
+// exact B-rep engine without exposing CAD complexity; the full modeler remains
+// an optional direct-editing workspace for experts.
 const StudioInner = dynamic(() => import('../studio/StudioInner'), { ssr: false });
 
 /** Shared entry for `/shape-generator` and focused sub-routes (sketch / 3d-edit / analysis). */

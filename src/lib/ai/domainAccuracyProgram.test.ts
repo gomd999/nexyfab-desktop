@@ -38,12 +38,12 @@ describe('parallel domain accuracy release contract', () => {
     });
   });
 
-  it('fails closed when an interior motion axis is missing', () => {
+  it('fails closed when an interior door-swing axis is missing', () => {
     const evidence = passingEvidence('interior');
-    evidence.axes = evidence.axes.filter(item => item.axis !== 'motion');
+    evidence.axes = evidence.axes.filter(item => item.axis !== 'door_swing');
     expect(assessDomainAccuracy(evidence)).toMatchObject({
       eligible: false,
-      blockers: expect.arrayContaining(['accuracy:motion', 'coverage:motion']),
+      blockers: expect.arrayContaining(['accuracy:door_swing', 'coverage:door_swing']),
     });
   });
 
@@ -88,9 +88,9 @@ describe('parallel domain accuracy release contract', () => {
 
   it('rejects inconsistent evidence counts', () => {
     const evidence = passingEvidence('building');
-    evidence.axes = evidence.axes.map(item => item.axis === 'dimensions'
+    evidence.axes = evidence.axes.map(item => item.axis === 'storeys_grids'
       ? { ...item, expected: 10, measured: 11, passed: 12 }
       : item);
-    expect(assessDomainAccuracy(evidence).blockers).toContain('counts_invalid:dimensions');
+    expect(assessDomainAccuracy(evidence).blockers).toContain('counts_invalid:storeys_grids');
   });
 });

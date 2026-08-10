@@ -3,10 +3,13 @@ import { POST as verifyAssemblyPost } from "@/app/api/cad/v1/assembly/verify/rou
 import { advanceGenerationRun } from "@/lib/ai/advanceGenerationRun";
 import type { GenerationTopologyRebindGate } from "@/lib/ai/advanceGenerationRun";
 import { buildGenerationCanonicalResponse } from "@/lib/ai/generationCanonicalResponse";
+import { buildAdaptiveComplexProductExecutionPlan } from "@/lib/ai/adaptiveComplexProductExecution";
 import type { AiAssemblyProgram } from "@/lib/ai/aiAssemblyProgram";
 import type { GenerationRunState } from "@/lib/ai/generationRunState";
 import { getTrustedClientIp } from "@/lib/client-ip";
 import { rateLimit } from "@/lib/rate-limit";
+import { loadServerGenerationState, saveServerGenerationState } from "@/lib/ai/generationStateStore";
+import { generationRequestOwner } from "@/lib/ai/generationRequestOwner";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,8 +62,11 @@ export async function POST(req: NextRequest) {
     );
   }
   try {
+    const owner = await generationRequestOwner(req, ip);
+    const stored = await loadServerGenerationState(owner, body.state.runId);
+    if (stored.revision !== body.state.revision) throw new Error("GENERATION_REVISION_CONFLICT");
     const result = await advanceGenerationRun(
-      body.state,
+      stored,
       body.program,
       async (input) => {
         const verificationRequest = new NextRequest(
@@ -80,23 +86,24 @@ export async function POST(req: NextRequest) {
       body.allowedDoF ?? 0,
       body.topologyRebind,
     );
+    if (result.state.revision !== stored.revision) await saveServerGenerationState(owner, result.state, stored.revision);
     return NextResponse.json({
       ok: true,
       ...result,
       canonical: buildGenerationCanonicalResponse(result),
+      executionPlan: buildAdaptiveComplexProductExecutionPlan(result.state),
       quoteOrRfqSideEffects: false,
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Generation advancement failed";
+    const status = message === "GENERATION_RUN_NOT_FOUND" ? 404 : message === "GENERATION_STATE_REDIS_REQUIRED" ? 503 : 409;
     return NextResponse.json(
       {
         ok: false,
-        code: "ADVANCE_FAILED",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Generation advancement failed",
+        code: message.startsWith("GENERATION_") ? message : "ADVANCE_FAILED",
+        message,
       },
-      { status: 409 },
+      { status },
     );
   }
 }

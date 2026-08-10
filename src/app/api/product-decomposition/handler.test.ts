@@ -1,19 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
+import { geometryNumericParameters } from '@/lib/ai/productDecompositionAccuracy';
+import type { FeatureTree } from '@/lib/cad/featureTree';
 import { handleProductDecomposition } from './handler';
 
-const tree = { nodes: [{ id: 'base', name: 'Base', dependencies: [], payload: { kind: 'extrude', loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], depth: 5, direction: 'one_sided', mode: 'add' } }] };
+const tree = { nodes: [{ id: 'base', name: 'Base', dependencies: [], payload: { kind: 'extrude', loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], depth: 5, direction: 'one_sided', mode: 'add' } }] } satisfies FeatureTree;
+const parameterEvidence = geometryNumericParameters(tree).map(parameter => ({ ...parameter, unit: 'mm', tolerance: 0.01, status: 'confirmed', sourceRef: 'user:prompt', locked: true }));
 const valid = {
   version: 1, units: 'mm', productName: 'Clamp',
-  requirements: [{ id: 'r1', text: 'clamp', category: 'function', source: 'user' }],
+  requirements: [{ id: 'r1', text: 'clamp', category: 'function', source: 'user', sourceRef: 'user:prompt' }],
   definitions: [
-    { id: 'jaw', name: 'Jaw', responsibility: 'grip', makeOrBuy: 'make', featureTree: tree, requirementIds: ['r1'], metadata: { partNumber: 'NX-JAW', revision: 'A', source: 'confirmed' } },
-    { id: 'screw', name: 'Screw', responsibility: 'apply force', makeOrBuy: 'make', featureTree: tree, requirementIds: ['r1'], metadata: { partNumber: 'NX-SCR', revision: 'A', source: 'confirmed' } },
+    { id: 'jaw', name: 'Jaw', responsibility: 'grip', makeOrBuy: 'make', featureTree: tree, requirementIds: ['r1'], parameterEvidence, metadata: { partNumber: 'NX-JAW', revision: 'A', material: 'AL6061', process: 'CNC milling', source: 'confirmed' } },
+    { id: 'screw', name: 'Screw', responsibility: 'apply force', makeOrBuy: 'make', featureTree: tree, requirementIds: ['r1'], parameterEvidence, metadata: { partNumber: 'NX-SCR', revision: 'A', material: 'S45C', process: 'CNC turning', source: 'confirmed' } },
   ],
   instances: [
     { id: 'jaw-1', definitionId: 'jaw', positionMm: [0, 0, 0], fixed: true },
     { id: 'screw-1', definitionId: 'screw', positionMm: [20, 0, 0] },
   ],
-  mates: [], subassemblies: [{ id: 'clamp-main', name: 'Clamp', instanceIds: ['jaw-1', 'screw-1'], rigid: false }],
+  mates: [{ id: 'screw-axis', kind: 'concentric', a: { partId: 'jaw-1', refId: 'bore', refKind: 'axis' }, b: { partId: 'screw-1', refId: 'axis', refKind: 'axis' } }], subassemblies: [{ id: 'clamp-main', name: 'Clamp', instanceIds: ['jaw-1', 'screw-1'], rigid: false }],
   observations: [], assumptions: [], unresolved: [],
 };
 

@@ -35,4 +35,26 @@ describe('unified multi-domain design project', () => {
     const stale = executeUnifiedProjectTransaction(input, 2, { documentId: 'architecture', changedObjectIds: ['room-1'], apply: document => document });
     expect(stale.committed).toBe(false);
   });
+  it('rejects changed object IDs owned by another domain document', () => {
+    const input = project();
+    const result = executeUnifiedProjectTransaction(input, 3, { documentId: 'architecture', changedObjectIds: ['light-1'], apply: document => document });
+    expect(result).toMatchObject({ committed: false, project: input });
+    expect(result.issues.join(' ')).toContain('not owned by architecture');
+  });
+  it('rejects coordinate cycles and duplicate semantic relations', () => {
+    const input = project();
+    input.coordinateSystems[0]!.parentId = 'project-local';
+    input.references.push({ id: 'host-light-copy', sourceObjectId: 'light-1', targetObjectId: 'ceiling-1', relation: 'HOSTED_BY', updatePolicy: 'notify' });
+    const issues = validateUnifiedDesignProject(input).join(' ');
+    expect(issues).toContain('Coordinate system cycle');
+    expect(issues).toContain('duplicate cross-domain relation');
+  });
+  it('traverses a 20,000-reference complex project without repeated full scans', () => {
+    const count = 20_001, objectIds = Array.from({ length: count }, (_, index) => `object-${index}`);
+    const input: UnifiedDesignProject = { schema: 'nexyfab.unified-design-project.v1', id: 'large', revision: 0, coordinateSystems: [{ id: 'local', kind: 'local', units: 'mm', origin: [0, 0, 0], rotationDeg: [0, 0, 0] }], documents: [{ id: 'model', domain: 'mechanical', schema: 'test.v1', revision: 0, coordinateSystemId: 'local', representations: ['graph'], objectIds, payload: {} }], references: objectIds.slice(1).map((id, index) => ({ id: `ref-${index}`, sourceObjectId: objectIds[index]!, targetObjectId: id, relation: 'CONNECTS_TO', updatePolicy: 'follow' })) };
+    const started = performance.now(), result = analyzeUnifiedChangeImpact(input, ['object-0']), elapsedMs = performance.now() - started;
+    expect(result.follow).toHaveLength(20_000);
+    expect(result.traversedReferenceIds).toHaveLength(20_000);
+    expect(elapsedMs).toBeLessThan(2_000);
+  });
 });

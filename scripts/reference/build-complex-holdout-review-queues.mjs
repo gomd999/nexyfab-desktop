@@ -6,7 +6,9 @@ import path from 'node:path';
 import JSZip from 'jszip';
 
 const arg = name => process.argv.find(item => item.startsWith(`--${name}=`))?.slice(name.length + 3);
-const root = path.resolve(arg('root') || 'C:/Users/gomd9/Downloads/참고파일들');
+const rootArg = arg('root') || process.env.NEXYFAB_REFERENCE_CORPUS_ROOT;
+if (!rootArg) throw new Error('reference_corpus_root_required');
+const root = path.resolve(rootArg);
 const output = path.resolve(arg('output') || 'docs/evidence/complex-holdout-review-260806');
 const limit = Number(arg('limit') || 20);
 if (!Number.isInteger(limit) || limit < 1) throw new Error('holdout_review_limit_invalid');

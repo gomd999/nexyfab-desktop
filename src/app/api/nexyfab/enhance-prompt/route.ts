@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { chatCompletion, AiNotConfiguredError, AiProviderError } from '@/lib/ai';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { guardStudioAi } from '@/lib/studio-ai-guard';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -40,6 +41,8 @@ export async function POST(req: NextRequest) {
   const prompt = body?.prompt?.trim();
   if (!prompt) return NextResponse.json({ error: 'prompt is required' }, { status: 400 });
   if (prompt.length > 2000) return NextResponse.json({ error: 'prompt too long (max 2000 chars)' }, { status: 413 });
+  const planGuard = await guardStudioAi(req);
+  if (planGuard) return planGuard;
   // Pin the output language explicitly — "same language as the request" was
   // unreliable (a short KO request like "M6 플랜지" came back in Japanese).
   const langName = LANG_NAME[body?.lang ?? 'ko'] ?? 'English';

@@ -129,6 +129,62 @@ function edgeRateLimit(key: string, max: number, windowMs: number): { allowed: b
   return { allowed: true, remaining: max - entry.count, resetAt: entry.resetAt };
 }
 
+type CadQuotaResult = {
+  allowed: boolean;
+  remaining: number;
+  resetAt: number;
+  backend: 'upstash-rest' | 'memory';
+  unavailable?: boolean;
+};
+
+async function cadAccountRateLimit(
+  key: string,
+  max: number,
+  windowMs: number,
+): Promise<CadQuotaResult> {
+  const url = process.env.UPSTASH_REDIS_REST_URL?.replace(/\/$/, '');
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const strict = process.env.NEXYFAB_CAD_INDEPENDENT_MODE === '1';
+  if (!url || !token) {
+    if (strict) {
+      return { allowed: false, remaining: 0, resetAt: Date.now() + windowMs, backend: 'memory', unavailable: true };
+    }
+    return { ...edgeRateLimit(key, max, windowMs), backend: 'memory' };
+  }
+
+  const script = [
+    "local current = redis.call('INCR', KEYS[1])",
+    "if current == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]) end",
+    "local ttl = redis.call('PTTL', KEYS[1])",
+    'return {current, ttl}',
+  ].join('\n');
+  try {
+    const response = await fetch(`${url}/eval`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify([script, '1', key, String(windowMs)]),
+      signal: AbortSignal.timeout(2_500),
+    });
+    if (!response.ok) throw new Error(`UPSTASH_${response.status}`);
+    const value = await response.json() as { result?: [number | string, number | string] };
+    const count = Number(value.result?.[0]);
+    const ttl = Number(value.result?.[1]);
+    if (!Number.isFinite(count) || !Number.isFinite(ttl)) throw new Error('UPSTASH_INVALID_RESULT');
+    return {
+      allowed: count <= max,
+      remaining: Math.max(0, max - count),
+      resetAt: Date.now() + Math.max(0, ttl),
+      backend: 'upstash-rest',
+    };
+  } catch (cause) {
+    console.error('[middleware] distributed CAD quota unavailable:', cause);
+    if (strict) {
+      return { allowed: false, remaining: 0, resetAt: Date.now() + windowMs, backend: 'upstash-rest', unavailable: true };
+    }
+    return { ...edgeRateLimit(key, max, windowMs), backend: 'memory' };
+  }
+}
+
 function getClientIp(req: NextRequest): string {
   return getTrustedClientIp(req.headers);
 }
@@ -149,6 +205,8 @@ const RL_TIERS: { prefixes: string[]; tier: RLTier }[] = [
   { prefixes: ['/api/billing/checkout', '/api/billing/refund', '/api/billing/retry', '/api/billing/toss', '/api/stripe/create-checkout-session'], tier: [20, 60_000] },
   // File uploads — moderate
   { prefixes: ['/api/partner/upload', '/api/quick-quote/upload', '/api/nexyfab/files'], tier: [15, 60_000] },
+  // CAD compute is authenticated below; keep an edge-level abuse ceiling too.
+  { prefixes: ['/api/cad/v1'], tier: [120, 60_000] },
   // Admin — relaxed (already auth-gated)
   { prefixes: ['/api/admin'], tier: [60, 60_000] },
   // Email / notifications
@@ -185,6 +243,9 @@ if (process.env.NODE_ENV === 'production' && CORS_ORIGINS_RAW.length === 0) {
  * Order does not matter — all are checked with startsWith().
  */
 const PROTECTED_PREFIXES = [
+  // CAD compute and release evidence. Read-only capability discovery is
+  // explicitly exempted below.
+  '/api/cad/v1',
   // NexyFab core features
   '/api/nexyfab/projects',
   '/api/nexyfab/rfq',
@@ -309,6 +370,12 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     return NextResponse.next();
   }
 
+  // Capability discovery is public and read-only. Alternate methods on this
+  // path and every other CAD v1 endpoint remain authenticated.
+  if (pathname === '/api/cad/v1/capabilities' && req.method === 'GET') {
+    return NextResponse.next();
+  }
+
   // ── Determine whether this route needs protection ──────────────────────────
 
   const isProtected = PROTECTED_PREFIXES.some((prefix) =>
@@ -352,6 +419,53 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
         headers: { ...corsHeaders, 'WWW-Authenticate': 'Bearer error="invalid_token"' },
       }
     );
+  }
+
+  // Per-account CAD compute quota. This is intentionally independent of the
+  // IP ceiling above so shared networks do not merge customer entitlements.
+  // Existing Closed Beta accounts keep access; plan only changes the quota.
+  const isCadRequest = pathname.startsWith('/api/cad/v1');
+  const cadRequestId = isCadRequest ? crypto.randomUUID() : null;
+  let cadQuotaHeaders: Record<string, string> = {};
+  if (isCadRequest) {
+    const normalizedPlan = user.plan.trim().toLowerCase();
+    const cadLimit = normalizedPlan === 'free' ? 10 : 60;
+    const cadQuota = await cadAccountRateLimit(`nexyfab:cad:v1:user:${user.userId}`, cadLimit, 60_000);
+    cadQuotaHeaders = {
+      'X-RateLimit-Limit': String(cadLimit),
+      'X-RateLimit-Remaining': String(cadQuota.remaining),
+      'X-RateLimit-Reset': String(cadQuota.resetAt),
+      'X-RateLimit-Backend': cadQuota.backend,
+    };
+    if (cadQuota.unavailable) {
+      return NextResponse.json(
+        { error: 'CAD quota service unavailable', code: 'CAD_QUOTA_UNAVAILABLE' },
+        { status: 503, headers: { ...corsHeaders, ...cadQuotaHeaders, 'Retry-After': '30' } },
+      );
+    }
+    if (!cadQuota.allowed) {
+      return NextResponse.json(
+        { error: 'CAD compute quota exceeded', code: 'CAD_QUOTA_EXCEEDED' },
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            ...cadQuotaHeaders,
+            'Retry-After': String(Math.max(0, Math.ceil((cadQuota.resetAt - Date.now()) / 1000))),
+          },
+        },
+      );
+    }
+    if (process.env.NODE_ENV === 'production') {
+      console.info('[CAD_API_ACCESS]', JSON.stringify({
+        requestId: cadRequestId,
+        userId: user.userId,
+        plan: normalizedPlan,
+        method: req.method,
+        path: pathname,
+        at: new Date().toISOString(),
+      }));
+    }
   }
 
   // ── Admin-only route check ─────────────────────────────────────────────────
@@ -398,11 +512,15 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   requestHeaders.set('x-user-email', user.email);
   requestHeaders.set('x-user-plan', user.plan);
   if (user.service) requestHeaders.set('x-user-service', user.service);
+  if (cadRequestId) requestHeaders.set('x-cad-request-id', cadRequestId);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
 
   // Attach CORS headers to successful responses
   for (const [k, v] of Object.entries(corsHeaders)) {
+    response.headers.set(k, v);
+  }
+  for (const [k, v] of Object.entries(cadQuotaHeaders)) {
     response.headers.set(k, v);
   }
 

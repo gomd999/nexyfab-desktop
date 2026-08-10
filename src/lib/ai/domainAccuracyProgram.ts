@@ -1,89 +1,34 @@
 import {
   DEFAULT_COMPLEX_BENCHMARK_POLICY_V2,
-  type ComplexAccuracyAxis,
   type ComplexBenchmarkPolicyV2,
 } from './complexProductBenchmarkV2';
+import { DOMAIN_PROFILES } from './domainProfileRegistry';
+import {
+  DESIGN_DOMAIN_IDS,
+  type DesignDomainId,
+  type DomainEvidenceAxis,
+} from './domainProfile';
 
-export const DOMAIN_ACCURACY_DOMAINS = [
-  'mechanical',
-  'civil',
-  'building',
-  'landscape',
-  'interior',
-] as const;
+export const DOMAIN_ACCURACY_DOMAINS = DESIGN_DOMAIN_IDS;
 
-export type DomainAccuracyDomain = (typeof DOMAIN_ACCURACY_DOMAINS)[number];
+export type DomainAccuracyDomain = DesignDomainId;
 
 export interface DomainAccuracyProfile {
   domain: DomainAccuracyDomain;
-  requiredAxes: readonly ComplexAccuracyAxis[];
+  requiredAxes: readonly DomainEvidenceAxis[];
   firstReleaseCapabilities: readonly string[];
 }
 
 export const DOMAIN_ACCURACY_PROFILES: Record<DomainAccuracyDomain, DomainAccuracyProfile> = {
-  mechanical: {
-    domain: 'mechanical',
-    requiredAxes: [
-      'requirements', 'dimensions', 'features', 'part_definitions', 'occurrences',
-      'body_membership', 'hierarchy', 'transforms', 'joints', 'motion',
-      'collision_clearance', 'manufacturing', 'step_roundtrip', 'repair',
-    ],
-    firstReleaseCapabilities: [
-      'standards_catalog', 'feature_measurement', 'assembly_motion',
-      'manufacturing_drawing', 'step_roundtrip',
-    ],
-  },
-  civil: {
-    domain: 'civil',
-    requiredAxes: [
-      'requirements', 'dimensions', 'features', 'part_definitions', 'hierarchy',
-      'transforms', 'collision_clearance', 'manufacturing', 'step_roundtrip', 'repair',
-    ],
-    firstReleaseCapabilities: [
-      'retaining_wall_geometry_to_check', 'culvert_check', 'drainage_connectivity',
-      'earthwork_boq', 'civil_drawing',
-    ],
-  },
-  building: {
-    domain: 'building',
-    requiredAxes: [
-      'requirements', 'dimensions', 'features', 'part_definitions', 'occurrences',
-      'body_membership', 'hierarchy', 'transforms', 'collision_clearance',
-      'manufacturing', 'step_roundtrip', 'repair',
-    ],
-    firstReleaseCapabilities: [
-      'structural_grid', 'load_path', 'member_checks', 'foundation_reactions',
-      'structural_drawing',
-    ],
-  },
-  landscape: {
-    domain: 'landscape',
-    requiredAxes: [
-      'requirements', 'dimensions', 'features', 'part_definitions', 'occurrences',
-      'hierarchy', 'transforms', 'collision_clearance', 'manufacturing',
-      'step_roundtrip', 'repair',
-    ],
-    firstReleaseCapabilities: [
-      'timber_member_check', 'wind_overturning', 'grading_drainage',
-      'paving_boq', 'planting_schedule',
-    ],
-  },
-  interior: {
-    domain: 'interior',
-    requiredAxes: [
-      'requirements', 'dimensions', 'features', 'part_definitions', 'occurrences',
-      'body_membership', 'hierarchy', 'transforms', 'joints', 'motion',
-      'collision_clearance', 'manufacturing', 'step_roundtrip', 'repair',
-    ],
-    firstReleaseCapabilities: [
-      'space_closure', 'wall_openings', 'door_swing', 'egress_path',
-      'finish_boq',
-    ],
-  },
+  mechanical: { domain: 'mechanical', requiredAxes: DOMAIN_PROFILES.mechanical.evidenceAxes, firstReleaseCapabilities: ['standards_catalog', 'feature_measurement', 'assembly_motion', 'manufacturing_drawing', 'step_roundtrip'] },
+  building: { domain: 'building', requiredAxes: DOMAIN_PROFILES.building.evidenceAxes, firstReleaseCapabilities: ['spatial_bim', 'space_closure', 'egress_accessibility', 'mep_coordination', 'ifc_drawing_schedule'] },
+  civil: { domain: 'civil', requiredAxes: DOMAIN_PROFILES.civil.evidenceAxes, firstReleaseCapabilities: ['survey_surface', 'alignment_corridor', 'drainage_connectivity', 'earthwork_boq', 'civil_drawing_exchange'] },
+  landscape: { domain: 'landscape', requiredAxes: DOMAIN_PROFILES.landscape.evidenceAxes, firstReleaseCapabilities: ['terrain_grading', 'planting_growth', 'soil_hardscape', 'irrigation', 'schedule_maintenance'] },
+  interior: { domain: 'interior', requiredAxes: DOMAIN_PROFILES.interior.evidenceAxes, firstReleaseCapabilities: ['space_host', 'door_egress_clearance', 'ceiling_mep', 'finish_millwork', 'lighting_acoustics_boq'] },
 };
 
 export interface DomainAxisEvidence {
-  axis: ComplexAccuracyAxis;
+  axis: DomainEvidenceAxis;
   expected: number;
   measured: number;
   passed: number;

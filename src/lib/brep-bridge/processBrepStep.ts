@@ -4,14 +4,17 @@ import { brepWorkerTimeoutMs } from './constants';
 import type { OpenScadMeshFormat } from '@/lib/openscad-render/runOpenScadCli';
 
 /**
- * Tessellates STEP via optional `BREP_WORKER_URL` (POST JSON `{ filename, base64, jobId }`).
+ * Tessellates STEP via optional `BREP_WORKER_URL`. Small jobs use inline
+ * base64; large jobs use an application-issued, short-lived source URL.
  * Without a worker: validates ISO-10303 header and returns a clear “configure worker” message.
  */
 export async function runBrepStepProcess(opts: {
   userId: string;
   jobId: string;
   filename: string;
-  buffer: Buffer;
+  buffer?: Buffer;
+  sourceUrl?: string;
+  sourceBytes?: number;
 }): Promise<{
   previewMeshBase64?: string;
   artifactUrl?: string;
@@ -20,6 +23,9 @@ export async function runBrepStepProcess(opts: {
   errorMessage?: string;
 }> {
   const workerBase = process.env.BREP_WORKER_URL?.trim();
+  if ((!opts.buffer || opts.buffer.length === 0) && !opts.sourceUrl) {
+    return { errorMessage: 'BREP worker input is empty.' };
+  }
   if (workerBase) {
     const url = `${workerBase.replace(/\/$/, '')}/tessellate`;
     const timeoutMs = brepWorkerTimeoutMs();
@@ -30,8 +36,10 @@ export async function runBrepStepProcess(opts: {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             filename: opts.filename,
-            base64: opts.buffer.toString('base64'),
             jobId: opts.jobId,
+            ...(opts.sourceUrl
+              ? { sourceUrl: opts.sourceUrl, sourceBytes: opts.sourceBytes }
+              : { base64: opts.buffer!.toString('base64') }),
           }),
           signal: AbortSignal.timeout(timeoutMs),
         });
@@ -69,6 +77,11 @@ export async function runBrepStepProcess(opts: {
     }
   }
 
+  if (!opts.buffer) {
+    return {
+      errorMessage: 'Large STEP source URL is ready, but BREP_WORKER_URL is not configured.',
+    };
+  }
   const head = opts.buffer.subarray(0, Math.min(4096, opts.buffer.length)).toString('latin1');
   if (!/ISO-10303|HEADER|STEP/i.test(head)) {
     return { errorMessage: 'Not a valid STEP file (expected ISO-10303 / STEP header).' };

@@ -48,6 +48,7 @@ export type GenerationTopologyRebindGate = {
   confirmationRequiredIds: string[];
   confirmedIds?: string[];
 };
+export type GenerationAdvanceOptions = { diagnosticOnly?: boolean };
 
 /**
  * Advances an AI generation run using real tessellated/OCCT part evidence.
@@ -60,6 +61,7 @@ export async function advanceGenerationRun(
   verifyAssembly: AssemblyVerifier,
   allowedDoF = 0,
   topologyRebind?: GenerationTopologyRebindGate,
+  options: GenerationAdvanceOptions = {},
 ): Promise<GenerationAdvanceResult> {
   if (initial.stages.part_programs.status !== "passed") {
     throw new Error("part_programs must pass before geometry advancement.");
@@ -77,6 +79,23 @@ export async function advanceGenerationRun(
     return {
       state: recordGenerationStage(initial, completion),
       stoppedAt: "kernel",
+    };
+  }
+
+  if ((program.classification !== 'review_required' || program.unresolved.length > 0) && options.diagnosticOnly !== true) {
+    const unresolved = program.unresolved.length ? program.unresolved : ['Authoritative product inputs are required before exact geometry generation.'];
+    return {
+      state: recordGenerationStage(initial, {
+        stage: 'kernel',
+        input: { classification: program.classification, unresolved: program.unresolved },
+        output: { geometryStarted: false },
+        status: 'blocked',
+        errorCodes: ['AUTHORITATIVE_INPUT_REQUIRED'],
+        unresolved,
+        affectedPartIds: program.parts.filter(part => part.metadata.source === 'assumed').map(part => part.instanceId),
+        metrics: { unresolvedInputs: unresolved.length },
+      }),
+      stoppedAt: 'kernel',
     };
   }
 
@@ -118,7 +137,9 @@ export async function advanceGenerationRun(
     metrics: {
       parts: built.length,
       availableParts: built.length - unavailable.length,
+      diagnosticOnly: options.diagnosticOnly === true ? 1 : 0,
     },
+    warnings: options.diagnosticOnly === true ? ['Concept geometry was evaluated for diagnostics only and is not production evidence.'] : [],
   });
   if (unavailable.length) return { state, stoppedAt: "kernel" };
 

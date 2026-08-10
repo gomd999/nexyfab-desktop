@@ -1,0 +1,2002 @@
+[
+  {
+    "caseId": "dryrun-landscape-apartment_complex-01",
+    "domain": "landscape",
+    "sourceHash": "4c16af90551b9a5c58c85876dddd325b3fe6f1b9a8ec72a309aa51649f8295aa",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "57a43b4291c012b32e482a0d3a6d0b224cfcc4e4f1dd8f4511d0a763a4f858f3"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "57a43b4291c012b32e482a0d3a6d0b224cfcc4e4f1dd8f4511d0a763a4f858f3"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "57a43b4291c012b32e482a0d3a6d0b224cfcc4e4f1dd8f4511d0a763a4f858f3"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "57a43b4291c012b32e482a0d3a6d0b224cfcc4e4f1dd8f4511d0a763a4f858f3"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "57a43b4291c012b32e482a0d3a6d0b224cfcc4e4f1dd8f4511d0a763a4f858f3"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "57a43b4291c012b32e482a0d3a6d0b224cfcc4e4f1dd8f4511d0a763a4f858f3"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "57a43b4291c012b32e482a0d3a6d0b224cfcc4e4f1dd8f4511d0a763a4f858f3"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "57a43b4291c012b32e482a0d3a6d0b224cfcc4e4f1dd8f4511d0a763a4f858f3"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "57a43b4291c012b32e482a0d3a6d0b224cfcc4e4f1dd8f4511d0a763a4f858f3"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "57a43b4291c012b32e482a0d3a6d0b224cfcc4e4f1dd8f4511d0a763a4f858f3"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "57a43b4291c012b32e482a0d3a6d0b224cfcc4e4f1dd8f4511d0a763a4f858f3"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-pergola-01",
+    "domain": "landscape",
+    "sourceHash": "bd12fb5443c537b9120ca3ad134c886261c79dcea49182119a0b9dbf78cc36af",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b3ad1ae8b81421b64d09fbb29e82d318a9897db8e0e8fda20be05792177b33db"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b3ad1ae8b81421b64d09fbb29e82d318a9897db8e0e8fda20be05792177b33db"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b3ad1ae8b81421b64d09fbb29e82d318a9897db8e0e8fda20be05792177b33db"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b3ad1ae8b81421b64d09fbb29e82d318a9897db8e0e8fda20be05792177b33db"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b3ad1ae8b81421b64d09fbb29e82d318a9897db8e0e8fda20be05792177b33db"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b3ad1ae8b81421b64d09fbb29e82d318a9897db8e0e8fda20be05792177b33db"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b3ad1ae8b81421b64d09fbb29e82d318a9897db8e0e8fda20be05792177b33db"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b3ad1ae8b81421b64d09fbb29e82d318a9897db8e0e8fda20be05792177b33db"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b3ad1ae8b81421b64d09fbb29e82d318a9897db8e0e8fda20be05792177b33db"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b3ad1ae8b81421b64d09fbb29e82d318a9897db8e0e8fda20be05792177b33db"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b3ad1ae8b81421b64d09fbb29e82d318a9897db8e0e8fda20be05792177b33db"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-timber_deck-01",
+    "domain": "landscape",
+    "sourceHash": "6d3fa79c591550e3746acd7ca2afd511b1386338d71a7cf891b59529217e5c1c",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "07d412c745112c8e246b8b415a902a3e6141a2a01d707c43f618fe16c2452d9f"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "07d412c745112c8e246b8b415a902a3e6141a2a01d707c43f618fe16c2452d9f"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "07d412c745112c8e246b8b415a902a3e6141a2a01d707c43f618fe16c2452d9f"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "07d412c745112c8e246b8b415a902a3e6141a2a01d707c43f618fe16c2452d9f"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "07d412c745112c8e246b8b415a902a3e6141a2a01d707c43f618fe16c2452d9f"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "07d412c745112c8e246b8b415a902a3e6141a2a01d707c43f618fe16c2452d9f"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "07d412c745112c8e246b8b415a902a3e6141a2a01d707c43f618fe16c2452d9f"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "07d412c745112c8e246b8b415a902a3e6141a2a01d707c43f618fe16c2452d9f"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "07d412c745112c8e246b8b415a902a3e6141a2a01d707c43f618fe16c2452d9f"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "07d412c745112c8e246b8b415a902a3e6141a2a01d707c43f618fe16c2452d9f"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "07d412c745112c8e246b8b415a902a3e6141a2a01d707c43f618fe16c2452d9f"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-fence_run-01",
+    "domain": "landscape",
+    "sourceHash": "45f366c7c41792d8d20da688c0dd9c4ba716326e12482d152a387e1c1626a7fc",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c7b31751f4654d054952e5977287fda97502afca41dd63443c3d0ee11c95ad4a"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c7b31751f4654d054952e5977287fda97502afca41dd63443c3d0ee11c95ad4a"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c7b31751f4654d054952e5977287fda97502afca41dd63443c3d0ee11c95ad4a"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c7b31751f4654d054952e5977287fda97502afca41dd63443c3d0ee11c95ad4a"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c7b31751f4654d054952e5977287fda97502afca41dd63443c3d0ee11c95ad4a"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c7b31751f4654d054952e5977287fda97502afca41dd63443c3d0ee11c95ad4a"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c7b31751f4654d054952e5977287fda97502afca41dd63443c3d0ee11c95ad4a"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c7b31751f4654d054952e5977287fda97502afca41dd63443c3d0ee11c95ad4a"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c7b31751f4654d054952e5977287fda97502afca41dd63443c3d0ee11c95ad4a"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c7b31751f4654d054952e5977287fda97502afca41dd63443c3d0ee11c95ad4a"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c7b31751f4654d054952e5977287fda97502afca41dd63443c3d0ee11c95ad4a"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-planter_wall-01",
+    "domain": "landscape",
+    "sourceHash": "ee8d307c21ecfbbe0ad6e9a6fee9b9936e372eed053ba05714a672d49a81a322",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a3871878085dd72cf379da9156b4c8b2195339b81a73ef8bd29d3cfe78bd72a0"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a3871878085dd72cf379da9156b4c8b2195339b81a73ef8bd29d3cfe78bd72a0"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a3871878085dd72cf379da9156b4c8b2195339b81a73ef8bd29d3cfe78bd72a0"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a3871878085dd72cf379da9156b4c8b2195339b81a73ef8bd29d3cfe78bd72a0"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a3871878085dd72cf379da9156b4c8b2195339b81a73ef8bd29d3cfe78bd72a0"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a3871878085dd72cf379da9156b4c8b2195339b81a73ef8bd29d3cfe78bd72a0"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a3871878085dd72cf379da9156b4c8b2195339b81a73ef8bd29d3cfe78bd72a0"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a3871878085dd72cf379da9156b4c8b2195339b81a73ef8bd29d3cfe78bd72a0"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a3871878085dd72cf379da9156b4c8b2195339b81a73ef8bd29d3cfe78bd72a0"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a3871878085dd72cf379da9156b4c8b2195339b81a73ef8bd29d3cfe78bd72a0"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "a3871878085dd72cf379da9156b4c8b2195339b81a73ef8bd29d3cfe78bd72a0"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-parking_pavement-01",
+    "domain": "landscape",
+    "sourceHash": "ec50c669093691a05a1208a142695c1346ef31c8c4be0a9ea53ae0ba842d678f",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e765ea4c966ee5fffb2ec6eef51f23914a145229cdc983f632e4267d96619e56"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e765ea4c966ee5fffb2ec6eef51f23914a145229cdc983f632e4267d96619e56"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e765ea4c966ee5fffb2ec6eef51f23914a145229cdc983f632e4267d96619e56"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e765ea4c966ee5fffb2ec6eef51f23914a145229cdc983f632e4267d96619e56"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e765ea4c966ee5fffb2ec6eef51f23914a145229cdc983f632e4267d96619e56"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e765ea4c966ee5fffb2ec6eef51f23914a145229cdc983f632e4267d96619e56"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e765ea4c966ee5fffb2ec6eef51f23914a145229cdc983f632e4267d96619e56"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e765ea4c966ee5fffb2ec6eef51f23914a145229cdc983f632e4267d96619e56"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e765ea4c966ee5fffb2ec6eef51f23914a145229cdc983f632e4267d96619e56"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e765ea4c966ee5fffb2ec6eef51f23914a145229cdc983f632e4267d96619e56"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e765ea4c966ee5fffb2ec6eef51f23914a145229cdc983f632e4267d96619e56"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-pavilion-01",
+    "domain": "landscape",
+    "sourceHash": "734a1e1743f2e831e1f6acf5d7287306c3a9e0149be02be6234c96b9589acc65",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "17511e9b07646e99d8ab3ff06f408639dee38c685082bc28a87b774cf70ef253"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "17511e9b07646e99d8ab3ff06f408639dee38c685082bc28a87b774cf70ef253"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "17511e9b07646e99d8ab3ff06f408639dee38c685082bc28a87b774cf70ef253"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "17511e9b07646e99d8ab3ff06f408639dee38c685082bc28a87b774cf70ef253"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "17511e9b07646e99d8ab3ff06f408639dee38c685082bc28a87b774cf70ef253"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "17511e9b07646e99d8ab3ff06f408639dee38c685082bc28a87b774cf70ef253"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "17511e9b07646e99d8ab3ff06f408639dee38c685082bc28a87b774cf70ef253"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "17511e9b07646e99d8ab3ff06f408639dee38c685082bc28a87b774cf70ef253"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "17511e9b07646e99d8ab3ff06f408639dee38c685082bc28a87b774cf70ef253"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "17511e9b07646e99d8ab3ff06f408639dee38c685082bc28a87b774cf70ef253"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "17511e9b07646e99d8ab3ff06f408639dee38c685082bc28a87b774cf70ef253"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-tree_planting-01",
+    "domain": "landscape",
+    "sourceHash": "0977ed0dbbdab09ced19da4f06daf14b6b44fa672beabeff715a9565cdd7acad",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "81927723d4d9740d07b96f94f07a77ff0ec4c238c5a42496f5b30a8d19d2a725"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "81927723d4d9740d07b96f94f07a77ff0ec4c238c5a42496f5b30a8d19d2a725"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "81927723d4d9740d07b96f94f07a77ff0ec4c238c5a42496f5b30a8d19d2a725"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "81927723d4d9740d07b96f94f07a77ff0ec4c238c5a42496f5b30a8d19d2a725"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "81927723d4d9740d07b96f94f07a77ff0ec4c238c5a42496f5b30a8d19d2a725"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "81927723d4d9740d07b96f94f07a77ff0ec4c238c5a42496f5b30a8d19d2a725"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "81927723d4d9740d07b96f94f07a77ff0ec4c238c5a42496f5b30a8d19d2a725"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "81927723d4d9740d07b96f94f07a77ff0ec4c238c5a42496f5b30a8d19d2a725"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "81927723d4d9740d07b96f94f07a77ff0ec4c238c5a42496f5b30a8d19d2a725"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "81927723d4d9740d07b96f94f07a77ff0ec4c238c5a42496f5b30a8d19d2a725"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "81927723d4d9740d07b96f94f07a77ff0ec4c238c5a42496f5b30a8d19d2a725"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-apartment_complex-02",
+    "domain": "landscape",
+    "sourceHash": "05bcec59640d299e20de2e486486a49b5348ac44ddc02ca9a9c86ffb6225535c",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "726bc49e333a6939f23700c3061e888ac1abbaa0ecabc4f40d2e04530d478916"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "726bc49e333a6939f23700c3061e888ac1abbaa0ecabc4f40d2e04530d478916"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "726bc49e333a6939f23700c3061e888ac1abbaa0ecabc4f40d2e04530d478916"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "726bc49e333a6939f23700c3061e888ac1abbaa0ecabc4f40d2e04530d478916"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "726bc49e333a6939f23700c3061e888ac1abbaa0ecabc4f40d2e04530d478916"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "726bc49e333a6939f23700c3061e888ac1abbaa0ecabc4f40d2e04530d478916"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "726bc49e333a6939f23700c3061e888ac1abbaa0ecabc4f40d2e04530d478916"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "726bc49e333a6939f23700c3061e888ac1abbaa0ecabc4f40d2e04530d478916"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "726bc49e333a6939f23700c3061e888ac1abbaa0ecabc4f40d2e04530d478916"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "726bc49e333a6939f23700c3061e888ac1abbaa0ecabc4f40d2e04530d478916"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "726bc49e333a6939f23700c3061e888ac1abbaa0ecabc4f40d2e04530d478916"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-pergola-02",
+    "domain": "landscape",
+    "sourceHash": "198ed946740685fd222f6a33836424d7bc0065583f930c0b833ce204e8269807",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "9724e0033ba47b50925167e90b38f530d4e47d19f885782c457693d48e2d3b77"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "9724e0033ba47b50925167e90b38f530d4e47d19f885782c457693d48e2d3b77"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "9724e0033ba47b50925167e90b38f530d4e47d19f885782c457693d48e2d3b77"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "9724e0033ba47b50925167e90b38f530d4e47d19f885782c457693d48e2d3b77"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "9724e0033ba47b50925167e90b38f530d4e47d19f885782c457693d48e2d3b77"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "9724e0033ba47b50925167e90b38f530d4e47d19f885782c457693d48e2d3b77"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "9724e0033ba47b50925167e90b38f530d4e47d19f885782c457693d48e2d3b77"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "9724e0033ba47b50925167e90b38f530d4e47d19f885782c457693d48e2d3b77"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "9724e0033ba47b50925167e90b38f530d4e47d19f885782c457693d48e2d3b77"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "9724e0033ba47b50925167e90b38f530d4e47d19f885782c457693d48e2d3b77"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "9724e0033ba47b50925167e90b38f530d4e47d19f885782c457693d48e2d3b77"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-timber_deck-02",
+    "domain": "landscape",
+    "sourceHash": "13b766e93d737b19ca856c58b0130a73ccf3d3cd18d4dcb5c34adc36edeb8d07",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "50227f50fc69eab2c2d5d3546980cb626b4968f6de3d129f4a337789aad51e5b"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "50227f50fc69eab2c2d5d3546980cb626b4968f6de3d129f4a337789aad51e5b"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "50227f50fc69eab2c2d5d3546980cb626b4968f6de3d129f4a337789aad51e5b"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "50227f50fc69eab2c2d5d3546980cb626b4968f6de3d129f4a337789aad51e5b"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "50227f50fc69eab2c2d5d3546980cb626b4968f6de3d129f4a337789aad51e5b"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "50227f50fc69eab2c2d5d3546980cb626b4968f6de3d129f4a337789aad51e5b"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "50227f50fc69eab2c2d5d3546980cb626b4968f6de3d129f4a337789aad51e5b"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "50227f50fc69eab2c2d5d3546980cb626b4968f6de3d129f4a337789aad51e5b"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "50227f50fc69eab2c2d5d3546980cb626b4968f6de3d129f4a337789aad51e5b"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "50227f50fc69eab2c2d5d3546980cb626b4968f6de3d129f4a337789aad51e5b"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "50227f50fc69eab2c2d5d3546980cb626b4968f6de3d129f4a337789aad51e5b"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-fence_run-02",
+    "domain": "landscape",
+    "sourceHash": "bbbd124a61f228b38f2c70ef3fb29397c77cd45dc9f839e2391b83d10f2d1721",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "11ee541c1d08eb03f7b59891b5f1679e1eb9ad9f6eb7ced8dcea4a6fd38a560f"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "11ee541c1d08eb03f7b59891b5f1679e1eb9ad9f6eb7ced8dcea4a6fd38a560f"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "11ee541c1d08eb03f7b59891b5f1679e1eb9ad9f6eb7ced8dcea4a6fd38a560f"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "11ee541c1d08eb03f7b59891b5f1679e1eb9ad9f6eb7ced8dcea4a6fd38a560f"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "11ee541c1d08eb03f7b59891b5f1679e1eb9ad9f6eb7ced8dcea4a6fd38a560f"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "11ee541c1d08eb03f7b59891b5f1679e1eb9ad9f6eb7ced8dcea4a6fd38a560f"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "11ee541c1d08eb03f7b59891b5f1679e1eb9ad9f6eb7ced8dcea4a6fd38a560f"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "11ee541c1d08eb03f7b59891b5f1679e1eb9ad9f6eb7ced8dcea4a6fd38a560f"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "11ee541c1d08eb03f7b59891b5f1679e1eb9ad9f6eb7ced8dcea4a6fd38a560f"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "11ee541c1d08eb03f7b59891b5f1679e1eb9ad9f6eb7ced8dcea4a6fd38a560f"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "11ee541c1d08eb03f7b59891b5f1679e1eb9ad9f6eb7ced8dcea4a6fd38a560f"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-planter_wall-02",
+    "domain": "landscape",
+    "sourceHash": "7baa776c41057cdf090aa745955dbf94b1d1bb89558d42fcb5b396bee96c40d4",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e600ca03f7f46efe10ea9a48729be9af5680a4c85d9873908b2dd92c210f7ac4"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e600ca03f7f46efe10ea9a48729be9af5680a4c85d9873908b2dd92c210f7ac4"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e600ca03f7f46efe10ea9a48729be9af5680a4c85d9873908b2dd92c210f7ac4"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e600ca03f7f46efe10ea9a48729be9af5680a4c85d9873908b2dd92c210f7ac4"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e600ca03f7f46efe10ea9a48729be9af5680a4c85d9873908b2dd92c210f7ac4"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e600ca03f7f46efe10ea9a48729be9af5680a4c85d9873908b2dd92c210f7ac4"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e600ca03f7f46efe10ea9a48729be9af5680a4c85d9873908b2dd92c210f7ac4"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e600ca03f7f46efe10ea9a48729be9af5680a4c85d9873908b2dd92c210f7ac4"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e600ca03f7f46efe10ea9a48729be9af5680a4c85d9873908b2dd92c210f7ac4"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e600ca03f7f46efe10ea9a48729be9af5680a4c85d9873908b2dd92c210f7ac4"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e600ca03f7f46efe10ea9a48729be9af5680a4c85d9873908b2dd92c210f7ac4"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-parking_pavement-02",
+    "domain": "landscape",
+    "sourceHash": "da0cb66a53ca99fd9b9b650427190d39696f899de9cbd35d03cf2c4657c1747e",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "35b0361e7901e54140f9dfd2dc6d96a286f32f8c26ecfcee70c1248639fe094f"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "35b0361e7901e54140f9dfd2dc6d96a286f32f8c26ecfcee70c1248639fe094f"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "35b0361e7901e54140f9dfd2dc6d96a286f32f8c26ecfcee70c1248639fe094f"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "35b0361e7901e54140f9dfd2dc6d96a286f32f8c26ecfcee70c1248639fe094f"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "35b0361e7901e54140f9dfd2dc6d96a286f32f8c26ecfcee70c1248639fe094f"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "35b0361e7901e54140f9dfd2dc6d96a286f32f8c26ecfcee70c1248639fe094f"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "35b0361e7901e54140f9dfd2dc6d96a286f32f8c26ecfcee70c1248639fe094f"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "35b0361e7901e54140f9dfd2dc6d96a286f32f8c26ecfcee70c1248639fe094f"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "35b0361e7901e54140f9dfd2dc6d96a286f32f8c26ecfcee70c1248639fe094f"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "35b0361e7901e54140f9dfd2dc6d96a286f32f8c26ecfcee70c1248639fe094f"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "35b0361e7901e54140f9dfd2dc6d96a286f32f8c26ecfcee70c1248639fe094f"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-pavilion-02",
+    "domain": "landscape",
+    "sourceHash": "bebeb0d6f7fcaa237b09c9748ecb8a80f50bfaac1e0b047ffaca5732d161cffe",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22057cbcf04b7aa165f4e639fd9ff0bee30f17f330d5f14252d24f7bb7443e9d"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22057cbcf04b7aa165f4e639fd9ff0bee30f17f330d5f14252d24f7bb7443e9d"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22057cbcf04b7aa165f4e639fd9ff0bee30f17f330d5f14252d24f7bb7443e9d"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22057cbcf04b7aa165f4e639fd9ff0bee30f17f330d5f14252d24f7bb7443e9d"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22057cbcf04b7aa165f4e639fd9ff0bee30f17f330d5f14252d24f7bb7443e9d"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22057cbcf04b7aa165f4e639fd9ff0bee30f17f330d5f14252d24f7bb7443e9d"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22057cbcf04b7aa165f4e639fd9ff0bee30f17f330d5f14252d24f7bb7443e9d"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22057cbcf04b7aa165f4e639fd9ff0bee30f17f330d5f14252d24f7bb7443e9d"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22057cbcf04b7aa165f4e639fd9ff0bee30f17f330d5f14252d24f7bb7443e9d"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22057cbcf04b7aa165f4e639fd9ff0bee30f17f330d5f14252d24f7bb7443e9d"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22057cbcf04b7aa165f4e639fd9ff0bee30f17f330d5f14252d24f7bb7443e9d"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-tree_planting-02",
+    "domain": "landscape",
+    "sourceHash": "0a8669a9227e3da3d93dc87f255dd6ab6a1dccf7c87b3d32023a6c4a203dc27e",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e156534175dafc47be031decc103afbb8c961aebb02c92b3f9416cc299d338e4"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e156534175dafc47be031decc103afbb8c961aebb02c92b3f9416cc299d338e4"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e156534175dafc47be031decc103afbb8c961aebb02c92b3f9416cc299d338e4"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e156534175dafc47be031decc103afbb8c961aebb02c92b3f9416cc299d338e4"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e156534175dafc47be031decc103afbb8c961aebb02c92b3f9416cc299d338e4"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e156534175dafc47be031decc103afbb8c961aebb02c92b3f9416cc299d338e4"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e156534175dafc47be031decc103afbb8c961aebb02c92b3f9416cc299d338e4"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e156534175dafc47be031decc103afbb8c961aebb02c92b3f9416cc299d338e4"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e156534175dafc47be031decc103afbb8c961aebb02c92b3f9416cc299d338e4"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e156534175dafc47be031decc103afbb8c961aebb02c92b3f9416cc299d338e4"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e156534175dafc47be031decc103afbb8c961aebb02c92b3f9416cc299d338e4"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-apartment_complex-03",
+    "domain": "landscape",
+    "sourceHash": "a4fc88a77a6f433e801d1f51b711589f5b8354bb9b0c9571c608a848a07b08d3",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c262fa9a7f5413a046789c01e730fa6bdbd5c4fc707a4d294537f4822accf537"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c262fa9a7f5413a046789c01e730fa6bdbd5c4fc707a4d294537f4822accf537"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c262fa9a7f5413a046789c01e730fa6bdbd5c4fc707a4d294537f4822accf537"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c262fa9a7f5413a046789c01e730fa6bdbd5c4fc707a4d294537f4822accf537"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c262fa9a7f5413a046789c01e730fa6bdbd5c4fc707a4d294537f4822accf537"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c262fa9a7f5413a046789c01e730fa6bdbd5c4fc707a4d294537f4822accf537"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c262fa9a7f5413a046789c01e730fa6bdbd5c4fc707a4d294537f4822accf537"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c262fa9a7f5413a046789c01e730fa6bdbd5c4fc707a4d294537f4822accf537"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c262fa9a7f5413a046789c01e730fa6bdbd5c4fc707a4d294537f4822accf537"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c262fa9a7f5413a046789c01e730fa6bdbd5c4fc707a4d294537f4822accf537"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "c262fa9a7f5413a046789c01e730fa6bdbd5c4fc707a4d294537f4822accf537"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-pergola-03",
+    "domain": "landscape",
+    "sourceHash": "9143e4018ce5d2771b4b64ed89b8c743ed1ec9e5f3405a6eb1e60e7e7cae8a10",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "83dffd1504913a7c7dbe9ad254bacd14668574065c9db0227b4e335921360b96"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "83dffd1504913a7c7dbe9ad254bacd14668574065c9db0227b4e335921360b96"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "83dffd1504913a7c7dbe9ad254bacd14668574065c9db0227b4e335921360b96"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "83dffd1504913a7c7dbe9ad254bacd14668574065c9db0227b4e335921360b96"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "83dffd1504913a7c7dbe9ad254bacd14668574065c9db0227b4e335921360b96"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "83dffd1504913a7c7dbe9ad254bacd14668574065c9db0227b4e335921360b96"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "83dffd1504913a7c7dbe9ad254bacd14668574065c9db0227b4e335921360b96"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "83dffd1504913a7c7dbe9ad254bacd14668574065c9db0227b4e335921360b96"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "83dffd1504913a7c7dbe9ad254bacd14668574065c9db0227b4e335921360b96"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "83dffd1504913a7c7dbe9ad254bacd14668574065c9db0227b4e335921360b96"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "83dffd1504913a7c7dbe9ad254bacd14668574065c9db0227b4e335921360b96"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-timber_deck-03",
+    "domain": "landscape",
+    "sourceHash": "0559d21ac05f69bb9dee67f1c734b387fa86d9c284f86dab75a7273c57bdcd32",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0f0e807fb7fb0c648f9ca7b89c66315b0c0dc26bf13a688ad0a994e54a68e443"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0f0e807fb7fb0c648f9ca7b89c66315b0c0dc26bf13a688ad0a994e54a68e443"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0f0e807fb7fb0c648f9ca7b89c66315b0c0dc26bf13a688ad0a994e54a68e443"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0f0e807fb7fb0c648f9ca7b89c66315b0c0dc26bf13a688ad0a994e54a68e443"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0f0e807fb7fb0c648f9ca7b89c66315b0c0dc26bf13a688ad0a994e54a68e443"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0f0e807fb7fb0c648f9ca7b89c66315b0c0dc26bf13a688ad0a994e54a68e443"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0f0e807fb7fb0c648f9ca7b89c66315b0c0dc26bf13a688ad0a994e54a68e443"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0f0e807fb7fb0c648f9ca7b89c66315b0c0dc26bf13a688ad0a994e54a68e443"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0f0e807fb7fb0c648f9ca7b89c66315b0c0dc26bf13a688ad0a994e54a68e443"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0f0e807fb7fb0c648f9ca7b89c66315b0c0dc26bf13a688ad0a994e54a68e443"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "0f0e807fb7fb0c648f9ca7b89c66315b0c0dc26bf13a688ad0a994e54a68e443"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-landscape-fence_run-03",
+    "domain": "landscape",
+    "sourceHash": "ca7ff38c2f97a8f53724051b6655b5165e5c86186576e9884a8dff9c0dead1b0",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e3457535ca015899549c46824da9164d388b931eba64217b1b0d3db8e904da15"
+        ]
+      },
+      {
+        "axis": "dimensions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e3457535ca015899549c46824da9164d388b931eba64217b1b0d3db8e904da15"
+        ]
+      },
+      {
+        "axis": "features",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e3457535ca015899549c46824da9164d388b931eba64217b1b0d3db8e904da15"
+        ]
+      },
+      {
+        "axis": "part_definitions",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e3457535ca015899549c46824da9164d388b931eba64217b1b0d3db8e904da15"
+        ]
+      },
+      {
+        "axis": "occurrences",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e3457535ca015899549c46824da9164d388b931eba64217b1b0d3db8e904da15"
+        ]
+      },
+      {
+        "axis": "hierarchy",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e3457535ca015899549c46824da9164d388b931eba64217b1b0d3db8e904da15"
+        ]
+      },
+      {
+        "axis": "transforms",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e3457535ca015899549c46824da9164d388b931eba64217b1b0d3db8e904da15"
+        ]
+      },
+      {
+        "axis": "collision_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e3457535ca015899549c46824da9164d388b931eba64217b1b0d3db8e904da15"
+        ]
+      },
+      {
+        "axis": "manufacturing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e3457535ca015899549c46824da9164d388b931eba64217b1b0d3db8e904da15"
+        ]
+      },
+      {
+        "axis": "step_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e3457535ca015899549c46824da9164d388b931eba64217b1b0d3db8e904da15"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "e3457535ca015899549c46824da9164d388b931eba64217b1b0d3db8e904da15"
+        ]
+      }
+    ]
+  }
+]

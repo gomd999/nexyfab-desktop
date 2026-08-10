@@ -11,6 +11,7 @@
  */
 import { NextRequest } from 'next/server';
 import { setSessionParticipants } from '@/lib/ai/scad-agent/serverCollab';
+import { checkPlan } from '@/lib/plan-guard';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,6 +37,8 @@ function gcRoom(sessionId: string): Map<string, ParticipantRow> {
 }
 
 export async function POST(req: NextRequest) {
+  const plan = await checkPlan(req, 'free');
+  if (!plan.ok) return plan.response;
   let body: { sessionId?: string; userId?: string; label?: string };
   try {
     body = await req.json();
@@ -65,6 +68,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const plan = await checkPlan(req, 'free');
+  if (!plan.ok) return plan.response;
   const url = new URL(req.url);
   const sessionId = url.searchParams.get('sessionId');
   if (!sessionId) {

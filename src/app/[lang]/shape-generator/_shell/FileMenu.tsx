@@ -82,6 +82,7 @@ export function FileMenu({ open, onClose, items }: FileMenuProps) {
           <button
             type="button"
             key={item.id}
+            data-testid={`file-menu-item-${item.id}`}
             disabled={item.disabled}
             onClick={() => {
               item.onClick?.();

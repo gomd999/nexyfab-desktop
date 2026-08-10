@@ -1,0 +1,225 @@
+{
+  "schema": "nexyfab.ground-truth-review-form-index.v1",
+  "policy": {
+    "blankFormsGrantApproval": false,
+    "immutableTargetMustNotChange": true,
+    "dualIndependentSignoffRequired": true
+  },
+  "summary": {
+    "forms": 30,
+    "blank": 30,
+    "submitted": 0
+  },
+  "forms": [
+    {
+      "caseId": "factory_equipment-review-02",
+      "family": "factory_equipment",
+      "file": "factory_equipment-review-02.review.json",
+      "sha256": "91b00b6e1b1b5053bda7d43b79ae81862a75eaefbb0a840b732df0a01dd6f708",
+      "status": "blank"
+    },
+    {
+      "caseId": "factory_equipment-review-03",
+      "family": "factory_equipment",
+      "file": "factory_equipment-review-03.review.json",
+      "sha256": "6ad9d97ce20c074f1f0480f9dff6940ce009e077f33fb3b72eb5cd7861801067",
+      "status": "blank"
+    },
+    {
+      "caseId": "factory_equipment-review-04",
+      "family": "factory_equipment",
+      "file": "factory_equipment-review-04.review.json",
+      "sha256": "bc8856d278c2cde2b674eeb90bb6dd7ecd800a14ee02a84bbc4b989db1c7a4f4",
+      "status": "blank"
+    },
+    {
+      "caseId": "factory_equipment-review-08",
+      "family": "factory_equipment",
+      "file": "factory_equipment-review-08.review.json",
+      "sha256": "293aca990380bbc7076d5ba38e8c9d52cba04678893ea37e01ccce0d559d4257",
+      "status": "blank"
+    },
+    {
+      "caseId": "factory_equipment-review-12",
+      "family": "factory_equipment",
+      "file": "factory_equipment-review-12.review.json",
+      "sha256": "13d49600cc1ad8673bd70c521e2831f3f173f7b53c3ecdefd6c9b51cf3443d26",
+      "status": "blank"
+    },
+    {
+      "caseId": "gearbox-review-04",
+      "family": "gearbox",
+      "file": "gearbox-review-04.review.json",
+      "sha256": "80c49f9af8523963783d3ef88bf264c45f016e3d3ae28212a6f7ffec7eacca17",
+      "status": "blank"
+    },
+    {
+      "caseId": "gearbox-review-11",
+      "family": "gearbox",
+      "file": "gearbox-review-11.review.json",
+      "sha256": "5280253ae5e3f972e56e2379db064d5742c43b2bc81c31efbeb6acdce5a4fac7",
+      "status": "blank"
+    },
+    {
+      "caseId": "gearbox-review-14",
+      "family": "gearbox",
+      "file": "gearbox-review-14.review.json",
+      "sha256": "3f17f63f61bc31edd810552b6096bc43024f1d30cbce666908a8ea62aebcb45d",
+      "status": "blank"
+    },
+    {
+      "caseId": "gearbox-review-15",
+      "family": "gearbox",
+      "file": "gearbox-review-15.review.json",
+      "sha256": "9d90169e7b7a136543a09b2c28d783ae73bde948c3a6ebee191f44e0a4022f29",
+      "status": "blank"
+    },
+    {
+      "caseId": "gearbox-review-17",
+      "family": "gearbox",
+      "file": "gearbox-review-17.review.json",
+      "sha256": "cae8ef6769f39db1aa30de42a20a04491fcf13c777bc52d327fc55422fa5cc95",
+      "status": "blank"
+    },
+    {
+      "caseId": "interior-review-06",
+      "family": "interior",
+      "file": "interior-review-06.review.json",
+      "sha256": "ffa6396fcd4c35852c87dbc6fc0e4fafb4cc732b5e3eda44346f056a288b6486",
+      "status": "blank"
+    },
+    {
+      "caseId": "interior-review-10",
+      "family": "interior",
+      "file": "interior-review-10.review.json",
+      "sha256": "90a3f99fab673367662407f16829e60aa15aa93f7cd1267845af6af3d8c32444",
+      "status": "blank"
+    },
+    {
+      "caseId": "interior-review-12",
+      "family": "interior",
+      "file": "interior-review-12.review.json",
+      "sha256": "30e079fc1eb39f920475f8d4ab7eaa229ae0b22012bcb50d883247fae030fbdb",
+      "status": "blank"
+    },
+    {
+      "caseId": "interior-review-13",
+      "family": "interior",
+      "file": "interior-review-13.review.json",
+      "sha256": "f537056a97e67b36046cab571d9aaaba5da4948fc5a8eb887c92d4d1e2fb1f40",
+      "status": "blank"
+    },
+    {
+      "caseId": "interior-review-01",
+      "family": "interior",
+      "file": "interior-review-01.review.json",
+      "sha256": "2749d00a6f924490d57f24325be38ad04d714ce53776f938b3c4abb626ffb445",
+      "status": "blank"
+    },
+    {
+      "caseId": "pressure_vessel-review-01",
+      "family": "pressure_vessel",
+      "file": "pressure_vessel-review-01.review.json",
+      "sha256": "fe87e9b365d4d9a6a417cb54d56af85800ce087eabb79e28e80953280bfffc91",
+      "status": "blank"
+    },
+    {
+      "caseId": "pressure_vessel-review-03",
+      "family": "pressure_vessel",
+      "file": "pressure_vessel-review-03.review.json",
+      "sha256": "96d0063d76ad4ad5575cd80b475abdc7a57cf24392155846cc376fc0e7e3f350",
+      "status": "blank"
+    },
+    {
+      "caseId": "pressure_vessel-review-06",
+      "family": "pressure_vessel",
+      "file": "pressure_vessel-review-06.review.json",
+      "sha256": "ef60c01aada357818dbc2c0e11c236bb07d922227ee6e050d842c3396e2b9aed",
+      "status": "blank"
+    },
+    {
+      "caseId": "pressure_vessel-review-09",
+      "family": "pressure_vessel",
+      "file": "pressure_vessel-review-09.review.json",
+      "sha256": "b912387d9c45d2ff0f951477bc7d0fc3f967594ec9bf91cc35fe9cffe78eb02a",
+      "status": "blank"
+    },
+    {
+      "caseId": "pressure_vessel-review-02",
+      "family": "pressure_vessel",
+      "file": "pressure_vessel-review-02.review.json",
+      "sha256": "024a54206e4f325b27998a128aba074ad4c6254dfb040b5bac6ca971b71f6d65",
+      "status": "blank"
+    },
+    {
+      "caseId": "robot-review-01",
+      "family": "robot",
+      "file": "robot-review-01.review.json",
+      "sha256": "53088e1bd0d26e20a847c1660438d1d8195f7ff60b7add1a065d70dbc59c84d6",
+      "status": "blank"
+    },
+    {
+      "caseId": "robot-review-06",
+      "family": "robot",
+      "file": "robot-review-06.review.json",
+      "sha256": "754f0af904209d4a9db1e4040db041a42e5627e07237e3ebd40315c3fe15d939",
+      "status": "blank"
+    },
+    {
+      "caseId": "robot-review-07",
+      "family": "robot",
+      "file": "robot-review-07.review.json",
+      "sha256": "f0bcaa9af83b101873a9630d679657ae4cdd03e705331fa0e035e259036a542a",
+      "status": "blank"
+    },
+    {
+      "caseId": "robot-review-03",
+      "family": "robot",
+      "file": "robot-review-03.review.json",
+      "sha256": "067b7930322ecbc7b14a547951bc2af91d3afac74ad266eca8f304fcf7a172f7",
+      "status": "blank"
+    },
+    {
+      "caseId": "robot-review-08",
+      "family": "robot",
+      "file": "robot-review-08.review.json",
+      "sha256": "5fcf7bb2080e508d3031f4b7d6d45d5132626085b8bbf9a82377e0a74b667547",
+      "status": "blank"
+    },
+    {
+      "caseId": "turbomachinery-review-01",
+      "family": "turbomachinery",
+      "file": "turbomachinery-review-01.review.json",
+      "sha256": "596f77992683f9c02149f72cacbde286d91642285300f56225fe7577f0ae372b",
+      "status": "blank"
+    },
+    {
+      "caseId": "turbomachinery-review-03",
+      "family": "turbomachinery",
+      "file": "turbomachinery-review-03.review.json",
+      "sha256": "0fa24873e3bc46aa8624afd07c4de9edddd6bdfc59e7c65fb53d9b96bfc0937a",
+      "status": "blank"
+    },
+    {
+      "caseId": "turbomachinery-review-05",
+      "family": "turbomachinery",
+      "file": "turbomachinery-review-05.review.json",
+      "sha256": "e3d7c4943bb13c671946d5deb35ac880df102b816a0bb5613a29278ffde3ad13",
+      "status": "blank"
+    },
+    {
+      "caseId": "turbomachinery-review-10",
+      "family": "turbomachinery",
+      "file": "turbomachinery-review-10.review.json",
+      "sha256": "7256d08764c935380999ff3d0742e89677fc477c57baaa529170a25d8f14c2c7",
+      "status": "blank"
+    },
+    {
+      "caseId": "turbomachinery-review-11",
+      "family": "turbomachinery",
+      "file": "turbomachinery-review-11.review.json",
+      "sha256": "26e1c2a29535ff58773071dfe8c8c5e61a4e47121dc61a914293b9ba4ce97362",
+      "status": "blank"
+    }
+  ]
+}

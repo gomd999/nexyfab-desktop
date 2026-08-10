@@ -169,6 +169,10 @@ export interface Assembly3DViewerProps {
   featureTrees?: Record<string, FeatureTree>;
   /** Highlight a specific part (selected from the parts list). */
   selectedPartId?: string;
+  /** Multi-selection highlight used by evidence remediation; legacy callers may omit it. */
+  selectedPartIds?: readonly string[];
+  /** Increment only for an explicit frame-selection request. */
+  focusRevision?: number;
   /** Click handler — fires with the picked part's id. */
   onSelectPart?: (partId: string, options?: { additive: boolean }) => void;
   pickMode?: ViewportPickMode;
@@ -194,6 +198,8 @@ export default function Assembly3DViewer({
   state,
   featureTrees,
   selectedPartId,
+  selectedPartIds,
+  focusRevision = 0,
   onSelectPart,
   pickMode = 'part',
   onSelectReference,
@@ -217,6 +223,9 @@ export default function Assembly3DViewer({
   const [tessellated, setTessellated] = useState<Record<string, THREE.BufferGeometry>>({});
   const onViewportReadyRef = useRef(onViewportReady);
   const treeSignature = useMemo(() => JSON.stringify(featureTrees ?? {}), [featureTrees]);
+  const selectedIdSet = useMemo(() => new Set(selectedPartIds ?? (selectedPartId ? [selectedPartId] : [])), [selectedPartId, selectedPartIds]);
+  const selectedIdSetRef = useRef(selectedIdSet);
+  selectedIdSetRef.current = selectedIdSet;
 
   // Full-stack replay: complex trees are rendered once on the server and
   // replace the immediate base-extrude preview when their STL is ready.
@@ -507,18 +516,48 @@ export default function Assembly3DViewer({
       try{const previous=topologyMapsRef.current.get(part.id);topologyMapsRef.current.set(part.id,buildTopologicalMap(mesh.geometry,previous,tree?.nodes.at(-1)?.id??part.partTemplateId));}catch{/* mock geometry has no attributes */}
 
       // Apply selection colour.
-      applySelectionColor(mesh, part.id === selectedPartId);
+      applySelectionColor(mesh, selectedIdSet.has(part.id));
     }
-  }, [state, featureTrees, selectedPartId, tessellated]);
+  }, [state, featureTrees, selectedIdSet, tessellated]);
 
   // Selection-only re-paint (cheap, skips geometry rebuild) — also runs
   // for free above; this duplicate effect lets a parent toggle highlight
   // without churning state objects.
   useEffect(() => {
     for (const [id, mesh] of meshesRef.current) {
-      applySelectionColor(mesh, id === selectedPartId);
+      applySelectionColor(mesh, selectedIdSet.has(id));
     }
-  }, [selectedPartId]);
+  }, [selectedIdSet]);
+
+  // Explicit evidence-queue framing only. Selection changes from ordinary
+  // clicks do not move the user's camera.
+  useEffect(() => {
+    const focusIds = selectedIdSetRef.current;
+    if (focusRevision <= 0 || focusIds.size === 0) return;
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    if (!camera || !controls) return;
+    const bounds = new THREE.Box3();
+    let found = false;
+    for (const id of focusIds) {
+      const mesh = meshesRef.current.get(id);
+      if (!mesh) continue;
+      try { bounds.expandByObject(mesh); found = true; } catch { /* incomplete test mock */ }
+    }
+    if (!found || bounds.isEmpty()) return;
+    const center = bounds.getCenter(new THREE.Vector3());
+    const size = bounds.getSize(new THREE.Vector3());
+    const radius = Math.max(size.length() / 2, 10);
+    const direction = camera.position.clone().sub(controls.target).normalize();
+    if (!Number.isFinite(direction.x) || direction.lengthSq() < 1e-8) direction.set(1, 1, 1).normalize();
+    const distance = radius / Math.tan((camera.fov * Math.PI / 180) / 2) * 1.35;
+    camera.position.copy(center).addScaledVector(direction, distance);
+    camera.near = Math.max(distance / 1000, 0.1);
+    camera.far = Math.max(distance * 100, 10_000);
+    camera.updateProjectionMatrix();
+    controls.target.copy(center);
+    controls.update();
+  }, [focusRevision]);
 
   // ── click → raycast → onSelectPart ──
   const handleClick = useCallback(

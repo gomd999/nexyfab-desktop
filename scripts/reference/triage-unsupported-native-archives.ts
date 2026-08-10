@@ -3,7 +3,9 @@ import path from 'node:path';
 import JSZip from 'jszip';
 
 const reviewRoot = path.resolve(process.argv[2] ?? 'docs/evidence/complex-holdout-review-260806');
-const corpusRoot = path.resolve(process.argv[3] ?? 'C:/Users/gomd9/Downloads/참고파일들');
+const corpusRootInput = process.argv[3] ?? process.env.NEXYFAB_REFERENCE_CORPUS_ROOT?.trim();
+if (!corpusRootInput) throw new Error('reference_corpus_root_required');
+const corpusRoot = path.resolve(corpusRootInput);
 const output = path.resolve(process.argv[4] ?? 'docs/evidence/external-step-structure-coverage-260806/unsupported-archive-triage-run-1.json');
 const repairLegacyUtf8Locator = (locator: string) => { if (!/[Ãìë]/.test(locator)) return locator; const repaired = Buffer.from(locator, 'latin1').toString('utf8'); return repaired.includes('\uFFFD') ? locator : repaired; };
 const safePath = (root: string, locator: string) => { const absolute = path.resolve(root, repairLegacyUtf8Locator(locator)); const relative = path.relative(root, absolute); if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) throw new Error(`unsafe_locator:${locator}`); return absolute; };

@@ -12,7 +12,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { issueOtp, isAdminOtpRequired, OTP_TTL_MS, pruneExpired } from '@/lib/admin-elevation';
 import { sendEmail } from '@/lib/email';
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
    */
   const ip = getTrustedClientIp(req.headers);
   for (const [key, max] of [[`admin-otp:u:${user.userId}`, 5], [`admin-otp:ip:${ip}`, 10]] as const) {
-    if (!rateLimit(key, max, 10 * 60_000).allowed) {
+    if (!(await rateLimitAsync(key, max, 10 * 60_000)).allowed) {
       return NextResponse.json({ ok: false, error: '요청이 많습니다 — 잠시 후 다시 시도하세요.' }, { status: 429 });
     }
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { din625BearingCatalog, validateCatalog, type CatalogComponent } from './componentCatalog';
+import { din625BearingCatalog, validateCatalog, validateProductionCatalog, type CatalogComponent } from './componentCatalog';
 import { selectRobotDriveTrain } from './componentSelector';
 import { compileMechanicalInterface } from './mechanicalInterface';
 
@@ -19,6 +19,20 @@ describe('traceable robot component selection', () => {
   });
   it('rejects untraceable catalog records', () => {
     expect(validateCatalog([{ ...catalog[0]!, source: '', artifactHash: '' }])).toContainEqual({ id: 'M1', message: 'traceable source and artifact hash are required' });
+  });
+  it('rejects duplicate joints and non-positive engineering requirements', () => {
+    const valid = { joint: 1, requiredOutputTorqueNm: 30, requiredOutputRpm: 20, radialLoadN: 1000, minShaftDiameterMm: 20 };
+    expect(selectRobotDriveTrain([valid, valid], catalog)).toMatchObject({ ok: false, errors: [expect.stringContaining('duplicate')] });
+    expect(selectRobotDriveTrain([{ ...valid, requiredOutputTorqueNm: 0 }], catalog)).toMatchObject({ ok: false, errors: [expect.stringContaining('requiredOutputTorqueNm')] });
+  });
+  it('requires full artifact binding and confirmed mass for production catalogs', () => {
+    expect(validateProductionCatalog(catalog, [])).toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: 'production artifactHash must be a full SHA-256' }),
+      expect.objectContaining({ message: 'production artifact evidence is missing' }),
+    ]));
+    const hash = 'a'.repeat(64);
+    const production = catalog.slice(0, 2).map(component => ({ ...component, artifactHash: hash, massSource: 'confirmed' as const }));
+    expect(validateProductionCatalog(production, [{ sha256: hash, byteLength: 1024, source: 'manufacturer datasheet PDF' }])).toEqual([]);
   });
   it('compiles axis and mounting-plane constraints plus explicit press evidence', () => {
     const out = compileMechanicalInterface({ id: 'J1-motor', parentPartId: 'housing', componentPartId: 'motor', parent: base.interface, component: base.interface, fit: 'press', fitAllowanceMm: 0.02 });

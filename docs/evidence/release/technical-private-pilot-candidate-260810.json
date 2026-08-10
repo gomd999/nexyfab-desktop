@@ -1,0 +1,466 @@
+{
+  "schema": "nexyfab.technical-private-pilot-readiness.v1",
+  "releaseId": "2026.08.10-technical-candidate",
+  "decision": "blocked",
+  "releaseReady": false,
+  "paymentDeferred": true,
+  "legalDeferred": true,
+  "externalCadRequired": false,
+  "audit": {
+    "schema": "nexyfab.cad-technical-release-audit.v3",
+    "releaseId": "2026.08.10-technical-candidate",
+    "decisionScope": "technical-private-pilot",
+    "deferred": {
+      "payment": true,
+      "legal": true
+    },
+    "externalCadRequired": false,
+    "runtimeKernelMode": "wasm-only-no-stub",
+    "closedBetaIntegrity": {
+      "status": "pass",
+      "reportSha256": "2577b2c717e4e3455ac9d7d83143d97ad3959dd1dca9b40b2f20132eaffb8f58",
+      "tableDiff": 0,
+      "fileDiff": 0
+    },
+    "referenceCorpus": {
+      "status": "pass",
+      "manifestSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+      "sourceWrites": 0
+    },
+    "generationState": {
+      "ownerIsolation": "fail",
+      "compareAndSwap": "fail",
+      "durableProductionStore": "fail",
+      "browserCannotRecordPassedStages": "fail",
+      "evidenceSha256": "b0d4423bfe4a8a17d50dc418a2afdf37b437254c3e3253796f73acdafb8e092d"
+    },
+    "generationAccuracy": {
+      "deepSchemaValidation": "fail",
+      "trustedEvidenceBinding": "fail",
+      "numericParameterCoverage": 0,
+      "missingInputFailsClosed": "fail",
+      "localRepairPreservesLockedParameters": "fail",
+      "evidenceSha256": "b0d4423bfe4a8a17d50dc418a2afdf37b437254c3e3253796f73acdafb8e092d"
+    },
+    "capabilityMatrix": [
+      {
+        "id": "ai-complex-product",
+        "support": "preview",
+        "publicClaimAllowed": false,
+        "evidenceSha256": "7f649364fd5b5140ce997cdafd01a8f9f3d2fe0e365efef5bb37a233ea2f788c",
+        "samples": 0,
+        "passed": 0,
+        "independentHoldout": false,
+        "limitations": [
+          "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+          "collect_approved_independent_holdout:ai-complex-product"
+        ]
+      },
+      {
+        "id": "manual-parametric-editing",
+        "support": "preview",
+        "publicClaimAllowed": false,
+        "evidenceSha256": "74f246a49d7a0985c2c4a90501722cd55a72445505908d543f75f028842c284b",
+        "samples": 0,
+        "passed": 0,
+        "independentHoldout": false,
+        "limitations": [
+          "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+          "collect_approved_independent_holdout:manual-parametric-editing"
+        ]
+      },
+      {
+        "id": "expert-precision-cad",
+        "support": "preview",
+        "publicClaimAllowed": false,
+        "evidenceSha256": "f530ff8c098c14b5e3e276ba1c42dc2cb48fb8544d1b28e61f87549c619c0363",
+        "samples": 0,
+        "passed": 0,
+        "independentHoldout": false,
+        "limitations": [
+          "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+          "collect_approved_independent_holdout:expert-precision-cad"
+        ]
+      },
+      {
+        "id": "assembly-motion",
+        "support": "preview",
+        "publicClaimAllowed": false,
+        "evidenceSha256": "92f77646afa5c3c913024683a23e70e2c73d1f8a88402f942cca6818b52733d4",
+        "samples": 0,
+        "passed": 0,
+        "independentHoldout": false,
+        "limitations": [
+          "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+          "collect_approved_independent_holdout:assembly-motion"
+        ]
+      },
+      {
+        "id": "continuous-collision",
+        "support": "preview",
+        "publicClaimAllowed": false,
+        "evidenceSha256": "bf910c8ed4fe097abc88302a1aa413ba580cd4fbe0b7e26d05eeffc380adbb9f",
+        "samples": 0,
+        "passed": 0,
+        "independentHoldout": false,
+        "limitations": [
+          "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+          "collect_approved_independent_holdout:continuous-collision"
+        ]
+      },
+      {
+        "id": "step-exchange",
+        "support": "preview",
+        "publicClaimAllowed": false,
+        "evidenceSha256": "77e85bc137b48fe760881f8362fb20ce6a7688f63044ae40115eee28d66a6815",
+        "samples": 0,
+        "passed": 0,
+        "independentHoldout": false,
+        "limitations": [
+          "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+          "collect_approved_independent_holdout:step-exchange"
+        ]
+      },
+      {
+        "id": "drawing-bom-manufacturing",
+        "support": "preview",
+        "publicClaimAllowed": false,
+        "evidenceSha256": "32de68ba1d31bfc270d7536574631ba9727c1fc3792de3b62c2b2764aa442ce3",
+        "samples": 0,
+        "passed": 0,
+        "independentHoldout": false,
+        "limitations": [
+          "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+          "collect_approved_independent_holdout:drawing-bom-manufacturing"
+        ]
+      }
+    ],
+    "operations": {
+      "rollback": "fail",
+      "canary": "fail",
+      "monitoring": "fail",
+      "workerResume": "fail",
+      "performanceBudget": "fail",
+      "evidenceSha256": "1cfd63e99051e00c1cf96098a29b68622d82bacbc36336b99ad6673dd99e3bca"
+    }
+  },
+  "auditIssues": [
+    {
+      "code": "audit.generation_state.ownerIsolation",
+      "message": "generation state ownerIsolation evidence must pass"
+    },
+    {
+      "code": "audit.generation_state.compareAndSwap",
+      "message": "generation state compareAndSwap evidence must pass"
+    },
+    {
+      "code": "audit.generation_state.durableProductionStore",
+      "message": "generation state durableProductionStore evidence must pass"
+    },
+    {
+      "code": "audit.generation_state.browserCannotRecordPassedStages",
+      "message": "generation state browserCannotRecordPassedStages evidence must pass"
+    },
+    {
+      "code": "audit.generation_accuracy.deepSchemaValidation",
+      "message": "generation accuracy deepSchemaValidation evidence must pass"
+    },
+    {
+      "code": "audit.generation_accuracy.trustedEvidenceBinding",
+      "message": "generation accuracy trustedEvidenceBinding evidence must pass"
+    },
+    {
+      "code": "audit.generation_accuracy.missingInputFailsClosed",
+      "message": "generation accuracy missingInputFailsClosed evidence must pass"
+    },
+    {
+      "code": "audit.generation_accuracy.localRepairPreservesLockedParameters",
+      "message": "generation accuracy localRepairPreservesLockedParameters evidence must pass"
+    },
+    {
+      "code": "audit.generation_accuracy.parameter_coverage",
+      "message": "every numeric geometry parameter must have accepted provenance"
+    },
+    {
+      "code": "audit.capability.ai-complex-product.support",
+      "message": "ai-complex-product must be verified before it is a release claim"
+    },
+    {
+      "code": "audit.capability.ai-complex-product.holdout",
+      "message": "ai-complex-product requires an independent holdout set"
+    },
+    {
+      "code": "audit.capability.ai-complex-product.samples",
+      "message": "ai-complex-product requires at least 30 samples"
+    },
+    {
+      "code": "audit.capability.ai-complex-product.pass_rate",
+      "message": "ai-complex-product requires 95% holdout pass rate"
+    },
+    {
+      "code": "audit.capability.manual-parametric-editing.support",
+      "message": "manual-parametric-editing must be verified before it is a release claim"
+    },
+    {
+      "code": "audit.capability.manual-parametric-editing.holdout",
+      "message": "manual-parametric-editing requires an independent holdout set"
+    },
+    {
+      "code": "audit.capability.manual-parametric-editing.samples",
+      "message": "manual-parametric-editing requires at least 20 samples"
+    },
+    {
+      "code": "audit.capability.manual-parametric-editing.pass_rate",
+      "message": "manual-parametric-editing requires 95% holdout pass rate"
+    },
+    {
+      "code": "audit.capability.expert-precision-cad.support",
+      "message": "expert-precision-cad must be verified before it is a release claim"
+    },
+    {
+      "code": "audit.capability.expert-precision-cad.holdout",
+      "message": "expert-precision-cad requires an independent holdout set"
+    },
+    {
+      "code": "audit.capability.expert-precision-cad.samples",
+      "message": "expert-precision-cad requires at least 20 samples"
+    },
+    {
+      "code": "audit.capability.expert-precision-cad.pass_rate",
+      "message": "expert-precision-cad requires 95% holdout pass rate"
+    },
+    {
+      "code": "audit.capability.assembly-motion.support",
+      "message": "assembly-motion must be verified before it is a release claim"
+    },
+    {
+      "code": "audit.capability.assembly-motion.holdout",
+      "message": "assembly-motion requires an independent holdout set"
+    },
+    {
+      "code": "audit.capability.assembly-motion.samples",
+      "message": "assembly-motion requires at least 20 samples"
+    },
+    {
+      "code": "audit.capability.assembly-motion.pass_rate",
+      "message": "assembly-motion requires 95% holdout pass rate"
+    },
+    {
+      "code": "audit.capability.continuous-collision.support",
+      "message": "continuous-collision must be verified before it is a release claim"
+    },
+    {
+      "code": "audit.capability.continuous-collision.holdout",
+      "message": "continuous-collision requires an independent holdout set"
+    },
+    {
+      "code": "audit.capability.continuous-collision.samples",
+      "message": "continuous-collision requires at least 20 samples"
+    },
+    {
+      "code": "audit.capability.continuous-collision.pass_rate",
+      "message": "continuous-collision requires 95% holdout pass rate"
+    },
+    {
+      "code": "audit.capability.step-exchange.support",
+      "message": "step-exchange must be verified before it is a release claim"
+    },
+    {
+      "code": "audit.capability.step-exchange.holdout",
+      "message": "step-exchange requires an independent holdout set"
+    },
+    {
+      "code": "audit.capability.step-exchange.samples",
+      "message": "step-exchange requires at least 20 samples"
+    },
+    {
+      "code": "audit.capability.step-exchange.pass_rate",
+      "message": "step-exchange requires 95% holdout pass rate"
+    },
+    {
+      "code": "audit.capability.drawing-bom-manufacturing.support",
+      "message": "drawing-bom-manufacturing must be verified before it is a release claim"
+    },
+    {
+      "code": "audit.capability.drawing-bom-manufacturing.holdout",
+      "message": "drawing-bom-manufacturing requires an independent holdout set"
+    },
+    {
+      "code": "audit.capability.drawing-bom-manufacturing.samples",
+      "message": "drawing-bom-manufacturing requires at least 10 samples"
+    },
+    {
+      "code": "audit.capability.drawing-bom-manufacturing.pass_rate",
+      "message": "drawing-bom-manufacturing requires 95% holdout pass rate"
+    },
+    {
+      "code": "audit.operations.rollback",
+      "message": "operations rollback evidence must pass"
+    },
+    {
+      "code": "audit.operations.canary",
+      "message": "operations canary evidence must pass"
+    },
+    {
+      "code": "audit.operations.monitoring",
+      "message": "operations monitoring evidence must pass"
+    },
+    {
+      "code": "audit.operations.workerResume",
+      "message": "operations workerResume evidence must pass"
+    },
+    {
+      "code": "audit.operations.performanceBudget",
+      "message": "operations performanceBudget evidence must pass"
+    }
+  ],
+  "domains": [
+    {
+      "domain": "mechanical",
+      "status": "not_run",
+      "assessment": null,
+      "blockers": [
+        "approved_signed_independent_campaign_missing"
+      ]
+    },
+    {
+      "domain": "building",
+      "status": "not_run",
+      "assessment": null,
+      "blockers": [
+        "approved_signed_independent_campaign_missing"
+      ]
+    },
+    {
+      "domain": "civil",
+      "status": "not_run",
+      "assessment": null,
+      "blockers": [
+        "approved_signed_independent_campaign_missing"
+      ]
+    },
+    {
+      "domain": "landscape",
+      "status": "not_run",
+      "assessment": null,
+      "blockers": [
+        "approved_signed_independent_campaign_missing"
+      ]
+    },
+    {
+      "domain": "interior",
+      "status": "not_run",
+      "assessment": null,
+      "blockers": [
+        "approved_signed_independent_campaign_missing"
+      ]
+    }
+  ],
+  "evidenceMaturity": {
+    "closedBeta": "verified",
+    "referenceCorpus": "verified",
+    "capabilities": {
+      "ai-complex-product": "code_verified",
+      "manual-parametric-editing": "code_verified",
+      "expert-precision-cad": "code_verified",
+      "assembly-motion": "code_verified",
+      "continuous-collision": "code_verified",
+      "step-exchange": "code_verified",
+      "drawing-bom-manufacturing": "code_verified"
+    }
+  },
+  "blockingActions": [
+    "production_redis_cas_receipt_missing",
+    "multi_instance_resume_drill_missing",
+    "approved_holdout_numeric_parameter_provenance_missing",
+    "collect_approved_independent_holdout:ai-complex-product",
+    "collect_approved_independent_holdout:manual-parametric-editing",
+    "collect_approved_independent_holdout:expert-precision-cad",
+    "collect_approved_independent_holdout:assembly-motion",
+    "collect_approved_independent_holdout:continuous-collision",
+    "collect_approved_independent_holdout:step-exchange",
+    "collect_approved_independent_holdout:drawing-bom-manufacturing",
+    "staging_rollback_receipt_missing",
+    "production_like_canary_windows_missing",
+    "monitor_alert_delivery_receipt_missing",
+    "production_worker_resume_receipt_missing",
+    "production_like_load_budget_receipt_missing",
+    "audit.generation_state.ownerIsolation",
+    "audit.generation_state.compareAndSwap",
+    "audit.generation_state.durableProductionStore",
+    "audit.generation_state.browserCannotRecordPassedStages",
+    "audit.generation_accuracy.deepSchemaValidation",
+    "audit.generation_accuracy.trustedEvidenceBinding",
+    "audit.generation_accuracy.missingInputFailsClosed",
+    "audit.generation_accuracy.localRepairPreservesLockedParameters",
+    "audit.generation_accuracy.parameter_coverage",
+    "audit.capability.ai-complex-product.support",
+    "audit.capability.ai-complex-product.holdout",
+    "audit.capability.ai-complex-product.samples",
+    "audit.capability.ai-complex-product.pass_rate",
+    "audit.capability.manual-parametric-editing.support",
+    "audit.capability.manual-parametric-editing.holdout",
+    "audit.capability.manual-parametric-editing.samples",
+    "audit.capability.manual-parametric-editing.pass_rate",
+    "audit.capability.expert-precision-cad.support",
+    "audit.capability.expert-precision-cad.holdout",
+    "audit.capability.expert-precision-cad.samples",
+    "audit.capability.expert-precision-cad.pass_rate",
+    "audit.capability.assembly-motion.support",
+    "audit.capability.assembly-motion.holdout",
+    "audit.capability.assembly-motion.samples",
+    "audit.capability.assembly-motion.pass_rate",
+    "audit.capability.continuous-collision.support",
+    "audit.capability.continuous-collision.holdout",
+    "audit.capability.continuous-collision.samples",
+    "audit.capability.continuous-collision.pass_rate",
+    "audit.capability.step-exchange.support",
+    "audit.capability.step-exchange.holdout",
+    "audit.capability.step-exchange.samples",
+    "audit.capability.step-exchange.pass_rate",
+    "audit.capability.drawing-bom-manufacturing.support",
+    "audit.capability.drawing-bom-manufacturing.holdout",
+    "audit.capability.drawing-bom-manufacturing.samples",
+    "audit.capability.drawing-bom-manufacturing.pass_rate",
+    "audit.operations.rollback",
+    "audit.operations.canary",
+    "audit.operations.monitoring",
+    "audit.operations.workerResume",
+    "audit.operations.performanceBudget",
+    "domain.mechanical:approved_signed_independent_campaign_missing",
+    "domain.building:approved_signed_independent_campaign_missing",
+    "domain.civil:approved_signed_independent_campaign_missing",
+    "domain.landscape:approved_signed_independent_campaign_missing",
+    "domain.interior:approved_signed_independent_campaign_missing"
+  ],
+  "generatedAt": "2026-08-09T23:47:22.118Z",
+  "evidencePolicy": {
+    "localTestsMayProveImplementationButNotIndependentAccuracy": true,
+    "dryRunsMayNotCertifyRelease": true,
+    "sourceCorpusReadOnly": true,
+    "endUserExternalCadRequired": false,
+    "noAutomaticReleaseMutation": true
+  },
+  "sourceArtifacts": {
+    "docs/evidence/ai-robot6axis-demonstrator-260809/report.json": "3bcdd539247fdb48f0b2524d0dd7a03fd02413c0c74eaf08fb9b94e9fb300969",
+    "docs/evidence/bim-guideline/ifc-deep-roundtrip-260810.json": "31a03a1300ce66eca09db5b5162094cf069fee2e56c8919490813467e0a9f5ba",
+    "docs/evidence/cad-independent/reference-utilization-manifest-260809.json": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+    "docs/evidence/external-step-structure-coverage-260806/ifc-collision-capability-run-1.json": "a2818b1fa6a39bf15776c8597322f01fbb5788b0e4cfbb190afe0e80aeac151e",
+    "docs/evidence/fea/multibody-contact-260810.json": "ba4b363f4e7a9080394dd6aad36c688ff527a716974eb2cff7976150c1efd505",
+    "docs/evidence/joint-motion-clearance-260807/specimen-run-1.json": "7394c084a170ddf4582903976eed06d6193342e32355d8e2b483847c1eea008c",
+    "docs/evidence/release/dependency-security-audit-260810.json": "bb48c74f1b9c40efebcb351283294b901a56097c7b8c5037e206a0c257aa3f91",
+    "docs/evidence/scad-native-step-assembly-260806/run-5.json": "f97b07780131fcc8cdcfefb90506a434a2526dfccae4ccbf297c87a0ed494d54",
+    "docs/evidence/step-body-membership-260806/run-1.json": "1f37e2f0af849856ff680db37972f07957717895ced574261d5e859672ce73c6",
+    "docs/evidence/topology-survival-260806/run-8.json": "933d4aae046c11236b1f9d24bbdc010eb190b6846681fb0f0c6c3a4373a63c62",
+    "docs/evidence/workspace/design-workspace-revision-260810.json": "360a072a4b5f06a16845fb47ca761aae362661d513efb0fc5f949762f79e57c5",
+    "scripts/perf-benchmark.mjs": "254e7289e894416cbea540affd377efc55d054649714c29ddaa7132528828807",
+    "scripts/verify-backup-restore.mjs": "061810ff186fb5c5cc5a12e36a0613e71a2ca817e87620040fac0ed6e7fc7d34",
+    "scripts/verify-rollback-target.mjs": "2734b3ba75d40654bb9c108515186b28845ead4551e656ab7ac72eea6aa10710",
+    "src/lib/ai/designWorkspaceRevision.ts": "baf8395ed19bd734ce6b49f519b27b701f03f079e5bd6af8d7e74db5d9377b11",
+    "src/lib/ai/generationStateStore.ts": "fa9bae17047bf13569223b8623fdbc38d2284b30887bb433bf277c75f042dc4c",
+    "src/lib/ai/productDecompositionAccuracy.ts": "be6bc5a6c3a5e332383e77441d1274ad1140b20833a33d9b1e6eff3eec962c47",
+    "src/lib/technicalCanaryPolicy.ts": "c035a72cbc6f76cafeb428b99959a7fca15a587548d34b1ab8fd933be0f9b1e5",
+    "validation-reports/closed-beta-integrity-260809-commercial-v1-baseline.json": "250469e2786d1023d6fb09711bafb05107c189b4426ce8f8c5a7bd21ccce093f",
+    "validation-reports/closed-beta-integrity-260810-active-master-wp20-final.json": "2577b2c717e4e3455ac9d7d83143d97ad3959dd1dca9b40b2f20132eaffb8f58"
+  }
+}

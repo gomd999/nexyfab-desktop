@@ -31,9 +31,16 @@ export async function register() {
     validateStartup();
 
     if (process.env.DATABASE_URL) {
-      const { initPostgresSchema } = await import('./lib/db-adapter');
-      await initPostgresSchema().catch((err: unknown) => {
-        console.error('[instrumentation] PostgreSQL schema init failed:', err);
+      const { initPostgresSchema, verifyPostgresSchema } = await import('./lib/db-adapter');
+      const configured = process.env.NEXYFAB_SCHEMA_MODE?.trim().toLowerCase();
+      const mode = configured || (process.env.NODE_ENV === 'production' ? 'verify' : 'apply');
+      if (!['verify', 'apply'].includes(mode)) {
+        console.error(`[instrumentation] Invalid NEXYFAB_SCHEMA_MODE: ${mode}`);
+        process.exit(1);
+      }
+      const operation = mode === 'apply' ? initPostgresSchema : verifyPostgresSchema;
+      await operation().catch((err: unknown) => {
+        console.error(`[instrumentation] PostgreSQL schema ${mode} failed:`, err);
         process.exit(1);
       });
     }

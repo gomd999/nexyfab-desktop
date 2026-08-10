@@ -1,0 +1,2548 @@
+{
+  "schema": "nexyfab.bim-guideline-registry-audit.v1",
+  "generatedAt": "2026-08-09T21:31:09.370Z",
+  "sourcePolicy": {
+    "access": "read_only",
+    "sourceMutation": false,
+    "generatedPayloadCopies": false
+  },
+  "workbookInventory": [
+    {
+      "path": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+      "sha256": "3953666e73f8c059a0dc8f91671b7eedc20e9970bec2882417908bcc0524520a",
+      "sheets": 4
+    },
+    {
+      "path": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(3)_지구외도로 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+      "sha256": "f249ef794e5d072ec407094835666dd74221db3a3aa2e110a9880b2497e85e14",
+      "sheets": 4
+    },
+    {
+      "path": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+      "sha256": "0d61ddc0b6643b7726d6e44d4294a735a2f505cb4ff955ea6101bab60e42e876",
+      "sheets": 99
+    },
+    {
+      "path": "05. BIM 라이브러리 작성기준, 작성대상 및 정의서\\부속서-05(2)_단지분야 BIM 라이브러리 작성대상.xlsx",
+      "sha256": "0414c74ee047de447e7e4d744f10a704a39efc6da6d629f8ee7e3927b09dc57f",
+      "sheets": 2
+    },
+    {
+      "path": "05. BIM 라이브러리 작성기준, 작성대상 및 정의서\\부속서-05(3)_단지분야 BIM 라이브러리 정의서.xlsx",
+      "sha256": "b24db60e4e891b9095c6d2c0da04264a807e343953785a99866e68943fdb61e7",
+      "sheets": 10
+    },
+    {
+      "path": "07. BIM 수량산출기준 및 수량산출서 작성기준\\부속서-07(1)_단지분야 BIM 수량산출 기준.xlsx",
+      "sha256": "13a0ea4f81d68c1e6bfbda95380de58b2cf0968c7c3f5fe2c70c61b6eaab68d1",
+      "sheets": 17
+    },
+    {
+      "path": "07. BIM 수량산출기준 및 수량산출서 작성기준\\부속서-07(2)_단지분야 BIM 수량산출서 양식(예시).xlsx",
+      "sha256": "ed52da63ab218885d4a6410e064cbb68330d1c51034369da8dbb21a023bfc2dc",
+      "sheets": 25
+    }
+  ],
+  "summary": {
+    "workbookCount": 7,
+    "worksheetCount": 161,
+    "classificationRegistryCount": 2,
+    "psetPropertyCount": 202,
+    "sourceFormulaCellCount": 3016,
+    "sourceFormulaErrorCount": 2288,
+    "psetFormulaTextCount": 19,
+    "unknownPsetTypeCount": 0,
+    "duplicatePsetPropertyCount": 7
+  },
+  "classificationRegistries": [
+    {
+      "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+      "counts": {
+        "total": 1231,
+        "WBS": 1002,
+        "OBS": 229
+      },
+      "validation": {
+        "status": "valid",
+        "issues": []
+      },
+      "sample": [
+        {
+          "scheme": "OBS",
+          "code": "C",
+          "name": "단지조성",
+          "level": 1,
+          "sourceRef": "wbs-obs-0"
+        },
+        {
+          "scheme": "OBS",
+          "code": "01",
+          "name": "공통시설",
+          "level": 2,
+          "sourceRef": "wbs-obs-0"
+        },
+        {
+          "scheme": "OBS",
+          "code": "01A1",
+          "name": "공통",
+          "level": 3,
+          "sourceRef": "wbs-obs-0"
+        },
+        {
+          "scheme": "WBS",
+          "code": "Z1",
+          "name": "공통가설공사",
+          "level": 5,
+          "sourceRef": "wbs-obs-0"
+        },
+        {
+          "scheme": "WBS",
+          "code": "Z1n",
+          "name": "공통가설-주요자재",
+          "level": 6,
+          "sourceRef": "wbs-obs-0"
+        },
+        {
+          "scheme": "WBS",
+          "code": "0001",
+          "name": "주요자재구입비",
+          "level": 7,
+          "sourceRef": "wbs-obs-0"
+        },
+        {
+          "scheme": "WBS",
+          "code": "0515",
+          "name": "제수밸브",
+          "level": 7,
+          "sourceRef": "wbs-obs-0"
+        },
+        {
+          "scheme": "OBS",
+          "code": "D",
+          "name": "지구외도로",
+          "level": 1,
+          "sourceRef": "wbs-obs-0"
+        },
+        {
+          "scheme": "OBS",
+          "code": "02",
+          "name": "토공시설",
+          "level": 2,
+          "sourceRef": "wbs-obs-0"
+        },
+        {
+          "scheme": "OBS",
+          "code": "02A1",
+          "name": "토공시설-단독주택용지",
+          "level": 3,
+          "sourceRef": "wbs-obs-0"
+        },
+        {
+          "scheme": "OBS",
+          "code": "블록용도명",
+          "name": "예시",
+          "level": 4,
+          "sourceRef": "wbs-obs-0"
+        },
+        {
+          "scheme": "WBS",
+          "code": "Z2",
+          "name": "직접가설공사",
+          "level": 5,
+          "sourceRef": "wbs-obs-0"
+        }
+      ]
+    },
+    {
+      "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(3)_지구외도로 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+      "counts": {
+        "total": 1054,
+        "WBS": 887,
+        "OBS": 167
+      },
+      "validation": {
+        "status": "valid",
+        "issues": []
+      },
+      "sample": [
+        {
+          "scheme": "OBS",
+          "code": "C",
+          "name": "단지조성",
+          "level": 1,
+          "sourceRef": "wbs-obs-1"
+        },
+        {
+          "scheme": "OBS",
+          "code": "01",
+          "name": "공통시설",
+          "level": 2,
+          "sourceRef": "wbs-obs-1"
+        },
+        {
+          "scheme": "OBS",
+          "code": "01A1",
+          "name": "공통",
+          "level": 3,
+          "sourceRef": "wbs-obs-1"
+        },
+        {
+          "scheme": "WBS",
+          "code": "Z1",
+          "name": "공통가설공사",
+          "level": 5,
+          "sourceRef": "wbs-obs-1"
+        },
+        {
+          "scheme": "WBS",
+          "code": "Z1n",
+          "name": "공통가설-주요자재",
+          "level": 6,
+          "sourceRef": "wbs-obs-1"
+        },
+        {
+          "scheme": "WBS",
+          "code": "0001",
+          "name": "주요자재구입비",
+          "level": 7,
+          "sourceRef": "wbs-obs-1"
+        },
+        {
+          "scheme": "WBS",
+          "code": "0515",
+          "name": "제수밸브",
+          "level": 7,
+          "sourceRef": "wbs-obs-1"
+        },
+        {
+          "scheme": "OBS",
+          "code": "D",
+          "name": "지구외도로",
+          "level": 1,
+          "sourceRef": "wbs-obs-1"
+        },
+        {
+          "scheme": "OBS",
+          "code": "02",
+          "name": "토공시설",
+          "level": 2,
+          "sourceRef": "wbs-obs-1"
+        },
+        {
+          "scheme": "OBS",
+          "code": "02X1",
+          "name": "토공시설-고속국도",
+          "level": 3,
+          "sourceRef": "wbs-obs-1"
+        },
+        {
+          "scheme": "OBS",
+          "code": "예시",
+          "name": "토공 도로명",
+          "level": 4,
+          "sourceRef": "wbs-obs-1"
+        },
+        {
+          "scheme": "WBS",
+          "code": "Z2",
+          "name": "직접가설공사",
+          "level": 5,
+          "sourceRef": "wbs-obs-1"
+        }
+      ]
+    }
+  ],
+  "psetCandidate": {
+    "validation": {
+      "status": "invalid",
+      "issues": [
+        {
+          "code": "PROPERTY_KEY_INVALID",
+          "path": "properties[113]",
+          "message": "Property 객체_교각기둥.RebarRatio(H19mm) needs a Pset and an expression-safe key.",
+          "sourceRef": "pset-2-uac1duccb4_uad50uac01uae30ub465"
+        },
+        {
+          "code": "PROPERTY_KEY_INVALID",
+          "path": "properties[114]",
+          "message": "Property 객체_교각기둥.RebarRatio(H32mm) needs a Pset and an expression-safe key.",
+          "sourceRef": "pset-2-uac1duccb4_uad50uac01uae30ub465"
+        },
+        {
+          "code": "PROPERTY_KEY_INVALID",
+          "path": "properties[115]",
+          "message": "Property 객체_교각기둥.RebarRatio(H35mm) needs a Pset and an expression-safe key.",
+          "sourceRef": "pset-2-uac1duccb4_uad50uac01uae30ub465"
+        },
+        {
+          "code": "PROPERTY_KEY_INVALID",
+          "path": "properties[124]",
+          "message": "Property 객체_교각기둥.3011150520143308 needs a Pset and an expression-safe key.",
+          "sourceRef": "pset-2-uac1duccb4_uad50uac01uae30ub465"
+        },
+        {
+          "code": "PROPERTY_KEY_INVALID",
+          "path": "properties[125]",
+          "message": "Property 객체_교각기둥.3010161920160901 needs a Pset and an expression-safe key.",
+          "sourceRef": "pset-2-uac1duccb4_uad50uac01uae30ub465"
+        },
+        {
+          "code": "PROPERTY_KEY_INVALID",
+          "path": "properties[126]",
+          "message": "Property 객체_교각기둥.3010161920160905 needs a Pset and an expression-safe key.",
+          "sourceRef": "pset-2-uac1duccb4_uad50uac01uae30ub465"
+        },
+        {
+          "code": "PROPERTY_KEY_INVALID",
+          "path": "properties[127]",
+          "message": "Property 객체_교각기둥.3010161920160906 needs a Pset and an expression-safe key.",
+          "sourceRef": "pset-2-uac1duccb4_uad50uac01uae30ub465"
+        },
+        {
+          "code": "PROPERTY_KEY_INVALID",
+          "path": "properties[188]",
+          "message": "Property 객체_강관말뚝.3010280320289690 needs a Pset and an expression-safe key.",
+          "sourceRef": "pset-2-uac1duccb4_uac15uad00ub9d0ub69d"
+        }
+      ]
+    },
+    "typeVocabulary": {
+      "날짜": 24,
+      "문자": 97,
+      "숫자": 89
+    },
+    "unitVocabulary": {
+      "-": 94,
+      "%": 6,
+      "개소": 2,
+      "본": 1,
+      "월": 2,
+      "조": 2,
+      "회": 2,
+      "EA": 2,
+      "kg": 7,
+      "kg/cm2": 1,
+      "kg/m3": 3,
+      "m": 7,
+      "m2": 10,
+      "m3": 11,
+      "mm": 29,
+      "Mpa": 4,
+      "X,Y,Z": 3,
+      "YYYY.MM.DD": 24
+    },
+    "unknownTypes": [],
+    "duplicatePropertyIds": [
+      "객체_강관말뚝.PileLength",
+      "객체_교각기둥.CED410012500",
+      "객체_교각기둥.CER220120000",
+      "객체_교각기둥.DamgedLocation",
+      "객체_원형1맨홀.BAA000000016",
+      "객체_원형1맨홀.BAA000000018",
+      "객체_원형1맨홀.DamgedLocation"
+    ],
+    "sample": [
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "GUID",
+        "name": "식별ID",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "건설객체 고유식별자",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "ObjectFileName",
+        "name": "객체파일명",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "객체 명명체계에 의한 객체 파일명",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "ObjectName",
+        "name": "객체명칭",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "객체명칭",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "ObjectShape",
+        "name": "객체형상",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "객체의 형상특징 예)사각형, 원형, 유선형, 복합형, 개방형, 슬래브식",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "ObjectCode",
+        "name": "객체분류코드",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "객체분류체계에 의한 객체 또는 부품 분류코드",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "ObjectSize",
+        "name": "객체규격",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "객체의 특징적인 규격 예)WxBxH, DxH",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "ObjectType",
+        "name": "객체유형",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "현장제작객체(Part), 제품건설부품(Component), 복합객체(Result)",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "IfcExportType",
+        "name": "IfcExportType",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "Ifc Export Type",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "IfcExportAs",
+        "name": "IfcExportAs",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "Ifc Export As",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "Author",
+        "name": "객체관리기관",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "객체를 관리하는 회사, 공공기관명",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "CreationCompanyName",
+        "name": "객체저작자",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "객체를 작성한 사람, 조직, 라이브러리 제공 업체명",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "FirstCreateDate",
+        "name": "최초생성일자",
+        "type": "date",
+        "unit": "source_59_59_59_59_2e_4d_4d_2e_44_44",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "객체 최종 생성일자",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "RevisionDate",
+        "name": "개정일자",
+        "type": "date",
+        "unit": "source_59_59_59_59_2e_4d_4d_2e_44_44",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "객체 최종 생성일자",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "ObjectVersion",
+        "name": "객체버전",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "관리자별 객체버전",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "LevelOfDetail",
+        "name": "정보요구수준",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "모델의 정보요구 수준 예)LOD200, LOD300",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "ModelBimSoftware",
+        "name": "작성소프트웨어",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "객체작성 BIM 소프트웨어",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "StandardDwgBook",
+        "name": "적용표준도",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "적용 표준도 명칭",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "StandardDwgNumber",
+        "name": "표준도번호",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "적용 표준도 번호",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "Field",
+        "name": "분야코드(F)",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "WBS(1) 분야분류 예)단지토목",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "WorkResult",
+        "name": "공종코드(W)",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "WBS(2) 시설물(대) 예)도로, 오수시설",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "Facility",
+        "name": "시설물코드(F)",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "WBS(3) 시설물(중) 예)관로구분",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "Space",
+        "name": "공간코드(S)",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "WBS(4) 시설물(소) 예)관로명",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "SubSpace",
+        "name": "확장공간코드(S)",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "WBS(5) 대공종 예)오수공",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "Element",
+        "name": "부위코드(E)",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "WBS(6) 중공종 예)오수맨홀",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "WorkPackage",
+        "name": "작업관리(P)",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "WBS(7) 소공종 예)원형, 각형맨홀",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "ReferenceCode",
+        "name": "참조분류코드",
+        "type": "string",
+        "unit": "none",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "관련 참조 분류체계코드(OmniClass 등)",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "BasePoint",
+        "name": "기준점",
+        "type": "string",
+        "unit": "source_58_2c_59_2c_5a",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "객체입력기준점(기둥바닥중앙)",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "FlxHgh",
+        "name": "조절용받침높이",
+        "type": "number",
+        "unit": "mm",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "뚜껑 하부 높이조절 콘크리트 높이",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "TslbThk",
+        "name": "슬래브상부두께",
+        "type": "number",
+        "unit": "mm",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "슬래브 상부 두께",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      },
+      {
+        "pset": "객체_원형1맨홀",
+        "key": "BodyDep",
+        "name": "본체내부깊이",
+        "type": "number",
+        "unit": "mm",
+        "requiredAt": [
+          "common",
+          "design",
+          "construction",
+          "maintenance"
+        ],
+        "description": "본체 내부 깊이",
+        "sourceRef": "pset-2-uac1duccb4_uc6d0ud6151ub9e8ud640"
+      }
+    ]
+  },
+  "formulaAudit": {
+    "errors": [
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A2",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B2",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A3",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B3",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A4",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B4",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A5",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B5",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A6",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B6",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A7",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B7",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A8",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B8",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A9",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B9",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A10",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B10",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A11",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B11",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A12",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B12",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A13",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B13",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A14",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B14",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A15",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B15",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A16",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B16",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A17",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B17",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A18",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B18",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A19",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B19",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A20",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B20",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A21",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B21",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A22",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B22",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A23",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B23",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A24",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B24",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A25",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B25",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A26",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B26",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A27",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B27",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A28",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B28",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A29",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B29",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A30",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B30",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A31",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B31",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A32",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B32",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A33",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B33",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A34",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B34",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A35",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B35",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A36",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B36",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A37",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B37",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A38",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B38",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A39",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B39",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A40",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B40",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A41",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B41",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A42",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B42",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A43",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B43",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A44",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B44",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A45",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B45",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A46",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B46",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A47",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B47",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A48",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B48",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A49",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B49",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A50",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B50",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A51",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B51",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A52",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B52",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A53",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B53",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A54",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B54",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A55",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B55",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A56",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B56",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A57",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B57",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A58",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B58",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A59",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B59",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A60",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B60",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A61",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B61",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A62",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B62",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A63",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B63",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A64",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B64",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A65",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B65",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A66",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B66",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A67",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B67",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A68",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B68",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A69",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B69",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A70",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B70",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A71",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B71",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A72",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B72",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A73",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B73",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A74",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B74",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A75",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B75",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A76",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B76",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A77",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B77",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A78",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B78",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A79",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B79",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A80",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B80",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A81",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B81",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A82",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B82",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A83",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B83",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A84",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B84",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A85",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B85",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A86",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B86",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A87",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B87",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A88",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B88",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A89",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B89",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A90",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B90",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A91",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B91",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A92",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B92",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A93",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B93",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A94",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B94",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A95",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B95",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A96",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B96",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A97",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B97",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A98",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B98",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A99",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B99",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A100",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B100",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "A101",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      },
+      {
+        "workbook": "01. BIM 작업분류체계(WBS) 설명서 및 목록서, 객체분류체계(OBS) 목록서\\부속서-01(2)_단지조성 BIM 작업분류체계(WBS) 및 객체분류체계(OBS) 목록서.xlsx",
+        "sheet": "Lev.7",
+        "cell": "B101",
+        "formula": "#REF!",
+        "result": "#REF!",
+        "error": "#REF!"
+      }
+    ],
+    "psetFormulaTextSample": [
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_교각기둥",
+        "row": 48,
+        "property": "VerticalArea",
+        "formula": "(3.14*((직경/2)*2))*높이"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_교각기둥",
+        "row": 49,
+        "property": "Volume",
+        "formula": "((3.14*직경^2)/4)*높이"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_교각기둥",
+        "row": 50,
+        "property": "CEA800200000",
+        "formula": "전체체적"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_교각기둥",
+        "row": 51,
+        "property": "CEC220123210",
+        "formula": "전체체적"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_교각기둥",
+        "row": 52,
+        "property": "CED410012500",
+        "formula": "수직면적"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_교각기둥",
+        "row": 54,
+        "property": "CER220120000",
+        "formula": "수직면적"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_교각기둥",
+        "row": 55,
+        "property": "CEE000300000",
+        "formula": "전체(철근비*체적)"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_교각기둥",
+        "row": 57,
+        "property": "ATA400103400",
+        "formula": "전체(철근비*체적)"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_교각기둥",
+        "row": 58,
+        "property": "3011150520143308",
+        "formula": "전체체적"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_교각기둥",
+        "row": 59,
+        "property": "3010161920160901",
+        "formula": "철근비(H19mm)*전체체적"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_교각기둥",
+        "row": 60,
+        "property": "3010161920160905",
+        "formula": "철근비(H32mm)*전체체적"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_교각기둥",
+        "row": 61,
+        "property": "3010161920160906",
+        "formula": "철근비(H35mm)*전체체적"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_강관말뚝",
+        "row": 43,
+        "property": "InsideDia",
+        "formula": "외부직경-(두께*2)"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_강관말뚝",
+        "row": 51,
+        "property": "DrilDia",
+        "formula": "외부직경+92"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_강관말뚝",
+        "row": 54,
+        "property": "3010280320289690",
+        "formula": "(말뚝길이*1.05)*말뚝본수"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_강관말뚝",
+        "row": 58,
+        "property": "CJE140140000",
+        "formula": "말뚝본수"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_강관말뚝",
+        "row": 59,
+        "property": "CJF140200000",
+        "formula": "말뚝본수"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_강관말뚝",
+        "row": 60,
+        "property": "CJI100000000",
+        "formula": "1/말뚝본수/4"
+      },
+      {
+        "workbook": "02. BIM 속성정보세트(Pset) 목록서 및 설명서\\부속서-02(2) 단지분야 BIM 속성세트(Pset) 목록서 ver.xlsx",
+        "sheet": "객체_강관말뚝",
+        "row": 61,
+        "property": "CJI200000000",
+        "formula": "1/말뚝본수"
+      }
+    ]
+  },
+  "bepSourceSpecificImport": {
+    "status": "verified",
+    "requirementCount": 16
+  },
+  "promotion": {
+    "status": "blocked",
+    "blockers": [
+      "2288 Excel formula error cell(s) require source-owner correction or an approved mapping.",
+      "7 duplicate Pset property identifier(s) require disambiguation.",
+      "Pset candidate registry has 8 structural validation issue(s)."
+    ]
+  }
+}

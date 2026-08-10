@@ -172,4 +172,4 @@ What this doc gives you: zero-friction copy-paste for each channel + a tracking 
 When ≥ 3 partners have logged ≥ 5 days of real usage:
 - Pull responses into the [synthesis template](./DESIGN_PARTNER_OUTREACH_KIT.md#synthesis-template-week-6-7)
 - Decide Path B coding priority
-- Update [project_nexyfab_gtm.md](../../C:/Users/gomd9/.claude/projects/C--Users-gomd9/memory/project_nexyfab_gtm.md)
+- Update the private project GTM memory (local planning source; not a repository artifact)

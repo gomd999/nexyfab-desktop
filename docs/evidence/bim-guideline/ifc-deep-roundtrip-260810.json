@@ -1,0 +1,61 @@
+{
+  "schema": "nexyfab.ifc-deep-roundtrip-evidence.v1",
+  "generatedAt": "2026-08-09T22:14:02.077Z",
+  "releaseReady": true,
+  "sourcePolicy": {
+    "generatedIfcPersisted": false,
+    "sourceReturned": false,
+    "sideEffects": false
+  },
+  "export": {
+    "schema": "IFC4",
+    "bytes": 4416,
+    "sha256": "3c683bc269cf8cea53e5f94c08d44e903a4938c0c90bb7cc74d0b354fe0c074c",
+    "stats": {
+      "entities": 80,
+      "breps": 1,
+      "faces": 6,
+      "brepPoints": 8
+    }
+  },
+  "structural": {
+    "ok": true,
+    "errors": [],
+    "stats": {
+      "entities": 80,
+      "loopPoints": 8,
+      "faces": 6,
+      "refsChecked": 122
+    }
+  },
+  "semantics": {
+    "passed": true,
+    "errors": [],
+    "counts": {
+      "occurrences": 6,
+      "placements": 5,
+      "propertySets": 3,
+      "propertyValues": 8,
+      "classifications": 1,
+      "quantities": 1,
+      "georeference": 2
+    }
+  },
+  "registryBinding": {
+    "passed": true,
+    "issues": [],
+    "registryId": "nexyfab-ifc-proof",
+    "registryVersion": "1"
+  },
+  "geometryReimport": {
+    "ok": true,
+    "imported": 1,
+    "geometryEvidence": "exact_surface_mesh"
+  },
+  "negativeControl": {
+    "passed": true,
+    "detectedErrors": [
+      "PROPERTY_SET_CHANGED"
+    ]
+  }
+}

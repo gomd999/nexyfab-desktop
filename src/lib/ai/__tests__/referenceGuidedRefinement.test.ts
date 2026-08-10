@@ -6,9 +6,10 @@ describe('reference-guided refinement', () => {
     const result = referenceGuidanceForRequest('6축 로봇 arm과 reducer를 설계해줘');
     expect(result.requirementIds).toEqual(expect.arrayContaining(['MAN-FT-001', 'MAN-ASM-001', 'MAN-CCD-001']));
   });
-  it('adds BIM and interior verification without dropping common STEP rules', () => {
+  it('adds BIM and interior verification without leaking mechanical STEP rules', () => {
     const result = referenceGuidanceForRequest('IFC 기반 인테리어 room과 door, MEP 설계');
-    expect(result.requirementIds).toEqual(expect.arrayContaining(['MAN-BIM-001', 'MAN-INT-001', 'MAN-IO-001']));
+    expect(result.requirementIds).toEqual(expect.arrayContaining(['MAN-BIM-001', 'MAN-INT-001', 'MAN-BLD-001']));
+    expect(result.requirementIds).not.toContain('MAN-IO-001');
   });
   it('marks reference-derived unsupported civil and graph capabilities explicitly', () => {
     const result = referenceGuidanceForRequest('Grasshopper node graph로 civil road alignment corridor 생성');

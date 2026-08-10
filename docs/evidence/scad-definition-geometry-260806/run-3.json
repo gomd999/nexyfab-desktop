@@ -1,0 +1,948 @@
+{
+  "schema": "nexyfab.scad-definition-geometry-campaign.v1",
+  "generatedAt": "2026-08-06T09:32:21.840Z",
+  "sourceReport": "validation-reports/scad-agent-2026-08-06T09-10-47.json",
+  "sourceGeneratedAt": "2026-08-06T09:10:47.818Z",
+  "summary": {
+    "total": 4,
+    "pass": 4,
+    "fail": 0
+  },
+  "assemblies": [
+    {
+      "scenarioId": "sc7_gear_train",
+      "status": "pass",
+      "codes": [],
+      "evidence": {
+        "schema": "nexyfab.scad-definition-geometry-evidence.v1",
+        "status": "pass",
+        "releaseReady": false,
+        "definitions": [
+          {
+            "definitionId": "scad:def:gear20",
+            "moduleName": "gear20",
+            "status": "pass",
+            "sha256": "72b4fc1f16477e66606686c7784b660410fba8884c0bda4f28f4aaf17ec4ab9a",
+            "bytes": 559263,
+            "triangles": 2292,
+            "watertight": true,
+            "volumeMm3": 9443.82464194334,
+            "bbox": {
+              "min": [
+                -21.988943308591843,
+                -21.988943308591843,
+                -4
+              ],
+              "max": [
+                21.988943308591843,
+                21.988943308591843,
+                4
+              ]
+            },
+            "codes": []
+          },
+          {
+            "definitionId": "scad:def:gear30",
+            "moduleName": "gear30",
+            "status": "pass",
+            "sha256": "e6278a4ef194a54c837660ac012d053a96a1656fd89e11ec1992cb0370c211c2",
+            "bytes": 832678,
+            "triangles": 3412,
+            "watertight": true,
+            "volumeMm3": 21957.087269257903,
+            "bbox": {
+              "min": [
+                -31.89330729842186,
+                -31.991508804261684,
+                -4
+              ],
+              "max": [
+                31.89330729842186,
+                31.991508804261684,
+                4
+              ]
+            },
+            "codes": []
+          }
+        ],
+        "occurrences": [
+          {
+            "occurrenceId": "scad:occ:gear20:1",
+            "definitionId": "scad:def:gear20",
+            "definitionSha256": "72b4fc1f16477e66606686c7784b660410fba8884c0bda4f28f4aaf17ec4ab9a",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:gear30:2",
+            "definitionId": "scad:def:gear30",
+            "definitionSha256": "e6278a4ef194a54c837660ac012d053a96a1656fd89e11ec1992cb0370c211c2",
+            "localToWorld": [
+              0.9945218953682733,
+              -0.10452846326765346,
+              0,
+              50,
+              0.10452846326765346,
+              0.9945218953682733,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        ],
+        "codes": [],
+        "limitations": [
+          "native_brep_not_available",
+          "feature_history_not_available",
+          "joint_semantics_not_certified",
+          "step_roundtrip_not_certified"
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc8_pipe_joint",
+      "status": "pass",
+      "codes": [],
+      "evidence": {
+        "schema": "nexyfab.scad-definition-geometry-evidence.v1",
+        "status": "pass",
+        "releaseReady": false,
+        "definitions": [
+          {
+            "definitionId": "scad:def:main_pipe_left",
+            "moduleName": "main_pipe_left",
+            "status": "pass",
+            "sha256": "9e252f49a04605e87fe4ffdefa20a4c4ddb368e72d080977b856236b95aff596",
+            "bytes": 55503,
+            "triangles": 240,
+            "watertight": true,
+            "volumeMm3": 19491.721014164872,
+            "bbox": {
+              "min": [
+                -15,
+                -14.9178284305241,
+                0
+              ],
+              "max": [
+                15,
+                14.9178284305241,
+                50
+              ]
+            },
+            "codes": []
+          },
+          {
+            "definitionId": "scad:def:main_pipe_right",
+            "moduleName": "main_pipe_right",
+            "status": "pass",
+            "sha256": "9e252f49a04605e87fe4ffdefa20a4c4ddb368e72d080977b856236b95aff596",
+            "bytes": 55503,
+            "triangles": 240,
+            "watertight": true,
+            "volumeMm3": 19491.721014164872,
+            "bbox": {
+              "min": [
+                -15,
+                -14.9178284305241,
+                0
+              ],
+              "max": [
+                15,
+                14.9178284305241,
+                50
+              ]
+            },
+            "codes": []
+          },
+          {
+            "definitionId": "scad:def:branch_pipe",
+            "moduleName": "branch_pipe",
+            "status": "pass",
+            "sha256": "87b3c28819acadf82b4019669f68c8fe0f5dfa595809de8bd2d0e1de18842d8b",
+            "bytes": 55511,
+            "triangles": 240,
+            "watertight": true,
+            "volumeMm3": 23390.065216998013,
+            "bbox": {
+              "min": [
+                -15,
+                -14.9178284305241,
+                0
+              ],
+              "max": [
+                15,
+                14.9178284305241,
+                60
+              ]
+            },
+            "codes": []
+          }
+        ],
+        "occurrences": [
+          {
+            "occurrenceId": "scad:occ:main_pipe_left:1",
+            "definitionId": "scad:def:main_pipe_left",
+            "definitionSha256": "9e252f49a04605e87fe4ffdefa20a4c4ddb368e72d080977b856236b95aff596",
+            "localToWorld": [
+              6.123233995736766e-17,
+              0,
+              1,
+              -50,
+              0,
+              1,
+              0,
+              0,
+              -1,
+              0,
+              6.123233995736766e-17,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:main_pipe_right:2",
+            "definitionId": "scad:def:main_pipe_right",
+            "definitionSha256": "9e252f49a04605e87fe4ffdefa20a4c4ddb368e72d080977b856236b95aff596",
+            "localToWorld": [
+              6.123233995736766e-17,
+              0,
+              1,
+              0,
+              0,
+              1,
+              0,
+              0,
+              -1,
+              0,
+              6.123233995736766e-17,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:branch_pipe:3",
+            "definitionId": "scad:def:branch_pipe",
+            "definitionSha256": "87b3c28819acadf82b4019669f68c8fe0f5dfa595809de8bd2d0e1de18842d8b",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        ],
+        "codes": [],
+        "limitations": [
+          "native_brep_not_available",
+          "feature_history_not_available",
+          "joint_semantics_not_certified",
+          "step_roundtrip_not_certified"
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc9_simple_car",
+      "status": "pass",
+      "codes": [],
+      "evidence": {
+        "schema": "nexyfab.scad-definition-geometry-evidence.v1",
+        "status": "pass",
+        "releaseReady": false,
+        "definitions": [
+          {
+            "definitionId": "scad:def:body",
+            "moduleName": "body",
+            "status": "pass",
+            "sha256": "536fa46d064bd3b06f9af41b1c8e5ca443a3f4d66a1b5adab1f857efa6796636",
+            "bytes": 1691,
+            "triangles": 12,
+            "watertight": true,
+            "volumeMm3": 36000,
+            "bbox": {
+              "min": [
+                -30,
+                -15,
+                -10
+              ],
+              "max": [
+                30,
+                15,
+                10
+              ]
+            },
+            "codes": []
+          },
+          {
+            "definitionId": "scad:def:wheel",
+            "moduleName": "wheel",
+            "status": "pass",
+            "sha256": "f5805aa980326e201f83ac7457409423d967dbb6d03a2ad49695b8c8b4825dbd",
+            "bytes": 60167,
+            "triangles": 252,
+            "watertight": true,
+            "volumeMm3": 922.1452562205078,
+            "bbox": {
+              "min": [
+                -3,
+                -7,
+                -7
+              ],
+              "max": [
+                3,
+                7,
+                7
+              ]
+            },
+            "codes": []
+          },
+          {
+            "definitionId": "scad:def:window",
+            "moduleName": "window",
+            "status": "pass",
+            "sha256": "9cf7f836afc35e6f816041e2e9a93d81d6b0e6fddab07a36de5f7decfe39de67",
+            "bytes": 1583,
+            "triangles": 12,
+            "watertight": true,
+            "volumeMm3": 320,
+            "bbox": {
+              "min": [
+                -5,
+                -4,
+                -2
+              ],
+              "max": [
+                5,
+                4,
+                2
+              ]
+            },
+            "codes": []
+          }
+        ],
+        "occurrences": [
+          {
+            "occurrenceId": "scad:occ:body:1",
+            "definitionId": "scad:def:body",
+            "definitionSha256": "536fa46d064bd3b06f9af41b1c8e5ca443a3f4d66a1b5adab1f857efa6796636",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:wheel:2",
+            "definitionId": "scad:def:wheel",
+            "definitionSha256": "f5805aa980326e201f83ac7457409423d967dbb6d03a2ad49695b8c8b4825dbd",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              20,
+              0,
+              1,
+              0,
+              18,
+              0,
+              0,
+              1,
+              7,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:wheel:3",
+            "definitionId": "scad:def:wheel",
+            "definitionSha256": "f5805aa980326e201f83ac7457409423d967dbb6d03a2ad49695b8c8b4825dbd",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              20,
+              0,
+              1,
+              0,
+              -18,
+              0,
+              0,
+              1,
+              7,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:wheel:4",
+            "definitionId": "scad:def:wheel",
+            "definitionSha256": "f5805aa980326e201f83ac7457409423d967dbb6d03a2ad49695b8c8b4825dbd",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              -20,
+              0,
+              1,
+              0,
+              18,
+              0,
+              0,
+              1,
+              7,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:wheel:5",
+            "definitionId": "scad:def:wheel",
+            "definitionSha256": "f5805aa980326e201f83ac7457409423d967dbb6d03a2ad49695b8c8b4825dbd",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              -20,
+              0,
+              1,
+              0,
+              -18,
+              0,
+              0,
+              1,
+              7,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:window:6",
+            "definitionId": "scad:def:window",
+            "definitionSha256": "9cf7f836afc35e6f816041e2e9a93d81d6b0e6fddab07a36de5f7decfe39de67",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              6,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:window:7",
+            "definitionId": "scad:def:window",
+            "definitionSha256": "9cf7f836afc35e6f816041e2e9a93d81d6b0e6fddab07a36de5f7decfe39de67",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              6,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        ],
+        "codes": [],
+        "limitations": [
+          "native_brep_not_available",
+          "feature_history_not_available",
+          "joint_semantics_not_certified",
+          "step_roundtrip_not_certified"
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc10_brackets_grid",
+      "status": "pass",
+      "codes": [],
+      "evidence": {
+        "schema": "nexyfab.scad-definition-geometry-evidence.v1",
+        "status": "pass",
+        "releaseReady": false,
+        "definitions": [
+          {
+            "definitionId": "scad:def:bracket",
+            "moduleName": "bracket",
+            "status": "pass",
+            "sha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "bytes": 3083,
+            "triangles": 24,
+            "watertight": true,
+            "volumeMm3": 15000,
+            "bbox": {
+              "min": [
+                0,
+                0,
+                0
+              ],
+              "max": [
+                40,
+                40,
+                40
+              ]
+            },
+            "codes": []
+          }
+        ],
+        "occurrences": [
+          {
+            "occurrenceId": "scad:occ:bracket:1",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:2",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              50,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:3",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              100,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:4",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              150,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:5",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              50,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:6",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              50,
+              0,
+              1,
+              0,
+              50,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:7",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              50,
+              0,
+              1,
+              0,
+              100,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:8",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              50,
+              0,
+              1,
+              0,
+              150,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:9",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              100,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:10",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              100,
+              0,
+              1,
+              0,
+              50,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:11",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              100,
+              0,
+              1,
+              0,
+              100,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:12",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              100,
+              0,
+              1,
+              0,
+              150,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:13",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              150,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:14",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              150,
+              0,
+              1,
+              0,
+              50,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:15",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              150,
+              0,
+              1,
+              0,
+              100,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:16",
+            "definitionId": "scad:def:bracket",
+            "definitionSha256": "3e3a7faa2ed452b133605e5396918183ea1e25a67d8971c575a6293853ff9977",
+            "localToWorld": [
+              1,
+              0,
+              0,
+              150,
+              0,
+              1,
+              0,
+              150,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        ],
+        "codes": [],
+        "limitations": [
+          "native_brep_not_available",
+          "feature_history_not_available",
+          "joint_semantics_not_certified",
+          "step_roundtrip_not_certified"
+        ]
+      }
+    }
+  ]
+}

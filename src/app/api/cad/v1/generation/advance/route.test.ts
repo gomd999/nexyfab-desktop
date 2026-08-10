@@ -1,11 +1,14 @@
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST } from "./route";
 import {
   createGenerationRun,
   recordGenerationStage,
 } from "@/lib/ai/generationRunState";
+import { createServerGenerationState, resetGenerationStateStoreForTests } from "@/lib/ai/generationStateStore";
+
+vi.mock("@/lib/auth-middleware", () => ({ getAuthUser: vi.fn(async () => null) }));
 
 const prepared = () => {
   let state = createGenerationRun("advance-topology-api");
@@ -78,7 +81,11 @@ const program = {
 };
 
 describe("generation advance topology canonical response", () => {
+  beforeEach(() => resetGenerationStateStoreForTests());
+
   it("returns the same stable blocker subset before finalization", async () => {
+    const state = prepared();
+    await createServerGenerationState("guest:198.51.100.87", state);
     const request = new NextRequest(
       "http://localhost/api/cad/v1/generation/advance",
       {
@@ -88,7 +95,7 @@ describe("generation advance topology canonical response", () => {
           "x-forwarded-for": "198.51.100.87",
         },
         body: JSON.stringify({
-          state: prepared(),
+          state,
           program,
           topologyRebind: {
             assemblySolveReady: false,
@@ -119,6 +126,15 @@ describe("generation advance topology canonical response", () => {
         unresolvedByStage: [{ stage: "assembly_solve", count: 3 }],
         affectedPartIds: ["p1"],
         quoteOrRfqSideEffects: false,
+      },
+      executionPlan: {
+        schema: 'nexyfab.adaptive-complex-product-execution.v1',
+        objective: 'complete_manufacturing_product',
+        status: 'authoritative_input_required',
+        activeStage: 'assembly_solve',
+        designComplete: false,
+        precisionCad: { required: false },
+        externalCadInstallationRequired: false,
       },
     });
     expect(body.canonical.contractHash).toMatch(/^[a-f0-9]{64}$/);

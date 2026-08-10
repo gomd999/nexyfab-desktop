@@ -1,0 +1,313 @@
+{
+  "schema": "nexyfab.ground-truth-review-form.v1",
+  "caseId": "turbomachinery-review-03",
+  "family": "turbomachinery",
+  "tier": "T1",
+  "immutableTarget": {
+    "source": {
+      "hash": "50e85725b4d15f7a47a5bc9aae8792dd3bfa07203fc2af5211c0a88587859d7c",
+      "locator": "참고파일들4/centrifugal-pump-174.snapshot.8/centrifugal pump version v6.iges",
+      "extension": "iges",
+      "bytes": 18606456,
+      "holdoutGroup": "turbomachinery:centrifugal-pump-174",
+      "hashPassed": true
+    },
+    "artifactSetHash": "02ff9f9bb8cba2fde177ecbfa0472c198301220cf686e104d4a1c1210ecd0365",
+    "requiredAssertionIds": [
+      "requirements:source-intent",
+      "part-definitions:count",
+      "occurrences:count",
+      "hierarchy:structure",
+      "dimensions:governed",
+      "features:required",
+      "step-roundtrip:preservation"
+    ],
+    "evidence": {
+      "automaticPasses": 3,
+      "reviewerRequired": 4,
+      "assertions": [
+        {
+          "assertionId": "requirements:source-intent",
+          "axis": "requirements",
+          "artifactHashes": [
+            "50e85725b4d15f7a47a5bc9aae8792dd3bfa07203fc2af5211c0a88587859d7c"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "part-definitions:count",
+          "axis": "part_definitions",
+          "artifactHashes": [
+            "50e85725b4d15f7a47a5bc9aae8792dd3bfa07203fc2af5211c0a88587859d7c"
+          ],
+          "tolerancePolicy": "exact-count",
+          "automaticEvidence": {
+            "axis": "part_definitions",
+            "status": "pass",
+            "reason": "IGES solid/subfigure definitions measured.",
+            "measured": {
+              "directoryEntries": 22039,
+              "solids": 68,
+              "definitions": 56
+            }
+          },
+          "reviewerRequired": false,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "occurrences:count",
+          "axis": "occurrences",
+          "artifactHashes": [
+            "50e85725b4d15f7a47a5bc9aae8792dd3bfa07203fc2af5211c0a88587859d7c"
+          ],
+          "tolerancePolicy": "exact-count",
+          "automaticEvidence": {
+            "axis": "occurrences",
+            "status": "pass",
+            "reason": "IGES singular subfigure instances measured.",
+            "measured": 114
+          },
+          "reviewerRequired": false,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "hierarchy:structure",
+          "axis": "hierarchy",
+          "artifactHashes": [
+            "50e85725b4d15f7a47a5bc9aae8792dd3bfa07203fc2af5211c0a88587859d7c"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": {
+            "axis": "hierarchy",
+            "status": "pass",
+            "reason": "IGES subfigure definition-instance links are available for native follow-up.",
+            "measured": {
+              "definitions": 56,
+              "instances": 114
+            }
+          },
+          "reviewerRequired": false,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "dimensions:governed",
+          "axis": "dimensions",
+          "artifactHashes": [
+            "50e85725b4d15f7a47a5bc9aae8792dd3bfa07203fc2af5211c0a88587859d7c"
+          ],
+          "tolerancePolicy": "reviewed-linear-tolerance-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "features:required",
+          "axis": "features",
+          "artifactHashes": [
+            "50e85725b4d15f7a47a5bc9aae8792dd3bfa07203fc2af5211c0a88587859d7c"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        },
+        {
+          "assertionId": "step-roundtrip:preservation",
+          "axis": "step_roundtrip",
+          "artifactHashes": [
+            "50e85725b4d15f7a47a5bc9aae8792dd3bfa07203fc2af5211c0a88587859d7c"
+          ],
+          "tolerancePolicy": "review-required",
+          "automaticEvidence": null,
+          "reviewerRequired": true,
+          "decision": null,
+          "reviewerId": null,
+          "note": null
+        }
+      ],
+      "nativeStatus": "not_run",
+      "nativeReleaseReady": false,
+      "nativeAxes": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "body_membership",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "transforms",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "joints",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native extractor result is unavailable.",
+          "artifactHashes": []
+        }
+      ]
+    }
+  },
+  "instructions": {
+    "decisions": [
+      "approved",
+      "rejected",
+      "changes_requested"
+    ],
+    "reviewerIdsMustBeRealAndNonEmpty": true,
+    "notesMustBeNonEmpty": true,
+    "timestampsMustBeIso8601": true,
+    "independentReviewerMustDiffer": true,
+    "independentReviewerMustNotAuthorAssertionReviews": true
+  },
+  "submission": {
+    "revision": 1,
+    "licenseReview": {
+      "decision": null,
+      "reviewerId": null,
+      "note": null,
+      "reviewedAt": null
+    },
+    "holdoutIsolationReview": {
+      "decision": null,
+      "reviewerId": null,
+      "note": null,
+      "reviewedAt": null
+    },
+    "assertionReviews": [
+      {
+        "assertionId": "requirements:source-intent",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "part-definitions:count",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "occurrences:count",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "hierarchy:structure",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "dimensions:governed",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "features:required",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      },
+      {
+        "assertionId": "step-roundtrip:preservation",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null
+      }
+    ],
+    "signoffs": [
+      {
+        "role": "domain-reviewer",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null,
+        "artifactSetHash": "02ff9f9bb8cba2fde177ecbfa0472c198301220cf686e104d4a1c1210ecd0365",
+        "reviewedAssertionIds": [
+          "requirements:source-intent",
+          "part-definitions:count",
+          "occurrences:count",
+          "hierarchy:structure",
+          "dimensions:governed",
+          "features:required",
+          "step-roundtrip:preservation"
+        ]
+      },
+      {
+        "role": "independent-reviewer",
+        "decision": null,
+        "reviewerId": null,
+        "note": null,
+        "reviewedAt": null,
+        "artifactSetHash": "02ff9f9bb8cba2fde177ecbfa0472c198301220cf686e104d4a1c1210ecd0365",
+        "reviewedAssertionIds": [
+          "requirements:source-intent",
+          "part-definitions:count",
+          "occurrences:count",
+          "hierarchy:structure",
+          "dimensions:governed",
+          "features:required",
+          "step-roundtrip:preservation"
+        ]
+      }
+    ]
+  },
+  "checklist": [
+    "provenance_and_commercial_license",
+    "lineage_independence",
+    "native_definition_occurrence_counts",
+    "units_and_coordinate_system",
+    "assertion_graph_and_tolerance",
+    "prompt_and_holdout_isolation"
+  ]
+}

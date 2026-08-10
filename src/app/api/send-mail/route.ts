@@ -112,6 +112,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Save attachment files to disk (non-public directory — not web-accessible)
+    // 1. Honeypot check
+    if (data.website) {
+        return NextResponse.json({ success: false, error: 'Spam detected' }, { status: 400 });
+    }
+
+    // 2. reCAPTCHA v3 verification (required)
+    const token = data['g-recaptcha-response'];
+    if (!RECAPTCHA_SECRET) {
+        console.error('[send-mail] RECAPTCHA_SECRET_KEY is not configured');
+        return NextResponse.json({ success: false, error: 'Service unavailable' }, { status: 503 });
+    }
+    if (!token || !(await verifyRecaptcha(token))) {
+        return NextResponse.json({ success: false, error: 'reCAPTCHA verification failed' }, { status: 403 });
+    }
+
+    // Persist only after anti-abuse verification succeeds. Writing before the
+    // CAPTCHA check allowed unauthenticated requests to consume local disk.
     if (attachments.length > 0) {
       const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'inquiries', crypto.randomUUID());
       if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -121,17 +138,6 @@ export async function POST(req: NextRequest) {
         att.path = filePath;
         attachmentPaths.push(`data/uploads/inquiries/${path.basename(uploadDir)}/${att.filename}`);
       }
-    }
-
-    // 1. Honeypot check
-    if (data.website) {
-        return NextResponse.json({ success: false, error: 'Spam detected' }, { status: 400 });
-    }
-
-    // 2. reCAPTCHA v3 verification (required)
-    const token = data['g-recaptcha-response'];
-    if (!token || !(await verifyRecaptcha(token))) {
-        return NextResponse.json({ success: false, error: 'reCAPTCHA verification failed' }, { status: 403 });
     }
 
     // 2a. Sanctions screening — fail-closed for supplier onboarding.

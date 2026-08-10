@@ -15,6 +15,7 @@ export type BearingComponent = CatalogBase & { kind: 'bearing'; boreMm: number; 
 export type CatalogComponent = MotorComponent | ReducerComponent | BearingComponent;
 
 export type CatalogIssue = { id: string; message: string };
+export type CatalogArtifactRecord = { sha256: string; byteLength: number; source: string; mediaType?: string };
 export function validateCatalog(components: readonly CatalogComponent[]): CatalogIssue[] {
   const issues: CatalogIssue[] = []; const ids = new Set<string>();
   for (const c of components) {
@@ -25,6 +26,30 @@ export function validateCatalog(components: readonly CatalogComponent[]): Catalo
     if (c.kind === 'motor' && (!(c.ratedTorqueNm > 0) || c.peakTorqueNm < c.ratedTorqueNm || !(c.maxRpm > 0))) issues.push({ id: c.id, message: 'invalid motor ratings' });
     if (c.kind === 'reducer' && (!(c.ratio > 1) || !(c.efficiency > 0 && c.efficiency <= 1) || c.peakOutputTorqueNm < c.ratedOutputTorqueNm)) issues.push({ id: c.id, message: 'invalid reducer ratings' });
     if (c.kind === 'bearing' && (!(c.boreMm > 0) || c.odMm <= c.boreMm || !(c.dynamicLoadN > 0))) issues.push({ id: c.id, message: 'invalid bearing dimensions or rating' });
+  }
+  return issues;
+}
+
+/** Production gate: every catalog claim must bind to a full-hash evidence artifact. */
+export function validateProductionCatalog(
+  components: readonly CatalogComponent[],
+  artifacts: readonly CatalogArtifactRecord[],
+): CatalogIssue[] {
+  const issues = [...validateCatalog(components)];
+  const byHash = new Map<string, CatalogArtifactRecord>();
+  for (const artifact of artifacts) {
+    const hash = artifact.sha256.toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(hash)) issues.push({ id: artifact.sha256, message: 'artifact SHA-256 must be 64 hexadecimal characters' });
+    if (byHash.has(hash)) issues.push({ id: artifact.sha256, message: 'duplicate artifact SHA-256' });
+    if (!(Number.isSafeInteger(artifact.byteLength) && artifact.byteLength > 0)) issues.push({ id: artifact.sha256, message: 'artifact byteLength must be a positive safe integer' });
+    if (!artifact.source.trim()) issues.push({ id: artifact.sha256, message: 'artifact source is required' });
+    byHash.set(hash, artifact);
+  }
+  for (const component of components) {
+    const hash = component.artifactHash.toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(hash)) issues.push({ id: component.id, message: 'production artifactHash must be a full SHA-256' });
+    if (!byHash.has(hash)) issues.push({ id: component.id, message: 'production artifact evidence is missing' });
+    if (component.massSource !== 'confirmed') issues.push({ id: component.id, message: 'production component mass must be confirmed' });
   }
   return issues;
 }

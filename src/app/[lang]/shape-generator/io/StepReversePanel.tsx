@@ -14,6 +14,7 @@ import React, { useState, useEffect } from 'react';
 import { toIsoLang } from '@/lib/i18n/normalize';
 import type { ReconstructedFeatureTree } from '../io/stepReverseEngineer';
 import type * as THREE from 'three';
+import { decideReconstructionReview } from './reconstructionReviewPolicy';
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
 const dict = {
@@ -269,6 +270,7 @@ export default function StepReversePanel({
   const FEAT_ICONS: Record<string, string> = {
     hole: '⭕', pocket: '🟦', fillet: '〽️', chamfer: '✂️', boss: '🔺', rib: '📐',
   };
+  const review = tree ? decideReconstructionReview(tree) : null;
 
   return (
     <div style={{
@@ -325,6 +327,20 @@ export default function StepReversePanel({
               {t.overall}
             </div>
             <ConfBar value={tree.overallConfidence} />
+            {review && (
+              <div data-testid="step-reverse-grade" style={{ marginTop: 7, display: 'flex', alignItems: 'center', gap: 7, fontSize: 10, color: 'var(--nx-text-2)' }}>
+                <span style={{ padding: '2px 7px', borderRadius: 999, fontWeight: 800, background: review.grade === 'A' ? 'rgba(63,185,80,.16)' : review.grade === 'B' ? 'rgba(56,139,253,.16)' : 'rgba(210,153,34,.16)', color: review.grade === 'A' ? 'var(--nx-ok)' : review.grade === 'B' ? 'var(--nx-accent-2)' : 'var(--nx-warn)' }}>
+                  Grade {review.grade}
+                </span>
+                <span>{review.grade === 'A' ? 'verified analytic candidate' : review.grade === 'B' ? 'editable candidate' : review.grade === 'C' ? 'expert review required' : 'reference only'}</span>
+              </div>
+            )}
+            {review && review.status !== 'candidate' && (
+              <div data-testid="step-reverse-review-required" style={{ marginTop: 8, padding: '8px 10px', borderRadius: 7, background: 'rgba(210,153,34,0.12)', border: '1px solid rgba(210,153,34,0.35)', color: 'var(--nx-warn)', fontSize: 10, lineHeight: 1.5 }}>
+                <strong>{review.status === 'reference_only' ? 'Reference geometry only' : 'Expert review required'}</strong>
+                {review.reasons.map((reason, index) => <div key={index}>• {reason}</div>)}
+              </div>
+            )}
           </div>
 
           {/* Base shape */}
@@ -371,13 +387,16 @@ export default function StepReversePanel({
                     tree.baseShape.type === 'sphere' ? 'sphere' : 'box',
                     tree.baseShape.params
                   )}
+                  disabled={!review?.canApplyBase}
+                  title={!review?.canApplyBase ? 'Resolve reconstruction limitations before applying an editable base.' : undefined}
                   style={{
                     marginTop: 10, width: '100%',
                     padding: '7px 0', borderRadius: 8,
                     border: '1px solid var(--nx-accent)',
                     background: 'rgba(56,139,253,0.12)',
                     color: 'var(--nx-accent-2)', fontSize: 11, fontWeight: 700,
-                    cursor: 'pointer', transition: 'all 0.15s',
+                    cursor: review?.canApplyBase ? 'pointer' : 'not-allowed', transition: 'all 0.15s',
+                    opacity: review?.canApplyBase ? 1 : 0.5,
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(56,139,253,0.25)'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56,139,253,0.12)'; }}
@@ -395,7 +414,7 @@ export default function StepReversePanel({
             </div>
             {tree.features.length === 0 ? (
               <div style={{ fontSize: 11, color: 'var(--nx-border-strong)', fontStyle: 'italic', padding: '6px 0' }}>
-                {t.noFeatures}
+                {tree.limitations.length > 0 ? 'Features unverified — detection limitations are listed above.' : t.noFeatures}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

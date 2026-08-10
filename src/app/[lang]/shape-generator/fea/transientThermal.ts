@@ -357,7 +357,7 @@ export function hex8PhaseChangeThermal(grid: TopologyGrid, opts: PhaseChangeOpti
     const Tn = Float64Array.from(T);
     const fn = Float64Array.from(f);
     let fk = Float64Array.from(f);
-    let Tk = Float64Array.from(T);
+    const Tk = Float64Array.from(T);
     let converged = false;
 
     for (let inner = 0; inner < maxInner; inner++) {

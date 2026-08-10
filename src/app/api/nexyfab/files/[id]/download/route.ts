@@ -46,6 +46,19 @@ export async function GET(
 
   const storage = getStorage();
   try {
+    if (file.storage_key.startsWith('private/') && !process.env.S3_BUCKET) {
+      const buffer = await storage.download?.(file.storage_key);
+      if (!buffer) throw new Error('storage download unavailable');
+      const asciiName = file.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+      return new NextResponse(new Uint8Array(buffer), {
+        headers: {
+          'Content-Type': file.mime_type || 'application/octet-stream',
+          'Content-Disposition': `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(file.filename)}`,
+          'Cache-Control': 'private, no-store',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      });
+    }
     const signedUrl = await storage.getSignedUrl(file.storage_key, 300); // 5 min expiry
     return NextResponse.redirect(signedUrl);
   } catch (err) {

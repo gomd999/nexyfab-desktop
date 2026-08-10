@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.seven-day-operations-receipt.v1",
+  "generatedAt": "2026-08-10T07:17:26.503Z",
+  "ok": false,
+  "services": {
+    "web": {
+      "samples": 2,
+      "coverageHours": 1.5713466666666667,
+      "maxMemoryMb": 190.329126912,
+      "memoryLimitMb": 768,
+      "totalRequests": 323,
+      "total5xx": 2,
+      "errorRatePercent": 0.6191950464396285
+    },
+    "openscad-worker": {
+      "samples": 1,
+      "coverageHours": 1.0003825,
+      "maxMemoryMb": 46.527414272,
+      "memoryLimitMb": 512,
+      "totalRequests": 0,
+      "total5xx": 0,
+      "errorRatePercent": 0
+    }
+  },
+  "blockers": [
+    "coverage_short:web:1.6h",
+    "sample_count_short:web:2",
+    "coverage_short:openscad-worker:1.0h",
+    "sample_count_short:openscad-worker:1"
+  ]
+}

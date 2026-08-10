@@ -55,6 +55,8 @@ export function Tree({ nodes, selectedId, onSelect, onHover, indentPx = 14 }: Tr
       <React.Fragment key={n.id}>
         <div
           role="treeitem"
+          data-testid={`tree-node-${n.id}`}
+          data-tree-node-id={n.id}
           aria-selected={isSelected}
           aria-expanded={hasChildren ? isExpanded : undefined}
           onClick={() => onSelect(n.id)}

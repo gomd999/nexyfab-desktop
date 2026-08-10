@@ -5,12 +5,26 @@ import os from 'node:os';
 import path from 'node:path';
 import JSZip from 'jszip';
 import { validateNativeWorkerExecutionResult, type NativeWorkerExecutionJob, type NativeWorkerExecutionResult } from '../../src/lib/reference/nativeWorkerExecution';
+import { nativeWorkerIdentitySha256 } from '../../src/lib/reference/nativeWorkerCanaryGate';
+import { authorizeNativeWorkerJobs, type NativeWorkerCanaryAuthorizationArtifact } from '../../src/lib/reference/nativeWorkerExecutionAuthorization';
+import { persistNativeWorkerAssemblyPromotions } from '../../src/lib/reference/nativeWorkerAssemblyPromotionBatch';
+import { hydrateNativeWorkerAcceptedResults, persistNativeWorkerResultArtifacts, type NativeWorkerExecutionArtifactReport } from '../../src/lib/reference/nativeWorkerResultArtifactStore';
+import { writeLatestArtifactAtomic } from '../../src/lib/reference/immutableArtifactStore';
 
 const value = (name: string) => process.argv.find(item => item.startsWith(`--${name}=`))?.slice(name.length + 3);
 const manifestPath = path.resolve(value('manifest') ?? 'docs/evidence/complex-holdout-lineage-v2-260807/native-worker-routing-manifest.json');
-const corpusRoot = path.resolve(value('root') ?? 'C:/Users/gomd9/Downloads/참고파일들');
+const corpusRootInput = value('root') ?? process.env.NEXYFAB_REFERENCE_CORPUS_ROOT?.trim();
+if (!corpusRootInput) throw new Error('reference_corpus_root_required');
+const corpusRoot = path.resolve(corpusRootInput);
 const output = path.resolve(value('output') ?? 'docs/evidence/complex-holdout-lineage-v2-260807/native-worker-execution-results.json');
+const reportDirectory = path.dirname(output);
 const resumePath = value('resume') ? path.resolve(value('resume')!) : undefined;
+const canaryGatePath = path.resolve(value('canary-gate') ?? 'docs/evidence/complex-holdout-lineage-v2-260807/native-worker-canary-gate.json');
+const resultOutputDir = path.resolve(value('result-output-dir') ?? path.join(reportDirectory, 'native-worker-results'));
+const assemblyOutputDir = path.resolve(value('assembly-output-dir') ?? path.join(reportDirectory, 'native-worker-assembly-evidence'));
+for (const [label, directory] of [['result', resultOutputDir], ['assembly', assemblyOutputDir]] as const) {
+  if (path.dirname(directory) !== reportDirectory) throw new Error(`${label}_artifact_directory_must_be_report_sibling`);
+}
 const selectedJob = value('job');
 const selectedWorker = value('worker');
 const timeoutMs = Number(value('timeout-ms') ?? 600_000);
@@ -43,20 +57,23 @@ async function main() {
   const externalJobs = manifest.jobs.filter(job => job.availability === 'external-required');
   const jobs = externalJobs.filter(job => (!selectedJob || job.jobId === selectedJob) && (!selectedWorker || job.workerKind === selectedWorker));
   if ((selectedJob || selectedWorker) && !jobs.length) throw new Error('native_worker_selection_empty');
+  const canaryGate = JSON.parse(fs.readFileSync(canaryGatePath, 'utf8')) as NativeWorkerCanaryAuthorizationArtifact;
+  const authorization = authorizeNativeWorkerJobs(jobs, canaryGate, { manifestSha256 });
+  const expectedWorkerIdentity = (job: NativeWorkerExecutionJob) => authorization.identityByWorker.get(job.workerKind)!;
   const accepted: Array<{ job: NativeWorkerExecutionJob; result: NativeWorkerExecutionResult; resultSha256: string }> = [];
   const notRun: Array<{ jobId: string; caseId: string; reason: string }> = [];
   const failed: Array<{ jobId: string; caseId: string; reason: string }> = [];
   const resumed = new Map<string, { job: NativeWorkerExecutionJob; result: NativeWorkerExecutionResult; resultSha256: string }>();
   if (resumePath) {
-    const prior = JSON.parse(fs.readFileSync(resumePath, 'utf8')) as { manifestSha256: string; accepted: Array<{ job: NativeWorkerExecutionJob; result: NativeWorkerExecutionResult; resultSha256: string }> };
+    const prior = JSON.parse(fs.readFileSync(resumePath, 'utf8')) as NativeWorkerExecutionArtifactReport;
     if (prior.manifestSha256 !== manifestSha256) throw new Error('resume_manifest_hash_mismatch');
-    for (const item of prior.accepted ?? []) resumed.set(item.job.jobId, item);
+    for (const item of hydrateNativeWorkerAcceptedResults(prior, path.dirname(resumePath))) resumed.set(item.job.jobId, item);
   }
   for (const job of jobs) {
     const prior = resumed.get(job.jobId);
     if (prior) {
       const validation = validateNativeWorkerExecutionResult(job, prior.result);
-      if (validation.releaseReady && sha256(Buffer.from(`${JSON.stringify(prior.result)}\n`)) === prior.resultSha256) { accepted.push(prior); continue; }
+      if (validation.releaseReady && sha256(Buffer.from(`${JSON.stringify(prior.result)}\n`)) === prior.resultSha256 && nativeWorkerIdentitySha256(prior.result.worker) === expectedWorkerIdentity(job)) { accepted.push(prior); continue; }
       failed.push({ jobId: job.jobId, caseId: job.caseId, reason: 'resume_result_invalid' });
       continue;
     }
@@ -74,12 +91,15 @@ async function main() {
       const resultBytes = fs.readFileSync(resultPath); if (resultBytes.length < 2 || resultBytes.length > 64 * 1024 * 1024) throw new Error(`worker_result_size_invalid:${resultBytes.length}`);
       const result = JSON.parse(resultBytes.toString('utf8')) as NativeWorkerExecutionResult, validation = validateNativeWorkerExecutionResult(job, result);
       if (!validation.releaseReady) throw new Error(`worker_result_rejected:${validation.errors.join(',')}`);
+      if (nativeWorkerIdentitySha256(result.worker) !== expectedWorkerIdentity(job)) throw new Error('worker_identity_does_not_match_health_canary');
       const canonical = Buffer.from(`${JSON.stringify(result)}\n`); accepted.push({ job, result, resultSha256: sha256(canonical) });
     } catch (error) { failed.push({ jobId: job.jobId, caseId: job.caseId, reason: error instanceof Error ? error.message : String(error) }); }
     finally { fs.rmSync(temp, { recursive: true, force: true }); }
   }
-  const report = { schema: 'nexyfab.native-worker-execution-batch.v1', manifestSha256, selection: { jobId: selectedJob ?? null, workerKind: selectedWorker ?? null }, releaseReady: accepted.length === jobs.length && failed.length === 0 && notRun.length === 0, summary: { requested: jobs.length, accepted: accepted.length, resumed: accepted.filter(item => resumed.has(item.job.jobId)).length, notRun: notRun.length, failed: failed.length }, accepted, notRun, failed };
-  fs.mkdirSync(path.dirname(output), { recursive: true }); fs.writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  const { promotedAssemblyEvidence, assemblyPromotionNotRun } = persistNativeWorkerAssemblyPromotions(accepted, assemblyOutputDir);
+  const acceptedArtifacts = persistNativeWorkerResultArtifacts(accepted, resultOutputDir);
+  const report = { schema: 'nexyfab.native-worker-execution-batch.v1.1', generatedAt: new Date().toISOString(), manifestSha256, canaryGateGeneratedAt: authorization.generatedAt, artifactStore: { nativeResultsDirectory: path.basename(resultOutputDir), assemblyEvidenceDirectory: path.basename(assemblyOutputDir) }, policy: { acceptedResultsStoredAsImmutableHashBoundArtifacts: true, governedAssemblyPromotionForAssemblyResults: true, promotionDoesNotGrantReviewerApproval: true, manufacturingReleaseRequiresDownstreamBundleJointMotionReview: true }, selection: { jobId: selectedJob ?? null, workerKind: selectedWorker ?? null }, releaseReady: accepted.length === jobs.length && failed.length === 0 && notRun.length === 0, summary: { requested: jobs.length, accepted: accepted.length, resumed: accepted.filter(item => resumed.has(item.job.jobId)).length, notRun: notRun.length, failed: failed.length, promotedAssemblyEvidence: promotedAssemblyEvidence.length, assemblyPromotionNotRun: assemblyPromotionNotRun.length }, accepted: acceptedArtifacts, promotedAssemblyEvidence, assemblyPromotionNotRun, notRun, failed };
+  writeLatestArtifactAtomic(output, Buffer.from(`${JSON.stringify(report, null, 2)}\n`));
   console.log(JSON.stringify({ output: path.relative(process.cwd(), output), ...report.summary, releaseReady: report.releaseReady }));
   if (failed.length) process.exitCode = 4;
 }

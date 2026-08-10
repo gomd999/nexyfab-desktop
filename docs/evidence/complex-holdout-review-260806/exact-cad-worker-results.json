@@ -1,0 +1,82 @@
+{
+  "schema": "nexyfab.exact-cad-worker-result-batch.v1",
+  "generatedAt": "2026-08-06T14:57:50.386Z",
+  "scoreEligible": false,
+  "releaseReady": false,
+  "sourceBytesEmbedded": false,
+  "summary": {
+    "requested": 13,
+    "accepted": 0,
+    "notRun": 13,
+    "failed": 0
+  },
+  "accepted": [],
+  "notRun": [
+    {
+      "jobId": "dwg-af79ad6f1439a9b58961bd5b",
+      "caseId": "interior-review-04",
+      "reason": "dwg-exact_command_unconfigured"
+    },
+    {
+      "jobId": "dwg-71c6f3cad233232b51b9242a",
+      "caseId": "interior-review-05",
+      "reason": "dwg-exact_command_unconfigured"
+    },
+    {
+      "jobId": "dwg-af4a5500714724d731578f85",
+      "caseId": "interior-review-06",
+      "reason": "dwg-exact_command_unconfigured"
+    },
+    {
+      "jobId": "dwg-b9eee6a16248825168113eff",
+      "caseId": "interior-review-08",
+      "reason": "dwg-exact_command_unconfigured"
+    },
+    {
+      "jobId": "dwg-bf0da7e2bb77b80bfd1d4efc",
+      "caseId": "interior-review-12",
+      "reason": "dwg-exact_command_unconfigured"
+    },
+    {
+      "jobId": "dwg-52bd68a66967288853930953",
+      "caseId": "interior-review-14",
+      "reason": "dwg-exact_command_unconfigured"
+    },
+    {
+      "jobId": "dwg-04dd6244896e42813b91c730",
+      "caseId": "interior-review-16",
+      "reason": "dwg-exact_command_unconfigured"
+    },
+    {
+      "jobId": "dwg-4e123595bf785d7c96eacc1d",
+      "caseId": "interior-review-17",
+      "reason": "dwg-exact_command_unconfigured"
+    },
+    {
+      "jobId": "revit-309f502e360aba4cc0d02105",
+      "caseId": "interior-review-02",
+      "reason": "revit-native_command_unconfigured"
+    },
+    {
+      "jobId": "revit-61f63bf9224bc8cf302ea152",
+      "caseId": "interior-review-14",
+      "reason": "revit-native_command_unconfigured"
+    },
+    {
+      "jobId": "revit-2aaf307e55227b4bb8b7527a",
+      "caseId": "interior-review-15",
+      "reason": "revit-native_command_unconfigured"
+    },
+    {
+      "jobId": "revit-5572819cd679dd646e0f873f",
+      "caseId": "interior-review-16",
+      "reason": "revit-native_command_unconfigured"
+    },
+    {
+      "jobId": "revit-dba9e6f2bbcfc04067942657",
+      "caseId": "interior-review-17",
+      "reason": "revit-native_command_unconfigured"
+    }
+  ],
+  "failed": []
+}

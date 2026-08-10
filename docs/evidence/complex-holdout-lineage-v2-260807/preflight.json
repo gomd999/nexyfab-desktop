@@ -1,0 +1,2908 @@
+{
+  "schema": "nexyfab.complex-holdout-preflight.v1",
+  "policy": {
+    "approvalGranted": false,
+    "scoreEligible": false,
+    "sourceModified": false,
+    "maximumArchiveBytes": 134217728
+  },
+  "counts": {
+    "not_run": 88
+  },
+  "byFamily": {
+    "robot": {
+      "not_run": 9
+    },
+    "gearbox": {
+      "not_run": 17
+    },
+    "pressure_vessel": {
+      "not_run": 11
+    },
+    "turbomachinery": {
+      "not_run": 11
+    },
+    "factory_equipment": {
+      "not_run": 20
+    },
+    "interior": {
+      "not_run": 20
+    }
+  },
+  "results": [
+    {
+      "caseId": "robot-review-01",
+      "family": "robot",
+      "sourceHash": "4efda040359eb9600af0c4a11e1b8b382f57f44891be4bd8c009dbcaab6cda2c",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 161271,
+            "products": 28,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-02",
+      "family": "robot",
+      "sourceHash": "fabf997b27909c9ac626892bdc8ff580cdbf21dc601d0ba666a4fa9d69a7f718",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native X_T requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-03",
+      "family": "robot",
+      "sourceHash": "4a3a0286de2990bab162f2f4b69308972b2f49db5c029483ad0d13d0f4a8147b",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 73647,
+            "products": 10,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-04",
+      "family": "robot",
+      "sourceHash": "383c2165e393e3a49ad8c65258c4237e64e73403b53822d03a0683c15b62709d",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-05",
+      "family": "robot",
+      "sourceHash": "c99aa30f426054651f33f1790f8c6c2e3dcaf228a45bb45b37f362df692f8bb6",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native IAM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-06",
+      "family": "robot",
+      "sourceHash": "b4a254af13a0e1552b38be11fd3004cf80301c76e3e6a920e031a9c6e04d86e9",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 165309,
+            "products": 514,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-07",
+      "family": "robot",
+      "sourceHash": "39717c9473cce636f07fc4d5c8054a7c3b44f9f3fbcede613322577b0e1ee2be",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 1310,
+            "products": 180,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-08",
+      "family": "robot",
+      "sourceHash": "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 73346,
+            "products": 6,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-09",
+      "family": "robot",
+      "sourceHash": "c07e39cb9b19f9ae8e23751b2d70d24fedb2acce30b9acefc0684515fa8197b9",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-01",
+      "family": "gearbox",
+      "sourceHash": "34456f5a233bf4ef5b9bc0fa0c5970d8b54aebb8fa3eceeaadf51253a4126e9d",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-02",
+      "family": "gearbox",
+      "sourceHash": "234a768f45040a1df2ec2d47554fe048f8f9dfe293c0590b0d56476559436104",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-03",
+      "family": "gearbox",
+      "sourceHash": "b5aa4955b6e4e441f33e6d67f2b42a1b0c01e5aa5dd2e2810e85265215b71f36",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-04",
+      "family": "gearbox",
+      "sourceHash": "6a66de0b245fd5f3764358c105f39845922fb9485d5617e6537e39686844d51c",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 134830,
+            "products": 100,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-05",
+      "family": "gearbox",
+      "sourceHash": "5e171f9695873a0fb0933dd7d333b30b89809fc7ad8d1e915dad1d9a3d066009",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-06",
+      "family": "gearbox",
+      "sourceHash": "4d17aa98089879f4af6812a9478e12557116a8710ed80487d4c3d4c7ac9e65e3",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-07",
+      "family": "gearbox",
+      "sourceHash": "f88f2b80dc74d5b756b5267ff6817107118fa50e0931f5de67f01ce409f7e204",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-08",
+      "family": "gearbox",
+      "sourceHash": "18f10d7e5fbd68e6eeadf5fcc4e035381157b10387fce110227b8c513bbcc0d9",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native CATPRODUCT requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-09",
+      "family": "gearbox",
+      "sourceHash": "afcd764a856b0be18a07ca3baa0a551338cfb9bfc4cd1fb3d3135cfa0384a81d",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 19,
+            "assemblyEntries": 15,
+            "extensions": {
+              "prt": 15,
+              "png": 4
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-10",
+      "family": "gearbox",
+      "sourceHash": "0b9069caa4d457021df7825d6365183166df6914d86561638fc3002e1fedee04",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native ASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-11",
+      "family": "gearbox",
+      "sourceHash": "5b0b36d1168a1a3e89627712c774e6ec9f31ef86eb80934e5c7202f224b6807a",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 127294,
+            "products": 35,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-12",
+      "family": "gearbox",
+      "sourceHash": "58c33910be55d7819dba9ba6ab427799c1795abc1f795e05ba6db9b62080352a",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-13",
+      "family": "gearbox",
+      "sourceHash": "75815ed5ab9524c34508ffbc6ade7280a4dd64a8f0edf368467b154b1f80fc8a",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-14",
+      "family": "gearbox",
+      "sourceHash": "36fa5483509d06002a2cc1439a6df6d4f8838b80e4da482c9ad47019e6ec9e7d",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "IGES directory contains solid or subfigure-instance entities.",
+          "measured": {
+            "directoryEntries": 24086,
+            "solids": 0,
+            "instances": 28,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-15",
+      "family": "gearbox",
+      "sourceHash": "7dfe9e91c66bc0ed0721b82af6bcbed3130e28cb7aa8a882c398b4f97228d957",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 44104,
+            "products": 128,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-16",
+      "family": "gearbox",
+      "sourceHash": "4d0fe353e753d07504e2ab4a1458b348304726cb1f4c9f0be0ca8d35061b0e49",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-17",
+      "family": "gearbox",
+      "sourceHash": "aaa4267e7bb109c4d83d862392407420c215ac3a5c9abc333b08f7becaea87a8",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 120996,
+            "products": 73,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-01",
+      "family": "pressure_vessel",
+      "sourceHash": "493dff8203ef2ac1b215d398a8cfeee52991c35d61ecd864005f48983e15a946",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 300637,
+            "products": 1318,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-02",
+      "family": "pressure_vessel",
+      "sourceHash": "87a60a108fafcb3029952d1adb6bdc6333da3d8c07857fedb1aba58ff6e3bbba",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 9,
+            "assemblyEntries": 1,
+            "extensions": {
+              "png": 8,
+              "sldprt": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-03",
+      "family": "pressure_vessel",
+      "sourceHash": "b2a29a800fccd3cfb24d9e2a02a7064d293db3bb584dc084dbb3cb09c05b455c",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 30442,
+            "products": 176,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-04",
+      "family": "pressure_vessel",
+      "sourceHash": "f698142d610dd4270d5213362edba0343fb94392f34e8fa03cb86e73154b7b55",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-05",
+      "family": "pressure_vessel",
+      "sourceHash": "ff81588922d0eb53ed23b5da73f6577560da3e8f82e9a8223d742fece16e25c9",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 1,
+            "assemblyEntries": 1,
+            "extensions": {
+              "sldprt": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-06",
+      "family": "pressure_vessel",
+      "sourceHash": "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 90627,
+            "products": 1242,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-07",
+      "family": "pressure_vessel",
+      "sourceHash": "1403b109c5c5310848054fcd77bbe0010f0e1d3794d3c1c801ce6aacddfaf7da",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-08",
+      "family": "pressure_vessel",
+      "sourceHash": "ffa472e9ccd293416868b95a292d155333e9428a09fcf64dd28d6429a4b22fbb",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-09",
+      "family": "pressure_vessel",
+      "sourceHash": "099c5ae609ab7ee6884d52835219905d15cdc3b6bf20ef6c3f13d174109c9009",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 13003,
+            "products": 342,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-10",
+      "family": "pressure_vessel",
+      "sourceHash": "2673429b360d6d8a518da0448452cc98dcca8da596a52f817c714cab4d68f597",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-11",
+      "family": "pressure_vessel",
+      "sourceHash": "354c508882ae878120d0bbab94a13ec81e41c826ca859e6d34e76a3ee6f0baee",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 5,
+            "assemblyEntries": 1,
+            "extensions": {
+              "sldprt": 1,
+              "jpg": 4
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-01",
+      "family": "turbomachinery",
+      "sourceHash": "a3b31ac6fcd3b4075bcc705e5ab9e926710d7b185ec709203019705690b1e00f",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 196009,
+            "products": 1460,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-02",
+      "family": "turbomachinery",
+      "sourceHash": "586e39d8d37694d2db53345430eb3012b7fa46eb12ac81dfd376804594d3cb45",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 90985,
+            "products": 7,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-03",
+      "family": "turbomachinery",
+      "sourceHash": "50e85725b4d15f7a47a5bc9aae8792dd3bfa07203fc2af5211c0a88587859d7c",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "IGES directory contains solid or subfigure-instance entities.",
+          "measured": {
+            "directoryEntries": 22039,
+            "solids": 68,
+            "instances": 114,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-04",
+      "family": "turbomachinery",
+      "sourceHash": "1c8ddd6fcafaff9463f90c5d2e73a166343bca84147097036a11c29a0346cddc",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 7,
+            "assemblyEntries": 1,
+            "extensions": {
+              "rfa": 1,
+              "ipt": 1,
+              "png": 4,
+              "mp4": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-05",
+      "family": "turbomachinery",
+      "sourceHash": "58cc596957c6818ac6deae5a2d0e2db8be4d35b16563a6c1503f24f494532229",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 162307,
+            "products": 68,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-06",
+      "family": "turbomachinery",
+      "sourceHash": "5551e97fba5b766ca3be25510720ee15f10ba473976035ae434397675968e268",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "IGES directory contains solid or subfigure-instance entities.",
+          "measured": {
+            "directoryEntries": 40580,
+            "solids": 105,
+            "instances": 0,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-07",
+      "family": "turbomachinery",
+      "sourceHash": "ac47f94dec47cfacf52d7cc778389dbb27c15e2396a8961f24124cca79267ed5",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native IAM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-08",
+      "family": "turbomachinery",
+      "sourceHash": "2d4ca8f075f65006cc153dd16c5275d0e43ff4bb56741bd64126b2291272f6fc",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-09",
+      "family": "turbomachinery",
+      "sourceHash": "bce0c685bd1c20e7a94e5e56a2707ee57a1dab17897a91cc171f0788caf5d8af",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "not_run",
+          "reason": "IGES directory exists but product/solid semantics were not established.",
+          "measured": {
+            "directoryEntries": 99048,
+            "solids": 0,
+            "instances": 0,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-10",
+      "family": "turbomachinery",
+      "sourceHash": "630ca7bff17c36d0474c9e1faf8e642cac3d48967b11553351d253fef64c1988",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 233392,
+            "products": 836,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-11",
+      "family": "turbomachinery",
+      "sourceHash": "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 40205,
+            "products": 117,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-01",
+      "family": "factory_equipment",
+      "sourceHash": "51065e8b330c411341ea4ac0ac3b25a7819adfca2be3ed8b36a3cc8cdd9f85f3",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 6,
+            "assemblyEntries": 1,
+            "extensions": {
+              "sldprt": 1,
+              "png": 5
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-02",
+      "family": "factory_equipment",
+      "sourceHash": "be671d888bcd072fd3b2bc6365577cd8624f31836fd377df69710b15578f35c2",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 225734,
+            "products": 887,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-03",
+      "family": "factory_equipment",
+      "sourceHash": "6621350c24376a1c26f330d876d433b3ecde213e8672f51239ea527ac2d81805",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "IGES directory contains solid or subfigure-instance entities.",
+          "measured": {
+            "directoryEntries": 102298,
+            "solids": 0,
+            "instances": 68,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-04",
+      "family": "factory_equipment",
+      "sourceHash": "df26ce90dd327d6c525e6c5e4eee4f8b563a92aef2a35fff05cdf124728a159e",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 158536,
+            "products": 2453,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-05",
+      "family": "factory_equipment",
+      "sourceHash": "88912d84be2213989efbadb1581de32e544bf5f6fb32ae432248af21c29101b9",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native IAM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-06",
+      "family": "factory_equipment",
+      "sourceHash": "96e34f6fd9ee85168fc5feab775d2ff942b8cabfd25ce30c59f11d3d11bc542c",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 13,
+            "assemblyEntries": 4,
+            "extensions": {
+              "jpg": 9,
+              "sldprt": 4
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-07",
+      "family": "factory_equipment",
+      "sourceHash": "561f749936b8aef95df4d623da1046d73852ceebf272768055d1016a43266918",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 9,
+            "assemblyEntries": 4,
+            "extensions": {
+              "jpg": 5,
+              "sldprt": 4
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-08",
+      "family": "factory_equipment",
+      "sourceHash": "7e8d0ebe475b2e7f304b419271ae298147609ec675cac3f6468b4519d7bedd96",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 197219,
+            "products": 604,
+            "truncated": false
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-09",
+      "family": "factory_equipment",
+      "sourceHash": "077edfb8f8b0c1e0dde59121f7269be1efc61f658971a46bd6a76c2ff1b30f3a",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 6,
+            "assemblyEntries": 1,
+            "extensions": {
+              "jpg": 5,
+              "sldprt": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-10",
+      "family": "factory_equipment",
+      "sourceHash": "76f57ce127aa10f77ab70300bc28f25a58c5dfefc0354cb2bf26b94b239b308b",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 2,
+            "assemblyEntries": 1,
+            "extensions": {
+              "sldprt": 1,
+              "stl": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-11",
+      "family": "factory_equipment",
+      "sourceHash": "30be3ac734504e58ab9344c5208846b8f1782f8f7406e2ed90e141527554ce5c",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-12",
+      "family": "factory_equipment",
+      "sourceHash": "c1f82d1b2f963f08383693ef8152be1644afa7e060c4ef8dad9c94af7df39229",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 212690,
+            "products": 1025,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-13",
+      "family": "factory_equipment",
+      "sourceHash": "92f82d46f6fee897f600d01a5d6c968b3cbb9b37b08f81315ddec434c767714d",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-14",
+      "family": "factory_equipment",
+      "sourceHash": "c6cdb94657144b004f886c52ae3c7f72911c82349be30c08b7183e87ffa4f64b",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native IAM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-15",
+      "family": "factory_equipment",
+      "sourceHash": "a80b753572e0998a000c04a818b499742d0202aa0394a803e80c6d47c5bf4aad",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 34,
+            "assemblyEntries": 28,
+            "extensions": {
+              "mp4": 2,
+              "jpeg": 4,
+              "ipt": 28
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-16",
+      "family": "factory_equipment",
+      "sourceHash": "d75f089909348a73adf8e9390d85275343b0020eca508fde136b81b8ad44315b",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-17",
+      "family": "factory_equipment",
+      "sourceHash": "4fe8b865f124b0330bcb60252b325c3cc0cbe58e9f15f0720b8e8c5276e0b728",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 185027,
+            "products": 333,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-18",
+      "family": "factory_equipment",
+      "sourceHash": "2a8f7c9d98fe751187425be49c45d5328cc064eafdd8c92bf73bf0cbcae286a4",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 11,
+            "assemblyEntries": 1,
+            "extensions": {
+              "png": 10,
+              "sldprt": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-19",
+      "family": "factory_equipment",
+      "sourceHash": "e8565c6221d06274798e33d292f8334caa04c2079b9c1e551e3f4d7a518106fe",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "native-structure",
+          "status": "not_run",
+          "reason": "Native SLDASM requires the governed CAD extractor for definitions, occurrences, transforms and joints."
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-20",
+      "family": "factory_equipment",
+      "sourceHash": "1df6c8c4933697cce90f5c692384457d7a887d29b2fac13b72bac3bad89ae7d9",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "STEP/X_T text contains product or solid structure.",
+          "measured": {
+            "entities": 355771,
+            "products": 7747,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-01",
+      "family": "interior",
+      "sourceHash": "65b8b42f41ac9d545c1c695a2f2d0819b7af9dd4136673c36d387baa1259ceb5",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 3,
+            "assemblyEntries": 1,
+            "extensions": {
+              "jpg": 1,
+              "pdf": 1,
+              "dwg": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-02",
+      "family": "interior",
+      "sourceHash": "535ae44a61a2023c77ac45c68039e69f1826de222cf5d75cce7834b5af282bca",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 21,
+            "assemblyEntries": 2,
+            "extensions": {
+              "dwg": 1,
+              "jpg": 14,
+              "png": 5,
+              "rvt": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-03",
+      "family": "interior",
+      "sourceHash": "9623975cea242ed42881d37ea07e67268ac15df03bb8b1f38d0715aab4c2fccc",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 2,
+            "assemblyEntries": 1,
+            "extensions": {
+              "jpg": 1,
+              "dwg": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-04",
+      "family": "interior",
+      "sourceHash": "507c01a31e48c1102b1b99b5071eafa8518a8c23bca9341ce400be6c0ffa4774",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 2,
+            "assemblyEntries": 1,
+            "extensions": {
+              "jpg": 1,
+              "dwg": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-05",
+      "family": "interior",
+      "sourceHash": "d23ba207b032910b352ee1d8146412de3ece8fd4ae6bd92c74970901f2d49dc7",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 4,
+            "assemblyEntries": 1,
+            "extensions": {
+              "jpg": 3,
+              "dwg": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-06",
+      "family": "interior",
+      "sourceHash": "6a51cadae84aef5a1b3c52178dc2dff8da0542d6751c0b53430ff5d5d90ba761",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "IFC contains entity and product structure.",
+          "measured": {
+            "entities": 373310,
+            "products": 495,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-07",
+      "family": "interior",
+      "sourceHash": "b9ad0a38dbccd29e040b2af7d81b089f474b55a40242fcbe10fca53e1a8e1a4d",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 2,
+            "assemblyEntries": 1,
+            "extensions": {
+              "jpg": 1,
+              "dwg": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-08",
+      "family": "interior",
+      "sourceHash": "0ec25f41c7a231268f97544543f4cdd9ba33b2dc4d490cdce4d64b51c6d91605",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 13,
+            "assemblyEntries": 1,
+            "extensions": {
+              "bmp": 12,
+              "dwg": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-09",
+      "family": "interior",
+      "sourceHash": "ea6f7406331edf8c878dad6d21a8e47265e385e34e884c1ca7a9020ea508d756",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 11,
+            "assemblyEntries": 1,
+            "extensions": {
+              "png": 10,
+              "dwg": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-10",
+      "family": "interior",
+      "sourceHash": "e1ec815456cf6888b15b3687d5c1cc8e191bca2ded08f16003c87f7751852e82",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "IFC contains entity and product structure.",
+          "measured": {
+            "entities": 338053,
+            "products": 624,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-11",
+      "family": "interior",
+      "sourceHash": "d4909667dbfa24d8271d6b374390885748352015e67afcc8d6791541e9262159",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 5,
+            "assemblyEntries": 1,
+            "extensions": {
+              "jpg": 4,
+              "dwg": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-12",
+      "family": "interior",
+      "sourceHash": "0db228be732b7561b428eb54bad301b0726b7610a1022b7874761e6a549ed562",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "IFC contains entity and product structure.",
+          "measured": {
+            "entities": 407206,
+            "products": 2500,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-13",
+      "family": "interior",
+      "sourceHash": "3b6e080753b2bd3da2f5753c772fc820e84e322033b64913cdac5dd6933e28fe",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "exchange-structure",
+          "status": "pass",
+          "reason": "IFC contains entity and product structure.",
+          "measured": {
+            "entities": 227678,
+            "products": 9622,
+            "truncated": true
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-14",
+      "family": "interior",
+      "sourceHash": "3688c0fa32236469bf72173ced8ce4e476dfd384cb3ed8aded797fbfb1db77d3",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 4,
+            "assemblyEntries": 2,
+            "extensions": {
+              "rvt": 1,
+              "dwg": 1,
+              "skp": 1,
+              "png": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-15",
+      "family": "interior",
+      "sourceHash": "35b28cb1c4e8bb5ee00624aa7b53be232563a99eb90273690ea1d5be36d21166",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 11,
+            "assemblyEntries": 2,
+            "extensions": {
+              "rvt": 1,
+              "dwg": 1,
+              "jpg": 9
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-16",
+      "family": "interior",
+      "sourceHash": "6edbd4f915ae9704fad91124af4d79940101512d01c68908f0f994260e5113bb",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 5,
+            "assemblyEntries": 2,
+            "extensions": {
+              "dwg": 1,
+              "rvt": 1,
+              "jpg": 3
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-17",
+      "family": "interior",
+      "sourceHash": "7bc3bdaaa41b0fe390efb70a45d89608b652adde99bd04731ac8f0f2d87d4b24",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 14,
+            "assemblyEntries": 2,
+            "extensions": {
+              "jpg": 8,
+              "bmp": 2,
+              "dwf": 1,
+              "rvt": 1,
+              "fbx": 1,
+              "dwg": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-18",
+      "family": "interior",
+      "sourceHash": "ef04a38466fbfb4a4b8e540a2abd2ee1d973663edb9ea5b359dba535862299f1",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 3,
+            "assemblyEntries": 1,
+            "extensions": {
+              "jpg": 2,
+              "dwg": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-19",
+      "family": "interior",
+      "sourceHash": "89bd6ed1cbca2f2023320bdb8060278a502c83cd024fc5bd60bafb00e609f52b",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 7,
+            "assemblyEntries": 1,
+            "extensions": {
+              "jpeg": 2,
+              "dwg": 1,
+              "bmp": 3,
+              "dae": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-20",
+      "family": "interior",
+      "sourceHash": "2f0ddfee466206c959faf0b5398ac200738b13791ea6ac202ab8e1c6a3cac997",
+      "status": "not_run",
+      "checks": [
+        {
+          "id": "source-hash",
+          "status": "pass",
+          "reason": "Source bytes match the frozen candidate hash."
+        },
+        {
+          "id": "provenance-license",
+          "status": "not_run",
+          "reason": "Commercial provenance and license require reviewer approval."
+        },
+        {
+          "id": "archive-structure",
+          "status": "pass",
+          "reason": "Archive contains product/assembly CAD entries.",
+          "measured": {
+            "entries": 4,
+            "assemblyEntries": 1,
+            "extensions": {
+              "dwg": 1,
+              "jpeg": 2,
+              "dae": 1
+            }
+          }
+        },
+        {
+          "id": "assertion-ground-truth",
+          "status": "not_run",
+          "reason": "Counts, transforms, joints, tolerances and expected outcomes require native extraction and reviewer sign-off."
+        }
+      ]
+    }
+  ]
+}

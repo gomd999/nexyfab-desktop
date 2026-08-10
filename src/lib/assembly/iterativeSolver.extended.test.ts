@@ -267,6 +267,19 @@ describe('angle mate', () => {
     const anRes = r.residuals.find((rr) => rr.mateId === 'an')!.residual;
     expect(anRes).toBeLessThan(0.01);
   });
+  it('resolves an anti-parallel axis to a zero-degree target', () => {
+    const state: AssemblyState = {
+      parts: [makePart('f', true), makePart('g')],
+      mates: [{ id: 'an', kind: 'angle', a: ref('f', 'ax', 'axis'), b: ref('g', 'ax', 'axis'), value: 0 } as Mate],
+    };
+    const refs = new Map<string, ResolvedGeometry>([
+      ['f/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+      ['g/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(-1, 0, 0) } }],
+    ]);
+    const result = iterativeSolve(state, makeResolver(refs));
+    expect(result.success).toBe(true);
+    expect(result.residuals[0]?.residual).toBeLessThan(1e-4);
+  });
 });
 
 // ─── supported flag for all extended kinds ───────────────────────────────

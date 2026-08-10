@@ -1,0 +1,1076 @@
+{
+  "schema": "nexyfab.cad-product-bundle.v1",
+  "lineageId": "참고파일들4/mearm-robotic-arm-1.snapshot.10",
+  "members": [
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/File Guide.pdf",
+      "extension": "pdf",
+      "role": "documentation",
+      "sizeBytes": 119899,
+      "sha256": "f7e8a0e89115c64ced4801c883c89fbac27f4ceb2791b4c11ceb820d7261840d"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Final Assembly.x_t",
+      "extension": "x_t",
+      "role": "authoritative_geometry",
+      "sizeBytes": 13873151,
+      "sha256": "fabf997b27909c9ac626892bdc8ff580cdbf21dc601d0ba666a4fa9d69a7f718"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 01-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 104484,
+      "sha256": "2d87a7f3980c20fcad8151617b090ea2f9852bacadac418c8f9df4eea00a8bab"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 02-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 101884,
+      "sha256": "64d00caa7f136aef66c410ac3de8f87fa11eaef20c1e9fe2497f8dc408bd3837"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 03 - Right Hand Side-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 81284,
+      "sha256": "41597db9d5178f80c1699466758264f575a622ee73d1caac7e81f0cfd280a875"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 19684,
+      "sha256": "b2637c059973a0fb6e85b8772514586bc37e9856eab2b0db1d11e8c8616ffb71"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-4.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 19684,
+      "sha256": "002765864cc860107bff81b1a77d9dc7fd4e278e21b6a280cef97439dfe75d24"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-5.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 19684,
+      "sha256": "8a14f87f017844712d6d78d5d781ddbbe92f56ff894c779869e0efbb67303cea"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-6.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 19684,
+      "sha256": "0bf48a74dac107be67b98b928da9c7281ecbde0f6cc68b00bfa6a86c3b444c16"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 04-7.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 19684,
+      "sha256": "db949578fa516efb60bb39035751ef070d7854dc355e7d64ece6cc8cd7b4ba61"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 05 - Rectangular Side Part-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 69484,
+      "sha256": "370a981d9fd6371743aed47c446b4e214155dc6c9165cd263bb6c335d8c6b280"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 06-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 36084,
+      "sha256": "fe8214a8791f7ca93794c5666dfc40a06ab1662db768ccdd39d3a154e343f954"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 07-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 25284,
+      "sha256": "d2f4bbc439c4e329f53f6062dc7960c5ec5fbb5b7b51dfc34e5599b01fe4bf26"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 08 - Long Servo Mounting Arm-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 34284,
+      "sha256": "84b78cba4c767329b88cf25439094de768b9aab4736b1919efe40c95491bdf9a"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 10 - the Pig-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 17084,
+      "sha256": "22acfbb403c73e1a912c12531f87089c2e13f2504a19f4988c1095eba3c59c3e"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 11 - Central Section Of Central Lever-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 28484,
+      "sha256": "ae9858ef7630d78653fb822462175373bf404ebe648f7cbf534629d51358bb67"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 12 - Cradle Ends-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 8084,
+      "sha256": "c6cc376ff052e51906679245da9dafd6bc0c3e0dfd782908d5b09bee7a6b5c38"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 12 - Cradle Ends-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 8084,
+      "sha256": "8a9120b495f43a799a30e01a46b7bd6b640be7c3e8fd6fd193f843dd4b20728f"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 13 - Cradle Base-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 28084,
+      "sha256": "c147031f560dc5d0eb19fc7a4593497e1bf5ad511601adce5b6d1dfabccdb318"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 14-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 40484,
+      "sha256": "63b23271267795d6a516cd17ee6e6a8032935387fc9276c275f406548c494415"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 15-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 10084,
+      "sha256": "a7a374db782b42462a8889141e96069e2d07a43e3d52478dfbeeeed3c39c8f3a"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 16-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 23484,
+      "sha256": "53ccc7ee04123a2cc581d53ec12b15845daf3545e1d983570ff9099bdc5ff29b"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 17 - Base-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 91884,
+      "sha256": "06a2b2716e863b7a6e7f2e6cf52560dd4c77cc5065c016b98b6e484f3686f65d"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 18 - Square Servo Mount-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 64884,
+      "sha256": "4d57a5e638b40de78712088b40a75c6b657320f16d1d9ed0b500516d995f294c"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 19 - Collar-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 28484,
+      "sha256": "3fc2dba49937d7d826cac65bd05af3c4bde17cd8440419aa52444845ad2b0fe4"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 19 - Collar-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 28484,
+      "sha256": "8afd9b34fdb869c9c20f566d68874c89835760379ffd62d1e91ae3c2e97e6742"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 19 - Collar-3.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 28484,
+      "sha256": "c3b76efeb883400466ece0bff5ac2121665a4eab39c00994c68b9be795d0bd45"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 20-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 44684,
+      "sha256": "31fbfbfb7a59d5baf808370df13e2ea8ddff056acc880d48c6419e0495c26104"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 21-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 64284,
+      "sha256": "4707f71f3b65ba5935e2934c34625a3123757bf8262f4e3213712d3d5169061c"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 22-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 29084,
+      "sha256": "04a56f5172c3496a6078c211a66e22f20f4fc53f8ed8b4c6d0e5847d9dbd337e"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 24 - Central lever RHS-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 48484,
+      "sha256": "a7deac46aea6ac57f22423c2cec9356d1ad9f556349fea83ee757fca5a9e3614"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 25 - Left Hand Central lever-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 34684,
+      "sha256": "57aa8104f5cfe82da4807c52ae4dfe02c2d8793ee79edee6b09bea7dd8f0b42b"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 26 - Straight Lever-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 23484,
+      "sha256": "55999aed3ea2972c3819308b855040b44fbde1b34e87836e7e9d623471c229f6"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 26 - Straight Lever-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 23484,
+      "sha256": "af9cb8415c679b6e6bb16a3604d91097de775d6384dfceb1a300f87b42236df7"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 26 - Straight Lever-3.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 23484,
+      "sha256": "d7f3c798f63baa4523f9c5fb646fba1a812bf4b7e85f9a15fdc99fb78d31a8fa"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 27884,
+      "sha256": "0e1f0fa4847af5c772090109381f991e6aabdad070ebf00f302beedd05862a89"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 27884,
+      "sha256": "ba014b0c845b05e763e0e5d88ac6999048ddd78f832b5ae748fcaad4460e6ec5"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-3.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 27884,
+      "sha256": "d8caf87e7063bcea9bbe68b3c9930780e5dd11a4b9389014852d498285a8b700"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Arm Parts/Part 9 - Final Assembly - Part 27 - Sticky Foot-4.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 27884,
+      "sha256": "3bd1cfc29332c4197fa92a771193e609250b286892ab0080aba1053013c1035e"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 152384,
+      "sha256": "7d4b73bcacb6d52b827b57dd6b511a9ed58a9a3e5d609706aad7e930c77afb36"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 152384,
+      "sha256": "286c056591f2bf0a6b79f71d2d667f6be303678e5f3c82ffda7a6f2a76c1b8a9"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-3.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 152384,
+      "sha256": "41e02837f3450111e84df58531f5993aa317b6c410d00b540668513d9e06ecd1"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-4.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 152384,
+      "sha256": "a9a91889e56dbc3d80250c8110ab3de7db7f16c439449c145d9f514d6867be53"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-5.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 152384,
+      "sha256": "a9e67c10105376951c8fecf3ca47937b97fb80853b77654a9b724ef7ccee5dda"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-6.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 152384,
+      "sha256": "73f368f90d613128448ec10e70ba767956f2b8fc3bf7f40c85a2d90f672377df"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-7.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 152384,
+      "sha256": "7d615a4908ddcd65118a9be986d1c133baac300f43628453b15954acb84dc5eb"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - hex thin nut chamfered gradeab_iso-8.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 152384,
+      "sha256": "bfbb47a70ed3ecdccf42270a8f767d8011cd4c29e31d610156719f61bb69ddbf"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 491784,
+      "sha256": "ede27f7edfdd71ab253c17a6d37084c55dd2a77af64ca21fdc3a1b6feec0f3e9"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-10.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 491784,
+      "sha256": "6b7b6e61e68c80adf2027d1e60d70ebfe4c1202829c35b913acc27fa24a93612"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-11.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 411984,
+      "sha256": "a84af56654c6e01027d317e304ccbd22b7e872c328663da209add5699719e752"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-12.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 411984,
+      "sha256": "2767835dc6d85547fbc76317f57af53296f00912278be7ff6aed5232cc1e8a22"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-13.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 651084,
+      "sha256": "479b9b7f803ba2908b6f18501855de1b5c6ce19173560c7b74c3d451fdb9fcdd"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-14.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 491784,
+      "sha256": "a85b78f3b297b9e329913a893d07ab914b17919f5fde9cc9e34765dfe4b91dda"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-15.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 491784,
+      "sha256": "2b875541ec0a2096df0da912c3bd86873f41f90297fa86be8df4eb53d7e41ddf"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-16.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 651084,
+      "sha256": "e1a330303fcf63572315637d3726d13170edb2202b5c51fe77c5d1ffda991cb9"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-17.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 411984,
+      "sha256": "ccb82f5fd37b61f979e41bb5ff3c374791a5d7ae598e663a2e2bac22d1e602db"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-18.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 411984,
+      "sha256": "269ac214b62007c9e4e711f4e2dfd43345c0dd7d4f588bb58d13eeeecec88c92"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-19.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 411984,
+      "sha256": "c001f34b78dbda55f04aef0879801a154bbb914b2228f655f611942510822d47"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 981184,
+      "sha256": "dd73967fcb96a8d216069014f3add8c666b8a0e5bdb8124ab376203bd37d7a4a"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-20.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 411984,
+      "sha256": "b54f58582953cf5bcc5da034ac8aa7a24f28e784f144be937c6a41393ece966a"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-21.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 651084,
+      "sha256": "ba3793d510e0b563f15b671e63114643ec97cf2ccc7a307729f6d14a5b161720"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-22.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 411984,
+      "sha256": "26d6e0c012f60eb78d8939918c7fe318211b322e171f131c055c06c5ecf59e6a"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-3.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 981184,
+      "sha256": "7fd40a213d9f5fbdc738cbe57990a0635caf918633587a536e19944e5614bb6c"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-31.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 491784,
+      "sha256": "fbf2d88dde5f5e961f961648995f0ee49eba8b4342f0ab1e2109080827d878b2"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-32.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 491784,
+      "sha256": "520012746a4ca0aef31b8185c287d7b97a075ab4179570a385db67f7cf5cf8ae"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-33.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 491784,
+      "sha256": "35be187632956424b7fc2e235a6d844e538de89df1574d530ace21bd3755a47c"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-34.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 491784,
+      "sha256": "b2b664e344da74cad7c1614829f04b4b2e6e33cadd89fec141dba0b7bdb01a51"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-35.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 411984,
+      "sha256": "b125792a6760782bb49d4667837dfa302524e3d2d4537edf6f7f671977df5d81"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-36.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 651084,
+      "sha256": "0879f61575febcec0859d1ab0fa47f42cdb6347254cd6e6aa2b83313b597cb23"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-37.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 411984,
+      "sha256": "37a19b0e35857cf897d081dd755bab67b6ef3542fc542e17a1001fd383bfce82"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-38.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 411984,
+      "sha256": "85f97dee3a73dee5416a092dfd655d45b05fe18f49fc5a9b225480987787d8e9"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-4.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 491784,
+      "sha256": "af556a82228dd1f13215303c1fdb31fd50c3de00127d89bb7a52013be75d3bfb"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-40.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 651084,
+      "sha256": "36913d438969b39e455edb72ad6bd768be7dfdcbcc040a7fd993b7272e797b4f"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-42.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 491784,
+      "sha256": "6daa374fd44c59ff21b7798303f2f720741be0d7d15e69eb8a8a19c68dc952b3"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-45.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 491784,
+      "sha256": "55291ce72831c37746f8bc4a76bf6f82b1065f904e3d6c8fd880e19a7def5b3c"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-5.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 981184,
+      "sha256": "6e4d7f46725df2baf2727f8edc3b2cf4f08047ca9fb14466c20248847f43547f"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-6.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 981184,
+      "sha256": "f542850f85734b356ed1bffd4e4b0cf655bb220f392ea2d238a50ebcf30f4290"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-7.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 651084,
+      "sha256": "777d082230ccf0553921aaf10d1aa92142d12e7a1f483db333ec7dd91baf2bbd"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-8.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 651084,
+      "sha256": "fbe3afae16467a9e48dedcf0609f4484c749a65ffd974329b3f044d67d060337"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Fasteners/Part 9 - Final Assembly - pan head cross recess screw_iso-9.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 491784,
+      "sha256": "e3f558c4cd020bca5fba420b0d86842283cf46c53fca97773bb90078851426b5"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 1508184,
+      "sha256": "662a42bb86d91edcb032d3d2e8ca4a970f366b6379f96d25e073f620ccde355b"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 1508184,
+      "sha256": "bc7fdcf1f375b1f8b8d543975a7aaefee0b44a31dec391fa546bb5bb53373568"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-3.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 1508184,
+      "sha256": "7c354dc9a20212b67048e74bfe1f71b6d55ebfd71b2d19055b4d9b8b85849b59"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.1-5.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 1508184,
+      "sha256": "23aef422268e9893847e0f51b773bb321324352636d57dba10a7eebb8796ff08"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.2-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 113484,
+      "sha256": "5153635043b9899a5c18b838a0a372e30059472de419249a39be086bfca8aeeb"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.2-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 113484,
+      "sha256": "4fe780fbb9f4adce376f50ee1b5b052b3f53e51ba47f7085019c2a1f8b544e5d"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.2-4.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 113484,
+      "sha256": "8d1ad135684dd98379b399eab52478c3d307ea5e22f305780e8f0e0cafa12e37"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.3-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 165984,
+      "sha256": "b84e20399874f1877afeea571975ab05b1396a3662aa4c856ae8143146437ea4"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 496284,
+      "sha256": "e4b7c3545161439cc481cf46a7295a117b1f38a883139d65cc50753f7b36fa97"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 496284,
+      "sha256": "0b8278c16b8cff5d052f5e53d009c916f740814fcba61acfbfbae12bc1f9bcef"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-3.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 496284,
+      "sha256": "71827acc875c3717e8ad4bb46ad6081bff854738c8e0c864aca595c04aad2c9f"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.5-4.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 496284,
+      "sha256": "6c7957f6c74bf89e0a29578ea7d748225d65326bb03ff6460a9f106dbb30021a"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.6-1.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 449584,
+      "sha256": "d603812d9daa8a0a6f7537dfa799892e34e60ec3bf89a2da373ac1de0cc5df0c"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.6-2.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 449584,
+      "sha256": "28ee87f284cd24fb184278ca91504f82af88702847382fe231bc18cc2d6ff4e1"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Full Assembly STL Exports/Servo Components/Part 9 - Final Assembly - SG90 - Micro Servo 9g - Tower Pro.6-3.STL",
+      "extension": "stl",
+      "role": "mesh_part",
+      "sizeBytes": 449584,
+      "sha256": "1bfaf6df6c79085689a155698a546122934c79e9bb0fc2d56cabecb60cd46ec0"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Images and Animations/01. Robotic Arm CAD Model.png",
+      "extension": "png",
+      "role": "reference_visual",
+      "sizeBytes": 221173,
+      "sha256": "07a3d026aec07c37af7faead2389d3a222ea8101de68981c0de659d51cc3806f"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Images and Animations/02. Assembly Setup.png",
+      "extension": "png",
+      "role": "reference_visual",
+      "sizeBytes": 274142,
+      "sha256": "a4df93d524e4433c1d713030bc26e95bda4ed226a8e4ad5e81d1e4273c2c739a"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Images and Animations/03. Assembly Components.jpg",
+      "extension": "jpg",
+      "role": "reference_visual",
+      "sizeBytes": 108016,
+      "sha256": "cc4ce544d916be599e89cc4ef3b96eb2054a2af11bd1b01a9867c50669344062"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Images and Animations/04. Prototype During Assembly.jpg",
+      "extension": "jpg",
+      "role": "reference_visual",
+      "sizeBytes": 208259,
+      "sha256": "1d95b153a3fce5f0513decf72e20821a40839b217bbe0388ef5046e0dfc8b513"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Images and Animations/05. Hardware Setup Overview 1.jpg",
+      "extension": "jpg",
+      "role": "reference_visual",
+      "sizeBytes": 4729672,
+      "sha256": "e4a59f756fd1105f6aa205348835decbade0f17e92dce265b7daed0bd7f98e81"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Images and Animations/06. Hardware Setup Overview 2.jpg",
+      "extension": "jpg",
+      "role": "reference_visual",
+      "sizeBytes": 5043607,
+      "sha256": "c2fded23e4c0b4edadbee0a5b9c1e1be31b17c5269e8ba8ebba094a60c93d2d0"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Images and Animations/07. Base Joint Rotation.gif",
+      "extension": "gif",
+      "role": "motion_reference",
+      "sizeBytes": 2794153,
+      "sha256": "c4fdfcdfa548c78271e4ced0415a6a49df1ed5afbabccf89cffe855048455e2e"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Images and Animations/08. Shoulder Joint Motion.gif",
+      "extension": "gif",
+      "role": "motion_reference",
+      "sizeBytes": 2202080,
+      "sha256": "86dcfbdf8fe60fbe67a072b9b17bb2f3b600005567c5c1f6422062729ecf398b"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Images and Animations/09. Elbow Joint Motion.gif",
+      "extension": "gif",
+      "role": "motion_reference",
+      "sizeBytes": 1901638,
+      "sha256": "d43a076f1bd31eeb7bb63e5d743329eb2fd397af32168c578db812c358905193"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Images and Animations/10. Gripper Motion.gif",
+      "extension": "gif",
+      "role": "motion_reference",
+      "sizeBytes": 431624,
+      "sha256": "e25cf76c639bf5aa5333124e4055f6c87290d3952449b47c830a737d26b22475"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Images and Animations/11. Real Robot Demonstration.gif",
+      "extension": "gif",
+      "role": "motion_reference",
+      "sizeBytes": 9387190,
+      "sha256": "563139be4981fce05dc1278ab4afe49a7308bcfbfa3f869d31ddcabb7131768b"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Laser Cutting Files/MeArm V0.4 Preview.jpg",
+      "extension": "jpg",
+      "role": "reference_visual",
+      "sizeBytes": 372439,
+      "sha256": "7c4ce8571c78e936b19e48146ad39bdc8e5d651c7b0da9f3143ea19574398ff0"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/Laser Cutting Files/MeArm V0.4.dxf",
+      "extension": "dxf",
+      "role": "drawing",
+      "sizeBytes": 257844,
+      "sha256": "fb0b48e6e6ca7b464d5e3120eb15cf3c833e21357a09a3d0ec631a158d5e591a"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/assemblies/Part 1 - Base.SLDASM",
+      "extension": "sldasm",
+      "role": "native_assembly",
+      "sizeBytes": 859774,
+      "sha256": "9b4c5c951df5c0071869a020337d528c67ac62b0eb40d802da9710bf6aa5780c"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/assemblies/Part 2 - Left Hand Side.SLDASM",
+      "extension": "sldasm",
+      "role": "native_assembly",
+      "sizeBytes": 1137872,
+      "sha256": "953eec9323601bab0f94ca989bff49c23052e649f941e3772585514b3820049a"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/assemblies/Part 3 - Right Hand Side.SLDASM",
+      "extension": "sldasm",
+      "role": "native_assembly",
+      "sizeBytes": 1114584,
+      "sha256": "fd3d8c7e80ad718782dcd67af0c006e03027e0a9b0518e7df24ca321adc65f58"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/assemblies/Part 4 - The Pig.SLDASM",
+      "extension": "sldasm",
+      "role": "native_assembly",
+      "sizeBytes": 168652,
+      "sha256": "5ed9466cdc003eba4a52d1c6946e7e51bfe4c80dfc59830212973837eb2ad34e"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/assemblies/Part 5 - Base Horn.SLDASM",
+      "extension": "sldasm",
+      "role": "native_assembly",
+      "sizeBytes": 205254,
+      "sha256": "9189f9800a90c7a2f62e39db166476c164f41d3b5ca7794f50f0c07f130e5b36"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/assemblies/Part 6 - RHS & LHS.SLDASM",
+      "extension": "sldasm",
+      "role": "native_assembly",
+      "sizeBytes": 1354763,
+      "sha256": "e2a8111c307f803f31be3b6870fd298bae433c198c3be832ff505953694c4e5c"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/assemblies/Part 7 - Base, RHS & LHS.SLDASM",
+      "extension": "sldasm",
+      "role": "native_assembly",
+      "sizeBytes": 1612665,
+      "sha256": "62bff31840f407e6253304370a2fbdf163969ebd82eca20b732f45db3e25032e"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/assemblies/Part 8 - Assembly.SLDASM",
+      "extension": "sldasm",
+      "role": "native_assembly",
+      "sizeBytes": 1179867,
+      "sha256": "f8f402bacd59ca6ce0c52221583aca2350b0a146e669fea80a2c4b561fab4870"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/assemblies/Part 9 - Final Assembly.SLDASM",
+      "extension": "sldasm",
+      "role": "native_assembly",
+      "sizeBytes": 1902071,
+      "sha256": "dd6bfd09667281c1bb7d8bf427ba461164559fe0011810fe60192215b3ff0fd0"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/All.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 1177406,
+      "sha256": "5a8e4e8fb5c2ab67018db97efbacb8b4b910df73a8b809ed6a1c30209d38bc28"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 01.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 204666,
+      "sha256": "d86d2b28f98ae0d33829f8d6410e06f8f2fecf286f69f465d60b4de253012b90"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 02.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 257713,
+      "sha256": "5d0365421bf612cbd0d17b8c82a4121dbe2c3a6f1a8c5a8c0d069f042cfe6abd"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 03 - Right Hand Side.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 145140,
+      "sha256": "82b87937f625f46e431f11a32e289207b0db423994a12415c261b13a1400de07"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 04.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 76057,
+      "sha256": "3203b2c004b08932f19059b9bf5649cf5f57dd10c5eb2f9bcc4f78ab6898c9db"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 05 - Rectangular Side Part.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 148337,
+      "sha256": "d33a360b86f7c07a0f129dda44d8ede503ab8f3c9ed9b072ade838ca7bde72fd"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 06.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 94905,
+      "sha256": "8e2b5c9e9f4e1898b6039c9b518cbd80be7f9cf9a43a29ce1618245c05aab0ba"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 07.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 83065,
+      "sha256": "e61abfda6302845c108f6504312ad7e185466e0d7e7b331c6e4bb16893bb954b"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 08 - Long Servo Mounting Arm.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 100984,
+      "sha256": "637711a467470a979c9ed6fa99485d4c3c9e92cf57026c21d09a626e4ce9a57b"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 09.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 107680,
+      "sha256": "5441a797abfb7ee41b41ca0d61010a678964a77c8b4f4de90c02eace9db0d97a"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 10 - the Pig.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 102873,
+      "sha256": "5b5254b05608844ba4a56fb62d35c74482cbc33b6f774015993155c83c0894b1"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 11 - Central Section Of Central Lever.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 158904,
+      "sha256": "54960bc6a6eeaabb256f952e3f7756965c44b688aef8fdcfdabda8c462304247"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 12 - Cradle Ends.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 125301,
+      "sha256": "3639481a64e2b84acdc571ce082c8b73baec8b9002170641f622768c3e2830fe"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 13 - Cradle Base.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 108416,
+      "sha256": "679e1479bb613f9d584872d89006e78cf3c18f48f09085fdf55d9a8d7d066597"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 14.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 81707,
+      "sha256": "5e0e72d21b7a7c148bef5c8cf5b2eab90a008ab957e88f109f9806bcabd44e1d"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 15.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 87721,
+      "sha256": "37a58a518f5307524974aed3c8290a619734df2d0b3f05a8423167d2a47903e7"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 16.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 91275,
+      "sha256": "8752470bb6eda28615e238d3e50f6e8c3cd8c9c7b24d91fb1c29ca3b3451602c"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 17 - Base.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 113432,
+      "sha256": "0f7f63bae8bbe0400e8d5f16007f66c691347620fbf8b88d560a2b694a870421"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 18 - Square Servo Mount.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 95514,
+      "sha256": "2c0108c09fd89c26e8a45d0d46d41357ac3e58f35c650f0d04fff5ec9425fa7a"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 19 - Collar.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 100280,
+      "sha256": "cf1a3b2b995b9588f361b18ddef875d75c4f0e6fc32db914f9c13c4861abfeb6"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 20.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 123593,
+      "sha256": "210b0d6d04ade4730f8f5e2cc627b8a45e92f74962a9dce7d5a22832623a20fc"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 21.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 116928,
+      "sha256": "48b118d05408f245bd658ee18bfb85830a87be191b2e19bf59cee00cf0f83273"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 22.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 100121,
+      "sha256": "d1d58c1c36cc0993101073ccb4ae1ac014796e616fd54055b75f2907c15c2928"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 23.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 126081,
+      "sha256": "06cae0c6ec3eee80a84c31e81d392c87e9ef9503dd0fe7ef5898217de611e984"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 24 - Central lever RHS.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 106623,
+      "sha256": "b2d74fdf04ee9f07ad16227224bba721db866e5b32bf0dcbe108f055b37f06a8"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 25 - Left Hand Central lever.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 96063,
+      "sha256": "806f4fed328249b7681fac63ebc6a4f2f1e3c7445ecc548a4fc7dcb2f3fcc1fd"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 26 - Straight Lever.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 75877,
+      "sha256": "922555f282404118853eb9e23e99a056337543c20b2cc42e26fefb5e29e0e131"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/parts/Part 27 - Sticky Foot.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 82693,
+      "sha256": "c7bc5b918f6f2815797f838d77a0edd0c3735057b0b6359d1529652313b6a663"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/servo-models/SG90 - Micro Servo 9g - Tower Pro.1.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 1728094,
+      "sha256": "aaa42bb21f60065f8419324c7a1cf2200100ef59741dd66ba68c6df85be2ced2"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/servo-models/SG90 - Micro Servo 9g - Tower Pro.2.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 211849,
+      "sha256": "6f22d7b97c4422056a8654dd373b5da14e886da5cadb036944c2d9dbea081f7f"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/servo-models/SG90 - Micro Servo 9g - Tower Pro.3.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 222776,
+      "sha256": "be8c8de04182d22d58e348a7adbb29477f82504b4eb4d755f88c655be111ebef"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/servo-models/SG90 - Micro Servo 9g - Tower Pro.4.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 249566,
+      "sha256": "a138e37890a0781a494e81842b4ab482d357608a88fcfad6db2796bc3f5637ac"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/servo-models/SG90 - Micro Servo 9g - Tower Pro.5.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 249767,
+      "sha256": "10e748b6af387e6e0e720a5203964ccc51424f97782d42de270fac64b4314067"
+    },
+    {
+      "relativePath": "참고파일들4/mearm-robotic-arm-1.snapshot.10/SolidWorks Native Files/servo-models/SG90 - Micro Servo 9g - Tower Pro.6.SLDPRT",
+      "extension": "sldprt",
+      "role": "native_part",
+      "sizeBytes": 227290,
+      "sha256": "21c7b0c779050fdfdff66005d129caa0d6e86857d4452bf8f50e6a94e58f35bc"
+    }
+  ],
+  "roles": {
+    "documentation": 1,
+    "authoritative_geometry": 1,
+    "mesh_part": 93,
+    "reference_visual": 7,
+    "motion_reference": 5,
+    "drawing": 1,
+    "native_assembly": 9,
+    "native_part": 34
+  },
+  "warnings": [],
+  "excluded": [],
+  "totalBytes": 89595298
+}

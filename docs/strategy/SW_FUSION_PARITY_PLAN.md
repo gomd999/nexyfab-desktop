@@ -259,5 +259,5 @@ If ≥ 2 NOs, schedule a strategy review. Don't ride the train past a station th
 - Code roadmap with concrete IR items: [OWN_PRO_CAD.md](../roadmap/OWN_PRO_CAD.md)
 - Architecture commit: [ADR-013](../adr/013-own-pro-cad-track.md)
 - Design partner kit (Year 0-1 acquisition): [DESIGN_PARTNER_OUTREACH_KIT.md](./DESIGN_PARTNER_OUTREACH_KIT.md), [_EXECUTION.md](./DESIGN_PARTNER_OUTREACH_EXECUTION.md)
-- Webpack/Emscripten lesson learned (Year 0 deploy pain): [feedback_webpack_emscripten_wasm.md](../../C:/Users/gomd9/.claude/projects/C--Users-gomd9/memory/feedback_webpack_emscripten_wasm.md)
-- Project memory entry: [project_nexyfab_own_pro_cad.md](../../C:/Users/gomd9/.claude/projects/C--Users-gomd9/memory/project_nexyfab_own_pro_cad.md)
+- Webpack/Emscripten lesson learned (Year 0 deploy pain): private local planning memory (not a repository artifact)
+- Project memory entry: private local planning memory (not a repository artifact)

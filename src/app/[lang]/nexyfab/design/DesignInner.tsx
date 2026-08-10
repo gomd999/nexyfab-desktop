@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import * as THREE from 'three';
 import { parseSTL } from '@/app/[lang]/shape-generator/io/importers';
 import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
@@ -25,18 +26,26 @@ import { DesignStageBar } from '@/components/nexyfab/DesignStageBar';
 import { loc } from '@/lib/i18n/loc';
 import { EXAMPLES } from './DesignExamplesDict';
 import BriefClarifier from './BriefClarifier';
-import DomainVerifyPanel from './DomainVerifyPanel';
-import CodeCheckPanel from './CodeCheckPanel';
-import CalcStudioPanel from './CalcStudioPanel';
 import StudioChatDock from './StudioChatDock';
-import ParametricPresetPanel from './ParametricPresetPanel';
-import AssemblyPresetPanel from './AssemblyPresetPanel';
-import EasyWizard from './EasyWizard';
-import DfmPanel from './DfmPanel';
-import FabPanel from './FabPanel';
 import { findDomain } from './designDomains';
-import CheckpointPanel, { type CheckpointData } from './CheckpointPanel';
-import VerifyNet, { type NetItem } from './VerifyNet';
+import type { CheckpointData } from './CheckpointPanel';
+import type { NetItem } from './VerifyNet';
+import { takeDomainDesignHandoff } from '@/lib/ai/domainDesignHandoff';
+import type { DesignDomainId } from '@/lib/ai/domainProfile';
+import { designDomainFromSlug, getDomainUserJourney, precisionCadHref } from '@/lib/ai/domainUserJourney';
+import styles from './DesignInner.module.css';
+
+const PanelLoading = () => <div role="status" style={{ padding: 12, fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}>Loading…</div>;
+const DomainVerifyPanel = dynamic(() => import('./DomainVerifyPanel'), { ssr: false, loading: PanelLoading });
+const CodeCheckPanel = dynamic(() => import('./CodeCheckPanel'), { ssr: false, loading: PanelLoading });
+const CalcStudioPanel = dynamic(() => import('./CalcStudioPanel'), { ssr: false, loading: PanelLoading });
+const ParametricPresetPanel = dynamic(() => import('./ParametricPresetPanel'), { ssr: false, loading: PanelLoading });
+const AssemblyPresetPanel = dynamic(() => import('./AssemblyPresetPanel'), { ssr: false, loading: PanelLoading });
+const EasyWizard = dynamic(() => import('./EasyWizard'), { ssr: false, loading: PanelLoading });
+const DfmPanel = dynamic(() => import('./DfmPanel'), { ssr: false, loading: PanelLoading });
+const FabPanel = dynamic(() => import('./FabPanel'), { ssr: false, loading: PanelLoading });
+const CheckpointPanel = dynamic(() => import('./CheckpointPanel'), { ssr: false, loading: PanelLoading });
+const VerifyNet = dynamic(() => import('./VerifyNet'), { ssr: false, loading: PanelLoading });
 
 type Verify =
   | { manifold?: boolean; triangles?: number; nonManifoldEdges?: number; error?: string }
@@ -151,11 +160,39 @@ function ProfileChart({ d, r, label }: { d: AxisProfile; r: AxisProfile; label: 
 export default function DesignInner({ lang, initialDomain, initialTab }: { lang: string; initialDomain?: string | null; initialTab?: string | null }) {
   const ko = isKorean(lang);
   const domain = findDomain(initialDomain);
+  const workspaceDomain = designDomainFromSlug(initialDomain);
+  const journey = getDomainUserJourney(workspaceDomain, lang);
   const [prompt, setPrompt] = useState('');
   // 일반인 진입 위저드(EasyWizard) 개폐 — 결과는 기존 어셈블리 수신 배선으로 합류
   const [easyOpen, setEasyOpen] = useState(false);
   type StudioTab = 'create' | 'verify' | 'calc' | 'output';
   const [tab, setTab] = useState<StudioTab>(initialTab === 'calc' ? 'calc' : 'create');
+  const [visitedTabs, setVisitedTabs] = useState<Set<StudioTab>>(() => new Set<StudioTab>([initialTab === 'calc' ? 'calc' : 'create']));
+  const selectTab = useCallback((nextTab: StudioTab) => {
+    setTab(nextTab);
+    setVisitedTabs(previous => previous.has(nextTab) ? previous : new Set([...previous, nextTab]));
+  }, []);
+  const templateToolsRef = useRef<HTMLDivElement>(null);
+  const [templateToolsReady, setTemplateToolsReady] = useState(false);
+  useEffect(() => {
+    if (templateToolsReady) return;
+    const element = templateToolsRef.current;
+    if (!element || typeof IntersectionObserver === 'undefined') {
+      setTemplateToolsReady(true);
+      return;
+    }
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        setTemplateToolsReady(true);
+        observer.disconnect();
+      }
+    // Do not prefetch these comparatively heavy authoring panels merely because
+    // they are near the fold. Load once the gallery itself is materially visible
+    // (or immediately when the explicit button is used).
+    }, { rootMargin: '0px', threshold: 0.25 });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [templateToolsReady]);
 
   // 챗 핸드오프 수신 — 랜딩 챗에서 "Studio →"로 넘어온 사양을 프롬프트에 프리필(1회 소비)
   useEffect(() => {
@@ -534,6 +571,36 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     o.target.copy(center);
     o.radius = Math.max(size.x, size.y, size.z) * 2.2 + 40;
   }, []);
+
+  // Precision-modeler → discipline workspace handoff. The source applies only
+  // gate-approved results and includes the canonical editable assembly, so the
+  // user can continue with pick/edit/push-pull instead of receiving a mesh-only
+  // preview. The payload is consumed once and expires after 30 minutes.
+  useEffect(() => {
+    const expectedDomain: DesignDomainId | undefined = initialDomain === 'mech' || initialDomain === 'rack'
+      ? 'mechanical'
+      : initialDomain === 'bridge' ? 'civil'
+        : (['building', 'civil', 'landscape', 'interior'].includes(initialDomain ?? '') ? initialDomain as DesignDomainId : undefined);
+    const handoff = takeDomainDesignHandoff(window.sessionStorage, expectedDomain);
+    if (!handoff) return;
+    setLastAssembly(handoff.assembly);
+    setLastPartsAabb(handoff.parts as PartAabb[]);
+    setScad(handoff.openscad);
+    setIntent({ name: String((handoff.assembly as { name?: unknown }).name ?? 'Domain assembly'), features: [] });
+    setInterf(handoff.validation.interferenceCount);
+    setFloatN(handoff.validation.floatingCount);
+    setIntentM(handoff.validation.intentMatch);
+    editHistRef.current = [];
+    setHistN(0);
+    setStatus(ko ? 'AI 설계를 수동 편집 작업공간으로 전달했습니다.' : 'AI design transferred into the manual editing workspace.');
+    if (wasmAvailable()) {
+      void renderScadWasm(handoff.openscad).then((rendered) => {
+        if (!rendered.ok || !rendered.data) return;
+        const buffer = rendered.data.buffer.slice(rendered.data.byteOffset, rendered.data.byteOffset + rendered.data.byteLength) as ArrayBuffer;
+        showGeometry(parseSTL(buffer));
+      });
+    }
+  }, [initialDomain, ko, showGeometry]);
 
   // 설계 결과(compose 또는 결정론 프리셋) → 상태 반영 + 브라우저 렌더. 공통 경로.
   // 실사 컨셉 렌더링(Gemini image-to-image) — 뷰어 캔버스 PNG를 기하 기준으로 전달 (⑤)
@@ -1229,7 +1296,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const verifyFailed = verify && (verify.error || verify.manifold === false);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--nx-bg, #f4f6f8)', color: 'var(--nx-text, #1a2230)' }}>
+    <div className={styles.root} style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--nx-bg, #f4f6f8)', color: 'var(--nx-text, #1a2230)' }}>
       {/* Header */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--nx-border, #dfe3e8)' }}>
         <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em' }}>
@@ -1256,15 +1323,38 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             )}
           </span>
         </h1>
+        <nav data-testid="domain-user-journey" aria-label={ko ? '설계 진행 단계' : 'Design progress'} className={styles.journey}>
+          {journey.stages.map((item, index) => {
+            const activeIndex = !intent ? 0 : tab === 'output' ? 4 : tab === 'verify' || tab === 'calc' ? 3 : 2;
+            const target: StudioTab = index >= 4 ? 'output' : index >= 3 ? 'verify' : 'create';
+            return (
+              <button
+                key={item.id}
+                type="button"
+                aria-current={index === activeIndex ? 'step' : undefined}
+                onClick={() => setTab(target)}
+                className={index === activeIndex ? styles.journeyActive : styles.journeyStep}
+              >
+                <span>{index + 1}</span>{item.label}
+              </button>
+            );
+          })}
+          <span className={styles.journeyFocus}>{journey.focus}</span>
+        </nav>
+        <div data-testid="domain-readiness-summary" className={styles.readiness}>
+          <span><b>{ko ? '정밀 입력' : 'Exact inputs'}:</b> {journey.exactInputs.join(' · ')}</span>
+          <span><b>{ko ? '검증' : 'Checks'}:</b> {journey.validations.join(' · ')}</span>
+          <span><b>{ko ? '산출물' : 'Outputs'}:</b> {journey.deliverables.join(' · ')}</span>
+        </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+      <div className={styles.workspace} style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         {/* Left: prompt + verify + export */}
-        <div style={{ width: 380, minWidth: 380, borderRight: '1px solid var(--nx-border, #dfe3e8)', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+        <div className={styles.controlPane} style={{ width: 380, minWidth: 380, borderRight: '1px solid var(--nx-border, #dfe3e8)', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
           {/* 작업 4탭 — 세로 스택 해체: 생성 | 검증 | 계산기 | 출력 */}
-          <div style={{ display: 'flex', gap: 4, padding: '10px 12px 0', position: 'sticky', top: 0, zIndex: 5, background: 'var(--nx-bg, #fff)' }}>
+          <div role="group" aria-label={ko ? '설계 작업' : 'Design tasks'} style={{ display: 'flex', gap: 4, padding: '10px 12px 0', position: 'sticky', top: 0, zIndex: 5, background: 'var(--nx-bg, #fff)' }}>
             {([['create', ko ? '생성' : 'Create'], ['verify', ko ? '검증' : 'Verify'], ['calc', ko ? '계산기' : 'Calc'], ['output', ko ? '출력' : 'Output']] as [StudioTab, string][]).map(([k, label]) => (
-              <button key={k} type="button" onClick={() => setTab(k)}
+              <button key={k} type="button" aria-pressed={tab === k} onClick={() => selectTab(k)}
                 style={{ flex: 1, padding: '7px 0', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                   border: '1px solid ' + (tab === k ? 'var(--nx-accent, #2563eb)' : 'var(--nx-border, #dfe3e8)'),
                   background: tab === k ? 'var(--nx-accent, #2563eb)' : 'transparent', color: tab === k ? '#fff' : 'inherit' }}>
@@ -1287,19 +1377,21 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 {ko ? '🙋 처음이신가요? 쉬운 설계로 시작' : '🙋 New here? Start with Easy design'}
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 3 }}>
-                {ko ? '"마당에 6×3m 데크" 처럼 말하면 됩니다 — 질문 3~4개로 만들어 드립니다.' : 'Say it plainly, e.g. "a 6×3 m deck in the yard" — 3~4 questions and it is built.'}
+                {ko ? `“${journey.example}”처럼 말하면 됩니다 — 질문 3~4개로 구체화합니다.` : `Say it plainly, e.g. “${journey.example}” — 3–4 questions make it specific.`}
               </div>
             </button>
-            <EasyWizard
-              lang={lang}
-              open={easyOpen}
-              onClose={() => setEasyOpen(false)}
-              onApply={async (i, s) => {
-                setError(null); setGateErrors(null); setExportMsg(null);
-                await applyDesign(i, s, null);
-              }}
-              onBuildInfo={(info) => { pendingInterfRef.current = info.interferences; pendingFloatRef.current = info.floating ?? null; pendingAssemblyRef.current = info.assembly ?? null; }}
-            />
+            {easyOpen && (
+              <EasyWizard
+                lang={lang}
+                open
+                onClose={() => setEasyOpen(false)}
+                onApply={async (i, s) => {
+                  setError(null); setGateErrors(null); setExportMsg(null);
+                  await applyDesign(i, s, null);
+                }}
+                onBuildInfo={(info) => { pendingInterfRef.current = info.interferences; pendingFloatRef.current = info.floating ?? null; pendingAssemblyRef.current = info.assembly ?? null; }}
+              />
+            )}
             {/* 기계 세부분야 칩 — 가설·랙은 사이드바에서 기계로 흡수(2026-07-16 IA) */}
             {(domain?.slug === 'mech' || domain?.slug === 'rack') && (
               <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
@@ -1416,7 +1508,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder={ko ? '예: 내경 500mm 원통형 물탱크, 높이 800mm…' : 'e.g. a 500mm cylindrical water tank, 800mm tall…'}
+              placeholder={`${ko ? '예' : 'e.g.'}: ${journey.example}…`}
               rows={5}
               style={{
                 width: '100%', marginTop: 6, padding: 10, borderRadius: 8, resize: 'vertical',
@@ -1490,8 +1582,13 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             </div>
 
             {/* 템플릿 갤러리 — 채팅 아래(카드 클릭=즉시 생성은 유지) */}
-            <div style={{ marginTop: 12 }}>
-              {domain?.parametric && (
+            <div ref={templateToolsRef} style={{ marginTop: 12, minHeight: 44 }}>
+              {!templateToolsReady && (
+                <button type="button" onClick={() => setTemplateToolsReady(true)} style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+                  {ko ? '템플릿 도구 불러오기' : 'Load template tools'}
+                </button>
+              )}
+              {templateToolsReady && domain?.parametric && (
                 <ParametricPresetPanel
                   lang={lang}
                   domain={domain.slug}
@@ -1501,7 +1598,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                   }}
                 />
               )}
-              {domain && (
+              {templateToolsReady && domain && (
                 <AssemblyPresetPanel
                   lang={lang}
                   domain={domain.slug}
@@ -1514,6 +1611,16 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
               )}
             </div>
 
+            <section data-testid="manual-precision-options" className={styles.precisionOption} aria-label={ko ? '수동 수정과 정밀 CAD' : 'Manual and precision CAD options'}>
+              <div>
+                <strong>{ko ? 'AI 결과를 그대로 끝낼 필요는 없습니다' : 'You do not have to stop at the AI result'}</strong>
+                <span>{ko ? '오른쪽 3D에서 부품·면을 선택해 직접 조정하고, 필요한 경우에만 같은 분야·설계 이력으로 정밀 CAD를 여세요.' : 'Select parts or faces in 3D for manual changes, and open precision CAD only when needed—within the same domain and design history.'}</span>
+              </div>
+              <a href={precisionCadHref(lang, workspaceDomain)} aria-label={`${journey.title} ${ko ? '정밀 CAD 열기' : 'Open precision CAD'}`}>
+                {ko ? '정밀 CAD 열기' : 'Open precision CAD'} →
+              </a>
+            </section>
+
             {/* 기계 전문 도구 — 구 사이드바 '도구' 섹션의 새 집(2026-07-16 IA) */}
             {(domain?.slug === 'mech' || domain?.slug === 'rack') && (
               <div style={{ marginTop: 14 }}>
@@ -1521,7 +1628,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   {([
                     ['✨', ko ? '자유형 Studio' : 'Free-form Studio', `/${lang}/studio`],
-                    ['🛠️', ko ? '전문가형 CAD' : 'Expert CAD', `/${lang}/shape-generator?mode=expert`],
+                    ['🛠️', ko ? '전문가형 CAD' : 'Expert CAD', precisionCadHref(lang, workspaceDomain)],
                     ['📐', ko ? '종이·레이저컷' : 'Papercraft', `/${lang}/papercraft`],
                     ['🔩', ko ? '부품 라이브러리' : 'Part Library', `/${lang}/nexyfab/cots`],
                   ] as [string, string, string][]).map(([ic, label, href]) => (
@@ -1555,7 +1662,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           </div>
 
           {/* Always-on verification panel */}
-          <div style={{ padding: '0 16px 16px', display: tab === 'verify' ? undefined : 'none', paddingTop: tab === 'verify' ? 16 : 0 }}>
+          {visitedTabs.has('verify') && <div style={{ padding: '0 16px 16px', display: tab === 'verify' ? undefined : 'none', paddingTop: tab === 'verify' ? 16 : 0 }}>
             <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.02em', marginBottom: 6 }}>
               {ko ? '검증 (상시)' : 'Verification (always-on)'}
             </div>
@@ -1834,25 +1941,25 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 )}
               </div>
             )}
-          </div>
+          </div>}
 
           {/* 제조성(DFM) 상시 — 기계·판금(파라메트릭) 분야 */}
-          <div style={{ display: tab === 'verify' ? undefined : 'none' }}>{intent && domain?.parametric && <DfmPanel intent={intent} lang={lang} />}</div>
+          {visitedTabs.has('verify') && <div style={{ display: tab === 'verify' ? undefined : 'none' }}>{intent && domain?.parametric && <DfmPanel intent={intent} lang={lang} />}</div>}
 
           {/* 제조(판재 레이저 명세·예상비용·DXF)(⑤) — 기계·판금 분야 */}
-          <div style={{ display: tab === 'output' ? undefined : 'none' }}>{intent && domain?.parametric && <FabPanel intent={intent} name={intent.name} lang={lang} />}</div>
+          {visitedTabs.has('output') && <div style={{ display: tab === 'output' ? undefined : 'none' }}>{intent && domain?.parametric && <FabPanel intent={intent} name={intent.name} lang={lang} />}</div>}
 
           {/* 분야 검증(②) — 형상 + 분야 계산기(상시 게이트 위에 얹는 분야층) */}
-          <div style={{ display: tab === 'verify' ? undefined : 'none' }}>{intent && <DomainVerifyPanel intent={intent} lang={lang} defaultDomain={domain?.verifyDomain ?? undefined} />}</div>
+          {visitedTabs.has('verify') && <div style={{ display: tab === 'verify' ? undefined : 'none' }}>{intent && <DomainVerifyPanel intent={intent} lang={lang} defaultDomain={domain?.verifyDomain ?? undefined} />}</div>}
 
           {/* 코드체크·감리(결정론) — 실제 법령 조항 인용. 학습모델 감리와 차별화 */}
-          <div style={{ display: tab === 'verify' ? undefined : 'none' }}><CodeCheckPanel lang={lang} /></div>
+          {visitedTabs.has('verify') && <div style={{ display: tab === 'verify' ? undefined : 'none' }}><CodeCheckPanel lang={lang} /></div>}
 
           {/* 계산기 스튜디오 — 전 38종 스키마 자동 폼 + 계산서 출력(형상 없이도 사용 가능) */}
-          <div style={{ display: tab === 'calc' ? undefined : 'none', padding: tab === 'calc' ? '16px 12px' : 0 }}><CalcStudioPanel lang={lang} /></div>
+          {visitedTabs.has('calc') && <div style={{ display: tab === 'calc' ? undefined : 'none', padding: tab === 'calc' ? '16px 12px' : 0 }}><CalcStudioPanel lang={lang} /></div>}
 
           {/* Export + manufacture */}
-          {intent && (
+          {visitedTabs.has('output') && intent && (
             <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--nx-border, #dfe3e8)', paddingTop: 14, display: tab === 'output' ? undefined : 'none' }}>
               <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>{ko ? '내보내기 · 제조' : 'Export · Manufacture'}</div>
               <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginBottom: 6, lineHeight: 1.5 }}>

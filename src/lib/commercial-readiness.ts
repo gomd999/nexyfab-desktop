@@ -27,6 +27,17 @@ export function commercialReadinessIssues(env: Env): CommercialReadinessIssue[] 
 
   requireKey('DATABASE_URL', 'database.postgres_required', 'commercial traffic requires PostgreSQL');
   requireKey('REDIS_URL', 'rate_limit.redis_required', 'distributed rate limits and job state must be shared');
+  const hasUpstashUrl = has(env, 'UPSTASH_REDIS_REST_URL');
+  const hasUpstashToken = has(env, 'UPSTASH_REDIS_REST_TOKEN');
+  if (hasUpstashUrl !== hasUpstashToken) {
+    issues.push({
+      code: 'cad_rate_limit.redis_rest_pair_incomplete',
+      message: 'UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be configured together when the optional REST fallback is used',
+    });
+  }
+  if (env.NEXYFAB_CAD_INDEPENDENT_MODE !== '1') {
+    issues.push({ code: 'cad_mode.independent_required', message: 'NEXYFAB_CAD_INDEPENDENT_MODE must be 1 so CAD quota failures are fail-closed' });
+  }
   requireKey('S3_BUCKET', 'storage.bucket_required', 'customer CAD files must use durable object storage');
   requireKey('S3_ACCESS_KEY_ID', 'storage.access_key_required', 'object storage credentials are incomplete');
   requireKey('S3_SECRET_ACCESS_KEY', 'storage.secret_key_required', 'object storage credentials are incomplete');

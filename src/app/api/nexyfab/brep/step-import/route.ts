@@ -8,14 +8,16 @@ import { checkMonthlyLimit, checkPlan, consumeMonthlyMetricSlot } from '@/lib/pl
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { getStorage } from '@/lib/storage';
-import { enqueueBrepStepJob, getBrepMemoryQueueLength } from '@/lib/brep-bridge/jobQueue';
-import { BREP_STEP_MAX_BYTES, BREP_STEP_SYNC_MAX_BYTES } from '@/lib/brep-bridge/constants';
+import { countBrepUserPendingJobsAsync, enqueueBrepStepJob, enqueueBrepStepObjectJob, getBrepMemoryQueueLength } from '@/lib/brep-bridge/jobQueue';
+import { BREP_STEP_LARGE_JOB_MAX_BYTES, BREP_STEP_MAX_BYTES, BREP_STEP_SYNC_MAX_BYTES } from '@/lib/brep-bridge/constants';
 import { maybeUploadBrepPreviewStl, runBrepStepProcess } from '@/lib/brep-bridge/processBrepStep';
 import { brepApiLangFromRequest, brepMsg } from '@/lib/brep-bridge/brepApiI18n';
 import { isAllowedStepFilename } from '@/lib/brep-bridge/validation';
-import { brepMaxQueueDepth, getBrepPendingQueueDepth } from '@/lib/brep-bridge/capacity';
+import { brepMaxPendingJobsPerUser, brepMaxQueueDepth, getBrepPendingQueueDepth } from '@/lib/brep-bridge/capacity';
 import { nfApiInfo } from '@/lib/nfApiLog';
 import { CadAuditAction, logCadPipelineAudit } from '@/lib/enterprise-cad-audit';
+import { getDbAdapter } from '@/lib/db-adapter';
+import { validateStepObjectAccess, type StepObjectRecord } from '@/lib/brep-bridge/objectKeyAccess';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +36,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const asyncMode = body.async === true;
 
-  let buffer: Buffer;
+  let buffer: Buffer | null = null;
+  let objectSource: { key: string; bytes: number } | null = null;
   let filename = 'model.step';
 
   const rawInput = body.input as Record<string, unknown> | undefined;
@@ -59,24 +62,44 @@ export async function POST(req: NextRequest) {
     if (!key.trim()) {
       return NextResponse.json({ error: 'input.key is required for objectKey' }, { status: 400 });
     }
-    filename =
-      typeof input.filename === 'string' && input.filename.trim()
-        ? input.filename.trim()
-        : key.split('/').pop() ?? 'model.step';
-    const storage = getStorage();
-    if (!storage.download) {
+    const db = getDbAdapter();
+    const record = await db.queryOne<StepObjectRecord>(
+      `SELECT user_id, storage_key, filename, size_bytes FROM nf_files WHERE storage_key = ?`,
+      key,
+    );
+    const access = validateStepObjectAccess(record, plan.userId, key);
+    if (!access.ok) {
+      nfApiInfo('brep.step-import', 'OBJECT_ACCESS_DENIED', { userId: plan.userId, code: access.code });
       return NextResponse.json(
-        { error: brepMsg(lang, 'STORAGE_UNAVAILABLE'), code: 'STORAGE_UNAVAILABLE' },
-        { status: 501 },
+        { error: 'Object is unavailable', code: 'OBJECT_UNAVAILABLE' },
+        { status: 404 },
       );
     }
-    try {
-      buffer = await storage.download(key);
-    } catch {
+    if (access.record.size_bytes > BREP_STEP_LARGE_JOB_MAX_BYTES) {
       return NextResponse.json(
-        { error: brepMsg(lang, 'OBJECT_DOWNLOAD_FAILED'), code: 'OBJECT_DOWNLOAD_FAILED' },
-        { status: 400 },
+        { error: brepMsg(lang, 'TOO_LARGE'), code: 'TOO_LARGE', maxBytes: BREP_STEP_LARGE_JOB_MAX_BYTES },
+        { status: 413 },
       );
+    }
+    filename = access.record.filename;
+    if (access.record.size_bytes > BREP_STEP_MAX_BYTES) {
+      objectSource = { key, bytes: access.record.size_bytes };
+    } else {
+      const storage = getStorage();
+      if (!storage.download) {
+        return NextResponse.json(
+          { error: brepMsg(lang, 'STORAGE_UNAVAILABLE'), code: 'STORAGE_UNAVAILABLE' },
+          { status: 501 },
+        );
+      }
+      try {
+        buffer = await storage.download(key);
+      } catch {
+        return NextResponse.json(
+          { error: brepMsg(lang, 'OBJECT_DOWNLOAD_FAILED'), code: 'OBJECT_DOWNLOAD_FAILED' },
+          { status: 400 },
+        );
+      }
     }
   } else {
     return NextResponse.json(
@@ -92,13 +115,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (buffer.length === 0) {
+  const inputBytes = objectSource?.bytes ?? buffer?.length ?? 0;
+  if (inputBytes === 0) {
     return NextResponse.json(
       { error: brepMsg(lang, 'EMPTY_PAYLOAD'), code: 'EMPTY_PAYLOAD' },
       { status: 400 },
     );
   }
-  if (buffer.length > BREP_STEP_MAX_BYTES) {
+  if (!objectSource && inputBytes > BREP_STEP_MAX_BYTES) {
     return NextResponse.json(
       { error: brepMsg(lang, 'TOO_LARGE'), code: 'TOO_LARGE', maxBytes: BREP_STEP_MAX_BYTES },
       { status: 413 },
@@ -123,9 +147,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const forceAsync = asyncMode || buffer.length > BREP_STEP_SYNC_MAX_BYTES;
+  const forceAsync = Boolean(objectSource) || asyncMode || inputBytes > BREP_STEP_SYNC_MAX_BYTES;
 
   if (!forceAsync) {
+    if (!buffer) {
+      return NextResponse.json({ error: 'Inline STEP buffer is unavailable', code: 'INPUT_REQUIRED' }, { status: 400 });
+    }
     const syncId = `sync-${randomBytes(8).toString('hex')}`;
     const r = await runBrepStepProcess({
       userId: plan.userId,
@@ -196,6 +223,14 @@ export async function POST(req: NextRequest) {
       { status: 503 },
     );
   }
+  const userPending = await countBrepUserPendingJobsAsync(plan.userId);
+  const userPendingLimit = brepMaxPendingJobsPerUser();
+  if (userPending >= userPendingLimit) {
+    return NextResponse.json(
+      { error: 'Too many pending CAD jobs', code: 'USER_QUEUE_FULL', used: userPending, limit: userPendingLimit },
+      { status: 429 },
+    );
+  }
 
   const reserved = await consumeMonthlyMetricSlot(plan.userId, plan.plan, 'brep_step_import', {
     mode: 'async',
@@ -218,13 +253,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const job = await enqueueBrepStepJob({ userId: plan.userId, buffer, filename });
+  const job = objectSource
+    ? await enqueueBrepStepObjectJob({
+        userId: plan.userId, objectKey: objectSource.key,
+        sourceBytes: objectSource.bytes, filename,
+      })
+    : await enqueueBrepStepJob({ userId: plan.userId, buffer: buffer!, filename });
   logCadPipelineAudit({
     userId: plan.userId,
     plan: plan.plan,
     action: CadAuditAction.STEP_IMPORT_ASYNC,
     resourceId: job.id,
-    metadata: { filename, bytes: buffer.length },
+    metadata: { filename, bytes: inputBytes, source: objectSource ? 'private-object' : 'inline' },
     ip,
   });
   return NextResponse.json({

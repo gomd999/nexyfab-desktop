@@ -101,7 +101,7 @@ describe("browser generation session state", () => {
       { kind: "set_part_suppressed" },
     ]);
   });
-  it("records ordered initial generation checkpoints and persists each revision", async () => {
+  it("refuses browser-authored generation pass checkpoints", async () => {
     const store = storage();
     const states = [0, 1, 2].map((revision) => ({
       schema: "nexyfab.generation-run.v1",
@@ -127,7 +127,7 @@ describe("browser generation session state", () => {
           status: 200,
         }),
       );
-    const result = await recordGenerationSessionStages(
+    await expect(recordGenerationSessionStages(
       [
         { stage: "intent", input: "motor", output: {}, status: "passed" },
         {
@@ -138,12 +138,9 @@ describe("browser generation session state", () => {
         },
       ],
       { fetcher, storage: store, runId: "build" },
-    );
-    expect(result.revision).toBe(2);
-    expect(JSON.parse(store.values.get(GENERATION_SESSION_KEY)!).revision).toBe(
-      2,
-    );
-    expect(fetcher).toHaveBeenCalledTimes(3);
+    )).rejects.toThrow("SERVER_STAGE_EXECUTOR_REQUIRED");
+    expect(store.values.has(GENERATION_SESSION_KEY)).toBe(false);
+    expect(fetcher).not.toHaveBeenCalled();
   });
   it("persists server-certified geometry advancement", async () => {
     const store = storage();

@@ -74,9 +74,8 @@ export default defineConfig({
       ADMIN_SECRET: process.env.ADMIN_SECRET ?? 'e2e-admin-secret-16',
       NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? defaultOrigin,
       /**
-       * Lang layout always loads `recaptcha/api.js?render=…`. A real production key
-       * rejects localhost / 127.0.0.1 and leaves shape-generator on “Loading 3D workspace…”.
-       * Google’s documented test keys always pass verification (v2/v3).
+       * Protected forms load reCAPTCHA only when explicitly submitted. Google's
+       * documented test keys keep those submit-path E2E cases deterministic.
        * @see https://developers.google.com/recaptcha/docs/faq#id-like-to-run-automated-tests-with-recaptcha-what-should-i-do
        */
       NEXT_PUBLIC_RECAPTCHA_SITE_KEY: '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe',

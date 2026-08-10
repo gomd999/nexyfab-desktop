@@ -1,0 +1,82 @@
+{
+  "schema": "nexyfab.deployment-ai-cad-smoke.v1",
+  "generatedAt": "2026-08-10T03:15:28.425Z",
+  "target": "https://nexyfab.com",
+  "status": "not_run",
+  "credentials": {
+    "applicationAuthPresent": false,
+    "adminSecretPresent": false
+  },
+  "results": [
+    {
+      "id": "live",
+      "status": "pass",
+      "httpStatus": 200,
+      "redirected": true,
+      "latencyMs": 753,
+      "contentType": "application/json",
+      "summary": {
+        "status": "ok",
+        "build": "20260810023750",
+        "code": null,
+        "error": null,
+        "dbStatus": null
+      }
+    },
+    {
+      "id": "ready",
+      "status": "pass",
+      "httpStatus": 200,
+      "redirected": true,
+      "latencyMs": 419,
+      "contentType": "application/json",
+      "summary": {
+        "status": "ok",
+        "build": null,
+        "code": null,
+        "error": null,
+        "dbStatus": "ok"
+      }
+    },
+    {
+      "id": "capabilities",
+      "status": "not_run",
+      "httpStatus": 401,
+      "redirected": true,
+      "latencyMs": 405,
+      "contentType": "application/json",
+      "summary": {
+        "status": null,
+        "build": null,
+        "code": null,
+        "error": "Authentication required",
+        "dbStatus": null
+      }
+    },
+    {
+      "id": "scad-agent-route",
+      "status": "pass",
+      "httpStatus": 405,
+      "redirected": true,
+      "latencyMs": 452,
+      "contentType": "",
+      "summary": null
+    },
+    {
+      "id": "openscad",
+      "status": "not_run",
+      "httpStatus": 401,
+      "redirected": true,
+      "latencyMs": 583,
+      "contentType": "application/json",
+      "summary": {
+        "status": null,
+        "build": null,
+        "code": null,
+        "error": "unauthorized",
+        "dbStatus": null
+      }
+    }
+  ],
+  "sha256": "42d4d17e012c16b6a796aab1a1b0a4d8f7f0355d348f510c4642f96c3b6c2f51"
+}

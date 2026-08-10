@@ -36,11 +36,36 @@ const T = {
     exportHint: 'Feed the exported approvals array to the promote CLI via --approvals. Two reviewers must each export their own session for dual approval.',
     summaryTitle: 'Artifact summary (auto-generated — compare against source docs separately)',
   },
+  ja: {
+    title: 'ドメイン精度レビューコンソール', reviewer: 'レビュアーID', load: 'レビューパケットJSONを開く',
+    none: 'パケットファイルを開いて開始してください', notReady: '認証不可', ready: 'レビュー可能', axes: '根拠軸', checklist: 'チェックリスト（承認前に全項目を確認）',
+    confirm: 'すべてのチェック項目を確認しました', approve: '承認', reject: '却下', note: 'メモ（任意）', export: '承認レコードJSONを書き出す', decided: '決定済み', undecided: '未決定',
+    exportHint: '書き出した approvals 配列を promote CLI の --approvals に渡してください。二重承認には各レビュアーが個別に書き出す必要があります。', summaryTitle: '成果物の概要（自動生成。原資料との照合は別途必要）',
+  },
+  zh: {
+    title: '领域准确性审核控制台', reviewer: '审核员 ID', load: '打开审核包 JSON', none: '请打开审核包文件开始', notReady: '不可认证', ready: '可审核', axes: '依据维度',
+    checklist: '审核清单（批准前确认全部项目）', confirm: '我已确认所有清单项目', approve: '批准', reject: '拒绝', note: '备注（可选）', export: '导出批准记录 JSON', decided: '已决定', undecided: '待决定',
+    exportHint: '请将导出的 approvals 数组通过 --approvals 交给 promote CLI。双人批准要求两位审核员分别导出各自会话。', summaryTitle: '产物摘要（自动生成，仍需另行对照原始资料）',
+  },
+  es: {
+    title: 'Consola de revisión de precisión', reviewer: 'ID del revisor', load: 'Abrir paquetes JSON', none: 'Abra un archivo de paquetes para comenzar', notReady: 'No certificable', ready: 'Revisable', axes: 'Ejes de evidencia',
+    checklist: 'Lista de verificación (confirme todo antes de aprobar)', confirm: 'He confirmado todos los elementos', approve: 'Aprobar', reject: 'Rechazar', note: 'Nota (opcional)', export: 'Exportar aprobaciones JSON', decided: 'decididos', undecided: 'pendientes',
+    exportHint: 'Pase el arreglo approvals exportado al CLI promote mediante --approvals. Cada uno de los dos revisores debe exportar su propia sesión.', summaryTitle: 'Resumen del artefacto (generado automáticamente; compárelo por separado con las fuentes)',
+  },
+  ar: {
+    title: 'وحدة مراجعة دقة المجال', reviewer: 'معرّف المراجع', load: 'فتح حزم المراجعة JSON', none: 'افتح ملف الحزم للبدء', notReady: 'غير قابل للاعتماد', ready: 'جاهز للمراجعة', axes: 'محاور الأدلة',
+    checklist: 'قائمة التحقق (أكد جميع البنود قبل الاعتماد)', confirm: 'أكدت جميع بنود قائمة التحقق', approve: 'اعتماد', reject: 'رفض', note: 'ملاحظة (اختياري)', export: 'تصدير سجلات الاعتماد JSON', decided: 'محسوم', undecided: 'معلّق',
+    exportHint: 'مرّر مصفوفة approvals المصدّرة إلى promote CLI عبر --approvals. يجب أن يصدّر كل مراجع جلسته بصورة مستقلة للاعتماد المزدوج.', summaryTitle: 'ملخص المخرجات (مولّد آلياً؛ يلزم التحقق من المصادر بصورة منفصلة)',
+  },
 } as const;
 
 export default function ReviewPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
-  const t = T[lang === 'kr' || lang === 'ko' ? 'ko' : 'en'];
+  const locale = lang === 'kr' || lang === 'ko' ? 'ko'
+    : lang === 'cn' || lang === 'zh' ? 'zh'
+      : lang === 'ja' || lang === 'es' || lang === 'ar' ? lang
+        : 'en';
+  const t = T[locale];
   const [packets, setPackets] = useState<ReviewPacket[]>([]);
   const [error, setError] = useState('');
   const [reviewerId, setReviewerId] = useState('');

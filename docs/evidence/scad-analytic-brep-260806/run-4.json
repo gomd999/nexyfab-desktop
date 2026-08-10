@@ -1,0 +1,799 @@
+{
+  "schema": "nexyfab.scad-analytic-brep-campaign.v1",
+  "generatedAt": "2026-08-06T10:08:05.893Z",
+  "sourceCanonical": "docs/evidence/scad-canonical-features-260806/run-1.json",
+  "sourceMesh": "docs/evidence/scad-definition-geometry-260806/run-3.json",
+  "summary": {
+    "definitions": 9,
+    "analyticPass": 9,
+    "notRun": 0,
+    "fail": 0,
+    "crossCheckPass": 9,
+    "stepRoundtripPass": 9,
+    "partCertificatePass": 0,
+    "partCertificateNotRun": 0,
+    "manufacturingReady": 0
+  },
+  "scenarios": [
+    {
+      "scenarioId": "sc7_gear_train",
+      "definitions": [
+        {
+          "definitionId": "scad:def:gear20",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              43.97805392495291,
+              43.97805392495291,
+              8.0000002
+            ],
+            "volumeMm3": 9401.755177651492,
+            "solidCount": 1,
+            "faceCount": 583
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0.00016730776922457835,
+            "volumeRelativeError": 0.0044547062114011155,
+            "codes": []
+          },
+          "step": {
+            "valid": true,
+            "bytes": 2312657,
+            "sha256": "29a0500ce40199ad03059a05088ed7cd25c57bd3b70d2fce25d2d8b4a6f82ae7",
+            "file": "step/sc7_gear_train-gear20.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 6.636469151999336e-12,
+            "volumeRelativeError": 1.5032882050734052e-13,
+            "importedMeasurement": {
+              "bboxSize": [
+                43.97805392494627,
+                43.97805392494627,
+                8.0000002
+              ],
+              "volumeMm3": 9401.755177650079,
+              "solidCount": 1,
+              "faceCount": 583
+            },
+            "codes": []
+          },
+          "nativeTopology": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:gear20",
+            "intent": "general",
+            "status": "fail",
+            "releaseReady": false,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "fail",
+                "codes": [
+                  "PART_KERNEL_INVALID"
+                ]
+              },
+              {
+                "gate": "topology",
+                "status": "not_run",
+                "codes": [
+                  "PART_TOPOLOGY_EVIDENCE_MISSING"
+                ]
+              },
+              {
+                "gate": "dimensions",
+                "status": "not_run",
+                "codes": [
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].module",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].teeth",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].thickness",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].pressureAngle",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[1].height",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[1].diameter"
+                ]
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        },
+        {
+          "definitionId": "scad:def:gear30",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              63.98300849260889,
+              63.78664780433679,
+              8.0000002
+            ],
+            "volumeMm3": 21905.612171892157,
+            "solidCount": 1,
+            "faceCount": 873
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0.1963938957651692,
+            "volumeRelativeError": 0.0023443499920782623,
+            "codes": []
+          },
+          "step": {
+            "valid": true,
+            "bytes": 3478841,
+            "sha256": "9bbeb30324df3d2fe4fd7f9166e5c43826531310fb2561ab798ae704f732cff6",
+            "file": "step/sc7_gear_train-gear30.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 4.035882739117369e-12,
+            "volumeRelativeError": 2.46123438587483e-13,
+            "importedMeasurement": {
+              "bboxSize": [
+                63.98300849260485,
+                63.78664780433708,
+                8.0000002
+              ],
+              "volumeMm3": 21905.612171886765,
+              "solidCount": 1,
+              "faceCount": 873
+            },
+            "codes": []
+          },
+          "nativeTopology": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:gear30",
+            "intent": "general",
+            "status": "fail",
+            "releaseReady": false,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "fail",
+                "codes": [
+                  "PART_KERNEL_INVALID"
+                ]
+              },
+              {
+                "gate": "topology",
+                "status": "not_run",
+                "codes": [
+                  "PART_TOPOLOGY_EVIDENCE_MISSING"
+                ]
+              },
+              {
+                "gate": "dimensions",
+                "status": "not_run",
+                "codes": [
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].module",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].teeth",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].thickness",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].pressureAngle",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[1].height",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[1].diameter"
+                ]
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        }
+      ]
+    },
+    {
+      "scenarioId": "sc8_pipe_joint",
+      "definitions": [
+        {
+          "definitionId": "scad:def:main_pipe_left",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              30.0000002,
+              30.0000002,
+              50.0000002
+            ],
+            "volumeMm3": 19634.95408493621,
+            "solidCount": 1,
+            "faceCount": 4
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0.16434333895179876,
+            "volumeRelativeError": 0.007348405544448744,
+            "codes": []
+          },
+          "step": {
+            "valid": true,
+            "bytes": 9350,
+            "sha256": "7ad9b8811dd46910a355e30a6eb150040dc0fe5a1e1bee9bc5e9f5a75da7bf93",
+            "file": "step/sc8_pipe_joint-main_pipe_left.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 2.2233688704468587e-14,
+            "importedMeasurement": {
+              "bboxSize": [
+                30.0000002,
+                30.0000002,
+                50.0000002
+              ],
+              "volumeMm3": 19634.954084936646,
+              "solidCount": 1,
+              "faceCount": 4
+            },
+            "codes": []
+          },
+          "nativeTopology": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:main_pipe_left",
+            "intent": "general",
+            "status": "fail",
+            "releaseReady": false,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "fail",
+                "codes": [
+                  "PART_KERNEL_INVALID"
+                ]
+              },
+              {
+                "gate": "topology",
+                "status": "not_run",
+                "codes": [
+                  "PART_TOPOLOGY_EVIDENCE_MISSING"
+                ]
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        },
+        {
+          "definitionId": "scad:def:main_pipe_right",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              30.0000002,
+              30.0000002,
+              50.0000002
+            ],
+            "volumeMm3": 19634.95408493621,
+            "solidCount": 1,
+            "faceCount": 4
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0.16434333895179876,
+            "volumeRelativeError": 0.007348405544448744,
+            "codes": []
+          },
+          "step": {
+            "valid": true,
+            "bytes": 9350,
+            "sha256": "f18525e22c39440e4d6e0ef16c5e497ca715e882d686d56a09344b7a421ff40e",
+            "file": "step/sc8_pipe_joint-main_pipe_right.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 2.2233688704468587e-14,
+            "importedMeasurement": {
+              "bboxSize": [
+                30.0000002,
+                30.0000002,
+                50.0000002
+              ],
+              "volumeMm3": 19634.954084936646,
+              "solidCount": 1,
+              "faceCount": 4
+            },
+            "codes": []
+          },
+          "nativeTopology": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:main_pipe_right",
+            "intent": "general",
+            "status": "fail",
+            "releaseReady": false,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "fail",
+                "codes": [
+                  "PART_KERNEL_INVALID"
+                ]
+              },
+              {
+                "gate": "topology",
+                "status": "not_run",
+                "codes": [
+                  "PART_TOPOLOGY_EVIDENCE_MISSING"
+                ]
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        },
+        {
+          "definitionId": "scad:def:branch_pipe",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              30.0000002,
+              30.0000002,
+              60.0000002
+            ],
+            "volumeMm3": 23561.94490192345,
+            "solidCount": 1,
+            "faceCount": 4
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0.16434333895179876,
+            "volumeRelativeError": 0.007348405544441474,
+            "codes": []
+          },
+          "step": {
+            "valid": true,
+            "bytes": 9350,
+            "sha256": "16cb4a6612b0b2002e0e08cb2b2dd3d5a8dad6a686cd0c9da4cd317b82e6be36",
+            "file": "step/sc8_pipe_joint-branch_pipe.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 2.2079288088465337e-14,
+            "importedMeasurement": {
+              "bboxSize": [
+                30.0000002,
+                30.0000002,
+                60.0000002
+              ],
+              "volumeMm3": 23561.94490192397,
+              "solidCount": 1,
+              "faceCount": 4
+            },
+            "codes": []
+          },
+          "nativeTopology": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:branch_pipe",
+            "intent": "general",
+            "status": "fail",
+            "releaseReady": false,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "fail",
+                "codes": [
+                  "PART_KERNEL_INVALID"
+                ]
+              },
+              {
+                "gate": "topology",
+                "status": "not_run",
+                "codes": [
+                  "PART_TOPOLOGY_EVIDENCE_MISSING"
+                ]
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        }
+      ]
+    },
+    {
+      "scenarioId": "sc9_simple_car",
+      "definitions": [
+        {
+          "definitionId": "scad:def:body",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              60.0000002,
+              30.0000002,
+              20.0000002
+            ],
+            "volumeMm3": 36000,
+            "solidCount": 1,
+            "faceCount": 6
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "pass",
+            "bboxMaxErrorMm": 2.0000000233721948e-7,
+            "volumeRelativeError": 0,
+            "codes": []
+          },
+          "step": {
+            "valid": true,
+            "bytes": 15571,
+            "sha256": "22459f5a8cb9818b853674a7fb226c7ea2b0c0aa49ce2d9313a31f7ee5c737e2",
+            "file": "step/sc9_simple_car-body.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 0,
+            "importedMeasurement": {
+              "bboxSize": [
+                60.0000002,
+                30.0000002,
+                20.0000002
+              ],
+              "volumeMm3": 36000,
+              "solidCount": 1,
+              "faceCount": 6
+            },
+            "codes": []
+          },
+          "nativeTopology": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:body",
+            "intent": "general",
+            "status": "fail",
+            "releaseReady": false,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "fail",
+                "codes": [
+                  "PART_KERNEL_INVALID"
+                ]
+              },
+              {
+                "gate": "topology",
+                "status": "not_run",
+                "codes": [
+                  "PART_TOPOLOGY_EVIDENCE_MISSING"
+                ]
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        },
+        {
+          "definitionId": "scad:def:wheel",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              6.0000002000000014,
+              14.0000002,
+              14.0000002
+            ],
+            "volumeMm3": 923.6282401553995,
+            "solidCount": 1,
+            "faceCount": 3
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "pass",
+            "bboxMaxErrorMm": 2.0000000144904106e-7,
+            "volumeRelativeError": 0.0016081890839733726,
+            "codes": []
+          },
+          "step": {
+            "valid": true,
+            "bytes": 5953,
+            "sha256": "4205fbfcaa460709f2e0b8c026c0eeab21167baa4f7542ba4d7a1bc9ad2c1480",
+            "file": "step/sc9_simple_car-wheel.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 2.4617445153580046e-16,
+            "importedMeasurement": {
+              "bboxSize": [
+                6.0000002000000014,
+                14.0000002,
+                14.0000002
+              ],
+              "volumeMm3": 923.6282401553992,
+              "solidCount": 1,
+              "faceCount": 3
+            },
+            "codes": []
+          },
+          "nativeTopology": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:wheel",
+            "intent": "general",
+            "status": "fail",
+            "releaseReady": false,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "fail",
+                "codes": [
+                  "PART_KERNEL_INVALID"
+                ]
+              },
+              {
+                "gate": "topology",
+                "status": "not_run",
+                "codes": [
+                  "PART_TOPOLOGY_EVIDENCE_MISSING"
+                ]
+              },
+              {
+                "gate": "dimensions",
+                "status": "not_run",
+                "codes": [
+                  "PART_DIMENSION_NOT_MEASURED:root.rotate[0]",
+                  "PART_DIMENSION_NOT_MEASURED:root.rotate[1]",
+                  "PART_DIMENSION_NOT_MEASURED:root.rotate[2]"
+                ]
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        },
+        {
+          "definitionId": "scad:def:window",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              10.0000002,
+              8.0000002,
+              4.0000002
+            ],
+            "volumeMm3": 319.99999999999994,
+            "solidCount": 1,
+            "faceCount": 6
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "pass",
+            "bboxMaxErrorMm": 2.0000000056086265e-7,
+            "volumeRelativeError": 1.7763568394002506e-16,
+            "codes": []
+          },
+          "step": {
+            "valid": true,
+            "bytes": 15475,
+            "sha256": "0b4f150968e9ac8f418989e903d281b96f6f24ab692388820dafc582d8866a23",
+            "file": "step/sc9_simple_car-window.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 0,
+            "volumeRelativeError": 0,
+            "importedMeasurement": {
+              "bboxSize": [
+                10.0000002,
+                8.0000002,
+                4.0000002
+              ],
+              "volumeMm3": 319.99999999999994,
+              "solidCount": 1,
+              "faceCount": 6
+            },
+            "codes": []
+          },
+          "nativeTopology": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:window",
+            "intent": "general",
+            "status": "fail",
+            "releaseReady": false,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "fail",
+                "codes": [
+                  "PART_KERNEL_INVALID"
+                ]
+              },
+              {
+                "gate": "topology",
+                "status": "not_run",
+                "codes": [
+                  "PART_TOPOLOGY_EVIDENCE_MISSING"
+                ]
+              },
+              {
+                "gate": "dimensions",
+                "status": "pass",
+                "codes": []
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        }
+      ]
+    },
+    {
+      "scenarioId": "sc10_brackets_grid",
+      "definitions": [
+        {
+          "definitionId": "scad:def:bracket",
+          "status": "pass",
+          "artifactClass": "analytic_brep",
+          "measurement": {
+            "bboxSize": [
+              40.000000299999996,
+              40.000000299999996,
+              40.000000299999996
+            ],
+            "volumeMm3": 14999.99999999999,
+            "solidCount": 1,
+            "faceCount": 8
+          },
+          "codes": [],
+          "crossCheck": {
+            "status": "pass",
+            "bboxMaxErrorMm": 2.9999999640040187e-7,
+            "volumeRelativeError": 6.063298011819521e-16,
+            "codes": []
+          },
+          "step": {
+            "valid": true,
+            "bytes": 22296,
+            "sha256": "c799d86df6ed36701bf34d20a7cba4f83d615a29e70c25b2fd62a319f818f00d",
+            "file": "step/sc10_brackets_grid-bracket.step"
+          },
+          "roundtrip": {
+            "status": "pass",
+            "bboxMaxErrorMm": 9.999999406318238e-8,
+            "volumeRelativeError": 0,
+            "importedMeasurement": {
+              "bboxSize": [
+                40.0000002,
+                40.0000002,
+                40.0000002
+              ],
+              "volumeMm3": 14999.99999999999,
+              "solidCount": 1,
+              "faceCount": 8
+            },
+            "codes": []
+          },
+          "nativeTopology": null,
+          "partCertificate": {
+            "schema": "nexyfab.part-generation-certificate.v1",
+            "partId": "scad:def:bracket",
+            "intent": "general",
+            "status": "fail",
+            "releaseReady": false,
+            "releaseTarget": "manufacturing",
+            "artifactClass": "analytic_brep",
+            "gates": [
+              {
+                "gate": "kernel",
+                "status": "fail",
+                "codes": [
+                  "PART_KERNEL_INVALID"
+                ]
+              },
+              {
+                "gate": "topology",
+                "status": "not_run",
+                "codes": [
+                  "PART_TOPOLOGY_EVIDENCE_MISSING"
+                ]
+              },
+              {
+                "gate": "dimensions",
+                "status": "not_run",
+                "codes": [
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].translate[0]",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].translate[1]",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].translate[2]",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].children[0].size[0]",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].children[0].size[1]",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[0].children[0].size[2]",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[1].translate[0]",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[1].translate[1]",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[1].translate[2]",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[1].children[0].size[0]",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[1].children[0].size[1]",
+                  "PART_DIMENSION_NOT_MEASURED:root.children[1].children[0].size[2]"
+                ]
+              },
+              {
+                "gate": "features",
+                "status": "pass",
+                "codes": []
+              }
+            ]
+          },
+          "manufacturingReady": false
+        }
+      ]
+    }
+  ]
+}

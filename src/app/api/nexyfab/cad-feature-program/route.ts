@@ -7,6 +7,7 @@ import { resolveCodegenModel } from '@/lib/ai/codegenModels';
 import { clarificationQuestions, findUngroundedProgramDimensions, validateCadFeatureProgram, type CadFeatureProgram } from '@/lib/ai/cadFeatureProgram';
 import { extractManufacturingContext } from '@/lib/ai/manufacturingContext';
 import type { SelectionContext } from '@/lib/ai/selectionContext';
+import { guardStudioAi } from '@/lib/studio-ai-guard';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,8 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as { prompt?: string; previousProgram?: FeatureProgram; modelId?: string; selectionContext?: SelectionContext };
   const prompt = (body.prompt ?? '').trim();
   if (!prompt) return NextResponse.json({ error: 'prompt required' }, { status: 400 });
+  const planGuard = await guardStudioAi(req);
+  if (planGuard) return planGuard;
   const codegen = resolveCodegenModel(typeof body.modelId === 'string' ? body.modelId : undefined);
 
   const def = getPrompt('cad-feature-program');

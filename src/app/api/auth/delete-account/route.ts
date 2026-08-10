@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { logAudit } from '@/lib/audit';
+import { clearAuthCookies } from '@/lib/cookie-config';
 
 /**
  * DELETE /api/auth/delete-account
@@ -84,7 +85,6 @@ export async function DELETE(req: NextRequest) {
 
   // Clear auth cookie
   const response = NextResponse.json({ deleted: true });
-  response.cookies.set('nf_access_token', '', { maxAge: 0, path: '/' });
-  response.cookies.set('nf_refresh_token', '', { maxAge: 0, path: '/api/auth' });
+  clearAuthCookies(response);
   return response;
 }

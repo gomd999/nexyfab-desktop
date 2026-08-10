@@ -1,0 +1,279 @@
+{
+  "schema": "nexyfab.complex-product-scope-assessment.v1",
+  "assessedAt": "2026-08-09T06:14:42.247Z",
+  "sources": [
+    {
+      "path": "docs/evidence/cad-independent/complex-reference-exchange-pilot-260809.json",
+      "sha256": "5d55c44359a491f81e086f80f28ae247efa8b5613ddd3ee0535cd81927297ba1"
+    },
+    {
+      "path": "docs/evidence/ai-robot6axis-demonstrator-260809/report.json",
+      "sha256": "3bcdd539247fdb48f0b2524d0dd7a03fd02413c0c74eaf08fb9b94e9fb300969"
+    },
+    {
+      "path": "src/lib/ai/adaptiveComplexProductExecution.ts",
+      "sha256": "7fdc7477d0650707bf5a3fb53fdcb37b0f7c77948d7e70ef50afb35c79667805"
+    }
+  ],
+  "externalCadInstallationRequired": false,
+  "platformExecutionContract": {
+    "objective": "complete_manufacturing_product",
+    "aiIsDefaultExecutor": true,
+    "aiDraftOnly": false,
+    "precisionCadIsConditional": true,
+    "generalUserWorkflow": "ai_guided",
+    "precisionCadForGeneralUsers": "ai_managed",
+    "expertUserWorkflow": "ai_or_manual_precision",
+    "expertPrecisionWorkspaceAvailable": true,
+    "expertPrecisionWorkspaceRequired": false,
+    "manualAdjustmentDuringAiWorkflow": true,
+    "exactManualParameterEntry": true,
+    "userLockedValuesOverrideLaterAiChanges": true,
+    "manualValuesPreservedToExpertHandoff": true,
+    "modelReportedConfidenceIsSufficient": false,
+    "serverValidatedProductPlan": true,
+    "requirementToPartTraceRequired": true,
+    "authoritativeInputsRequiredBeforeExactGeometry": true,
+    "assemblyMateConnectivityRequired": true,
+    "repeatedDefinitionsMustRemainIdentical": true,
+    "inventedEvidenceReferencesRejected": true,
+    "precisionCadEntryReasons": [
+      "exact_geometry",
+      "topology",
+      "assembly",
+      "motion_collision_clearance",
+      "step_roundtrip",
+      "bounded_ai_repair_exhausted"
+    ],
+    "authoritativeFactsAreRequestedNotInvented": true,
+    "expertReleaseReviewSeparatedFromDesignCompletion": true
+  },
+  "decision": {
+    "scopedClosedBetaPilotEligible": true,
+    "broadComplexProductSelfServiceEligible": false,
+    "manufacturingReleaseGuaranteed": false,
+    "failClosed": true,
+    "statement": "Only explicitly passed families are validated; partial and not-run assertions must not be marketed as supported or manufacturing-ready."
+  },
+  "referencePilot": {
+    "totals": {
+      "families": 8,
+      "validatedExchangePilots": 4,
+      "partiallyValidated": 4,
+      "blocked": 0,
+      "notValidated": 0
+    },
+    "families": [
+      {
+        "scenarioId": "mearm-motion",
+        "sourceLabel": "Final Assembly.x_t",
+        "sourceSha256": "fabf997b27909c9ac626892bdc8ff580cdbf21dc601d0ba666a4fa9d69a7f718",
+        "format": "x_t",
+        "importer": "parasolid_xt_structure_v1",
+        "status": "not_run",
+        "scope": "partially_validated",
+        "assertions": {
+          "pass": 2,
+          "fail": 0,
+          "notRun": 3
+        },
+        "unresolvedAssertions": [
+          {
+            "assertion": "assembly_hierarchy",
+            "status": "not_run",
+            "reason": "Parasolid body records do not encode a certified assembly hierarchy, mates, or motion constraints in the current adapter."
+          },
+          {
+            "assertion": "mates_or_joints",
+            "status": "not_run",
+            "reason": "Parasolid body records do not encode a certified assembly hierarchy, mates, or motion constraints in the current adapter."
+          },
+          {
+            "assertion": "motion_collision",
+            "status": "not_run",
+            "reason": "Parasolid body records do not encode a certified assembly hierarchy, mates, or motion constraints in the current adapter."
+          }
+        ]
+      },
+      {
+        "scenarioId": "fastener-stack",
+        "sourceLabel": "NutBolt.STEP",
+        "sourceSha256": "950610e947294e704fb74087817d70c94e3f3e6791bda272a65cdc205b6788d4",
+        "format": "step",
+        "importer": "occt_kernel_mesh_v1",
+        "status": "pass",
+        "scope": "validated_exchange_pilot",
+        "assertions": {
+          "pass": 5,
+          "fail": 0,
+          "notRun": 0
+        },
+        "unresolvedAssertions": []
+      },
+      {
+        "scenarioId": "gearbox-assembly",
+        "sourceLabel": "Single Stage Reduction Helical Gear Box.STEP",
+        "sourceSha256": "aaa4267e7bb109c4d83d862392407420c215ac3a5c9abc333b08f7becaea87a8",
+        "format": "step",
+        "importer": "step_brep_pure_ts_v1",
+        "status": "not_run",
+        "scope": "partially_validated",
+        "assertions": {
+          "pass": 4,
+          "fail": 0,
+          "notRun": 1
+        },
+        "unresolvedAssertions": [
+          {
+            "assertion": "pattern_fidelity",
+            "status": "not_run",
+            "reason": "3 repeated definition group(s) are irregular, but the STEP source contains no authoritative pattern intent to classify that as failure."
+          }
+        ]
+      },
+      {
+        "scenarioId": "electrical-cabinet",
+        "sourceLabel": "A0101.STEP",
+        "sourceSha256": "e075d49f2ccf007593e022957ae0f91a27a228d18410c27f9f55b742287ff87d",
+        "format": "step",
+        "importer": "step_brep_pure_ts_v1",
+        "status": "pass",
+        "scope": "validated_exchange_pilot",
+        "assertions": {
+          "pass": 5,
+          "fail": 0,
+          "notRun": 0
+        },
+        "unresolvedAssertions": []
+      },
+      {
+        "scenarioId": "welded-structure",
+        "sourceLabel": "SPIRAL STAIRCASE.stp",
+        "sourceSha256": "ed418ebd4c9473b112f9d5d23e83d63aae0f59f2a03a5472f2e730c7f609d54b",
+        "format": "stp",
+        "importer": "step_brep_pure_ts_v1",
+        "status": "not_run",
+        "scope": "partially_validated",
+        "assertions": {
+          "pass": 4,
+          "fail": 0,
+          "notRun": 1
+        },
+        "unresolvedAssertions": [
+          {
+            "assertion": "mass",
+            "status": "not_run",
+            "reason": "not_run: source material density is not authoritatively bound to each member"
+          }
+        ]
+      },
+      {
+        "scenarioId": "heavy-equipment-motion",
+        "sourceLabel": "JCB427_bucket down.step",
+        "sourceSha256": "e4a7881dbf13f544479c1e3d39396343bffa51cec677679c20abcbd62714ba73",
+        "format": "step",
+        "importer": "step_brep_pure_ts_v1",
+        "status": "not_run",
+        "scope": "partially_validated",
+        "assertions": {
+          "pass": 3,
+          "fail": 0,
+          "notRun": 2
+        },
+        "unresolvedAssertions": [
+          {
+            "assertion": "motion_collision",
+            "status": "not_run",
+            "reason": "No governed roundtrip/assembly adapter is registered for this STEP assertion."
+          },
+          {
+            "assertion": "clearance",
+            "status": "not_run",
+            "reason": "No governed roundtrip/assembly adapter is registered for this STEP assertion."
+          }
+        ]
+      },
+      {
+        "scenarioId": "nist-pmi",
+        "sourceLabel": "nist_ctc_01_asme1_ap242-e1.stp",
+        "sourceSha256": "85a5752da05f53c456ca3a9e038c90358e1d5a3141d1f0d6e5f0970f2356e821",
+        "format": "stp",
+        "importer": "occt_kernel_mesh_v1",
+        "status": "pass",
+        "scope": "validated_exchange_pilot",
+        "assertions": {
+          "pass": 7,
+          "fail": 0,
+          "notRun": 0
+        },
+        "unresolvedAssertions": []
+      },
+      {
+        "scenarioId": "ifc43-certification",
+        "sourceLabel": "Building-Architecture.ifc",
+        "sourceSha256": "a2e088d6c7a07ea7d3498ed494ae4070e9989a5ceac9eb6e2d69184a81e78e41",
+        "format": "ifc",
+        "importer": "ifc_nexyfab_v1",
+        "status": "pass",
+        "scope": "validated_exchange_pilot",
+        "assertions": {
+          "pass": 9,
+          "fail": 0,
+          "notRun": 0
+        },
+        "unresolvedAssertions": []
+      }
+    ]
+  },
+  "internalRobot": {
+    "classification": "concept_only",
+    "editableParts": 25,
+    "mates": 60,
+    "rankDoF": 6,
+    "allowedDoF": 6,
+    "preciseInterferences": 22,
+    "unresolvedCatalogComponents": 22,
+    "releaseReady": false,
+    "blockers": [
+      "motor_j1",
+      "reducer_j1",
+      "bearing_set_j1",
+      "motor_j2",
+      "reducer_j2",
+      "bearing_set_j2",
+      "motor_j3",
+      "reducer_j3",
+      "bearing_set_j3",
+      "motor_j4",
+      "reducer_j4",
+      "bearing_set_j4",
+      "motor_j5",
+      "reducer_j5",
+      "bearing_set_j5",
+      "motor_j6",
+      "reducer_j6",
+      "bearing_set_j6",
+      "brake",
+      "encoder",
+      "internal_harness",
+      "tool_connector",
+      "motion_study_not_run",
+      "manufacturing_not_run",
+      "step_roundtrip_not_run",
+      "expert_review_not_run"
+    ],
+    "requiredNextEvidence": [
+      "traceable_component_catalog_and_housing_fit",
+      "collision_free_full_motion_reverification",
+      "nexyfab_exact_cad_signed_evidence",
+      "signed_manufacturing_validation",
+      "independent_dual_expert_final_review"
+    ]
+  },
+  "invariants": {
+    "referenceFilesModified": false,
+    "closedBetaRecordsModified": false,
+    "unsupportedAssertionsConvertedToPass": false,
+    "releaseExecuted": false
+  }
+}

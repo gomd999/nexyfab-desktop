@@ -1,0 +1,6 @@
+{
+  "schema": "nexyfab.complex-native-extraction-result-batch.v1",
+  "promotedFrom": "exact-cad-worker-results.json",
+  "results": [],
+  "withheld": 0
+}

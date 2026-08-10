@@ -1,0 +1,19 @@
+{
+  "schema": "nexyfab.authenticated-commercial-e2e.v1",
+  "generatedAt": "2026-08-10T07:10:50.043Z",
+  "ok": true,
+  "target": "https://nexyfab.com",
+  "checks": [
+    "login",
+    "session",
+    "project_create",
+    "project_read",
+    "cad_verify",
+    "storage_state_reconnect",
+    "expert_workspace_visible",
+    "project_cleanup",
+    "logout"
+  ],
+  "credentialsPersisted": false,
+  "transientProjectRetained": false
+}

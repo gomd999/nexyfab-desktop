@@ -1,0 +1,4222 @@
+{
+  "schema": "nexyfab.independent-domain-review-kit.v1",
+  "generatedAt": "2026-08-10T04:55:04.758Z",
+  "policy": {
+    "casesPerDomain": 20,
+    "independentReviewersPerCase": 2,
+    "sourceMayNotComeFromSyntheticLane": true,
+    "sourceMayNotComeFromReferenceLane": true,
+    "reviewerMayNotBeReplacedByAi": true,
+    "signedDecisionRequired": true,
+    "sourceOrArtifactMutationInvalidatesReview": true
+  },
+  "summary": {
+    "requiredCases": 100,
+    "acquiredCases": 0,
+    "approvedCases": 0,
+    "requiredSignedReviews": 200,
+    "completedSignedReviews": 0
+  },
+  "cases": [
+    {
+      "caseId": "mechanical-independent-01",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-02",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-03",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-04",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-05",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-06",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-07",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-08",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-09",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-10",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-11",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-12",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-13",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-14",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-15",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-16",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-17",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-18",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-19",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-20",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "STEP roundtrip",
+        "BOM"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-01",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-02",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-03",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-04",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-05",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-06",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-07",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-08",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-09",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-10",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-11",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-12",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-13",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-14",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-15",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-16",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-17",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-18",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-19",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-20",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-01",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-02",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-03",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-04",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-05",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-06",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-07",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-08",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-09",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-10",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-11",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-12",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-13",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-14",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-15",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-16",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-17",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-18",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-19",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "civil-independent-20",
+      "domain": "civil",
+      "status": "source_required",
+      "requiredAxes": [
+        "alignment",
+        "profile",
+        "corridor",
+        "terrain",
+        "LandXML/IFC roundtrip"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-01",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-02",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-03",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-04",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-05",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-06",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-07",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-08",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-09",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-10",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-11",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-12",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-13",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-14",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-15",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-16",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-17",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-18",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-19",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-20",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-01",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-02",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-03",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-04",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-05",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-06",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-07",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-08",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-09",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-10",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-11",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-12",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-13",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-14",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-15",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-16",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-17",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-18",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-19",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-20",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": null,
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "decision": null,
+          "reviewedAt": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "nexyfab.commercialization-readiness.v1",
+  "privateBeta": {
+    "eligible": false,
+    "blockers": [
+      "release_candidate_not_committed"
+    ]
+  },
+  "commercialGa": {
+    "eligible": false,
+    "blockers": [
+      "release_candidate_not_committed",
+      "independent_holdout_not_eligible:mechanical",
+      "independent_holdout_not_eligible:building",
+      "independent_holdout_not_eligible:civil",
+      "independent_holdout_not_eligible:landscape",
+      "independent_holdout_not_eligible:interior",
+      "seven_day_operations_receipt_missing",
+      "expert_review_receipt_missing"
+    ]
+  },
+  "generatedAt": "2026-08-10T07:18:41.588Z",
+  "evidence": {
+    "routeSecurityMatrix": "pass",
+    "cadApiControls": "pass",
+    "secretFindings": 0,
+    "dependencyVulnerabilities": 0
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "nexyfab.native-worker-execution-batch.v1",
+  "manifestSha256": "28b2fc04d5718fd246c5cf6e248e2f0b65018be65f4074482aad8a393e328ad4",
+  "selection": {
+    "jobId": "1d1de823a33f6bb5d6fd68b9",
+    "workerKind": null
+  },
+  "releaseReady": false,
+  "summary": {
+    "requested": 1,
+    "accepted": 0,
+    "resumed": 0,
+    "notRun": 1,
+    "failed": 0
+  },
+  "accepted": [],
+  "notRun": [
+    {
+      "jobId": "1d1de823a33f6bb5d6fd68b9",
+      "caseId": "gearbox-review-08",
+      "reason": "NEXYFAB_CATIA_WORKER_COMMAND_unconfigured"
+    }
+  ],
+  "failed": []
+}

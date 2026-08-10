@@ -1,0 +1,12 @@
+{
+  "schema": "nexyfab.phase-b-review-packet-validation.v1",
+  "status": "pass",
+  "releaseReady": false,
+  "summary": {
+    "packets": 30,
+    "uniqueCases": 30,
+    "errors": 0,
+    "prematureApprovals": 0
+  },
+  "errors": []
+}

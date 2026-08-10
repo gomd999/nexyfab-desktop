@@ -1,0 +1,720 @@
+[
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-retaining_wall_run-01",
+    "domain": "civil",
+    "sourceHash": "15cdfdd4938281da2beb9f7e6b1e5a2c76c5f3536865072abaf2dbe460aa65b4",
+    "sourceKind": "internal-template",
+    "templateId": "retaining_wall_run",
+    "parameters": {
+      "H": 2400,
+      "baseWidth": 1600,
+      "baseThickness": 320,
+      "stemThickness": 240,
+      "toeLength": 480,
+      "length": 8000
+    },
+    "artifactHash": "ad8315745845ca5e65c9a3e520b727d0047c6b1b056caaecaca9f4d46fac26f8",
+    "artifactSummary": {
+      "name": "옹벽 연장 구간",
+      "partCount": 2,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        1600,
+        8000,
+        2400
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-box_culvert-01",
+    "domain": "civil",
+    "sourceHash": "f75642a1046c2c2cf4ed7d0dd7c070bb58fddd7774fdfafe0b21c21432472da4",
+    "sourceKind": "internal-template",
+    "templateId": "box_culvert",
+    "parameters": {
+      "innerWidth": 2400,
+      "innerHeight": 2400,
+      "wallThk": 280,
+      "length": 8000
+    },
+    "artifactHash": "08d20ec831b555a9312c99efb3870c59b35cc416b0bb2522083e6b96d4d828b0",
+    "artifactSummary": {
+      "name": "박스 암거 (내공 2400×2400)",
+      "partCount": 4,
+      "pipeCount": 0,
+      "roles": [
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        2960,
+        8000,
+        2960
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-retaining_wall_alignment-01",
+    "domain": "civil",
+    "sourceHash": "843de96eb42f4bfc413ddba9ea86e5e0ec89ffae7350fbcaa2422e0726fa857d",
+    "sourceKind": "internal-template",
+    "templateId": "retaining_wall_alignment",
+    "parameters": {
+      "H": 2400,
+      "baseWidth": 1600,
+      "baseThickness": 320,
+      "stemThickness": 240,
+      "toeLength": 480,
+      "leg1": 96000,
+      "leg2": 80000,
+      "deflectionDeg": 24
+    },
+    "artifactHash": "ce255e59ca0238a6de45e8974b2ed4d74a879d1a12012c5f41ac272ea13d53e5",
+    "artifactSummary": {
+      "name": "옹벽 선형 구간",
+      "partCount": 4,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        169409.025926,
+        34069.767812,
+        2400
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-retaining_wall_run-02",
+    "domain": "civil",
+    "sourceHash": "79435d1ef70a7cd3665ba88c72f7e73d94a0791902b38026704d3671c2bd0f25",
+    "sourceKind": "internal-template",
+    "templateId": "retaining_wall_run",
+    "parameters": {
+      "H": 2520,
+      "baseWidth": 1680,
+      "baseThickness": 336,
+      "stemThickness": 252,
+      "toeLength": 504,
+      "length": 8400
+    },
+    "artifactHash": "7ca93b1864e3fc1b80b1e9d16776a7a474760e4e6c734eb78fcaa8fbf82fe57e",
+    "artifactSummary": {
+      "name": "옹벽 연장 구간",
+      "partCount": 2,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        1680,
+        8400,
+        2520
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-box_culvert-02",
+    "domain": "civil",
+    "sourceHash": "45d57094a1d345141d554093ef0c0611685914b06a49f3729191236d04f2efc4",
+    "sourceKind": "internal-template",
+    "templateId": "box_culvert",
+    "parameters": {
+      "innerWidth": 2520,
+      "innerHeight": 2520,
+      "wallThk": 294,
+      "length": 8400
+    },
+    "artifactHash": "cfc50bee758d369c7878006fd483f10a5ae279265230a38cbee2c09ac95648ef",
+    "artifactSummary": {
+      "name": "박스 암거 (내공 2520×2520)",
+      "partCount": 4,
+      "pipeCount": 0,
+      "roles": [
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3108,
+        8400,
+        3108
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-retaining_wall_alignment-02",
+    "domain": "civil",
+    "sourceHash": "46d219e0c47d1fbc27704feaaef52f87b0f053f9a4a18ba838757b9e1215f8d4",
+    "sourceKind": "internal-template",
+    "templateId": "retaining_wall_alignment",
+    "parameters": {
+      "H": 2520,
+      "baseWidth": 1680,
+      "baseThickness": 336,
+      "stemThickness": 252,
+      "toeLength": 504,
+      "leg1": 100800,
+      "leg2": 84000,
+      "deflectionDeg": 25.2
+    },
+    "artifactHash": "2f9ec8130466640d47a8a22264c1f9b2ade69ba002b7bdb70a7123786a450497",
+    "artifactSummary": {
+      "name": "옹벽 선형 구간",
+      "partCount": 4,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        177163.127012,
+        37365.515216,
+        2520
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-retaining_wall_run-03",
+    "domain": "civil",
+    "sourceHash": "9be0d6a8b612c4f43c53159ffe2c4a16e524e6999ce1435ba6006bb7a074747b",
+    "sourceKind": "internal-template",
+    "templateId": "retaining_wall_run",
+    "parameters": {
+      "H": 2640,
+      "baseWidth": 1760,
+      "baseThickness": 352,
+      "stemThickness": 264,
+      "toeLength": 528,
+      "length": 8800
+    },
+    "artifactHash": "78e4b814cb094b533b04e42b92472122c88fe53fc407289306b0c1efb2205dca",
+    "artifactSummary": {
+      "name": "옹벽 연장 구간",
+      "partCount": 2,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        1760,
+        8800,
+        2640
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-box_culvert-03",
+    "domain": "civil",
+    "sourceHash": "8248d6f4cc79e29b8fcf5402e78762b29d21156bb9a759ec68e01c7d9dac2401",
+    "sourceKind": "internal-template",
+    "templateId": "box_culvert",
+    "parameters": {
+      "innerWidth": 2640,
+      "innerHeight": 2640,
+      "wallThk": 308,
+      "length": 8800
+    },
+    "artifactHash": "95583dce8649dd53c799ee4c6068bcd73f2eb61afce5f45508a99718ebfb4d81",
+    "artifactSummary": {
+      "name": "박스 암거 (내공 2640×2640)",
+      "partCount": 4,
+      "pipeCount": 0,
+      "roles": [
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3256,
+        8800,
+        3256
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-retaining_wall_alignment-03",
+    "domain": "civil",
+    "sourceHash": "4fdd9eab05ef211667f285fd6eb9ff360e2a1493b8d10b13e6315cf53ecdc171",
+    "sourceKind": "internal-template",
+    "templateId": "retaining_wall_alignment",
+    "parameters": {
+      "H": 2640,
+      "baseWidth": 1760,
+      "baseThickness": 352,
+      "stemThickness": 264,
+      "toeLength": 528,
+      "leg1": 105600,
+      "leg2": 88000,
+      "deflectionDeg": 26.4
+    },
+    "artifactHash": "4887899449d8f34155926b38b8ae7e71c9dbaa7f6333a5b4d8eb8baa1f35b160",
+    "artifactSummary": {
+      "name": "옹벽 선형 구간",
+      "partCount": 4,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        184813.913859,
+        40796.122117,
+        2640
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-retaining_wall_run-04",
+    "domain": "civil",
+    "sourceHash": "0cae3dd77ddde5df90fc65d099a08fa73eba0310e9c5a01486ca97ea5a3f3cb6",
+    "sourceKind": "internal-template",
+    "templateId": "retaining_wall_run",
+    "parameters": {
+      "H": 2760,
+      "baseWidth": 1840,
+      "baseThickness": 368,
+      "stemThickness": 276,
+      "toeLength": 552,
+      "length": 9200
+    },
+    "artifactHash": "25bca310d11167052e6fb6ba257bf1006a6890603ed0d8ae02504a41ef5f81b7",
+    "artifactSummary": {
+      "name": "옹벽 연장 구간",
+      "partCount": 2,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        1840,
+        9200,
+        2760
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-box_culvert-04",
+    "domain": "civil",
+    "sourceHash": "1669d3edc7c67c375c1fc25cc8047ee8f0023794aaa0a10f393fb95bb68bcc02",
+    "sourceKind": "internal-template",
+    "templateId": "box_culvert",
+    "parameters": {
+      "innerWidth": 2760,
+      "innerHeight": 2760,
+      "wallThk": 322,
+      "length": 9200
+    },
+    "artifactHash": "65d56c967554f482cc5d4c3fafcd8120a344164065cd6b91919325dc67957b07",
+    "artifactSummary": {
+      "name": "박스 암거 (내공 2760×2760)",
+      "partCount": 4,
+      "pipeCount": 0,
+      "roles": [
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3404,
+        9200,
+        3404
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-retaining_wall_alignment-04",
+    "domain": "civil",
+    "sourceHash": "195a02302e1061ac2461abd0ada684d874cdb55e6d3184699a1fbdfb4f5155c0",
+    "sourceKind": "internal-template",
+    "templateId": "retaining_wall_alignment",
+    "parameters": {
+      "H": 2760,
+      "baseWidth": 1840,
+      "baseThickness": 368,
+      "stemThickness": 276,
+      "toeLength": 552,
+      "leg1": 110400,
+      "leg2": 92000,
+      "deflectionDeg": 27.6
+    },
+    "artifactHash": "74b9c01dd46c9724b0a4988ab49cf29622e45f8210e2b62e12845e08c6b5bebf",
+    "artifactSummary": {
+      "name": "옹벽 선형 구간",
+      "partCount": 4,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        192356.961642,
+        44358.542524,
+        2760
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-retaining_wall_run-05",
+    "domain": "civil",
+    "sourceHash": "a7f5acd0f85dde3617d03f7dff3df69c424cd0d30ad226cdf4b463fb732a978f",
+    "sourceKind": "internal-template",
+    "templateId": "retaining_wall_run",
+    "parameters": {
+      "H": 2880,
+      "baseWidth": 1920,
+      "baseThickness": 384,
+      "stemThickness": 288,
+      "toeLength": 576,
+      "length": 9600
+    },
+    "artifactHash": "2d779b4fb0360f307d2d960a5953f6f53ca3b16bb9de7213a2522d745ad08045",
+    "artifactSummary": {
+      "name": "옹벽 연장 구간",
+      "partCount": 2,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        1920,
+        9600,
+        2880
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-box_culvert-05",
+    "domain": "civil",
+    "sourceHash": "5988f10cc1e3e09113b2523adb4372dead885800595cc581ef4039cd99c49105",
+    "sourceKind": "internal-template",
+    "templateId": "box_culvert",
+    "parameters": {
+      "innerWidth": 2880,
+      "innerHeight": 2880,
+      "wallThk": 336,
+      "length": 9600
+    },
+    "artifactHash": "31b602da23525e5ef6a5ac5de818fb888ddfb386cfe9fd3fd741a951ae135295",
+    "artifactSummary": {
+      "name": "박스 암거 (내공 2880×2880)",
+      "partCount": 4,
+      "pipeCount": 0,
+      "roles": [
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3552,
+        9600,
+        3552
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-retaining_wall_alignment-05",
+    "domain": "civil",
+    "sourceHash": "b9c02351ff79b33de2c8c437c9d5ca7526bcf5c107b9b62eb34fb0b3c797084b",
+    "sourceKind": "internal-template",
+    "templateId": "retaining_wall_alignment",
+    "parameters": {
+      "H": 2880,
+      "baseWidth": 1920,
+      "baseThickness": 384,
+      "stemThickness": 288,
+      "toeLength": 576,
+      "leg1": 115200,
+      "leg2": 96000,
+      "deflectionDeg": 28.8
+    },
+    "artifactHash": "637147f7ec7b5465b0c2c8abbe8165f103806bcfe2e5cef436e86017341352a0",
+    "artifactSummary": {
+      "name": "옹벽 선형 구간",
+      "partCount": 4,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        199787.924811,
+        48049.607127,
+        2880
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-retaining_wall_run-06",
+    "domain": "civil",
+    "sourceHash": "fb36b36cacfc1efc992bffe3977c2fc5c96e71706dc2ff8855af5342cbea5f0c",
+    "sourceKind": "internal-template",
+    "templateId": "retaining_wall_run",
+    "parameters": {
+      "H": 3000,
+      "baseWidth": 2000,
+      "baseThickness": 400,
+      "stemThickness": 300,
+      "toeLength": 600,
+      "length": 10000
+    },
+    "artifactHash": "bf4c197ad93b4ae262df577c5de78a25e32bbd7582f88b3f7448b5b825adadf3",
+    "artifactSummary": {
+      "name": "옹벽 연장 구간",
+      "partCount": 2,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        2000,
+        10000,
+        3000
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-box_culvert-06",
+    "domain": "civil",
+    "sourceHash": "87850534929250fe7b2c60c0e4b58bee258ea67b268980ce38dc294bb1307718",
+    "sourceKind": "internal-template",
+    "templateId": "box_culvert",
+    "parameters": {
+      "innerWidth": 3000,
+      "innerHeight": 3000,
+      "wallThk": 350,
+      "length": 10000
+    },
+    "artifactHash": "4915cfc8be3f70d530daa8a07582e1a6dce8f439d9d2568c9174f3d3eb7a6ac0",
+    "artifactSummary": {
+      "name": "박스 암거 (내공 3000×3000)",
+      "partCount": 4,
+      "pipeCount": 0,
+      "roles": [
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3700,
+        10000,
+        3700
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-retaining_wall_alignment-06",
+    "domain": "civil",
+    "sourceHash": "df6431fac5c958e263b8e277619add8e7b9972fcb53276dae020fcf01285c89f",
+    "sourceKind": "internal-template",
+    "templateId": "retaining_wall_alignment",
+    "parameters": {
+      "H": 3000,
+      "baseWidth": 2000,
+      "baseThickness": 400,
+      "stemThickness": 300,
+      "toeLength": 600,
+      "leg1": 120000,
+      "leg2": 100000,
+      "deflectionDeg": 30
+    },
+    "artifactHash": "073802383bfded853f4c71ab09e6dcb22b0b18c5876bb4326f9a995852584191",
+    "artifactSummary": {
+      "name": "옹벽 선형 구간",
+      "partCount": 4,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        207102.540378,
+        51866.025404,
+        3000
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-retaining_wall_run-07",
+    "domain": "civil",
+    "sourceHash": "e16718f7af7e56651c84d82c2856b84eb78623333c53810357ef77984f8f8750",
+    "sourceKind": "internal-template",
+    "templateId": "retaining_wall_run",
+    "parameters": {
+      "H": 3120,
+      "baseWidth": 2080,
+      "baseThickness": 416,
+      "stemThickness": 312,
+      "toeLength": 624,
+      "length": 10400
+    },
+    "artifactHash": "8fdca3e7c5181a47a9c2035a8a5b17e32f1ee99fddaf8ec94ffe45e5d79a6b8c",
+    "artifactSummary": {
+      "name": "옹벽 연장 구간",
+      "partCount": 2,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        2080,
+        10400,
+        3120
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "dryrun-civil-box_culvert-07",
+    "domain": "civil",
+    "sourceHash": "bc1331593da6c97bd980cc788c3a07ba6196a8ba27b5a953ddffe83314e3b375",
+    "sourceKind": "internal-template",
+    "templateId": "box_culvert",
+    "parameters": {
+      "innerWidth": 3120,
+      "innerHeight": 3120,
+      "wallThk": 364,
+      "length": 10400
+    },
+    "artifactHash": "bd4be573821f868b473b419bf28af43ab52917adde460f1341802a58d08cbdf5",
+    "artifactSummary": {
+      "name": "박스 암거 (내공 3120×3120)",
+      "partCount": 4,
+      "pipeCount": 0,
+      "roles": [
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0,
+      "extents": [
+        3848,
+        10400,
+        3848
+      ],
+      "holeTotal": 0,
+      "occCount": 0
+    },
+    "split": "candidate"
+  }
+]

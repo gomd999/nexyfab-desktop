@@ -1,0 +1,457 @@
+{
+  "schema": "nexyfab.complex-holdout-review.v1",
+  "family": "interior",
+  "policy": {
+    "selectedDoesNotMeanApproved": true,
+    "scoreEligible": false,
+    "oneCasePerLineage": true,
+    "requiredApprovedCases": 20
+  },
+  "candidates": 60,
+  "selected": 20,
+  "shortfall": 0,
+  "structurallyRejected": [
+    {
+      "lineageGroup": "interior:10-marla-corner-commercial-building-classical-elevation-1",
+      "relativePath": "참고파일들2/10-marla-corner-commercial-building-classical-elevation-1.snapshot.2.zip",
+      "reason": "supported_product_cad_missing"
+    },
+    {
+      "lineageGroup": "interior:5-bed-house-plan-1",
+      "relativePath": "참고파일들4/5-bed-house-plan-1.snapshot.1.zip",
+      "reason": "supported_product_cad_missing"
+    },
+    {
+      "lineageGroup": "interior:bath-room-console-oannop-chaiya-1",
+      "relativePath": "참고파일들4/bath-room-console-oannop-chaiya-1.snapshot.4.zip",
+      "reason": "archive_preflight_budget_exceeded"
+    },
+    {
+      "lineageGroup": "interior:canopy-ski-house-1",
+      "relativePath": "참고파일들4/canopy-ski-house-1.snapshot.11.zip",
+      "reason": "supported_product_cad_missing"
+    }
+  ],
+  "items": [
+    {
+      "caseId": "interior-review-01",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:2bhk-house-plan-1",
+      "sourceHash": "65b8b42f41ac9d545c1c695a2f2d0819b7af9dd4136673c36d387baa1259ceb5",
+      "bytes": 2576781,
+      "extension": "zip",
+      "localLocator": "참고파일들4/2bhk-house-plan-1.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-02",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:3-story-100-square-meteres-apartment-revit-1",
+      "sourceHash": "535ae44a61a2023c77ac45c68039e69f1826de222cf5d75cce7834b5af282bca",
+      "bytes": 118428504,
+      "extension": "zip",
+      "localLocator": "참고파일들4/3-story-100-square-meteres-apartment-revit-1.snapshot.1.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-03",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:architectural-design-of-villa-1",
+      "sourceHash": "9623975cea242ed42881d37ea07e67268ac15df03bb8b1f38d0715aab4c2fccc",
+      "bytes": 2946655,
+      "extension": "zip",
+      "localLocator": "참고파일들4/architectural-design-of-villa-1.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-04",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:bath-room-interior-1",
+      "sourceHash": "507c01a31e48c1102b1b99b5071eafa8518a8c23bca9341ce400be6c0ffa4774",
+      "bytes": 2591598,
+      "extension": "zip",
+      "localLocator": "참고파일들4/bath-room-interior-1.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-05",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:bed-room-interior-8",
+      "sourceHash": "d23ba207b032910b352ee1d8146412de3ece8fd4ae6bd92c74970901f2d49dc7",
+      "bytes": 926818,
+      "extension": "zip",
+      "localLocator": "참고파일들4/bed-room-interior-8.snapshot.3.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-06",
+      "family": "interior",
+      "tierCandidate": "T1",
+      "holdoutGroup": "interior:block-house-2",
+      "sourceHash": "6a51cadae84aef5a1b3c52178dc2dff8da0542d6751c0b53430ff5d5d90ba761",
+      "bytes": 30465272,
+      "extension": "ifc",
+      "localLocator": "참고파일들4/block-house-2.snapshot.3/Untitled.ifc",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-07",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:exterior-design-of-simple-villa-1",
+      "sourceHash": "b9ad0a38dbccd29e040b2af7d81b089f474b55a40242fcbe10fca53e1a8e1a4d",
+      "bytes": 2826245,
+      "extension": "zip",
+      "localLocator": "참고파일들4/exterior-design-of-simple-villa-1.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-08",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:familiy-house-obiteljska-kuca-1",
+      "sourceHash": "0ec25f41c7a231268f97544543f4cdd9ba33b2dc4d490cdce4d64b51c6d91605",
+      "bytes": 22758292,
+      "extension": "zip",
+      "localLocator": "참고파일들4/familiy-house-obiteljska-kuca-1.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-09",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:half-story-house-a01-1",
+      "sourceHash": "ea6f7406331edf8c878dad6d21a8e47265e385e34e884c1ca7a9020ea508d756",
+      "bytes": 107926289,
+      "extension": "zip",
+      "localLocator": "참고파일들2/half-story-house-a01-1.snapshot.1.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-10",
+      "family": "interior",
+      "tierCandidate": "T1",
+      "holdoutGroup": "interior:hillside-house-2",
+      "sourceHash": "e1ec815456cf6888b15b3687d5c1cc8e191bca2ded08f16003c87f7751852e82",
+      "bytes": 23512457,
+      "extension": "ifc",
+      "localLocator": "참고파일들4/hillside-house-2.snapshot.7/Untitled.ifc",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-11",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:hotel-azulejo-1",
+      "sourceHash": "d4909667dbfa24d8271d6b374390885748352015e67afcc8d6791541e9262159",
+      "bytes": 38690769,
+      "extension": "zip",
+      "localLocator": "참고파일들4/hotel-azulejo-1.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-12",
+      "family": "interior",
+      "tierCandidate": "T1",
+      "holdoutGroup": "interior:hotel-design-1",
+      "sourceHash": "0db228be732b7561b428eb54bad301b0726b7610a1022b7874761e6a549ed562",
+      "bytes": 45263391,
+      "extension": "ifc",
+      "localLocator": "참고파일들4/hotel-design-1.snapshot.3/Untitled.ifc",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-13",
+      "family": "interior",
+      "tierCandidate": "T1",
+      "holdoutGroup": "interior:hotel-design-3d-2",
+      "sourceHash": "3b6e080753b2bd3da2f5753c772fc820e84e322033b64913cdac5dd6933e28fe",
+      "bytes": 282201994,
+      "extension": "ifc",
+      "localLocator": "참고파일들4/hotel-design-3d-2.snapshot.2/Untitled.ifc",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-14",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:house-4x15m-1",
+      "sourceHash": "3688c0fa32236469bf72173ced8ce4e476dfd384cb3ed8aded797fbfb1db77d3",
+      "bytes": 22416920,
+      "extension": "zip",
+      "localLocator": "참고파일들4/house-4x15m-1.snapshot.3 (1).zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-15",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:house-plan-23",
+      "sourceHash": "35b28cb1c4e8bb5ee00624aa7b53be232563a99eb90273690ea1d5be36d21166",
+      "bytes": 17865256,
+      "extension": "zip",
+      "localLocator": "참고파일들4/house-plan-23.snapshot.3.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-16",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:house-planning-of-3bkh-1",
+      "sourceHash": "6edbd4f915ae9704fad91124af4d79940101512d01c68908f0f994260e5113bb",
+      "bytes": 12657019,
+      "extension": "zip",
+      "localLocator": "참고파일들4/house-planning-of-3bkh-1.snapshot.1.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-17",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:house-villa-1",
+      "sourceHash": "7bc3bdaaa41b0fe390efb70a45d89608b652adde99bd04731ac8f0f2d87d4b24",
+      "bytes": 80850503,
+      "extension": "zip",
+      "localLocator": "참고파일들4/house-villa-1.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-18",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:independent-house-1",
+      "sourceHash": "ef04a38466fbfb4a4b8e540a2abd2ee1d973663edb9ea5b359dba535862299f1",
+      "bytes": 970078,
+      "extension": "zip",
+      "localLocator": "참고파일들4/independent-house-1.snapshot.1.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-19",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:indian-3d-house-model-3",
+      "sourceHash": "89bd6ed1cbca2f2023320bdb8060278a502c83cd024fc5bd60bafb00e609f52b",
+      "bytes": 27909279,
+      "extension": "zip",
+      "localLocator": "참고파일들4/indian-3d-house-model-3.snapshot.3.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "interior-review-20",
+      "family": "interior",
+      "tierCandidate": "T3",
+      "holdoutGroup": "interior:indian-3d-house-model-5",
+      "sourceHash": "2f0ddfee466206c959faf0b5398ac200738b13791ea6ac202ab8e1c6a3cac997",
+      "bytes": 42011758,
+      "extension": "zip",
+      "localLocator": "참고파일들4/indian-3d-house-model-5.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    }
+  ]
+}

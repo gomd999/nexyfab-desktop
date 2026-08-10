@@ -9,6 +9,10 @@ function jobRedisKey(id: string): string {
   return `nf:brep:job:${id}`;
 }
 
+function userPendingKey(userId: string): string {
+  return `nf:brep:user-pending:${userId}`;
+}
+
 let client: Redis | null = null;
 
 export function isBrepRedisJobsEnabled(): boolean {
@@ -39,6 +43,9 @@ export interface SerializedBrepJob {
   updatedAt: number;
   /** Present while queued/processing; stripped after completion when possible. */
   stepBase64?: string;
+  /** Private object reference for large jobs; never contains source bytes. */
+  sourceObjectKey?: string;
+  sourceBytes?: number;
   previewMeshBase64?: string;
   artifactKey?: string;
   artifactUrl?: string;
@@ -101,6 +108,28 @@ export async function redisBrepQueueLength(): Promise<number> {
   } catch {
     return 0;
   }
+}
+
+export async function redisBrepRegisterUserPending(userId: string, id: string): Promise<void> {
+  const r = getClient();
+  if (!r) return;
+  const key = userPendingKey(userId);
+  try {
+    await r.sadd(key, id);
+    await r.pexpire(key, BREP_JOB_TTL_MS);
+  } catch { /* memory fallback still enforces same-instance quota */ }
+}
+
+export async function redisBrepRemoveUserPending(userId: string, id: string): Promise<void> {
+  const r = getClient();
+  if (!r) return;
+  try { await r.srem(userPendingKey(userId), id); } catch { /* ignore */ }
+}
+
+export async function redisBrepUserPendingCount(userId: string): Promise<number> {
+  const r = getClient();
+  if (!r) return 0;
+  try { return await r.scard(userPendingKey(userId)); } catch { return 0; }
 }
 
 export function __disconnectBrepRedisForTests(): void {

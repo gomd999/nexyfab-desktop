@@ -16,9 +16,9 @@ import React, { useState, useEffect } from 'react';
  *   3. Email — mailto: with the URL prefilled
  *
  * Renders inline (no modal) so the affordances are immediately visible.
- * QR generation uses api.qrserver.com to avoid a dependency add — the call
- * is a single `<img>` tag, no JS runtime cost. If the service is ever
- * unreliable the QR just fails to load; the copy + email actions still work.
+ * QR generation is local and loaded on demand. The in-flight project URL is
+ * never sent to a third-party QR service, and the QR code remains a data URL
+ * covered by the existing CSP.
  */
 interface Props {
   labels: {
@@ -35,12 +35,30 @@ interface Props {
 
 export default function MobileSendToDesktop({ labels }: Props) {
   const [pageUrl, setPageUrl] = useState<string>('');
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     // window.location is only meaningful client-side, and SSR would mismatch.
     if (typeof window === 'undefined') return;
-    setPageUrl(window.location.href);
+    let cancelled = false;
+    const currentUrl = window.location.href;
+    queueMicrotask(() => {
+      if (!cancelled) setPageUrl(currentUrl);
+    });
+    void import('qrcode')
+      .then(({ toDataURL }) => toDataURL(currentUrl, {
+        width: 200,
+        margin: 4,
+        errorCorrectionLevel: 'M',
+      }))
+      .then(dataUrl => {
+        if (!cancelled) setQrDataUrl(dataUrl);
+      })
+      .catch(() => {
+        // Copy and email remain available if local QR generation is unsupported.
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const onCopy = async () => {
@@ -64,10 +82,6 @@ export default function MobileSendToDesktop({ labels }: Props) {
     ? `mailto:?subject=${encodeURIComponent(labels.emailSubject)}&body=${encodeURIComponent(`${labels.emailBody}\n\n${pageUrl}`)}`
     : 'mailto:';
 
-  const qrSrc = pageUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&data=${encodeURIComponent(pageUrl)}`
-    : '';
-
   return (
     <div
       role="region"
@@ -85,10 +99,10 @@ export default function MobileSendToDesktop({ labels }: Props) {
         {labels.body}
       </p>
 
-      {pageUrl && (
+      {qrDataUrl && (
         <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'center' }}>
           <img
-            src={qrSrc}
+            src={qrDataUrl}
             alt={labels.qrAlt}
             width={200}
             height={200}

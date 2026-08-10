@@ -1,0 +1,38 @@
+{
+  "schema": "nexyfab.backup-restore-receipt.v1",
+  "generatedAt": "2026-08-10T13:36:00.9125813+09:00",
+  "ok": true,
+  "source": {
+    "database": "railway",
+    "backupFile": "backups/nexyfab-postgres-commercial-baseline-260810.sql",
+    "backupBytes": 91874099,
+    "backupSha256": "8e432f52de7840ebb0b6e95f9587c2a9d8593b34e4bba41a0d84e53a8c947cb2",
+    "tableCount": 115,
+    "columnCount": 1132,
+    "rowCount": 291143,
+    "rowCountSha256": "b87a896711a75de255d000b368e347f4148b89c0c59a4ba25780f3776623c56e",
+    "schemaSha256": "c1e2b9a936943548991f881b6bb4de39ef4fc9b9da9c1785175b0730ecab49d5"
+  },
+  "restore": {
+    "database": "nexyfab_restore_drill_260810",
+    "isolatedFromProductionDatabase": true,
+    "tableCount": 115,
+    "columnCount": 1132,
+    "rowCount": 291143,
+    "rowCountSha256": "b87a896711a75de255d000b368e347f4148b89c0c59a4ba25780f3776623c56e",
+    "schemaSha256": "c1e2b9a936943548991f881b6bb4de39ef4fc9b9da9c1785175b0730ecab49d5",
+    "exactPreMigrationMatch": true
+  },
+  "stagingMigration": {
+    "version": 2026081001,
+    "checksum": "72523113234473afabbc0e3932c08b4c84d3f3f1115a880faf715e48c65a62b3",
+    "decision": "apply",
+    "businessRowChanges": [],
+    "migrationOnly": true
+  },
+  "closedBeta": {
+    "preSnapshot": "validation-reports/closed-beta-integrity-260810-pre-production-migration.json",
+    "postSnapshot": "validation-reports/closed-beta-integrity-260810-post-production-migration.json",
+    "differences": []
+  }
+}

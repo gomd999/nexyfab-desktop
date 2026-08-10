@@ -10,7 +10,7 @@ import { refineInterferencesMesh } from './interference-refine.mjs';
 import { ga2dDrawing as _ga2d } from './package.mjs';
 
 const ga2dDrawing = _ga2d as unknown as (asm: unknown, opts?: Record<string, unknown>) => string;
-type Built = { ok: boolean; designOk: boolean; interferences: { a: string; b: string }[]; support: { floating: string[] } };
+type Built = { ok: boolean; designOk: boolean; interferences: { a: string; b: string }[]; contacts: { a: string; b: string; note: string }[]; support: { floating: string[] } };
 type Refined = { interferences: unknown[]; laps: { a: string; b: string }[]; demoted: unknown[] };
 
 describe('R2-⑨ 컨베이어', () => {
@@ -34,29 +34,32 @@ describe('R2-⑨ 컨베이어', () => {
 });
 
 describe('R2-⑩ 송전탑', () => {
-  it('격자 완결: designOk + B1+랩 규칙으로 확정 간섭 0(랩=절점 접합 분리 보고) + E1 헐 투영', async () => {
+  it('격자 완결: 명시적 절점 그래프로 designOk + 확정 간섭 0 + E1 헐 투영', async () => {
     const asm = buildAssemblyTemplate('mech', 'transmission_tower', { panels: 3, height: 15000 });
     const b = buildAssembly(asm) as Built;
     expect(b.ok).toBe(true);
-    // ⚠ 260728: `designOk` 가 간섭을 세도록 바뀌었다(종전엔 부유·배관만 봤다). 종전 이 단언은
-    //   designOk 가 간섭을 보지 않았기 때문에 통과하던 **공허한 단언**이었다 — 격자 절점의
-    //   실교차가 186건 있는데 "형상 타당성 이상 없음"이 같은 문서에 함께 인쇄됐다.
-    //   랩 규칙은 **opt-in 이 정직한 기본값**이고(아래 두 번째 테스트가 고정) 패키지 생성은
-    //   그것을 넘기지 않으므로, 시스템의 입장은 "미해소 간섭"이다 → designOk=false 가 일관된다.
-    //   격자 완결의 근거는 아래 **랩 규칙을 적용한 재판정**이 지고, designOk 가 지지 않는다.
-    expect(b.designOk).toBe(false);
-    expect(b.interferences.length).toBeGreaterThan(0);
-    const r = (await refineInterferencesMesh(asm, b.interferences, { latticeLapMm3: 50000 })) as Refined;
-    expect(r.interferences, JSON.stringify(r.interferences).slice(0, 300)).toHaveLength(0);
-    expect(r.laps.length).toBeGreaterThan(0); // 교차부=랩 접합으로 분류(관례 명시)
+    // 절점은 템플릿이 `connectedWith` 쌍으로 특정한다. 역할·근접성·
+    // “격자처럼 보임”은 면제 근거가 아니므로 선언된 쌍만 접합으로 분류된다.
+    expect(b.designOk).toBe(true);
+    expect(b.interferences).toHaveLength(0);
+    expect(b.contacts.filter((c) => /설계 접합 선언/.test(c.note)).length).toBeGreaterThan(0);
+    const r = (await refineInterferencesMesh(asm, b.interferences)) as Refined;
+    expect(r.interferences).toHaveLength(0);
+    expect(r.laps).toHaveLength(0);
     // 경사 주주재/브레이스 = E1 실윤곽 폴리곤(AABB 사각 아님)
     const ga = ga2dDrawing(asm, { title: 'tower', domain: 'mech' });
     expect((ga.match(/<polygon points=/g) ?? []).length).toBeGreaterThan(20);
   }, 300_000);
-  it('랩 규칙 opt-in: latticeLapMm3 미지정이면 절점 실교차가 확정 간섭으로 남는다(정직 기본값)', async () => {
+  it('절점 선언을 제거하면 같은 격자 교차가 확정 간섭으로 남는다(fail-closed)', async () => {
     const asm = buildAssemblyTemplate('mech', 'transmission_tower', { panels: 3, height: 15000 });
-    const b = buildAssembly(asm) as Built;
-    const r = (await refineInterferencesMesh(asm, b.interferences)) as Refined;
+    const undeclared = {
+      ...asm,
+      parts: asm.parts.map(({ connectedWith: _connectedWith, ...part }: { connectedWith?: string[]; [key: string]: unknown }) => part),
+    };
+    const b = buildAssembly(undeclared) as Built;
+    expect(b.designOk).toBe(false);
+    expect(b.interferences.length).toBeGreaterThan(0);
+    const r = (await refineInterferencesMesh(undeclared, b.interferences)) as Refined;
     expect(r.interferences.length).toBeGreaterThan(0);
     expect(r.laps).toHaveLength(0);
   }, 300_000);

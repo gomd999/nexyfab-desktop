@@ -1,12 +1,23 @@
 import { commercialReadinessIssues } from '../src/lib/commercial-readiness';
 import { commercialReleaseEvidenceIssues } from '../src/lib/commercial-release-evidence';
-import { domainAccuracyReleaseIssues } from '../src/lib/ai/domainAccuracyReleaseGate';
+import { domainAccuracyReleaseIssues, parseTrustedDomainReleaseReviewers } from '../src/lib/ai/domainAccuracyReleaseGate';
+import { cadIndependentReleaseAuditV2Issues } from '../src/lib/cad-independent-release-audit-v2';
+import { readFile } from 'node:fs/promises';
+
+async function readCadIndependentAudit(path: string | undefined): Promise<unknown> {
+  if (!path?.trim()) return null;
+  try { return JSON.parse(await readFile(path, 'utf8')); } catch { return null; }
+}
 
 async function main() {
   const issues = [
     ...commercialReadinessIssues(process.env),
     ...commercialReleaseEvidenceIssues(process.env),
-    ...await domainAccuracyReleaseIssues(process.env.DOMAIN_ACCURACY_EVIDENCE_DIR),
+    ...await domainAccuracyReleaseIssues(
+      process.env.DOMAIN_ACCURACY_EVIDENCE_DIR,
+      parseTrustedDomainReleaseReviewers(process.env.NEXYFAB_DOMAIN_REVIEWER_KEYS),
+    ),
+    ...cadIndependentReleaseAuditV2Issues(await readCadIndependentAudit(process.env.CAD_INDEPENDENT_RELEASE_AUDIT_V2)),
   ];
 
   if (issues.length) {

@@ -8,6 +8,7 @@ import { stampFaceFeatureIdAll, propagateFeatureIdMap } from './faceProvenance';
 import { configureEvaluatorAttributes } from './meshMerge';
 import { resolveUpToFacePlaneY, assertPlaneOnBody } from './cut';
 import { appendPatternSeed } from './patternHelpers/featureSeed';
+import { requireValidBrepResult } from './kernelOperationQuality';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -154,16 +155,18 @@ export const holeFeature: FeatureDefinition = {
         const host = hostBoxFromGeometry(geometry);
 
         // Main hole
-        const res1 = occtBoxBooleanWithPrimitive('subtract', host, { shape: 'cylinder', w: r * 2, h: actualDepth, d: r * 2, cx: posX, cy: boreCenterY, cz: posZ, rx: 0, ry: 0, rz: 0 }, undefined, currentHandle);
-        currentHandle = res1.handle ?? currentHandle;
+        const res1 = requireValidBrepResult(occtBoxBooleanWithPrimitive('subtract', host, { shape: 'cylinder', w: r * 2, h: actualDepth, d: r * 2, cx: posX, cy: boreCenterY, cz: posZ, rx: 0, ry: 0, rz: 0 }, undefined, currentHandle));
+        if (!res1.handle) throw new Error('OCCT hole cut did not return a chainable B-rep handle');
+        currentHandle = res1.handle;
         currentGeo = res1.geometry;
 
         if (holeType === 1) { // Counterbore
           const cbR = params.counterboreDia / 2;
           const cbDepth = params.counterboreDepth;
           if (cbR > 0 && cbDepth > 0) { // skip a degenerate counterbore
-            const res2 = occtBoxBooleanWithPrimitive('subtract', host, { shape: 'cylinder', w: cbR * 2, h: cbDepth, d: cbR * 2, cx: posX, cy: topY - cbDepth / 2, cz: posZ, rx: 0, ry: 0, rz: 0 }, undefined, currentHandle);
-            currentHandle = res2.handle ?? currentHandle;
+            const res2 = requireValidBrepResult(occtBoxBooleanWithPrimitive('subtract', host, { shape: 'cylinder', w: cbR * 2, h: cbDepth, d: cbR * 2, cx: posX, cy: topY - cbDepth / 2, cz: posZ, rx: 0, ry: 0, rz: 0 }, undefined, currentHandle));
+            if (!res2.handle) throw new Error('OCCT counterbore cut did not return a chainable B-rep handle');
+            currentHandle = res2.handle;
             currentGeo = res2.geometry;
           }
         }
@@ -174,12 +177,13 @@ export const holeFeature: FeatureDefinition = {
           // Guard tan() singularity (angle→0° or 180°): would give Infinity/NaN depth.
           const csTan = Math.tan(csHalfAngle);
           const csDepth = (Number.isFinite(csTan) && Math.abs(csTan) > 1e-6) ? csR / csTan : csR;
-          const res2 = occtBoxBooleanWithPrimitive('subtract', host, { shape: 'cone', w: csR * 2, h: csDepth, d: csR * 2, cx: posX, cy: topY, cz: posZ, rx: 0, ry: 0, rz: 0 }, undefined, currentHandle);
-          currentHandle = res2.handle ?? currentHandle;
+          const res2 = requireValidBrepResult(occtBoxBooleanWithPrimitive('subtract', host, { shape: 'cone', w: csR * 2, h: csDepth, d: csR * 2, cx: posX, cy: topY, cz: posZ, rx: 0, ry: 0, rz: 0 }, undefined, currentHandle));
+          if (!res2.handle) throw new Error('OCCT countersink cut did not return a chainable B-rep handle');
+          currentHandle = res2.handle;
           currentGeo = res2.geometry;
         }
 
-        if (currentHandle) currentGeo.userData.occtHandle = currentHandle;
+        currentGeo.userData.occtHandle = currentHandle;
         appendPatternSeed(currentGeo, geometry, {
           featureId: ctx?.featureId ?? null,
           type: 'hole',

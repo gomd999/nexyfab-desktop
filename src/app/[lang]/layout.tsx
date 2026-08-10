@@ -14,6 +14,7 @@ import UtmListener from '@/components/UtmListener';
 import NexyfabSessionHydrator from '@/components/nexyfab/NexyfabSessionHydrator';
 import ConsentScripts from '@/components/ConsentScripts';
 import { PaidBetaBanner } from '@/components/PaidBetaBanner';
+import WebVitalsReporter from '@/components/WebVitalsReporter';
 import Script from 'next/script';
 import { getAdminSettings } from '@/lib/adminSettings';
 
@@ -95,7 +96,6 @@ export default async function LangLayout({
                 {adminSettings.headScripts && (
                     <div dangerouslySetInnerHTML={{ __html: adminSettings.headScripts }} />
                 )}
-                <script src={`https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`} async defer></script>
             </head>
             <body suppressHydrationWarning>
                 {adminSettings.bodyScripts && (
@@ -108,6 +108,7 @@ export default async function LangLayout({
                 <NexyfabSessionHydrator />
                 <ToastProvider>
                 <LangSetter />
+                <WebVitalsReporter />
                 <Header />
                 <PaidBetaBanner lang={validLang} />
                 <JsonLd lang={validLang} />

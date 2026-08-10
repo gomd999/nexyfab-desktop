@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbAdapter, toBool } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { clearAuthCookies } from '@/lib/cookie-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   const ip = getTrustedClientIp(req.headers);
-  if (!rateLimit(`delete-account:${ip}`, 3, 60_000).allowed) {
+  if (!(await rateLimitAsync(`delete-account:${authUser.userId}:${ip}`, 3, 60_000)).allowed) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
@@ -58,7 +59,7 @@ export async function DELETE(req: NextRequest) {
 
   const response = NextResponse.json({ ok: true, message: 'Account deleted' });
   // 쿠키 삭제
-  response.cookies.set('nf_refresh_token', '', { maxAge: 0, path: '/api/auth' });
+  clearAuthCookies(response);
   return response;
 }
 

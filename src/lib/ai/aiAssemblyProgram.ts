@@ -8,6 +8,7 @@
 import { validateTree, type FeatureTree } from '@/lib/cad/featureTree';
 import { validateAssembly } from '@/lib/assembly/assemblyState';
 import type { NestedAssemblyState } from '@/lib/assembly/subAssembly';
+import { generationArtifactHash } from './generationRunState';
 
 export type AiPartMetadata = {
   partNumber: string;
@@ -16,6 +17,9 @@ export type AiPartMetadata = {
   process?: string;
   quantity: number;
   source: 'confirmed' | 'assumed' | 'catalog';
+  catalogId?: string;
+  catalogRevision?: string;
+  artifactSha256?: string;
 };
 
 export type AiAssemblyPart = {
@@ -55,8 +59,10 @@ export function validateAiAssemblyProgram(program: AiAssemblyProgram): AiAssembl
   }
 
   const instanceIds = new Set(program.assembly.parts.map(part => part.id));
+  const assemblyById = new Map(program.assembly.parts.map(part => [part.id, part]));
   const declared = new Set<string>();
   const partNumbers = new Map<string, string | undefined>();
+  const definitionSignatures = new Map<string, string>();
   program.parts.forEach((part, index) => {
     const path = `parts[${index}]`;
     if (!instanceIds.has(part.instanceId)) {
@@ -66,12 +72,20 @@ export function validateAiAssemblyProgram(program: AiAssemblyProgram): AiAssembl
       issues.push({ path: `${path}.instanceId`, message: 'each instance may have only one part definition' });
     }
     declared.add(part.instanceId);
+    const assemblyPart = assemblyById.get(part.instanceId);
+    const legacyTemplateMatch = part.definitionId && assemblyPart && part.definitionId.endsWith(`:${assemblyPart.partTemplateId}`);
+    if (part.definitionId && assemblyPart && assemblyPart.partTemplateId !== part.definitionId && !legacyTemplateMatch) {
+      issues.push({ path: `${path}.definitionId`, message: `definition ${part.definitionId} does not match assembly template ${assemblyPart.partTemplateId}` });
+    }
     if (!part.metadata.partNumber.trim()) {
       issues.push({ path: `${path}.metadata.partNumber`, message: 'part number is required' });
     } else if (partNumbers.has(part.metadata.partNumber) && partNumbers.get(part.metadata.partNumber) !== part.definitionId) {
       issues.push({ path: `${path}.metadata.partNumber`, message: 'part number may repeat only for the same component definition' });
     }
     partNumbers.set(part.metadata.partNumber, part.definitionId);
+    if (program.classification === 'review_required' && part.metadata.source === 'assumed') {
+      issues.push({ path: `${path}.metadata.source`, message: 'assumed component metadata requires concept_only classification' });
+    }
     if (!Number.isInteger(part.metadata.quantity) || part.metadata.quantity < 1) {
       issues.push({ path: `${path}.metadata.quantity`, message: 'quantity must be a positive integer' });
     }
@@ -79,6 +93,12 @@ export function validateAiAssemblyProgram(program: AiAssemblyProgram): AiAssembl
       validateTree(part.featureTree);
     } catch (error) {
       issues.push({ path: `${path}.featureTree`, message: error instanceof Error ? error.message : 'invalid feature tree' });
+    }
+    if (part.definitionId) {
+      const signature = generationArtifactHash({ featureTree: part.featureTree, partNumber: part.metadata.partNumber, material: part.metadata.material, process: part.metadata.process });
+      const prior = definitionSignatures.get(part.definitionId);
+      if (prior && prior !== signature) issues.push({ path, message: `repeated definition ${part.definitionId} has divergent geometry or manufacturing metadata` });
+      definitionSignatures.set(part.definitionId, signature);
     }
   });
 

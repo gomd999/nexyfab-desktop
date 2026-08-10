@@ -3,7 +3,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const root = path.resolve(process.argv[2] || 'C:/Users/gomd9/Downloads/nexysys_1/nexyfab.com/document(manuals)');
+const rootArg = process.argv[2] || process.env.NEXYFAB_CAD_MANUALS_ROOT;
+if (!rootArg) throw new Error('Manuals root is required as the first argument or NEXYFAB_CAD_MANUALS_ROOT.');
+const root = path.resolve(rootArg);
 const outputArg = process.argv.find(arg => arg.startsWith('--output='));
 const output = path.resolve(outputArg?.slice(9) || 'docs/cad-program/requirements/manual-index.json');
 const families = [
@@ -50,4 +52,3 @@ const payload = {
 };
 writeFileSync(output, JSON.stringify(payload, null, 2));
 process.stdout.write(`indexed ${documents.length} manuals -> ${output}\n`);
-

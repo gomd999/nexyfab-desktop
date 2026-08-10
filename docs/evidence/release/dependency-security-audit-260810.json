@@ -1,0 +1,42 @@
+{
+  "schema": "nexyfab.dependency-security-audit.v1",
+  "generatedAt": "2026-08-10T02:22:50.7740549+09:00",
+  "command": "npm audit --audit-level=low",
+  "status": "pass",
+  "vulnerabilities": {
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "packageLockSha256": "04f9cc837d7eab07153e2199f783df32fd70990c1161de1a6f363a0056ffb765",
+  "patchedRuntime": {
+    "next": "16.3.0",
+    "sharp": "0.35.3",
+    "sentryNextjs": "10.69.0",
+    "nodemailer": "9.0.5",
+    "dompurify": "3.4.13",
+    "fastUri": "3.1.5",
+    "nanoid": "3.3.18",
+    "tmp": "0.2.7",
+    "uuid": "11.1.1"
+  },
+  "patchedTooling": {
+    "esbuild": "0.28.2",
+    "vite": "8.2.1"
+  },
+  "compatibilityChecks": {
+    "productionBuild": "pass",
+    "staticPages": 634,
+    "bundleBudget": "pass",
+    "domainAccuracyRegression": "pass",
+    "typescript": "pass",
+    "bimWorkbookExcelJs": "pass",
+    "nodemailerRestrictedTransport": "pass"
+  },
+  "limitations": [
+    "This is a dependency and local compatibility audit, not a penetration test.",
+    "Production configuration, staging canary, alert delivery and disaster-recovery receipts remain separate release evidence."
+  ]
+}

@@ -1,0 +1,133 @@
+{
+  "schema": "nexyfab.complex-native-extraction-result-batch.v1",
+  "extractorCapability": {
+    "formats": [
+      "step",
+      "stp",
+      "iges",
+      "igs",
+      "zip-contained-step",
+      "zip-contained-stp",
+      "zip-contained-iges",
+      "zip-contained-igs"
+    ],
+    "jointSemanticsComplete": false,
+    "nativeSolidWorksOrInventor": false
+  },
+  "results": [],
+  "skipped": [
+    {
+      "caseId": "gearbox-review-09",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "pressure_vessel-review-02",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "pressure_vessel-review-05",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "pressure_vessel-review-11",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "turbomachinery-review-04",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "factory_equipment-review-01",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "factory_equipment-review-06",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "factory_equipment-review-07",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "factory_equipment-review-09",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "factory_equipment-review-10",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "factory_equipment-review-15",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "factory_equipment-review-18",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-01",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-02",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-03",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-04",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-05",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-07",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-08",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-09",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-11",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-14",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-15",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-16",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-17",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-18",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-19",
+      "reason": "freecad_zip_supported_member_missing"
+    },
+    {
+      "caseId": "interior-review-20",
+      "reason": "freecad_zip_supported_member_missing"
+    }
+  ],
+  "failures": []
+}

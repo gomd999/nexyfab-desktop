@@ -1,0 +1,24 @@
+{
+  "schema": "nexyfab.ifc-collision-capability.v1",
+  "generatedAt": "2026-08-06T14:36:40.112Z",
+  "scoreEligible": false,
+  "releaseReady": false,
+  "policy": {
+    "triangleSurfaceIntersectionCanConfirmCollision": true,
+    "openMeshCannotClearContainment": true,
+    "pairBudgetExhaustionIsNotRun": true,
+    "coplanarInPlaneSeparatingAxesRequired": true
+  },
+  "summary": {
+    "importedMeshes": 1690,
+    "surfaceIntersectionEligible": 1690,
+    "closedMeshCompleteEligible": 723,
+    "confirmationOnlyOpenMeshes": 967,
+    "surfaceEligibilityCoverage": 1,
+    "completeCollisionCoverage": 0.427810650887574
+  },
+  "gates": {
+    "collisionConfirmation": "pass",
+    "completeCollisionAndClearance": "not_run"
+  }
+}

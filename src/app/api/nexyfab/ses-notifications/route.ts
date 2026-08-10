@@ -5,36 +5,58 @@
 //      suppression list so we never email them again.
 // Transient bounces are ignored (the address may still be valid).
 //
-// Hardening TODO: verify the SNS message signature (SigningCertURL) before
-// trusting it. For now we only ACT on bounce/complaint payloads (idempotent
-// suppression), and confirmation just GETs an amazonaws.com SubscribeURL.
-
 import { NextRequest, NextResponse } from 'next/server';
 import { suppressEmail } from '@/lib/email-suppression';
+import {
+  configuredSnsTopicArns,
+  isTrustedSnsActionUrl,
+  type SnsEnvelope,
+  verifySnsSignature,
+} from '@/lib/aws-sns-signature';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-interface SnsEnvelope {
-  Type?: string;
-  SubscribeURL?: string;
-  Message?: string;
-  TopicArn?: string;
-}
+const MAX_SNS_BODY_BYTES = 256 * 1024;
 
 export async function POST(req: NextRequest) {
+  const declaredLength = Number(req.headers.get('content-length') ?? '0');
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_SNS_BODY_BYTES) {
+    return NextResponse.json({ error: 'payload too large' }, { status: 413 });
+  }
   const raw = await req.text();
+  if (Buffer.byteLength(raw, 'utf8') > MAX_SNS_BODY_BYTES) {
+    return NextResponse.json({ error: 'payload too large' }, { status: 413 });
+  }
   let env: SnsEnvelope;
   try { env = JSON.parse(raw) as SnsEnvelope; } catch { return NextResponse.json({ error: 'bad json' }, { status: 400 }); }
 
-  const type = env.Type || req.headers.get('x-amz-sns-message-type') || '';
+  const allowedTopics = configuredSnsTopicArns();
+  if (process.env.NODE_ENV === 'production' && allowedTopics.length === 0) {
+    return NextResponse.json({ error: 'SNS topic allowlist is not configured' }, { status: 503 });
+  }
+  if (!env.TopicArn || (allowedTopics.length > 0 && !allowedTopics.includes(env.TopicArn))) {
+    return NextResponse.json({ error: 'SNS topic is not allowed' }, { status: 403 });
+  }
+  if (!await verifySnsSignature(env)) {
+    return NextResponse.json({ error: 'invalid SNS signature' }, { status: 401 });
+  }
+
+  const type = env.Type ?? '';
 
   // 1. Confirm the subscription (only trust AWS SNS confirm URLs).
   if (type === 'SubscriptionConfirmation' && env.SubscribeURL) {
     try {
-      const u = new URL(env.SubscribeURL);
-      if (u.hostname.endsWith('amazonaws.com')) await fetch(env.SubscribeURL);
-    } catch { /* ignore */ }
+      if (!isTrustedSnsActionUrl(env.SubscribeURL)) {
+        return NextResponse.json({ error: 'invalid SNS confirmation URL' }, { status: 400 });
+      }
+      const confirmation = await fetch(env.SubscribeURL, { redirect: 'error' });
+      if (!confirmation.ok) {
+        return NextResponse.json({ error: 'SNS confirmation failed' }, { status: 502 });
+      }
+    } catch {
+      return NextResponse.json({ error: 'SNS confirmation failed' }, { status: 502 });
+    }
     return NextResponse.json({ ok: true, confirmed: true });
   }
 

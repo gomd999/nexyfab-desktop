@@ -1,0 +1,3100 @@
+{
+  "schema": "nexyfab.integrated-ai-cad-baseline.v1",
+  "generatedAt": "2026-08-09T14:16:02.280Z",
+  "status": "pass",
+  "scope": "Four calibrated SCAD assembly scenarios plus 160 topology fixtures through occurrence-qualified patterns; not a general 95% accuracy claim.",
+  "artifactSetSha256": "ae9560d1e183397a9a1da1126c47a1f8d71764ea58d9d8bed81008d408db0baf",
+  "checks": [
+    {
+      "id": "file:validation-reports/scad-agent-2026-08-06T09-10-47-repaired-3.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/scad-canonical-features-260806/run-6.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/scad-definition-geometry-260806/run-5.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/scad-analytic-brep-260806/run-12.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/scad-native-step-assembly-260806/run-5.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/scad-native-flow-260806/run-3.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/scad-interface-evidence-260806/run-6.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/topology-survival-260806/run-8.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/topology-consumer-rebind-260806/run-1.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/step-body-membership-260806/run-1.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/step-body-membership-260806/fixtures/native-multibody-weldment.step",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/step-body-membership-260806/fixtures/native-three-level-hierarchy.step",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/step-body-membership-260806/fixtures/native-four-level-branching-reuse.step",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/external-step-structure-coverage-260806/run-3.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/external-step-structure-coverage-260806/remediation-run-1.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/external-step-structure-coverage-260806/native-cad-preflight-run-1.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/external-step-structure-coverage-260806/unsupported-archive-triage-run-1.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/external-step-structure-coverage-260806/ifc-fidelity-run-1.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/external-step-structure-coverage-260806/ifc-collision-capability-run-1.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-review-260806/dwg-import-results.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/external-step-structure-coverage-260806/dwg-revit-capability-preflight-run-1.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-review-260806/exact-cad-worker-queue.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-review-260806/exact-cad-worker-results.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-review-260806/exact-worker-promoted-native-results.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-review-260806/ground-truth-approval-queue.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-review-260806/ground-truth-approval-records.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-review-260806/ground-truth-approval-validation.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-review-260806/ground-truth-review-priority.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-corpus-v2-approved/cases.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/summary.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-corpus-v2-lineage-v2-260807/cases.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-corpus-v2-lineage-v2-260807/assertion-graph.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-corpus-v2-lineage-v2-260807/review-summary.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/preflight.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/structure-evidence.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/native-extraction-requests.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/ground-truth-approval-queue.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/ground-truth-review-priority.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/ground-truth-approval-validation.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-corpus-v2-lineage-v2-approved/cases.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/shortfall-acquisition-queue.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/freecad-step-results.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/freecad-stp-results.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/freecad-ifc-results.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/freecad-iges-results.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/freecad-igs-results.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/freecad-direct-results-merged.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/freecad-direct-validation.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/freecad-zip-results.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/ifc-native-results.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/native-direct-results-merged.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/native-direct-validation.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/native-worker-routing-manifest.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/native-worker-execution-results.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/native-worker-host-preflight.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/native-worker-health-probe.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/native-worker-canary-gate.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/native-worker-canary-dry-run.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/freecad-remediation-pressure-vessel-01.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/freecad-remediation-factory-equipment-03.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/native-extraction-remediation-report.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/phase-b-review-packets.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/phase-b-review-packets-validation.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/phase-b-review-forms/index.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/phase-b-review-submission-validation.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/strategy/phase-b-human-review-runbook-260807.md",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/joint-evidence-boundary-report.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/strategy/native-cad-worker-host-deployment-260807.md",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/strategy/current-status-and-next-execution-plan-260807-v2.md",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/complex-holdout-lineage-v2-260807/zip-member-triage.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:docs/evidence/joint-motion-clearance-260807/specimen-run-1.json",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/scadAssemblyBridge.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/scadCanonicalFeatureProgram.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/scadCanonicalBrep.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/scadDeterministicRepair.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/scadInterfaceEvidence.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/partGenerationCertificate.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/productAssemblyCertificate.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/manufacturingGates.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/stepRoundtripVerification.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/stepBodyMembershipCertificate.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/advanceGenerationRun.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/generationCanonicalResponse.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/selectionContext.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/aiEditTransaction.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/assemblySelectionEdit.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/cad/topologySurvivalEvidence.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/cad/holeTopologySnapshots.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/cad/patternTopologySnapshots.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/build-topology-survival-evidence.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/cad/topologyReferencePropagation.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/brep-bridge/stepAssemblyImport.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/brep-bridge/stepWrite.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/build-topology-consumer-rebind-evidence.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/build-step-body-membership-evidence.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/build-external-step-structure-coverage.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/build-native-extraction-remediation.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/freecad-extract-step.py",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/run-freecad-native-extractions.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/triage-unsupported-native-archives.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/triage-lineage-v2-zip-members.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/run-ifc-native-extractions.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/run-dwg-native-extractions.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/brep-bridge/dwgImport.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/reference/dwgRevitCapability.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/build-dwg-revit-capability-preflight.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/reference/exactCadWorkerContract.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-exact-cad-worker-queue.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/run-exact-cad-workers.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/reference/promoteExactCadWorkerResult.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/promote-exact-cad-worker-results.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/complexGroundTruthApproval.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-ground-truth-approval-queue.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-complex-holdout-review-queues.mjs",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-complex-assertion-seed-from-review.mjs",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/migrate-complex-assertion-corpus.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/preflight-complex-holdout-review.mjs",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/extract-complex-holdout-structure.mjs",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-complex-native-extraction-requests.mjs",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-complex-review-worklist.mjs",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-holdout-shortfall-acquisition.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/reference/nativeWorkerRouting.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-native-worker-routing-manifest.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/reference/nativeWorkerExecution.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/run-native-worker-routing-jobs.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/reference/nativeWorkerHostContract.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-native-worker-host-preflight.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/probe-native-worker-hosts.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-native-worker-canary-gate.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-native-extraction-remediation-report.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-phase-b-review-packets.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/validate-phase-b-review-packets.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-phase-b-review-forms.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/validate-phase-b-review-submissions.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/reference/jointEvidenceReleaseGate.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-joint-evidence-boundary-report.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/reference/jointMotionClearanceCertificate.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-joint-motion-clearance-evidence.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/reference/userConfirmedJointGuard.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/create-workspace-checkpoint.mjs",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/build-ground-truth-review-priority.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/reference/validate-ground-truth-approvals.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/reference/complexNativeExtraction.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/reference/nativeCadCapability.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/brep-bridge/ifcImport.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/brep-bridge/indexedMeshClosure.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/build-ifc-fidelity-evidence.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/reference/indexedMeshCollision.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/lib/ai/design-driver/interferencePrecise.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/build-ifc-collision-capability-evidence.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/app/api/cad/v1/generation/advance/route.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/app/api/cad/v1/generation/finalize/route.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:src/app/[lang]/shape-generator/ai/generationSessionClient.ts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/cli/nexyfab.mjs",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/drawing-to-3d/mcp-server.mjs",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/build-scad-native-flow-evidence.mjs",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "file:scripts/build-scad-native-step-assemblies.mjs",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "mesh.scenarios",
+      "status": "pass",
+      "actual": 4,
+      "expected": 4
+    },
+    {
+      "id": "mesh.pass",
+      "status": "pass",
+      "actual": 4,
+      "expected": 4
+    },
+    {
+      "id": "mesh.fail",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "analytic.definitions",
+      "status": "pass",
+      "actual": 12,
+      "expected": 12
+    },
+    {
+      "id": "analytic.pass",
+      "status": "pass",
+      "actual": 12,
+      "expected": 12
+    },
+    {
+      "id": "analytic.fail",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "analytic.not_run",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "analytic.mesh_cross_check",
+      "status": "pass",
+      "actual": 12,
+      "expected": 12
+    },
+    {
+      "id": "analytic.step_roundtrip",
+      "status": "pass",
+      "actual": 12,
+      "expected": 12
+    },
+    {
+      "id": "analytic.native_topology",
+      "status": "pass",
+      "actual": 12,
+      "expected": 12
+    },
+    {
+      "id": "analytic.part_certificate",
+      "status": "pass",
+      "actual": 12,
+      "expected": 12
+    },
+    {
+      "id": "assembly.scenarios",
+      "status": "pass",
+      "actual": 4,
+      "expected": 4
+    },
+    {
+      "id": "assembly.pass",
+      "status": "pass",
+      "actual": 4,
+      "expected": 4
+    },
+    {
+      "id": "assembly.fail",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "assembly.definitions",
+      "status": "pass",
+      "actual": 12,
+      "expected": 12
+    },
+    {
+      "id": "assembly.occurrences",
+      "status": "pass",
+      "actual": 30,
+      "expected": 30
+    },
+    {
+      "id": "interfaces.pass",
+      "status": "pass",
+      "actual": 4,
+      "expected": 4
+    },
+    {
+      "id": "interfaces.fail",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "interfaces.not_run",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "pipe.status",
+      "status": "pass",
+      "actual": "pass",
+      "expected": "pass"
+    },
+    {
+      "id": "pipe.connected_components",
+      "status": "pass",
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "id": "pipe.blocked_junctions",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "manufacturing.release_ready",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "topology.scope_status",
+      "status": "pass",
+      "actual": "passed",
+      "expected": "passed"
+    },
+    {
+      "id": "topology.fixture_count",
+      "status": "pass",
+      "actual": 180,
+      "expected": 180
+    },
+    {
+      "id": "topology.samples",
+      "status": "pass",
+      "actual": 3400,
+      "expected": 3400
+    },
+    {
+      "id": "topology.survival_rate",
+      "status": "pass",
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "id": "topology.ambiguous",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "topology.broken",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "topology.extrude_status",
+      "status": "pass",
+      "actual": "passed",
+      "expected": "passed"
+    },
+    {
+      "id": "topology.revolve_status",
+      "status": "pass",
+      "actual": "passed",
+      "expected": "passed"
+    },
+    {
+      "id": "topology.boolean_status",
+      "status": "pass",
+      "actual": "passed",
+      "expected": "passed"
+    },
+    {
+      "id": "topology.boolean_samples",
+      "status": "pass",
+      "actual": 80,
+      "expected": 80
+    },
+    {
+      "id": "topology.hole_intent_status",
+      "status": "pass",
+      "actual": "passed",
+      "expected": "passed"
+    },
+    {
+      "id": "topology.hole_intent_samples",
+      "status": "pass",
+      "actual": 80,
+      "expected": 80
+    },
+    {
+      "id": "topology.hole_native_status",
+      "status": "pass",
+      "actual": "passed",
+      "expected": "passed"
+    },
+    {
+      "id": "topology.hole_native_samples",
+      "status": "pass",
+      "actual": 120,
+      "expected": 120
+    },
+    {
+      "id": "topology.fillet_status",
+      "status": "pass",
+      "actual": "passed",
+      "expected": "passed"
+    },
+    {
+      "id": "topology.fillet_samples",
+      "status": "pass",
+      "actual": 120,
+      "expected": 120
+    },
+    {
+      "id": "topology.chamfer_status",
+      "status": "pass",
+      "actual": "passed",
+      "expected": "passed"
+    },
+    {
+      "id": "topology.chamfer_samples",
+      "status": "pass",
+      "actual": 120,
+      "expected": 120
+    },
+    {
+      "id": "topology.pattern_status",
+      "status": "pass",
+      "actual": "passed",
+      "expected": "passed"
+    },
+    {
+      "id": "topology.pattern_samples",
+      "status": "pass",
+      "actual": 1800,
+      "expected": 1800
+    },
+    {
+      "id": "topology.pattern_native_status",
+      "status": "pass",
+      "actual": "passed",
+      "expected": "passed"
+    },
+    {
+      "id": "topology.pattern_native_samples",
+      "status": "pass",
+      "actual": 600,
+      "expected": 600
+    },
+    {
+      "id": "topology_rebind.status",
+      "status": "pass",
+      "actual": "passed",
+      "expected": "passed"
+    },
+    {
+      "id": "topology_rebind.fixtures",
+      "status": "pass",
+      "actual": 20,
+      "expected": 20
+    },
+    {
+      "id": "topology_rebind.pass",
+      "status": "pass",
+      "actual": 20,
+      "expected": 20
+    },
+    {
+      "id": "topology_rebind.fail",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "topology_rebind.safe_solve_calls",
+      "status": "pass",
+      "actual": 20,
+      "expected": 20
+    },
+    {
+      "id": "topology_rebind.blocked_solve_calls",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "step_body_membership.scenarios",
+      "status": "pass",
+      "actual": 7,
+      "expected": 7
+    },
+    {
+      "id": "step_body_membership.pass",
+      "status": "pass",
+      "actual": 7,
+      "expected": 7
+    },
+    {
+      "id": "step_body_membership.fail",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "step_body_membership.not_run",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "step_body_membership.car_occurrence_reuse",
+      "status": "pass",
+      "actual": 6,
+      "expected": 6
+    },
+    {
+      "id": "step_body_membership.bracket_occurrence_reuse",
+      "status": "pass",
+      "actual": 16,
+      "expected": 16
+    },
+    {
+      "id": "step_body_membership.native_multibody_positive",
+      "status": "pass",
+      "actual": 3,
+      "expected": 3
+    },
+    {
+      "id": "step_hierarchy.path_depth",
+      "status": "pass",
+      "actual": 3,
+      "expected": 3
+    },
+    {
+      "id": "step_hierarchy.relationships",
+      "status": "pass",
+      "actual": 2,
+      "expected": 2
+    },
+    {
+      "id": "step_hierarchy.world_translation_x",
+      "status": "pass",
+      "actual": 80,
+      "expected": 80
+    },
+    {
+      "id": "step_hierarchy.world_rotation_xx",
+      "status": "pass",
+      "actual": -1,
+      "expected": -1
+    },
+    {
+      "id": "step_hierarchy.world_rotation_yy",
+      "status": "pass",
+      "actual": -1,
+      "expected": -1
+    },
+    {
+      "id": "step_branching.path_depth",
+      "status": "pass",
+      "actual": 4,
+      "expected": 4
+    },
+    {
+      "id": "step_branching.relationships",
+      "status": "pass",
+      "actual": 5,
+      "expected": 5
+    },
+    {
+      "id": "step_branching.occurrences",
+      "status": "pass",
+      "actual": 2,
+      "expected": 2
+    },
+    {
+      "id": "step_branching.reused_definition_count",
+      "status": "pass",
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "id": "step_branching.branch_a_x",
+      "status": "pass",
+      "actual": 10,
+      "expected": 10
+    },
+    {
+      "id": "step_branching.branch_a_y",
+      "status": "pass",
+      "actual": 25,
+      "expected": 25
+    },
+    {
+      "id": "step_branching.branch_b_x",
+      "status": "pass",
+      "actual": 15,
+      "expected": 15
+    },
+    {
+      "id": "step_branching.branch_b_y",
+      "status": "pass",
+      "actual": -20,
+      "expected": -20
+    },
+    {
+      "id": "external_structure.selected",
+      "status": "pass",
+      "actual": 115,
+      "expected": 115
+    },
+    {
+      "id": "external_structure.executed",
+      "status": "pass",
+      "actual": 38,
+      "expected": 38
+    },
+    {
+      "id": "external_structure.structural_pass",
+      "status": "pass",
+      "actual": 38,
+      "expected": 38
+    },
+    {
+      "id": "external_structure.structural_fail",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "external_structure.body_membership_not_run",
+      "status": "pass",
+      "actual": 3,
+      "expected": 3
+    },
+    {
+      "id": "external_structure.body_membership_pass",
+      "status": "pass",
+      "actual": 35,
+      "expected": 35
+    },
+    {
+      "id": "external_structure.joints_not_run",
+      "status": "pass",
+      "actual": 38,
+      "expected": 38
+    },
+    {
+      "id": "external_structure.approved_ground_truth",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "external_structure.score_eligible",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "ifc_fidelity.imported",
+      "status": "pass",
+      "actual": 1690,
+      "expected": 1690
+    },
+    {
+      "id": "ifc_fidelity.exact_display_mesh",
+      "status": "pass",
+      "actual": 1690,
+      "expected": 1690
+    },
+    {
+      "id": "ifc_fidelity.aabb_only",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "ifc_fidelity.open_surface_mesh",
+      "status": "pass",
+      "actual": 967,
+      "expected": 967
+    },
+    {
+      "id": "ifc_fidelity.exact_volume",
+      "status": "pass",
+      "actual": 723,
+      "expected": 723
+    },
+    {
+      "id": "ifc_fidelity.boundary_edges",
+      "status": "pass",
+      "actual": 197936,
+      "expected": 197936
+    },
+    {
+      "id": "ifc_fidelity.non_manifold_edges",
+      "status": "pass",
+      "actual": 416,
+      "expected": 416
+    },
+    {
+      "id": "ifc_fidelity.degenerate_repair_parts",
+      "status": "pass",
+      "actual": 497,
+      "expected": 497
+    },
+    {
+      "id": "ifc_fidelity.removed_degenerate_faces",
+      "status": "pass",
+      "actual": 6039,
+      "expected": 6039
+    },
+    {
+      "id": "ifc_fidelity.degenerate_faces",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "ifc_fidelity.boundary_components",
+      "status": "pass",
+      "actual": 29851,
+      "expected": 29851
+    },
+    {
+      "id": "ifc_fidelity.closed_boundary_loops",
+      "status": "pass",
+      "actual": 29213,
+      "expected": 29213
+    },
+    {
+      "id": "ifc_fidelity.open_boundary_chains",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "ifc_fidelity.branched_boundary_components",
+      "status": "pass",
+      "actual": 638,
+      "expected": 638
+    },
+    {
+      "id": "ifc_fidelity.planar_closed_boundary_loops",
+      "status": "pass",
+      "actual": 26540,
+      "expected": 26540
+    },
+    {
+      "id": "ifc_fidelity.micro_gap_candidates",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "ifc_collision.surface_eligible",
+      "status": "pass",
+      "actual": 1690,
+      "expected": 1690
+    },
+    {
+      "id": "ifc_collision.complete_eligible",
+      "status": "pass",
+      "actual": 723,
+      "expected": 723
+    },
+    {
+      "id": "ifc_collision.confirmation_only",
+      "status": "pass",
+      "actual": 967,
+      "expected": 967
+    },
+    {
+      "id": "ifc_collision.confirmation_gate",
+      "status": "pass",
+      "actual": "pass",
+      "expected": "pass"
+    },
+    {
+      "id": "ifc_collision.clearance_gate",
+      "status": "pass",
+      "actual": "not_run",
+      "expected": "not_run"
+    },
+    {
+      "id": "ifc_fidelity.release_ready",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "dwg_import.requested",
+      "status": "pass",
+      "actual": 16,
+      "expected": 16
+    },
+    {
+      "id": "dwg_import.completed",
+      "status": "pass",
+      "actual": 16,
+      "expected": 16
+    },
+    {
+      "id": "dwg_import.not_run",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "dwg_import.exact_3d",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "dwg_import.2d_drawings",
+      "status": "pass",
+      "actual": 8,
+      "expected": 8
+    },
+    {
+      "id": "dwg_import.aabb_approximations",
+      "status": "pass",
+      "actual": 8,
+      "expected": 8
+    },
+    {
+      "id": "dwg_import.score_eligible",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "dwg_import.release_ready",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "dwg_import.no_native_assembly_claim",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "dwg_import.no_body_membership_claim",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "dwg_import.no_revit_native_claim",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "dwg_revit_preflight.ready_executors",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "dwg_revit_preflight.not_run_executors",
+      "status": "pass",
+      "actual": 3,
+      "expected": 3
+    },
+    {
+      "id": "dwg_revit_preflight.exact_dwg_queue",
+      "status": "pass",
+      "actual": 8,
+      "expected": 8
+    },
+    {
+      "id": "dwg_revit_preflight.revit_native_queue",
+      "status": "pass",
+      "actual": 5,
+      "expected": 5
+    },
+    {
+      "id": "dwg_revit_preflight.score_eligible",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "exact_cad_queue.jobs",
+      "status": "pass",
+      "actual": 13,
+      "expected": 13
+    },
+    {
+      "id": "exact_cad_queue.dwg",
+      "status": "pass",
+      "actual": 8,
+      "expected": 8
+    },
+    {
+      "id": "exact_cad_queue.revit",
+      "status": "pass",
+      "actual": 5,
+      "expected": 5
+    },
+    {
+      "id": "exact_cad_queue.no_source_bytes",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "exact_cad_queue.score_eligible",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "exact_cad_queue.unique_job_ids",
+      "status": "pass",
+      "actual": 13,
+      "expected": 13
+    },
+    {
+      "id": "exact_cad_queue.revit_members",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "exact_cad_queue.dwg_members",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "exact_cad_results.requested",
+      "status": "pass",
+      "actual": 13,
+      "expected": 13
+    },
+    {
+      "id": "exact_cad_results.accepted",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "exact_cad_results.not_run",
+      "status": "pass",
+      "actual": 13,
+      "expected": 13
+    },
+    {
+      "id": "exact_cad_results.failed",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "exact_cad_results.score_eligible",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "exact_cad_results.release_ready",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "exact_cad_results.no_source_bytes",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "exact_cad_promoted.results",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "exact_cad_promoted.withheld",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "exact_cad_promoted.source",
+      "status": "pass",
+      "actual": "exact-cad-worker-results.json",
+      "expected": "exact-cad-worker-results.json"
+    },
+    {
+      "id": "ground_truth_queue.cases",
+      "status": "pass",
+      "actual": 115,
+      "expected": 115
+    },
+    {
+      "id": "ground_truth_queue.approved",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "ground_truth_queue.pending",
+      "status": "pass",
+      "actual": 115,
+      "expected": 115
+    },
+    {
+      "id": "ground_truth_queue.score_eligible",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "ground_truth_queue.no_automatic_approval",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "ground_truth_queue.dual_signoff",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "ground_truth_queue.mutation_invalidates",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "ground_truth_queue.no_source_bytes",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "ground_truth_records.empty",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "ground_truth_validation.cases",
+      "status": "pass",
+      "actual": 115,
+      "expected": 115
+    },
+    {
+      "id": "ground_truth_validation.approved",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "ground_truth_validation.pending",
+      "status": "pass",
+      "actual": 115,
+      "expected": 115
+    },
+    {
+      "id": "ground_truth_validation.invalid",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "ground_truth_priority.selected",
+      "status": "pass",
+      "actual": 30,
+      "expected": 30
+    },
+    {
+      "id": "ground_truth_priority.per_family",
+      "status": "pass",
+      "actual": 5,
+      "expected": 5
+    },
+    {
+      "id": "ground_truth_priority.turbomachinery_deficit",
+      "status": "pass",
+      "actual": 5,
+      "expected": 5
+    },
+    {
+      "id": "approved_campaign_cases",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "lineage_v2.required_per_family",
+      "status": "pass",
+      "actual": 20,
+      "expected": 20
+    },
+    {
+      "id": "lineage_v2.robot_selected",
+      "status": "pass",
+      "actual": 9,
+      "expected": 9
+    },
+    {
+      "id": "lineage_v2.gearbox_selected",
+      "status": "pass",
+      "actual": 17,
+      "expected": 17
+    },
+    {
+      "id": "lineage_v2.pressure_vessel_selected",
+      "status": "pass",
+      "actual": 11,
+      "expected": 11
+    },
+    {
+      "id": "lineage_v2.turbomachinery_selected",
+      "status": "pass",
+      "actual": 11,
+      "expected": 11
+    },
+    {
+      "id": "lineage_v2.factory_equipment_selected",
+      "status": "pass",
+      "actual": 20,
+      "expected": 20
+    },
+    {
+      "id": "lineage_v2.interior_selected",
+      "status": "pass",
+      "actual": 20,
+      "expected": 20
+    },
+    {
+      "id": "lineage_v2.total_unique_selected",
+      "status": "pass",
+      "actual": 88,
+      "expected": 88
+    },
+    {
+      "id": "lineage_v2.total_shortfall",
+      "status": "pass",
+      "actual": 32,
+      "expected": 32
+    },
+    {
+      "id": "lineage_corpus.cases",
+      "status": "pass",
+      "actual": 88,
+      "expected": 88
+    },
+    {
+      "id": "lineage_corpus.graph_cases",
+      "status": "pass",
+      "actual": 88,
+      "expected": 88
+    },
+    {
+      "id": "lineage_corpus.assertions",
+      "status": "pass",
+      "actual": 862,
+      "expected": 862
+    },
+    {
+      "id": "lineage_corpus.approved_assertions",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "lineage_preflight.cases",
+      "status": "pass",
+      "actual": 88,
+      "expected": 88
+    },
+    {
+      "id": "lineage_preflight.source_hash_pass",
+      "status": "pass",
+      "actual": 88,
+      "expected": 88
+    },
+    {
+      "id": "lineage_preflight.fail",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "lineage_structure.cases",
+      "status": "pass",
+      "actual": 88,
+      "expected": 88
+    },
+    {
+      "id": "lineage_structure.part_definition_pass",
+      "status": "pass",
+      "actual": 44,
+      "expected": 44
+    },
+    {
+      "id": "lineage_structure.occurrence_pass",
+      "status": "pass",
+      "actual": 28,
+      "expected": 28
+    },
+    {
+      "id": "lineage_structure.hierarchy_pass",
+      "status": "pass",
+      "actual": 28,
+      "expected": 28
+    },
+    {
+      "id": "lineage_native_requests",
+      "status": "pass",
+      "actual": 88,
+      "expected": 88
+    },
+    {
+      "id": "lineage_approval_queue.pending",
+      "status": "pass",
+      "actual": 88,
+      "expected": 88
+    },
+    {
+      "id": "lineage_priority.selected",
+      "status": "pass",
+      "actual": 30,
+      "expected": 30
+    },
+    {
+      "id": "lineage_approval_validation.pending",
+      "status": "pass",
+      "actual": 88,
+      "expected": 88
+    },
+    {
+      "id": "lineage_approval_validation.invalid",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "lineage_approved_cases",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "lineage_shortfall.required",
+      "status": "pass",
+      "actual": 32,
+      "expected": 32
+    },
+    {
+      "id": "lineage_shortfall.remaining",
+      "status": "pass",
+      "actual": 32,
+      "expected": 32
+    },
+    {
+      "id": "lineage_shortfall.robot",
+      "status": "pass",
+      "actual": 11,
+      "expected": 11
+    },
+    {
+      "id": "lineage_shortfall.gearbox",
+      "status": "pass",
+      "actual": 3,
+      "expected": 3
+    },
+    {
+      "id": "lineage_shortfall.pressure_vessel",
+      "status": "pass",
+      "actual": 9,
+      "expected": 9
+    },
+    {
+      "id": "lineage_shortfall.turbomachinery",
+      "status": "pass",
+      "actual": 9,
+      "expected": 9
+    },
+    {
+      "id": "lineage_shortfall.not_cases",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "lineage_shortfall.no_cross_family_reuse",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "step_body_membership.local_transforms_complete",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "step_body_membership.world_transforms_complete",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "zip_triage.cases",
+      "status": "pass",
+      "actual": 28,
+      "expected": 28
+    },
+    {
+      "id": "zip_triage.routed",
+      "status": "pass",
+      "actual": 28,
+      "expected": 28
+    },
+    {
+      "id": "zip_triage.fail",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "zip_triage.source_hash_mismatch",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "zip_triage.local_executor_available",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "zip_triage.score_eligible",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "zip_triage.no_source_bytes",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "native_routing.request_cases",
+      "status": "pass",
+      "actual": 88,
+      "expected": 88
+    },
+    {
+      "id": "native_routing.routed_cases",
+      "status": "pass",
+      "actual": 88,
+      "expected": 88
+    },
+    {
+      "id": "native_routing.unrouted_cases",
+      "status": "pass",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "native_routing.jobs",
+      "status": "pass",
+      "actual": 141,
+      "expected": 141
+    },
+    {
+      "id": "native_routing.zip_member_hash_bound",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "joint_clearance.status",
+      "status": "pass",
+      "actual": "pass",
+      "expected": "pass"
+    },
+    {
+      "id": "joint_clearance.score_eligible",
+      "status": "pass",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "id": "joint_clearance.clear_sweep",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "joint_clearance.collision_detected",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "joint_clearance.budget_not_run",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "joint_clearance.missing_geometry_not_run",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "joint_clearance.occurrence_hashes_bound",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "joint_clearance.no_fixed_fabrication",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "joint_guard.repair_local_and_recertified",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "joint_guard.confirmed_never_auto_repaired",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "joint_guard.stale_confirmation_fail_closed",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "joint_guard.edit_guard_blocks_confirmed",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "canonical.stage_scoped_unresolved",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "canonical.affected_parts",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "api.advance_canonical",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "web.advance_canonical_persistence",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "body_intent.manufacturing_gate",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "body_intent.roundtrip_gate",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "body_membership.native_definition_bodies",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "body_membership.occurrence_reuse",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "id": "body_membership.no_implicit_name_guess",
+      "status": "pass",
+      "actual": true,
+      "expected": true
+    }
+  ],
+  "files": [
+    {
+      "path": "validation-reports/scad-agent-2026-08-06T09-10-47-repaired-3.json",
+      "bytes": 7436,
+      "sha256": "a6b17bead24d031444458293f7847532858fe04f03f36fa731bcfa080fbfa36e"
+    },
+    {
+      "path": "docs/evidence/scad-canonical-features-260806/run-6.json",
+      "bytes": 21608,
+      "sha256": "34ea62f1a7f0ca6d905a5f3b90d5146a6d5c35537c397d2c2a3c648ea2446fa9"
+    },
+    {
+      "path": "docs/evidence/scad-definition-geometry-260806/run-5.json",
+      "bytes": 26517,
+      "sha256": "11119eb15298e1bbbbb27f6da8b5e2d0c39718161266be37ebdefa02096d58bc"
+    },
+    {
+      "path": "docs/evidence/scad-analytic-brep-260806/run-12.json",
+      "bytes": 54369,
+      "sha256": "218d7400268b52fb17f1843fd9a3c1c14ba4550de4d143f8c733280f4ef94ec8"
+    },
+    {
+      "path": "docs/evidence/scad-native-step-assembly-260806/run-5.json",
+      "bytes": 38633,
+      "sha256": "f97b07780131fcc8cdcfefb90506a434a2526dfccae4ccbf297c87a0ed494d54"
+    },
+    {
+      "path": "docs/evidence/scad-native-flow-260806/run-3.json",
+      "bytes": 324,
+      "sha256": "195d49cf6f0127c79a8d5829231233de2145d77d29c90a0ba31f48ce64948cf1"
+    },
+    {
+      "path": "docs/evidence/scad-interface-evidence-260806/run-6.json",
+      "bytes": 30708,
+      "sha256": "c8121aeed3baa7e8657409808735085581f61df659286203009247768714c6e9"
+    },
+    {
+      "path": "docs/evidence/topology-survival-260806/run-8.json",
+      "bytes": 1953009,
+      "sha256": "933d4aae046c11236b1f9d24bbdc010eb190b6846681fb0f0c6c3a4373a63c62"
+    },
+    {
+      "path": "docs/evidence/topology-consumer-rebind-260806/run-1.json",
+      "bytes": 10042,
+      "sha256": "6dcba9e903cb9c346eea062bc5fc605fa1ae8e15584db23cb94716ad6d855875"
+    },
+    {
+      "path": "docs/evidence/step-body-membership-260806/run-1.json",
+      "bytes": 8013,
+      "sha256": "1f37e2f0af849856ff680db37972f07957717895ced574261d5e859672ce73c6"
+    },
+    {
+      "path": "docs/evidence/step-body-membership-260806/fixtures/native-multibody-weldment.step",
+      "bytes": 16223,
+      "sha256": "e20cdec61edf89a357f3267d8a705b974a54cd5d8ca30b12013dbc25465a5421"
+    },
+    {
+      "path": "docs/evidence/step-body-membership-260806/fixtures/native-three-level-hierarchy.step",
+      "bytes": 7388,
+      "sha256": "e505af3103b868bbf790e18b1d96b293057ce1ed2b4c05254603269f7e2457e1"
+    },
+    {
+      "path": "docs/evidence/step-body-membership-260806/fixtures/native-four-level-branching-reuse.step",
+      "bytes": 9355,
+      "sha256": "f59ec20373a867c157e26adb25e2d1ea5e278ecf6d7b36d6abc345fbd4fa91c1"
+    },
+    {
+      "path": "docs/evidence/external-step-structure-coverage-260806/run-3.json",
+      "bytes": 21873,
+      "sha256": "60b5022347a4e83a1a64984aa7c64bfd01e277a4fbbb6446cf16627e82729ed6"
+    },
+    {
+      "path": "docs/evidence/external-step-structure-coverage-260806/remediation-run-1.json",
+      "bytes": 4380,
+      "sha256": "256566a48a5d59ceb4c424a11b71f56f229b4fa4ba80e7c6b23f643af3313519"
+    },
+    {
+      "path": "docs/evidence/external-step-structure-coverage-260806/native-cad-preflight-run-1.json",
+      "bytes": 1336,
+      "sha256": "289a76d3d53d8342952c17d91694850f9e2bdcefbc2a9f052b06c80cf0dd9339"
+    },
+    {
+      "path": "docs/evidence/external-step-structure-coverage-260806/unsupported-archive-triage-run-1.json",
+      "bytes": 7078,
+      "sha256": "9e3053104365063a87f3a027fe3dfbf00dc5585c27c113d9f151208d3b389bab"
+    },
+    {
+      "path": "docs/evidence/external-step-structure-coverage-260806/ifc-fidelity-run-1.json",
+      "bytes": 4919,
+      "sha256": "bef3a776973287dc18ab11a442edf33f4c528321024d70b2551701ea62ad860a"
+    },
+    {
+      "path": "docs/evidence/external-step-structure-coverage-260806/ifc-collision-capability-run-1.json",
+      "bytes": 722,
+      "sha256": "a2818b1fa6a39bf15776c8597322f01fbb5788b0e4cfbb190afe0e80aeac151e"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-review-260806/dwg-import-results.json",
+      "bytes": 16519,
+      "sha256": "c54225ce723f0573323d48e04aba703fa0c436ac6f30067feff7656be529b291"
+    },
+    {
+      "path": "docs/evidence/external-step-structure-coverage-260806/dwg-revit-capability-preflight-run-1.json",
+      "bytes": 979,
+      "sha256": "15f159453e9c07627fe8214a75b1fde8b790b0f133f085905e04d2764d439c54"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-review-260806/exact-cad-worker-queue.json",
+      "bytes": 7329,
+      "sha256": "e6b099a0819852574d0178cb055dad0c267629c06ecd3c363cea385105f8feef"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-review-260806/exact-cad-worker-results.json",
+      "bytes": 2269,
+      "sha256": "edb3d6422253579d71799efaa30fa59f48c37f849f59af9dbb879efd8af62837"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-review-260806/exact-worker-promoted-native-results.json",
+      "bytes": 153,
+      "sha256": "03abe5f8c8ac8b115a36d1f4ad7e4b5fc1d9a0f25e9fad0ce012036fd5ba6934"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-review-260806/ground-truth-approval-queue.json",
+      "bytes": 107823,
+      "sha256": "5f5d199573ceff064c8991227690a4243f4a43f02a25f74c7a7ba6c7babe8020"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-review-260806/ground-truth-approval-records.json",
+      "bytes": 82,
+      "sha256": "dde20ece9cff55b492f057482b71719ff08293d47cc9e56083b2d399b86ffd29"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-review-260806/ground-truth-approval-validation.json",
+      "bytes": 39278,
+      "sha256": "623210a516d382b59ade72129fd0fa208bafa49dd3f982e7c12de9e19bdf1f11"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-review-260806/ground-truth-review-priority.json",
+      "bytes": 9326,
+      "sha256": "ba4dfbdad12beb4751c1f568644cc6b3ec57eba76e110af6310c16bd930f8c4a"
+    },
+    {
+      "path": "docs/evidence/complex-corpus-v2-approved/cases.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/summary.json",
+      "bytes": 866,
+      "sha256": "b10da3df25b8ff018d4ce56dabe5de3cc2f941b95616d21b8c5c08d9c97ed582"
+    },
+    {
+      "path": "docs/evidence/complex-corpus-v2-lineage-v2-260807/cases.json",
+      "bytes": 332024,
+      "sha256": "9c6d387b919ca198557951aef8aaa9332239663098207b07dcaeff0b72d3d48b"
+    },
+    {
+      "path": "docs/evidence/complex-corpus-v2-lineage-v2-260807/assertion-graph.json",
+      "bytes": 130815,
+      "sha256": "18ab003a20f5f2ff9bbcba392dbaae505eb8a4b5619242fd45180d956200fc0a"
+    },
+    {
+      "path": "docs/evidence/complex-corpus-v2-lineage-v2-260807/review-summary.json",
+      "bytes": 106,
+      "sha256": "415077fc0460c5eddfbe60d42d4bd5368f0ae57c2692f2abdfbcbe59b846660a"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/preflight.json",
+      "bytes": 93950,
+      "sha256": "8076523795150a67ad6afa8853cbb5207f5cd9377167e7b5e18f71874687368f"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/structure-evidence.json",
+      "bytes": 89814,
+      "sha256": "b499cee2b9f58bcbb93230d079dd7620825c541e860bc87af34ada6287a14e63"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/native-extraction-requests.json",
+      "bytes": 46194,
+      "sha256": "2eec1a3171d1be4c9bb2de8b57eaf459367f8f7701ccac167b83332ff5a03560"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/ground-truth-approval-queue.json",
+      "bytes": 80708,
+      "sha256": "cbf829076714722f734de723a80d6b4836d2f11b58783951b197dd1f76432ce9"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/ground-truth-review-priority.json",
+      "bytes": 9388,
+      "sha256": "c0e40b031ecb94adb75027d3af9347e82a83e983a8d9e0d0015867a36a8621cb"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/ground-truth-approval-validation.json",
+      "bytes": 30290,
+      "sha256": "d2f5c988a87458664c8693bae8410c74ea15bcea1b9a9631eba32475e6d78d1e"
+    },
+    {
+      "path": "docs/evidence/complex-corpus-v2-lineage-v2-approved/cases.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/shortfall-acquisition-queue.json",
+      "bytes": 31568,
+      "sha256": "bf72a9cf79efd17c51c868e896d1ebf412ae41a3050aebfed1a8144c293b28a0"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/freecad-step-results.json",
+      "bytes": 1587777,
+      "sha256": "85c21f5a0d86a0717d4d7523468d2a063a0b998a15f434949cf905f18a7a2452"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/freecad-stp-results.json",
+      "bytes": 17493728,
+      "sha256": "2531a325f83cb6a4d6cc0c92d1e7ea359cb044b59ecbce935f77700b2d6df444"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/freecad-ifc-results.json",
+      "bytes": 2041,
+      "sha256": "a72491ad6ead5782ad3b7499181c1330dda6dba5cffb0d91f9f5830ccbc6963b"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/freecad-iges-results.json",
+      "bytes": 1104,
+      "sha256": "d529c2e3cc13b43b7bd17a9160dc198402952694f80813ea87a22569c348dae6"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/freecad-igs-results.json",
+      "bytes": 107587,
+      "sha256": "b31a37a06a51bac021983e4f2684971e60b5ad26d840a894776c3b63300e2dca"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/freecad-direct-results-merged.json",
+      "bytes": 19188097,
+      "sha256": "ba254913b733b39028bc72330811a3596b5a714a99c252149c144eea18872f67"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/freecad-direct-validation.json",
+      "bytes": 145163,
+      "sha256": "cada010c84ce6d98653f05930850828dade767498baf0b99d6ee676d3cb9f7d6"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/freecad-zip-results.json",
+      "bytes": 3475,
+      "sha256": "4167d1c04e1ac5f5172e751d865bc834f4ad8d3575f1c378456b27e0fa758a71"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/ifc-native-results.json",
+      "bytes": 6248526,
+      "sha256": "a35bea0c0c37cb17222f823a7c88155fc0750c9a060c647502405578b461b3c7"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/native-direct-results-merged.json",
+      "bytes": 27522770,
+      "sha256": "f4b247ac169e781f86393d19c8c70652f9dfb25b2a8a001e9546f4bd77e18aa9"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/native-direct-validation.json",
+      "bytes": 149157,
+      "sha256": "4382add6d4380f51b9f4c1d52c6450e374b58fc2664cc8dc07e35a4a92683e0e"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/native-worker-routing-manifest.json",
+      "bytes": 100632,
+      "sha256": "28b2fc04d5718fd246c5cf6e248e2f0b65018be65f4074482aad8a393e328ad4"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/native-worker-execution-results.json",
+      "bytes": 17649,
+      "sha256": "43e2bd4536cb314328eac45dcd792fe8d3732889885f3283d503a4d29a47c407"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/native-worker-host-preflight.json",
+      "bytes": 3150,
+      "sha256": "de8bf17f0fad700c896ddcdc06afb8b65f99bebb7c246a0068984901ff689fc9"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/native-worker-health-probe.json",
+      "bytes": 1097,
+      "sha256": "8090936b3d889439ed91af7305b16f2231b2e5204a4cded8eb39208ee85e4ffb"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/native-worker-canary-gate.json",
+      "bytes": 3269,
+      "sha256": "0eb65fe8c66ea6473630e1421a9aa664a829a596290cd41b4f0cae07ac4eaf71"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/native-worker-canary-dry-run.json",
+      "bytes": 573,
+      "sha256": "6094a6585d3a85cd0da9276973fa12f0622df142e3e654fbb94a7a0aae584615"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/freecad-remediation-pressure-vessel-01.json",
+      "bytes": 2093669,
+      "sha256": "f0b829edc088637aa6d26e2a8b885f8a3102638fccd07030260d8941879f0091"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/freecad-remediation-factory-equipment-03.json",
+      "bytes": 568,
+      "sha256": "a7593fc387b9326fc828ba6e3992b4b344308b54e3259143198ebc63f26d476e"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/native-extraction-remediation-report.json",
+      "bytes": 1904,
+      "sha256": "17be1d62d1fe17ae627433f0a85cd44b5099dfcd08f28e21a6c43de690705202"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/phase-b-review-packets.json",
+      "bytes": 345276,
+      "sha256": "8664e81d87c6e7d2c9a63df84a12a1b5d4d3498933935d006e4b92bbb532809f"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/phase-b-review-packets-validation.json",
+      "bytes": 230,
+      "sha256": "3918395018017aa6fe364c2f641304b1d755195141ba45873d6c2305afa44e42"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/phase-b-review-forms/index.json",
+      "bytes": 7612,
+      "sha256": "88b518a5e75bfe5f5caf380fcdab185fee9d19e0f2cd519796acd105ab01cc57"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/phase-b-review-submission-validation.json",
+      "bytes": 4339,
+      "sha256": "db0214b3a3428a154b7e20c1379c443c1a364084e243e54c748112fb84a482e4"
+    },
+    {
+      "path": "docs/strategy/phase-b-human-review-runbook-260807.md",
+      "bytes": 1684,
+      "sha256": "e85dd443034ae5109ba822a5a50ef3930b83c17275e450d722ee90c1df57d7ca"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/joint-evidence-boundary-report.json",
+      "bytes": 25938,
+      "sha256": "50b8eb186d968eb4aae612711a69a9f23a82f3f69fcecfd18aca91638130eacb"
+    },
+    {
+      "path": "docs/strategy/native-cad-worker-host-deployment-260807.md",
+      "bytes": 8807,
+      "sha256": "0273804bed6a614c7694345bb2a1c27f7c138cb27a85f7d4c18e58db5ff0861c"
+    },
+    {
+      "path": "docs/strategy/current-status-and-next-execution-plan-260807-v2.md",
+      "bytes": 14286,
+      "sha256": "ab76016f14dcf96271c9cb151c8d810a0a3020e0e79226e4608c98284f985dbe"
+    },
+    {
+      "path": "docs/evidence/complex-holdout-lineage-v2-260807/zip-member-triage.json",
+      "bytes": 27459,
+      "sha256": "9396ac4e14b5db0a1deb98f61a4a002811ebd3f8d78e40be8bf0a656e55d954a"
+    },
+    {
+      "path": "docs/evidence/joint-motion-clearance-260807/specimen-run-1.json",
+      "bytes": 8663,
+      "sha256": "7394c084a170ddf4582903976eed06d6193342e32355d8e2b483847c1eea008c"
+    },
+    {
+      "path": "src/lib/ai/scadAssemblyBridge.ts",
+      "bytes": 7884,
+      "sha256": "4dc56e941d4322eb3eb8caa28e4c4f75c53962c1f65c8854491ccbc796276779"
+    },
+    {
+      "path": "src/lib/ai/scadCanonicalFeatureProgram.ts",
+      "bytes": 10182,
+      "sha256": "a172829983a6a735523e653a94ecefd2d95ac30e04cd6c4e3d83a00dc2c22e45"
+    },
+    {
+      "path": "src/lib/ai/scadCanonicalBrep.ts",
+      "bytes": 15081,
+      "sha256": "49017e5e58266edab9919989634705e4bbeef5cf5b29141481c96fc4626de3aa"
+    },
+    {
+      "path": "src/lib/ai/scadDeterministicRepair.ts",
+      "bytes": 4755,
+      "sha256": "95aa97c3990e869b4f4e34ead1d2a0bfcaae0c0eb6e2d63687c6625b9c926244"
+    },
+    {
+      "path": "src/lib/ai/scadInterfaceEvidence.ts",
+      "bytes": 14069,
+      "sha256": "ae781e904b551e31f340fff6741f2af2b26f21902e881660a70945857dec3003"
+    },
+    {
+      "path": "src/lib/ai/partGenerationCertificate.ts",
+      "bytes": 7882,
+      "sha256": "7e95a9a319ffb7e7f20de54446127f299c8093d4b59b0d779abd7260228008cd"
+    },
+    {
+      "path": "src/lib/ai/productAssemblyCertificate.ts",
+      "bytes": 8990,
+      "sha256": "db86abf237acd99723b4dc3285679da4b331699243fc0099fa115bda807ed75d"
+    },
+    {
+      "path": "src/lib/ai/manufacturingGates.ts",
+      "bytes": 10026,
+      "sha256": "fd4778b281fd496f1e695cfad85ced9f24ab0e837dee58743328bcb73ea55701"
+    },
+    {
+      "path": "src/lib/ai/stepRoundtripVerification.ts",
+      "bytes": 3129,
+      "sha256": "0f91d8654a1333e4390f63925c2eb542748ea613328ecb5e2ad0f9f6aa545a4e"
+    },
+    {
+      "path": "src/lib/ai/stepBodyMembershipCertificate.ts",
+      "bytes": 5618,
+      "sha256": "70faab219ff6b650448b378885fc71e6aad6e187fa51870796ebe1be5eae1910"
+    },
+    {
+      "path": "src/lib/ai/advanceGenerationRun.ts",
+      "bytes": 9540,
+      "sha256": "be2fc3a7a9f1f3372821ad9c301014288872a7df99671dfc3eac55f45867a01a"
+    },
+    {
+      "path": "src/lib/ai/generationCanonicalResponse.ts",
+      "bytes": 2868,
+      "sha256": "f8bfaf07ddbd1ffde39a124bef6c16eda12d139e68f34f4d6d0842156c7c9c23"
+    },
+    {
+      "path": "src/lib/ai/selectionContext.ts",
+      "bytes": 5922,
+      "sha256": "70aff67f3a01f4ceb45a4aa293cd05aa211b0d18648f93976448e742570aab88"
+    },
+    {
+      "path": "src/lib/ai/aiEditTransaction.ts",
+      "bytes": 7572,
+      "sha256": "8c665d603497eb8369f011af92201f53eea32638914355ab47feaf5800476bda"
+    },
+    {
+      "path": "src/lib/ai/assemblySelectionEdit.ts",
+      "bytes": 30707,
+      "sha256": "c87fd1b5afe5e1abdcb0343e9f27dd85ff0e1f3a11b0ef94724882b9ac8098b5"
+    },
+    {
+      "path": "src/lib/cad/topologySurvivalEvidence.ts",
+      "bytes": 3586,
+      "sha256": "abf31363bdf2da7c07c781781de5957d1f87d4ce5005a6981e2dcf69015fb5bc"
+    },
+    {
+      "path": "src/lib/cad/holeTopologySnapshots.ts",
+      "bytes": 3249,
+      "sha256": "da4ec12a4b5f9bf64f4d662a6c12c10348abf88cf2a18572b0e6775e699a8057"
+    },
+    {
+      "path": "src/lib/cad/patternTopologySnapshots.ts",
+      "bytes": 3429,
+      "sha256": "7cd2bff2c11b01fa2ee8a6916a2455243e6d0a5c6abc9d1c81bca60fbcea8eca"
+    },
+    {
+      "path": "scripts/build-topology-survival-evidence.ts",
+      "bytes": 17899,
+      "sha256": "38232e1f436340ad7ea2d85acecfb108beaddbc0954887b3c3af74354b390683"
+    },
+    {
+      "path": "src/lib/cad/topologyReferencePropagation.ts",
+      "bytes": 6481,
+      "sha256": "64f125754db18950f40b421eb11e481222075e8922b19d5ecee6ec2a6e16d221"
+    },
+    {
+      "path": "src/lib/brep-bridge/stepAssemblyImport.ts",
+      "bytes": 55534,
+      "sha256": "d8fd6d37649b387b58b8d249f8d473661a7f226cbf4bb691d54504cdc32debfb"
+    },
+    {
+      "path": "src/lib/brep-bridge/stepWrite.ts",
+      "bytes": 45404,
+      "sha256": "f0fb48be37daead81c5440f56007463cf0457a983a38696bf216a9b716f49c04"
+    },
+    {
+      "path": "scripts/build-topology-consumer-rebind-evidence.ts",
+      "bytes": 3562,
+      "sha256": "a0d4b491bd8e65eac4f832591678a880287f1364b4e7f71cb3f960e6c9fd5b70"
+    },
+    {
+      "path": "scripts/build-step-body-membership-evidence.ts",
+      "bytes": 21890,
+      "sha256": "625da662b52c72be50f3dbc78f780500591e384e582a2989603db3a7c9fffa9d"
+    },
+    {
+      "path": "scripts/build-external-step-structure-coverage.ts",
+      "bytes": 6588,
+      "sha256": "d3e3beb768bf6632823bf8fc0472ceeb8b4420477066d5f4021a19e7ae580b86"
+    },
+    {
+      "path": "scripts/build-native-extraction-remediation.ts",
+      "bytes": 2753,
+      "sha256": "ed621d88c1cc2291d8aae95c56ed58dc9265d9883b1fdffb2508a0aff39d3ef4"
+    },
+    {
+      "path": "scripts/reference/freecad-extract-step.py",
+      "bytes": 3416,
+      "sha256": "0f80e8c9d9b8c19323a9d6863e2f32c820efc3a8de813ea22daf82fe5ae43680"
+    },
+    {
+      "path": "scripts/reference/run-freecad-native-extractions.ts",
+      "bytes": 7009,
+      "sha256": "306dd066e2c6c86f21ac8d7d8d91add9461941d7386bcc0a1759b89148b746bf"
+    },
+    {
+      "path": "scripts/reference/triage-unsupported-native-archives.ts",
+      "bytes": 4653,
+      "sha256": "24504027be71a5b91f290649e0f47941c0323d25d96495ef3bbb88ec22e3afa6"
+    },
+    {
+      "path": "scripts/reference/triage-lineage-v2-zip-members.ts",
+      "bytes": 7897,
+      "sha256": "473e309d3855a33cfaa3fa17d4bd774d7ab97b278309ea8a68c24f105abe2f9e"
+    },
+    {
+      "path": "scripts/reference/run-ifc-native-extractions.ts",
+      "bytes": 8454,
+      "sha256": "f4d1284f8220de36fefb16f6b3cbc8015d4a29925028c10ca4434ca985270382"
+    },
+    {
+      "path": "scripts/reference/run-dwg-native-extractions.ts",
+      "bytes": 6662,
+      "sha256": "1a0982223265489bcbe536f13ecd3532e8616f2a77f6de90b48f7f79f6f345ac"
+    },
+    {
+      "path": "src/lib/brep-bridge/dwgImport.ts",
+      "bytes": 35612,
+      "sha256": "a9378f1a5523b273235fbf189c7265a68c6c9769d82b1feafaaa06b4ed780053"
+    },
+    {
+      "path": "src/lib/reference/dwgRevitCapability.ts",
+      "bytes": 1606,
+      "sha256": "e5f243d3cedd36678133a6b1d18828119b4fa7008eedcdd22608a5deca4365f1"
+    },
+    {
+      "path": "scripts/build-dwg-revit-capability-preflight.ts",
+      "bytes": 2988,
+      "sha256": "9b72128c978a64cca7e239274c39b6e21afa308f65f9ed7d23b68b8b24be7a3f"
+    },
+    {
+      "path": "src/lib/reference/exactCadWorkerContract.ts",
+      "bytes": 6282,
+      "sha256": "05dbd486df3a545a1ab37254033bec62033739b69e00d1436d2a86db91fa48d8"
+    },
+    {
+      "path": "scripts/reference/build-exact-cad-worker-queue.ts",
+      "bytes": 4254,
+      "sha256": "936bb01d974e6cc249c44b9f2edd5e4d056ad2d3890050c3f4534b5b9e14368b"
+    },
+    {
+      "path": "scripts/reference/run-exact-cad-workers.ts",
+      "bytes": 5869,
+      "sha256": "9d848eaefa667a9d2f4abc7637de726b8ab0ea59356f7b6f085d23d7c35a773a"
+    },
+    {
+      "path": "src/lib/reference/promoteExactCadWorkerResult.ts",
+      "bytes": 1372,
+      "sha256": "079ec531dea7fb498dfb35d4548f588e6d7606b9c677afae7ea100e3b294d17b"
+    },
+    {
+      "path": "scripts/reference/promote-exact-cad-worker-results.ts",
+      "bytes": 1306,
+      "sha256": "3020ce1d35ed04c4e51ad90396148bd5ea0884ae49e0d10c6a535cf07339bd53"
+    },
+    {
+      "path": "src/lib/ai/complexGroundTruthApproval.ts",
+      "bytes": 4573,
+      "sha256": "34d6202434be7280ae996f734be7a21dc9830f0e2525f6bca9b45ba3113dbf61"
+    },
+    {
+      "path": "scripts/reference/build-ground-truth-approval-queue.ts",
+      "bytes": 1828,
+      "sha256": "8c753a048b884d7a04300b04487df2e9f0c5f1bbf71a11a5179ebeccf09a74f3"
+    },
+    {
+      "path": "scripts/reference/build-complex-holdout-review-queues.mjs",
+      "bytes": 8143,
+      "sha256": "6fa9c032e3db99c4b0cec0ab8b6bf7986ff89a648ee005fe55a4b02eb9cc1e77"
+    },
+    {
+      "path": "scripts/reference/build-complex-assertion-seed-from-review.mjs",
+      "bytes": 2920,
+      "sha256": "9e79509024a19e8e0efd019a128a99850d905f76f02f71203f89e18923dc0f94"
+    },
+    {
+      "path": "scripts/reference/migrate-complex-assertion-corpus.ts",
+      "bytes": 3305,
+      "sha256": "66e238eaaf133b6dcfffcc04871ad7ddb3734dedd6199641f08e93cbee7fec32"
+    },
+    {
+      "path": "scripts/reference/preflight-complex-holdout-review.mjs",
+      "bytes": 6936,
+      "sha256": "2a66b3eed9221f6c28d550a00db10834f51aa0cd38415fe3ea9a8d62c7a978aa"
+    },
+    {
+      "path": "scripts/reference/extract-complex-holdout-structure.mjs",
+      "bytes": 8879,
+      "sha256": "01560a00afa331245f86afdac634c695ef6f56950829d3ce719d7bba37e35edd"
+    },
+    {
+      "path": "scripts/reference/build-complex-native-extraction-requests.mjs",
+      "bytes": 1242,
+      "sha256": "4a58898444eaf47d678370a40ab59bbb4e8dbaeae9a83746a37569db8ffafa77"
+    },
+    {
+      "path": "scripts/reference/build-complex-review-worklist.mjs",
+      "bytes": 3285,
+      "sha256": "92cb8f95fa421426a3f75fbca2ab4eabff594e61556648bb1c9cdad47bffc8cf"
+    },
+    {
+      "path": "scripts/reference/build-holdout-shortfall-acquisition.ts",
+      "bytes": 1957,
+      "sha256": "eb49ad8eee061c5bbe131ade6ea0933af47f25d9adfb6e4e131b5c0be8c555b0"
+    },
+    {
+      "path": "src/lib/reference/nativeWorkerRouting.ts",
+      "bytes": 2711,
+      "sha256": "32f553cb168fbf1af06963fffffe0fa00ad1c835ffb508297ca70baf8986877e"
+    },
+    {
+      "path": "scripts/reference/build-native-worker-routing-manifest.ts",
+      "bytes": 5493,
+      "sha256": "d8253b74c1ae20122a449d48afd734096185da94e1c69cc9b31ddf93162b28db"
+    },
+    {
+      "path": "src/lib/reference/nativeWorkerExecution.ts",
+      "bytes": 9676,
+      "sha256": "f21464d00133460273b9cb6e06db74a0ed6f49cdba46e9b8f48bc942840be331"
+    },
+    {
+      "path": "scripts/reference/run-native-worker-routing-jobs.ts",
+      "bytes": 10130,
+      "sha256": "6a75c1ae4cc33b0cd469298e2f7604f852394982dfc180a5b3897c8fac691726"
+    },
+    {
+      "path": "src/lib/reference/nativeWorkerHostContract.ts",
+      "bytes": 3496,
+      "sha256": "5b7dcea0463644a98eab08f714c92f851c9a487a5223bba1d64f981e6d69a9ea"
+    },
+    {
+      "path": "scripts/reference/build-native-worker-host-preflight.ts",
+      "bytes": 2509,
+      "sha256": "cd70b74fb661608a7d0d0b3047a543d41518179f3160f202c7a7a008b8c8d31f"
+    },
+    {
+      "path": "scripts/reference/probe-native-worker-hosts.ts",
+      "bytes": 3355,
+      "sha256": "3e6c54897d27709ac40377bcce85c48a8888c9bcd4eb74aac29e35834f03f1e0"
+    },
+    {
+      "path": "scripts/reference/build-native-worker-canary-gate.ts",
+      "bytes": 2411,
+      "sha256": "416d21b19f47df6daa7ae84dae3744f578a08c5ea5512c8472de486673e638ac"
+    },
+    {
+      "path": "scripts/reference/build-native-extraction-remediation-report.ts",
+      "bytes": 2678,
+      "sha256": "6ae06e6d1d2d5a293f5bf600f9579d2329d7c974a093bab214fd682c175e76b7"
+    },
+    {
+      "path": "scripts/reference/build-phase-b-review-packets.ts",
+      "bytes": 5202,
+      "sha256": "85242cabc7c70fb96417f6e00b0e6d4c40675dbfc70bb6110cdde44d71ab06d9"
+    },
+    {
+      "path": "scripts/reference/validate-phase-b-review-packets.ts",
+      "bytes": 3688,
+      "sha256": "86c934fa51d6d8aa04850f05332651134ca368c737103413baea623a82190983"
+    },
+    {
+      "path": "scripts/reference/build-phase-b-review-forms.ts",
+      "bytes": 3111,
+      "sha256": "0b5fb31531cce13906240ef90db9f545c125a79b39b9795c17bbb5215574212e"
+    },
+    {
+      "path": "scripts/reference/validate-phase-b-review-submissions.ts",
+      "bytes": 5123,
+      "sha256": "4972ba59bd12c27fcb243f1816b4bddc394ce0ba8502ebe55e361b5cd2b22ad0"
+    },
+    {
+      "path": "src/lib/reference/jointEvidenceReleaseGate.ts",
+      "bytes": 2680,
+      "sha256": "18248eb1bb43a6ac87fade66baadb6205396dc1d498974d4e1890b33c8dda0de"
+    },
+    {
+      "path": "scripts/reference/build-joint-evidence-boundary-report.ts",
+      "bytes": 3139,
+      "sha256": "7bc2e4e2c5bba90cd6b37e52bd0ba5d58a8b854991b318b82ccd7cd63e33ff5d"
+    },
+    {
+      "path": "src/lib/reference/jointMotionClearanceCertificate.ts",
+      "bytes": 12695,
+      "sha256": "89b2b4c47ba8d17c542f1f466938b52f9e2668a877e16c0d58127de2108a5e3e"
+    },
+    {
+      "path": "scripts/reference/build-joint-motion-clearance-evidence.ts",
+      "bytes": 8953,
+      "sha256": "1b36093858629adbc8625f78fe2a5211548843b9542f88a85a1caeb59fdf6549"
+    },
+    {
+      "path": "src/lib/reference/userConfirmedJointGuard.ts",
+      "bytes": 8278,
+      "sha256": "217e84cd03386021405b257de2c1dd0d952ba77cfd11658bf3217ad335ae2d97"
+    },
+    {
+      "path": "scripts/create-workspace-checkpoint.mjs",
+      "bytes": 5367,
+      "sha256": "c3f1880617289e5be75a26d16accad6a8b9fbf64874eaa9bb7d47ea8828423c6"
+    },
+    {
+      "path": "scripts/reference/build-ground-truth-review-priority.ts",
+      "bytes": 2476,
+      "sha256": "5ba1770b466807dd4e727422d2af3db1f4200d1754eab52220c5e1ac1c54bfce"
+    },
+    {
+      "path": "scripts/reference/validate-ground-truth-approvals.ts",
+      "bytes": 3649,
+      "sha256": "5176fad882fec10522972beda5947424ed4fc6da369ed08eb53bc85ef7670125"
+    },
+    {
+      "path": "src/lib/reference/complexNativeExtraction.ts",
+      "bytes": 8473,
+      "sha256": "ac51f2dc30b33073211b7232a7d926891621140911614767c3daf0acca489b84"
+    },
+    {
+      "path": "src/lib/reference/nativeCadCapability.ts",
+      "bytes": 1635,
+      "sha256": "1ba019af1da1dfa07df46d1f13073c6eb3656d1742237e0e2e0d96ef9be07456"
+    },
+    {
+      "path": "src/lib/brep-bridge/ifcImport.ts",
+      "bytes": 53254,
+      "sha256": "afea9ae3c86ae00c3b5fe950a844d0a60fe5112a9c61dc5ddf3c32c69275059a"
+    },
+    {
+      "path": "src/lib/brep-bridge/indexedMeshClosure.ts",
+      "bytes": 7026,
+      "sha256": "f2392b8ec46d78532bcbe14d1b21a5504bf26599a5c07d41511202396ab0670a"
+    },
+    {
+      "path": "scripts/build-ifc-fidelity-evidence.ts",
+      "bytes": 5145,
+      "sha256": "d10be1ecb97d425946ed3832ed5abdadb21964838a3668295cee23465dfa237f"
+    },
+    {
+      "path": "src/lib/reference/indexedMeshCollision.ts",
+      "bytes": 3765,
+      "sha256": "6e8378d9c29583dc76f49f64b9c487c6b57d4fcc3f4481ee3826d3f8326feec3"
+    },
+    {
+      "path": "src/lib/ai/design-driver/interferencePrecise.ts",
+      "bytes": 15657,
+      "sha256": "765db40a3a9808acaf94937cc69434c7dca274a8618b9cd918d9d5f80e952433"
+    },
+    {
+      "path": "scripts/build-ifc-collision-capability-evidence.ts",
+      "bytes": 1687,
+      "sha256": "82a46deae18666dbbc4c973cb3e73c759fec91ddd55066e12670705f080f6b4c"
+    },
+    {
+      "path": "src/app/api/cad/v1/generation/advance/route.ts",
+      "bytes": 3819,
+      "sha256": "07eb3844669d18ef442fbdb5fe0f1ffa2d9357e04ef155155a9c0f5dead5cd4d"
+    },
+    {
+      "path": "src/app/api/cad/v1/generation/finalize/route.ts",
+      "bytes": 5878,
+      "sha256": "d171b252e3e390157b2ce465d6a8e1b4c8ba4694dc871368a32e69f7d6786f34"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/ai/generationSessionClient.ts",
+      "bytes": 14277,
+      "sha256": "c3532186862cc1450a4d303d22520eb8c3a65278cad7ca4adbfb2cf8d6c310ce"
+    },
+    {
+      "path": "scripts/cli/nexyfab.mjs",
+      "bytes": 41163,
+      "sha256": "d6198ef7337391c7b7ba062f4ce75dc9f058b9b827abfbf44ee4d7aff277a9f8"
+    },
+    {
+      "path": "scripts/drawing-to-3d/mcp-server.mjs",
+      "bytes": 139287,
+      "sha256": "23f67781a1d58d504ae4442ad9853d042719438923035b3f191ca4542f521ebf"
+    },
+    {
+      "path": "scripts/build-scad-native-flow-evidence.mjs",
+      "bytes": 3626,
+      "sha256": "b53adab7a43420d4c26e83cb55f7c4a8e383c87dbd0178541162d19e33348193"
+    },
+    {
+      "path": "scripts/build-scad-native-step-assemblies.mjs",
+      "bytes": 4363,
+      "sha256": "ac8d2470144ace8a7ecff8ab71a93912326b3b73e41fc455b7b5a83e1bb8fbfc"
+    }
+  ],
+  "knownBlockers": [
+    "Material/process assignments remain unresolved; manufacturing release is false.",
+    "The 115-case approval queue is entirely pending and the 1,800-run AI campaign is not complete.",
+    "Strict lineage-v2 selects 88 independent product roots; robot lacks 11, gearbox 3, pressure vessel 9, and turbomachinery 9 before a 120-case campaign can start.",
+    "External native structure extraction covers only 38/115 selected cases; DWG classification adds 16 inspected archives but does not add native assembly evidence.",
+    "All 8 detected DWG 3D cases are AABB approximations because the available LibreDWG WASM path does not expose polyface face indices; exact DWG 3D count is 0.",
+    "AutoCAD COM, an ODA converter command, and a Revit native worker are not configured in this environment; exact DWG and native Revit recovery remain not_run.",
+    "Thirteen source-bound exact-worker jobs are queued, but no external worker result has been accepted yet.",
+    "External body membership passes for 35 STEP cases and remains not_run for 3 approximate IFC cases; joint semantics remain not_run for all 38 and no ground-truth case is reviewer-approved.",
+    "Production AI-provider connectivity requires a credential-safe deployment smoke test."
+  ],
+  "regeneration": [
+    "npx tsx scripts/bridge-scad-validation-assemblies.ts validation-reports/scad-agent-2026-08-06T09-10-47-repaired-3.json docs/evidence/scad-assembly-bridge-260806/run-6.json",
+    "npx tsx scripts/build-scad-canonical-feature-evidence.ts validation-reports/scad-agent-2026-08-06T09-10-47-repaired-3.json docs/evidence/scad-canonical-features-260806/run-6.json",
+    "npx tsx scripts/build-scad-definition-geometry-evidence.ts validation-reports/scad-agent-2026-08-06T09-10-47-repaired-3.json docs/evidence/scad-definition-geometry-260806/run-5.json",
+    "npx tsx scripts/build-scad-analytic-brep-evidence.mjs docs/evidence/scad-canonical-features-260806/run-6.json docs/evidence/scad-definition-geometry-260806/run-5.json docs/evidence/scad-analytic-brep-260806/run-12.json",
+    "npx tsx scripts/build-scad-native-flow-evidence.mjs docs/evidence/scad-assembly-bridge-260806/run-6.json docs/evidence/scad-canonical-features-260806/run-6.json docs/evidence/scad-native-flow-260806/run-4.json",
+    "npx tsx scripts/build-scad-native-step-assemblies.mjs docs/evidence/scad-assembly-bridge-260806/run-6.json docs/evidence/scad-analytic-brep-260806/run-12.json docs/evidence/scad-native-step-assembly-260806/run-5.json",
+    "npx tsx scripts/build-scad-interface-evidence.ts docs/evidence/scad-assembly-bridge-260806/run-6.json docs/evidence/scad-canonical-features-260806/run-6.json docs/evidence/scad-analytic-brep-260806/run-12.json docs/evidence/scad-interface-evidence-260806/run-6.json docs/evidence/scad-native-flow-260806/run-3.json",
+    "npm run evidence:topology-survival",
+    "npm run evidence:topology-rebind",
+    "npm run evidence:step-body-membership",
+    "npm run evidence:external-step-structure",
+    "npm run evidence:native-extraction-remediation",
+    "npm run evidence:native-cad-preflight",
+    "npm run evidence:archive-triage",
+    "npm run evidence:ifc-native",
+    "npm run evidence:ifc-fidelity",
+    "npm run evidence:ifc-collision"
+  ]
+}

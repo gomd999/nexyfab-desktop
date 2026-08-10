@@ -65,7 +65,19 @@ function mateVector(mate: Mate, a: ResolvedGeometry, b: ResolvedGeometry): numbe
   const da = direction(a); const db = direction(b);
   if (mate.kind === 'parallel' && da && db) return xyz(cross(da, db));
   if (mate.kind === 'perpendicular' && da && db) return [dot(da, db)];
-  if (mate.kind === 'angle' && da && db) return [dot(da, db) - Math.cos(mate.value * Math.PI / 180)];
+  if (mate.kind === 'angle' && da && db) {
+    const targetCos = Math.cos(mate.value * Math.PI / 180);
+    // dot(a,b)-cos(theta) has a zero first derivative at 0/180 degrees,
+    // causing a numeric Jacobian to miss an otherwise real clocking/alignment
+    // constraint. At those singular endpoints the cross-product residual is
+    // the regular local representation; existing constraints remove any
+    // dependent rows during rank reduction.
+    if (Math.abs(Math.abs(targetCos) - 1) <= 1e-12) {
+      const dbTarget = targetCos > 0 ? db : { x: -db.x, y: -db.y, z: -db.z };
+      return xyz(cross(da, dbTarget));
+    }
+    return [dot(da, db) - targetCos];
+  }
   if (mate.kind === 'distance' && a.kind === 'point' && b.kind === 'point') return [lengthOf(sub(b.world, a.world)) - mate.value];
   if (mate.kind === 'distance' && a.kind === 'plane' && b.kind === 'plane') return [dot(sub(b.world.origin, a.world.origin), a.world.normal) - mate.value];
   return null;

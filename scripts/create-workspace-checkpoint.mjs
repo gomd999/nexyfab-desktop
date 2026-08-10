@@ -27,9 +27,16 @@ const safeSource = relative => {
 };
 const sha256 = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 
-const modified = new Set(paths(['diff', '--name-only', '-z']));
-const staged = new Set(paths(['diff', '--cached', '--name-only', '-z']));
-const untracked = new Set(paths(['ls-files', '--others', '--exclude-standard', '-z']));
+const checkpointExclusions = [
+  ':(exclude).tmp/**', ':(exclude).runtime-wp20/**', ':(exclude).next/**',
+  ':(exclude)node_modules/**', ':(exclude)out/**', ':(exclude)out2/**',
+  ':(exclude)src-tauri/target/**', ':(exclude)src-tauri/gen/**',
+  ':(exclude).claude/**', ':(exclude)playwright-report/**',
+  ':(exclude)test-results/**', ':(exclude)coverage/**',
+];
+const modified = new Set(paths(['diff', '--name-only', '-z', '--', '.', ...checkpointExclusions]));
+const staged = new Set(paths(['diff', '--cached', '--name-only', '-z', '--', '.', ...checkpointExclusions]));
+const untracked = new Set(paths(['ls-files', '--others', '--exclude-standard', '-z', '--', '.', ...checkpointExclusions]));
 const deleted = new Set([...modified, ...staged].filter(relative => !fs.existsSync(path.resolve(root, relative))));
 const present = [...new Set([...modified, ...staged, ...untracked])].filter(relative => !deleted.has(relative)).sort();
 
@@ -56,7 +63,7 @@ const writePatch = (name, args) => {
 const patches = [writePatch('tracked-working-tree.patch', ['diff', '--binary', '--no-ext-diff']), writePatch('tracked-index.patch', ['diff', '--cached', '--binary', '--no-ext-diff'])];
 const head = String(git(['rev-parse', 'HEAD'])).trim();
 const branch = String(git(['branch', '--show-current'])).trim();
-const status = String(git(['status', '--short', '--untracked-files=all']));
+const status = String(git(['status', '--short', '--untracked-files=all', '--', '.', ...checkpointExclusions]));
 const fileSetSha256 = createHash('sha256').update(records.map(item => `${item.path}\0${item.bytes}\0${item.sha256}`).join('\n')).digest('hex');
 const manifest = { schema: 'nexyfab.workspace-checkpoint.v1', generatedAt: new Date().toISOString(), repositoryRoot: root, head, branch, recoverable: true, includesSourceBytes: true, summary: { files: records.length, modified: records.filter(item => item.category === 'modified').length, staged: records.filter(item => item.category === 'staged').length, untracked: records.filter(item => item.category === 'untracked').length, deleted: deleted.size, bytes: records.reduce((sum, item) => sum + item.bytes, 0) }, fileSetSha256, patches, deleted: [...deleted].sort(), files: records };
 fs.writeFileSync(path.join(output, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');

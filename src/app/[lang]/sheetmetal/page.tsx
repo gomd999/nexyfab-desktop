@@ -104,7 +104,7 @@ export default function SheetMetalDemoPage() {
         flanges: result.bends.map(b => ({ edge: b.edge, height: b.height, angle: b.angle })),
       }));
       const lang = window.location.pathname.split('/')[1] || 'ko';
-      window.location.href = `/${lang}/shape-generator?mode=expert`;
+      window.location.href = `/${lang}/shape-generator?expert=1&mode=expert&domain=mechanical&experience=expert&workMode=precision_cad`;
     } catch { alert('모델러 열기에 실패했어요.'); }
   };
 

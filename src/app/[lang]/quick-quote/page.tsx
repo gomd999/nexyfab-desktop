@@ -480,6 +480,17 @@ function QuickQuotePageInner() {
     const [isDragging, setIsDragging] = useState(false);
     const [error, setError] = useState('');
 
+    useEffect(() => {
+        const previewFile = fileMode === 'step' ? selectedFiles[0] : undefined;
+        if (!previewFile) {
+            setFileUrl('');
+            return;
+        }
+        const objectUrl = URL.createObjectURL(previewFile);
+        setFileUrl(objectUrl);
+        return () => URL.revokeObjectURL(objectUrl);
+    }, [fileMode, selectedFiles]);
+
     // 치수 입력 (이미지 모드)
     const [dimW, setDimW] = useState('');
     const [dimH, setDimH] = useState('');
@@ -837,7 +848,6 @@ function QuickQuotePageInner() {
 
             setGeometry(data.geometry);
             setAiAnalysis(data.aiAnalysis);
-            setFileUrl(data.fileUrl);
             analytics.quoteRequest({ source: 'quick-quote' });
 
             setStep(3);

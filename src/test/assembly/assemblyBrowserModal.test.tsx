@@ -79,6 +79,21 @@ describe('AssemblyBrowserModal', () => {
     ).toBe(false);
   });
 
+  it('selects evidence interference parts without mutating the assembly', async () => {
+    render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+    const result = vi.fn();
+    window.addEventListener('nexyfab:assembly-focus-result', result);
+    fireEvent(window, new CustomEvent('nexyfab:assembly-focus-parts', { detail: { source: 'robot-evidence', queueItemId: 'interference-1', partIds: ['p_arm', 'p_base', 'missing'] } }));
+    await waitFor(() => expect(result).toHaveBeenCalledOnce());
+    expect(screen.getByTestId('solver-assembly-part-row-p_arm')).toHaveAttribute('data-selected', 'true');
+    expect(screen.getByTestId('solver-assembly-3d-panel')).toBeInTheDocument();
+    const detail = (result.mock.calls[0]![0] as CustomEvent).detail;
+    expect(detail).toEqual({ queueItemId: 'interference-1', selectedPartIds: ['p_arm', 'p_base'], missingPartIds: ['missing'] });
+    expect(screen.getAllByTestId(/solver-assembly-part-row-/)).toHaveLength(2);
+    expect(screen.getByTestId('solver-assembly-mate-row-m1')).toBeInTheDocument();
+    window.removeEventListener('nexyfab:assembly-focus-result', result);
+  });
+
   it('+ Add part appends a new part and marks the first added one as fixed', () => {
     render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
     fireEvent.click(screen.getByTestId('solver-assembly-add-part'));

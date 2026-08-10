@@ -876,14 +876,21 @@ function taperedGirderBridgeAssembly(p = {}) {
     });
   }
   for (let k = 0; k <= nSpans; k++) {
+    const connectedWith = [];
+    for (let g = 0; g < n; g++) {
+      if (k > 0) connectedWith.push(`tg_${k}_${g + 1}_2`);
+      if (k < nSpans) connectedWith.push(`tg_${k + 1}_${g + 1}_1`);
+    }
     parts.push({
       id: `crossbeam_${k + 1}`, role: 'crossbeam', type: 'box', material: 'SM355',
+      connectedWith,
       params: { width: 400, depth: s * (n - 1), height: 900 },
       at: { tx: Math.max(0, k * span - 200), ty: oh + topW / 2, tz: hSup - 900 },
     });
   }
   return {
     name: '변단면 연속 거더교', domain: 'bridge', parts,
+    jointGraphProvenance: 'deterministic-template-v1',
     bridgeMeta: {
       span: span, nGirders: n, girderSpacing: s, girderH: hSup, deckThk: dt, overhang: oh, deckW,
       section: { webT, b: webT, h: hSup },
@@ -1430,7 +1437,9 @@ function plantRoomAssembly(p = {}) {
   // ⚠ `cylinder` 는 길이가 **Z축**이다 — 수평 배관은 `ry:90` 이 필수다. 회전 없이 두면
   //   수직으로 서서 벽을 지나가지 않는다(실측: 관통 3개소 중 2개소만 잡혔다).
   //   ry=90 이면 중심이 tx 이고 길이의 절반씩 ±x 로 뻗는다 — 벽(-wallT~0)을 가로지른다.
-  P('pipe_chilled', 'cylinder', { diameter: pipeD, length: 1200 },
+  // placed cylinder origin is its axial start after rotation. 1000mm crosses
+  // the 200mm wall and stops at the AHU face (x=900) without entering its body.
+  P('pipe_chilled', 'cylinder', { diameter: pipeD, length: 1000 },
     { tx: -wallT / 2, ty: pipeY, tz: pipeZ, ry: 90 }, 'steel', 'pipe');
 
   return {
@@ -2143,7 +2152,9 @@ function flangedFittingAssembly(p = {}) {
     parts.push({ id: 'elbow', type: 'pipe_elbow', params: { od, bendR, angleDeg: a, wallThk: t }, at: { tx: 0, ty: 0, tz: 0 }, role: 'pipe', material: 'steel', system: '피팅' });
     // φ=0 끝면: (bendR,0) 노멀 −y → 플랜지 축 y(rx −90: 로컬 z→−y… rx:90=z→y) — 끝면 바깥(−y)
     parts.push(FL('fl_a', { tx: bendR, ty: 0, tz: 0, rx: 90 })); // z→+y? 배치 검증은 빌드 간섭·AABB 로
-    if (a === 90) parts.push(FL('fl_b', { tx: 0, ty: bendR, tz: 0, ry: 90 }));
+    // At the 90° outlet the elbow approaches the end plane from +X, so the
+    // flange thickness must grow toward -X (ry:-90), not back into the elbow.
+    if (a === 90) parts.push(FL('fl_b', { tx: 0, ty: bendR, tz: 0, ry: -90 }));
     else parts.push(FL('fl_b', { tx: -bendR, ty: 0, tz: 0, rx: 90 }));
   }
   return {
@@ -2442,7 +2453,7 @@ function machineLineAssembly(p = {}) {
   // 안전 펜스(전·후면 2변 — 프레임 밖 접지). 투입/배출(양단)=개구 생략.
   if (guard) {
     const fenceH = 1800;
-    for (const [fi, y0] of [[0, -300], [1, W + 260]].entries()) {
+    for (const [fi, y0] of [-300, W + 260].entries()) {
       P(`fence_${fi + 1}`, 'box', { width: L + 600, depth: 40, height: fenceH }, { tx: -300, ty: y0, tz: 0 }, 'steel', 'fence');
     }
   }
@@ -2526,6 +2537,9 @@ function towerAssembly(p = {}) {
   const Hp = H / nP;
   const wAt = (z) => (baseW / 2) + (topW / 2 - baseW / 2) * (z / H); // 반폭 선형 테이퍼
   const parts = [];
+  const connectionNodes = new Map();
+  const braceCrossingPairs = [];
+  const braceLegPairs = [];
   const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
   // angle 로컬 +x 를 방향 u 로: R=Rz·Ry·Rx, rx=0 → ry=-asin(uz), rz=atan2(uy,ux) (결정론 유도)
   const angleAt = (id, from, to, a, t, role) => {
@@ -2535,6 +2549,7 @@ function towerAssembly(p = {}) {
     const ry = (-Math.asin(u[2]) * 180) / Math.PI;
     const rz = (Math.atan2(u[1], u[0]) * 180) / Math.PI;
     P(id, 'angle', { legA: a, legB: a, thickness: t, length: Lm }, { tx: from[0], ty: from[1], tz: from[2], ry, rz }, 'steel', role);
+    connectionNodes.set(id, [from, to]);
   };
   for (let k = 0; k < nP; k++) {
     const z0 = k * Hp, z1 = z0 + Hp;
@@ -2545,8 +2560,8 @@ function towerAssembly(p = {}) {
     }
     // 패널 상단 수평재 4변 — 전/배면=모서리 풀스팬(주주재 AABB 와 절점 체결),
     // 좌/우=brA 인셋(전/배면에 맞댐 — 수평재끼리 관통 없음)
-    P(`hz_${k + 1}_f`, 'angle', { legA: brA, legB: brA, thickness: brT, length: 2 * w1 }, { tx: -w1, ty: -w1, tz: z1 - brA }, 'steel', 'beam');
-    P(`hz_${k + 1}_b`, 'angle', { legA: brA, legB: brA, thickness: brT, length: 2 * w1 }, { tx: -w1, ty: w1 - brA, tz: z1 - brA }, 'steel', 'beam');
+    angleAt(`hz_${k + 1}_f`, [-w1, -w1, z1 - brA], [w1, -w1, z1 - brA], brA, brT, 'beam');
+    angleAt(`hz_${k + 1}_b`, [-w1, w1 - brA, z1 - brA], [w1, w1 - brA, z1 - brA], brA, brT, 'beam');
     angleAt(`hz_${k + 1}_l`, [-w1 + brA, -w1, z1 - brA], [-w1 + brA, w1, z1 - brA], brA, brT, 'beam');
     angleAt(`hz_${k + 1}_r`, [w1, -w1, z1 - brA], [w1, w1, z1 - brA], brA, brT, 'beam');
     // X브레이싱(4면·패널당 2본) — 교차부는 전/배면 분리(back-to-back 관례: ±brT 오프셋 폐형)
@@ -2556,12 +2571,19 @@ function towerAssembly(p = {}) {
       const sgn = face[1] === 'n' ? -1 : 1;
       const off1 = sgn * (wm - brA - brT), off2 = sgn * (wm + brT) - (sgn > 0 ? brA : 0);
       const a0 = -w0 + legA, a1 = w1 - legA; // 진행축 시작/끝(테이퍼 반영·주주재 인셋)
+      const braceA = `xb_${k + 1}_${fi + 1}a`;
+      const braceB = `xb_${k + 1}_${fi + 1}b`;
       if (horiz) {
-        angleAt(`xb_${k + 1}_${fi + 1}a`, [a0, off1, z0 + brA], [a1, off1, z1 - brA], brA, brT, 'brace');
-        angleAt(`xb_${k + 1}_${fi + 1}b`, [a0, off2, z1 - brA], [a1, off2, z0 + brA], brA, brT, 'brace');
+        angleAt(braceA, [a0, off1, z0 + brA], [a1, off1, z1 - brA], brA, brT, 'brace');
+        angleAt(braceB, [a0, off2, z1 - brA], [a1, off2, z0 + brA], brA, brT, 'brace');
       } else {
-        angleAt(`xb_${k + 1}_${fi + 1}a`, [off1, a0, z0 + brA], [off1, a1, z1 - brA], brA, brT, 'brace');
-        angleAt(`xb_${k + 1}_${fi + 1}b`, [off2, a0, z1 - brA], [off2, a1, z0 + brA], brA, brT, 'brace');
+        angleAt(braceA, [off1, a0, z0 + brA], [off1, a1, z1 - brA], brA, brT, 'brace');
+        angleAt(braceB, [off2, a0, z1 - brA], [off2, a1, z0 + brA], brA, brT, 'brace');
+      }
+      braceCrossingPairs.push([braceA, braceB]);
+      const faceLegs = [[2, 4], [1, 3], [3, 4], [1, 2]][fi];
+      for (const leg of faceLegs) {
+        braceLegPairs.push([braceA, `leg_${k + 1}_${leg}`], [braceB, `leg_${k + 1}_${leg}`]);
       }
     }
   }
@@ -2572,8 +2594,46 @@ function towerAssembly(p = {}) {
     P(`crossarm_${ai + 1}`, 'box', { width: armS, depth: 2 * (wa + armL), height: armS }, { tx: -armS / 2, ty: -(wa + armL), tz: za }, 'steel', 'beam');
   }
   P('peak', 'box', { width: armS, depth: armS, height: 1200 }, { tx: -armS / 2, ty: -armS / 2, tz: H + armS }, 'steel', 'column'); // 상단 크로스암 위 안착(접선)
+
+  // Build an explicit lattice joint graph from member endpoints. Proximity is
+  // used only while authoring this deterministic template; the resulting
+  // connectedWith pairs are explicit and the general interference engine does
+  // not infer joints from roles or proximity.
+  const byId = new Map(parts.map((part) => [part.id, part]));
+  const link = (a, b) => {
+    const pa = byId.get(a), pb = byId.get(b);
+    if (!pa || !pb || a === b) return;
+    pa.connectedWith ??= [];
+    pb.connectedWith ??= [];
+    if (!pa.connectedWith.includes(b)) pa.connectedWith.push(b);
+    if (!pb.connectedWith.includes(a)) pb.connectedWith.push(a);
+  };
+  const entries = [...connectionNodes.entries()];
+  const jointTolerance = Math.max(legA, brA) * 2;
+  for (let i = 0; i < entries.length; i++) for (let j = i + 1; j < entries.length; j++) {
+    const [a, an] = entries[i], [b, bn] = entries[j];
+    const sharesNode = an.some((p1) => bn.some((p2) => Math.hypot(p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2]) <= jointTolerance));
+    if (sharesNode) link(a, b);
+  }
+  for (const [a, b] of braceCrossingPairs) link(a, b);
+  for (const [a, b] of braceLegPairs) link(a, b);
+  // Two adjacent faces terminate their braces at the same column gusset. The
+  // angle-section solids are deliberately offset to opposite plate faces, so
+  // their authored endpoints do not numerically coincide even though they are
+  // members of the same named joint. Declare only braces sharing that exact
+  // panel-column gusset; unrelated lattice proximity remains an interference.
+  const bracesByGusset = new Map();
+  for (const [brace, leg] of braceLegPairs) {
+    const at = bracesByGusset.get(leg) ?? [];
+    at.push(brace);
+    bracesByGusset.set(leg, at);
+  }
+  for (const braces of bracesByGusset.values()) {
+    for (let i = 0; i < braces.length; i++) for (let j = i + 1; j < braces.length; j++) link(braces[i], braces[j]);
+  }
   return {
     name: `송전탑 ${H / 1000}m×${nP}패널`, domain: 'mech', kind: 'assembly', parts,
+    jointGraphProvenance: 'deterministic-template-v1',
     towerMeta: { height: H, baseW, topW, panels: nP, legSize: legA, braceSize: brA },
     note: 'angle 격자 송전탑 매싱 — 교차부=전/배면 분리 배치(볼트 접합 상세=입력), 절연체·도체·기초=입력 영역 명시. 회전 부재 AABB 간섭 의심쌍은 B1 메시 부울로 해제 검증.',
   };
@@ -4646,6 +4706,10 @@ export function buildAssemblyTemplate(domain, templateId, params = {}) {
     };
   }
   const asm = t.build(values);
+  if (asm) {
+    asm.templateId = t.id;
+    asm.templateDomain = resolveDomainAlias(domain);
+  }
   if (asm && notes.length) asm.paramNotes = notes;
   return asm;
 }

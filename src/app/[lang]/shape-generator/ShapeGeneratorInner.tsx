@@ -128,8 +128,13 @@ import UpgradeModalsDock from './panels/UpgradeModalsDock';
 import FirstTimeOnboardingShell from './onboarding/FirstTimeOnboardingShell';
 import type { SampleTemplate } from './templates/sampleTemplates';
 import AiAssistantShell from './ai/AiAssistantShell';
+import { getManualEditProtectionLocks, protectManualEdit } from './ai/manualEditProtectionStore';
 import { resolveFeatureEditPrompt } from './ai/featureEditFromPrompt';
 import { modelContentRevision, selectionContextFromElement } from '@/lib/ai/selectionContext';
+import { useDomainWorkspaceSelection } from './_shell/domainWorkspaceStore';
+import { generationDomainFor } from '@/lib/ai/domainGenerationRequest';
+import { saveDomainDesignHandoff } from '@/lib/ai/domainDesignHandoff';
+import type { UnifiedDesignProject } from '@/lib/ai/unifiedDesignProject';
 import { useIPShareFlow } from './hooks/useIPShareFlow';
 import { useShapeGeneratorUI } from './hooks/useShapeGeneratorUI';
 const QuoteWizard = dynamic(() => import('./onboarding/QuoteWizard'), { ssr: false });
@@ -417,6 +422,9 @@ function geometryToStlBase64(geo: BufferGeometry): string | null {
 export function ShapeGeneratorInner() {
   const { theme, mode, toggleTheme } = useTheme();
   const lang = useLang();
+  const [domainWorkspace] = useDomainWorkspaceSelection();
+  const currentProjectId = useProjectsStore(s => s.projects[0]?.id ?? null);
+  const manualProtectionScope = currentProjectId ?? 'local-workspace';
   const t = shapeDict[lang];
   /** Bracket i18n keys (shapeName_*, param_*) — same object as `t`, widened for dynamic access. */
   const shapeLabels = t as unknown as Record<string, string>;
@@ -613,9 +621,16 @@ export function ShapeGeneratorInner() {
       updateNode(featureId, { params: { ...params }, error: undefined }),
     push: (cmd) => commandHistory.execute(cmd),
   }), [updateFeatureParam, updateNode]);
-  const updateFeatureParamCmd = useCallback((id: string, key: string, value: number) => {
+  const updateFeatureParamAiCmd = useCallback((id: string, key: string, value: number) => {
     featureParamCoalescer.edit(id, key, value);
   }, [featureParamCoalescer]);
+  const updateFeatureParamCmd = useCallback((id: string, key: string, value: number) => {
+    protectManualEdit(
+      { kind: 'parameter', objectId: id, field: key },
+      { scope: manualProtectionScope, source: domainWorkspace.experience === 'expert' ? 'expert' : 'human', reason: 'Manual feature parameter' },
+    );
+    featureParamCoalescer.edit(id, key, value);
+  }, [featureParamCoalescer, domainWorkspace.experience, manualProtectionScope]);
   const toggleFeatureCmd = useCallback((id: string) => {
     commandHistory.execute(makeToggleCommand({
       commandId: `toggle-feature-${id}-${Date.now()}`,
@@ -628,7 +643,7 @@ export function ShapeGeneratorInner() {
   const { performCSG, loading: csgLoading, cancel: cancelCsg } = useCsgWorker();
   const { runFEA: runFEAWorker, loading: feaWorkerLoading, cancel: cancelFea } = useFEAWorker();
   const { analyzeDFM: analyzeDFMWorker, loading: dfmWorkerLoading, cancel: cancelDfm } = useDFMWorker();
-  const { runPipeline: runPipelineWorker, loading: pipelineWorkerLoading, progress: pipelineProgress, progressLabel: pipelineProgressLabel, cancel: cancelPipeline, projectViews: projectViewsWorker } = usePipelineWorker();
+  const { runPipeline: runPipelineWorker, loading: pipelineWorkerLoading, progress: pipelineProgress, progressLabel: pipelineProgressLabel, cancel: cancelPipeline, projectViews: projectViewsWorker, exportStep: exportStepWorker } = usePipelineWorker();
   const {
     detect: detectInterferenceWorker,
     cancel: cancelInterferenceWorker,
@@ -658,6 +673,11 @@ export function ShapeGeneratorInner() {
   // listener can fire it (the handler is declared later in this function).
   const handleGenerateActiveProfileRef = useRef<(() => void) | null>(null);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
+  const [aiCadHandoff, setAiCadHandoff] = useState<{
+    part: string;
+    featureCount: number;
+    skipped: string[];
+  } | null>(null);
   // Auto-clear stale selection when undo/rollback removes the selected feature.
   // Avoids "selection points to a feature that no longer exists" after history nav.
   useEffect(() => {
@@ -1889,6 +1909,10 @@ export function ShapeGeneratorInner() {
       return;
     }
     const featType = type as FeatureType;
+    protectManualEdit(
+      { kind: 'workspace', objectId: 'feature_tree' },
+      { scope: manualProtectionScope, source: domainWorkspace.experience === 'expert' ? 'expert' : 'human', reason: 'Manual feature tree content' },
+    );
     // Capture the picked edge at click time so fillet/chamfer round only the
     // selected edge (re-resolved into an OCCT EdgeFinder at pipeline time).
     // Frozen in this closure so undo→redo replays the same selection.
@@ -1910,12 +1934,16 @@ export function ShapeGeneratorInner() {
       undo: () => { undoLast(); },
     });
     contextHelp.enterContext('feature');
-  }, [addFeatureWithEdges, undoLast]);
+  }, [addFeatureWithEdges, undoLast, domainWorkspace.experience, manualProtectionScope]);
 
   // addFeatureWithParams variant — same tracked treatment so dimension-driven
   // adds (e.g. hole diameter from quick-input) are also undoable atomically.
   const addFeatureWithParamsAndContext = useCallback(
     (type: FeatureType, overrides: Record<string, number>) => {
+      protectManualEdit(
+        { kind: 'workspace', objectId: 'feature_tree' },
+        { scope: manualProtectionScope, source: domainWorkspace.experience === 'expert' ? 'expert' : 'human', reason: 'Manual feature tree content' },
+      );
       commandHistory.execute({
         id: `add-feature-params-${type}-${Date.now()}`,
         label: `Add feature: ${type}`,
@@ -1925,7 +1953,7 @@ export function ShapeGeneratorInner() {
       });
       contextHelp.enterContext('feature');
     },
-    [addFeatureWithParams, undoLast],
+    [addFeatureWithParams, undoLast, domainWorkspace.experience, manualProtectionScope],
   );
 
   // ── Command History (Command Pattern undo/redo) ──
@@ -1969,6 +1997,9 @@ export function ShapeGeneratorInner() {
   // path (nf_occt_pref='off'). setOcctMode fails safe to mesh if the load errors.
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    // Mobile is a view-only handoff surface. Loading the 10+ MB exact kernel
+    // there cannot enable an edit, so keep it fully on-demand for desktop.
+    if (isMobile) return;
     let pref: string | null = null;
     try { pref = window.localStorage.getItem('nf_occt_pref'); } catch { /* private mode */ }
     if (pref === 'off') return;
@@ -1986,7 +2017,7 @@ export function ShapeGeneratorInner() {
     const timeoutId = window.setTimeout(enable, 3_000);
     if (ric) ric(() => { window.clearTimeout(timeoutId); enable(); });
     return () => window.clearTimeout(timeoutId);
-  }, [setOcctMode]);
+  }, [isMobile, setOcctMode]);
   const multiView = useUIStore(s => s.multiView);
   const setMultiView = useUIStore(s => s.setMultiView);
   const showVersionPanel = useUIStore(s => s.showVersionPanel);
@@ -2383,6 +2414,94 @@ export function ShapeGeneratorInner() {
     }
   }, [addToast, promptUpgrade, handleApplyAgentScad, lang]);
 
+  // Building/civil/landscape/interior requests use the selected discipline's
+  // deterministic template + gate pipeline. Invalid, degraded, or mismatched
+  // results are never applied to the viewport as if they were approved CAD.
+  const handleDomainAiPrompt = useCallback(async (prompt: string) => {
+    const description = prompt.trim();
+    if (!description) return;
+    const domain = generationDomainFor(domainWorkspace.domain);
+    addToast('info', lang === 'ko' ? '선택한 설계 분야로 생성·검증 중…' : `Generating and validating in ${domainWorkspace.domain}…`);
+    try {
+      const token = useAuthStore.getState().token;
+      const resp = await fetch('/api/nexyfab/drawing/assemble/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ description, domain }),
+      });
+      const body = await resp.json().catch(() => ({})) as {
+        ok?: boolean;
+        error?: string;
+        openscad?: string;
+        gateErrors?: string[];
+        designOk?: boolean | null;
+        degraded?: boolean;
+        droppedParts?: unknown[];
+        interferences?: unknown[];
+        support?: { floating?: unknown[] } | null;
+        intentMatch?: { mismatched?: number } | null;
+        assembly?: Record<string, unknown>;
+        parts?: Array<{ id: string; aabb: { min: number[]; max: number[] } }>;
+        unifiedProject?: UnifiedDesignProject;
+        canonicalIssues?: string[];
+      };
+      const errors = Array.isArray(body.gateErrors) ? body.gateErrors.filter(Boolean) : [];
+      const mismatched = body.intentMatch?.mismatched ?? 0;
+      if (!resp.ok || body.ok !== true || !body.openscad || errors.length > 0) {
+        throw new Error(body.error || errors.join(' | ') || 'The domain geometry gate did not return an approved model.');
+      }
+      if (body.designOk !== true) throw new Error('The generated design did not receive an affirmative deterministic design verdict.');
+      if (body.degraded || (body.droppedParts?.length ?? 0) > 0) throw new Error('The result is incomplete because one or more parts were dropped.');
+      if (mismatched > 0) throw new Error(`The generated geometry still has ${mismatched} requirement mismatch(es).`);
+      if (!Array.isArray(body.interferences) || body.interferences.length > 0) throw new Error('The generated design has unresolved or unreported interferences.');
+      if (!Array.isArray(body.support?.floating) || body.support.floating.length > 0) throw new Error('The generated design has unresolved or unreported floating parts.');
+      if (!Array.isArray(body.canonicalIssues) || body.canonicalIssues.length > 0) throw new Error('The canonical domain document has unresolved validation issues.');
+      if (!body.assembly || !body.unifiedProject) throw new Error('The canonical editable domain document is missing.');
+      try {
+        saveDomainDesignHandoff(window.sessionStorage, {
+          domain: domainWorkspace.domain,
+          assembly: body.assembly,
+          openscad: body.openscad,
+          parts: body.parts ?? [],
+          unifiedProject: body.unifiedProject,
+          workspaceRevision: {
+            projectId: body.unifiedProject.id,
+            lineageId: body.unifiedProject.id,
+            revision: body.unifiedProject.revision,
+            contentRevision: modelContentRevision({
+              shapeId: selectedId,
+              params,
+              features: features.map(feature => ({ id: feature.id, type: feature.type, params: feature.params, enabled: feature.enabled })),
+              sketch: { segments: sketchProfile.segments, closed: sketchProfile.closed },
+            }),
+            workMode: domainWorkspace.workMode,
+            protectedLockIds: getManualEditProtectionLocks(manualProtectionScope).map(lock => lock.id).sort(),
+          },
+          validation: {
+            designOk: true,
+            gateErrors: [],
+            interferenceCount: 0,
+            floatingCount: 0,
+            degraded: false,
+            droppedPartCount: 0,
+            canonicalIssues: [],
+            intentMatch: body.intentMatch && typeof body.intentMatch === 'object'
+              ? body.intentMatch as Parameters<typeof saveDomainDesignHandoff>[1]['validation']['intentMatch']
+              : null,
+          },
+        });
+      } catch {
+        addToast('warning', lang === 'ko' ? '수동 편집 작업공간 전달 상태를 저장하지 못했습니다.' : 'Could not save the manual-workspace handoff.');
+      }
+      await handleApplyAgentScad(body.openscad);
+      addToast('success', lang === 'ko' ? '분야별 형상 게이트를 통과한 모델을 적용했습니다.' : 'Applied a model that passed the domain geometry gates.');
+    } catch (error) {
+      addToast('error', lang === 'ko'
+        ? `분야별 AI 설계 적용 중단: ${(error as Error).message}`
+        : `Domain AI design was not applied: ${(error as Error).message}`);
+    }
+  }, [addToast, domainWorkspace.domain, domainWorkspace.workMode, features, handleApplyAgentScad, lang, manualProtectionScope, params, selectedId, sketchProfile.closed, sketchProfile.segments]);
+
   // ── Shell-v2 AiChatPanel "Apply" bridge (orphan CustomEvents fixed) ──
   // AiChatPanel dispatches 'nexyfab:apply-ai-intent' / 'nexyfab:apply-ai-pattern'
   // which previously had no listener (the Apply button did nothing).
@@ -2575,7 +2694,6 @@ export function ShapeGeneratorInner() {
   // ── CAM G-code freemium gate ──
   const { check: checkFreemium, isPro: isProPlan } = useFreemium();
   // ── Collaboration polling (Team+ plan only) ──
-  const currentProjectId = useProjectsStore(s => s.projects[0]?.id ?? null);
   const { sessions: pollingSessions, mySessionId } = useCollabPolling(currentProjectId, planLimits.collaboration);
 
   // ── Collaboration read-only upsell (free users): surface the Pro prompt
@@ -3537,6 +3655,10 @@ export function ShapeGeneratorInner() {
   const paramDragBeforeRef = React.useRef<Record<string, number> | null>(null);
 
   const handleParamChange = useCallback((key: string, value: number) => {
+    protectManualEdit(
+      { kind: 'parameter', objectId: 'base_shape:main', field: key },
+      { scope: manualProtectionScope, source: domainWorkspace.experience === 'expert' ? 'expert' : 'human', reason: 'Manual base-shape parameter' },
+    );
     // Capture pre-drag snapshot on the rising edge so the undo step can
     // restore the state the user actually saw before the slider moved.
     if (!paramDragging && !paramDragBeforeRef.current) {
@@ -3549,9 +3671,13 @@ export function ShapeGeneratorInner() {
     if (!paramDragging) setParamDragging(true);
     if (paramDragTimerRef.current) clearTimeout(paramDragTimerRef.current);
     paramDragTimerRef.current = setTimeout(() => setParamDragging(false), 200);
-  }, [setParam, setParamExpression, collabSendParamChange, paramDragging, params]);
+  }, [setParam, setParamExpression, collabSendParamChange, paramDragging, params, domainWorkspace.experience, manualProtectionScope]);
 
   const handleExpressionChange = useCallback((key: string, expr: string) => {
+    protectManualEdit(
+      { kind: 'parameter', objectId: 'base_shape:main', field: key },
+      { scope: manualProtectionScope, source: domainWorkspace.experience === 'expert' ? 'expert' : 'human', reason: 'Manual parameter expression' },
+    );
     setParamExpression(key, expr);
     // Build variables from current params + model vars (excluding current key to avoid circular ref)
     const variables: ExprVariable[] = [
@@ -3566,7 +3692,7 @@ export function ShapeGeneratorInner() {
     } catch {
       // Invalid expression — don't update numeric value
     }
-  }, [params, modelVars, setParam, setParamExpression]);
+  }, [params, modelVars, setParam, setParamExpression, domainWorkspace.experience, manualProtectionScope]);
 
   // Commit on significant param changes (debounced via blur/enter): one
   // commandHistory entry per drag so Ctrl+Z reverses the whole drag in one
@@ -7098,6 +7224,21 @@ export function ShapeGeneratorInner() {
     return () => { delete (window as unknown as { __nfabProbe?: unknown }).__nfabProbe; };
   }, [effectiveResult, getCloudSceneObject, result, baseShapeResult, pipelineErrors, placedParts]);
 
+  // Local browser verification only: exercise the same registry-owning worker
+  // STEP RPC without weakening the product's Pro export entitlement.
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    const target = window as unknown as { __nfabExportWorkerStep?: () => Promise<string | null> };
+    target.__nfabExportWorkerStep = () => {
+      const geo = effectiveResult?.geometry;
+      const handle = geo?.userData?.occtHandleInWorker
+        ? geo.userData.occtHandle as string | undefined
+        : undefined;
+      return handle ? exportStepWorker(handle) : Promise.resolve(null);
+    };
+    return () => { delete target.__nfabExportWorkerStep; };
+  }, [effectiveResult, exportStepWorker]);
+
   // ─── Multi-body import → assembly parts ──────────────────────────────────
   // When an imported mesh (STL/STEP) is actually several disconnected shells,
   // split it into independent PlacedParts so each can be moved, mated,
@@ -7186,15 +7327,20 @@ export function ShapeGeneratorInner() {
       sheetSpec = sessionStorage.getItem('nexyfab:sheetmetal-handoff-spec');
     } catch { return; }
     if (!scad && !programRaw && !stlB64 && !sheetStep && !sheetSpec) return;
-    if (scad) studioScadRef.current = scad; // remember for the round-trip back to Studio
-    try {
-      sessionStorage.removeItem('nexyfab:studio-handoff-scad');
-      sessionStorage.removeItem('nexyfab:studio-handoff-program');
-      sessionStorage.removeItem('nexyfab:studio-handoff-stl');
-      sessionStorage.removeItem('nexyfab:sheetmetal-handoff-step');
-      sessionStorage.removeItem('nexyfab:sheetmetal-handoff-spec');
-    } catch { /* ignore */ }
     void (async () => {
+      // React Strict Mode mounts an effect, cleans it up, then mounts it again
+      // in development. Yield so only the surviving effect claims this
+      // one-shot payload; otherwise the second mount sees only the default box.
+      await Promise.resolve();
+      if (cancelled) return;
+      if (scad) studioScadRef.current = scad;
+      try {
+        sessionStorage.removeItem('nexyfab:studio-handoff-scad');
+        sessionStorage.removeItem('nexyfab:studio-handoff-program');
+        sessionStorage.removeItem('nexyfab:studio-handoff-stl');
+        sessionStorage.removeItem('nexyfab:sheetmetal-handoff-step');
+        sessionStorage.removeItem('nexyfab:sheetmetal-handoff-spec');
+      } catch { /* ignore */ }
       // Sheet-metal MVP → modeler as NATIVE editable features: a thin base sheet +
       // one `flange` feature per edge. Now works because addNode reads the active
       // node from a ref (the base sheet + flanges parent correctly even batched in
@@ -7269,6 +7415,11 @@ export function ShapeGeneratorInner() {
             },
           });
           if (out.ok) {
+            setAiCadHandoff({
+              part: typeof program.part === 'string' && program.part.trim() ? program.part : 'AI part',
+              featureCount: Array.isArray(program.features) ? program.features.length : 0,
+              skipped: out.skipped,
+            });
             addToast('success', out.skipped.length
               ? `정밀 부품을 편집 가능한 피처트리로 가져왔어요 (${out.skipped.join(', ')}는 미반영)`
               : '정밀 부품을 편집 가능한 피처트리로 가져왔어요');
@@ -7384,6 +7535,13 @@ export function ShapeGeneratorInner() {
       const base = `nexyfab-${slug}-${day}`;
       const er = effectiveResult;
       const generatedAt = new Date().toISOString();
+      const workerHandle = geo.userData?.occtHandleInWorker
+        ? geo.userData?.occtHandle as string | undefined
+        : undefined;
+      const exactStepText = workerHandle ? await exportStepWorker(workerHandle) : null;
+      if (workerHandle && !exactStepText) {
+        throw new Error('Worker-owned B-rep STEP export failed');
+      }
       await exportManufacturingZipBundle(geo, base, {
         partLabel: selectedId ?? 'part',
         shapeTemplateId: selectedId ?? undefined,
@@ -7393,16 +7551,22 @@ export function ShapeGeneratorInner() {
         unitSystem,
         materialKey: materialId,
         generatedAt,
-      }, placedParts.length > 0 ? buildBomRows() : undefined);
+      }, placedParts.length > 0 ? buildBomRows() : undefined, exactStepText ?? undefined);
       analytics.shapeDownload('STEP');
-      addToast('success', lt.stepExportBundleSuccess);
+      addToast('warning', lang === 'ko'
+        ? exactStepText
+          ? '증거 패키지를 내보냈습니다. 정밀 STEP은 포함됐지만 리비전·커널·도면·PMI 증거가 연결될 때까지 제조 릴리스는 차단됩니다.'
+          : '검토용 패키지를 내보냈습니다. 정밀 B-Rep STEP과 릴리스 증거가 없어 제조 승인은 차단됩니다.'
+        : exactStepText
+          ? 'Evidence package exported with exact STEP. Manufacturing release remains blocked until revision, kernel, drawing and PMI evidence are attached.'
+          : 'Review package exported. Manufacturing approval is blocked because exact B-Rep STEP and release evidence are missing.');
     } catch (err) {
       console.error('[Export STEP]', err);
       addToast('error', lt.stepExportFailed);
     } finally {
       setExportingFormat(null);
     }
-  }, [effectiveResult, addToast, lang, planLimits.exportFormats, promptUpgrade, isProPlan, setShowExportOptimizeUpgrade, selectedId, unitSystem, materialId, buildBomRows, placedParts.length]);
+  }, [effectiveResult, addToast, lang, planLimits.exportFormats, promptUpgrade, isProPlan, setShowExportOptimizeUpgrade, selectedId, unitSystem, materialId, buildBomRows, placedParts.length, exportStepWorker]);
 
   const handleExportGLTF = useCallback(async () => {
     const geo = effectiveResult?.geometry;
@@ -9231,6 +9395,41 @@ export function ShapeGeneratorInner() {
         dismissFullscreenPrompt={dismissFullscreenPrompt}
         lt={lt}
       />
+
+      {aiCadHandoff && (
+        <section
+          data-testid="ai-cad-handoff-banner"
+          aria-label={isKorean(lang) ? 'AI CAD 인계 상태' : 'AI CAD handoff status'}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12, padding: '8px 14px',
+            background: 'linear-gradient(90deg, rgba(79,70,229,.18), rgba(37,99,235,.10))',
+            borderBottom: '1px solid rgba(99,102,241,.35)', color: theme.text,
+            fontSize: 11, flexWrap: 'wrap', zIndex: 20,
+          }}
+        >
+          <span style={{ padding: '3px 8px', borderRadius: 999, background: 'rgba(99,102,241,.22)', color: '#a5b4fc', fontWeight: 800 }}>
+            AI → {isKorean(lang) ? '정밀 3D CAD' : 'Precision 3D CAD'}
+          </span>
+          <strong data-testid="ai-cad-handoff-title" style={{ fontSize: 12 }}>
+            {aiCadHandoff.part} · {aiCadHandoff.featureCount}{isKorean(lang) ? '개 피처 인계됨' : ' features transferred'}
+          </strong>
+          <span style={{ color: aiCadHandoff.skipped.length ? '#fbbf24' : '#86efac' }}>
+            {aiCadHandoff.skipped.length
+              ? (isKorean(lang) ? `검토 필요: ${aiCadHandoff.skipped.join(', ')}` : `Review: ${aiCadHandoff.skipped.join(', ')}`)
+              : (isKorean(lang) ? '편집 가능한 B-rep · 피처와 치수 유지' : 'Editable B-rep · features and dimensions preserved')}
+          </span>
+          <span style={{ color: theme.textMuted, marginInlineStart: 'auto' }}>
+            {isKorean(lang) ? '왼쪽 피처 선택 → 오른쪽 치수 수정 → 도면·STEP 확인' : 'Select a feature → edit dimensions → verify drawing & STEP'}
+          </span>
+          <button
+            type="button"
+            data-testid="dismiss-ai-cad-handoff"
+            aria-label={isKorean(lang) ? '인계 안내 닫기' : 'Dismiss handoff guidance'}
+            onClick={() => setAiCadHandoff(null)}
+            style={{ border: 0, background: 'transparent', color: theme.textMuted, cursor: 'pointer', fontSize: 16, lineHeight: 1 }}
+          >×</button>
+        </section>
+      )}
 
       {/* ════════ TOP TOOLBAR ════════ */}
       <ShapeGeneratorToolbar
@@ -11941,11 +12140,12 @@ export function ShapeGeneratorInner() {
           feature edits (patterns, fuzzier phrasings). */}
       <AiAssistantShell
         lang={lang}
+        protectionScope={manualProtectionScope}
         // When a mesh has been imported there is no parametric feature tree to
         // edit, so route AI prompts through the SCAD path (handleFreeAiPrompt),
         // which wraps the import and edits it via OpenSCAD.
-        scadEditActive={!!importedResult}
-        onScadEdit={handleFreeAiPrompt}
+        scadEditActive={!!importedResult || domainWorkspace.domain !== 'mechanical'}
+        onScadEdit={importedResult ? handleFreeAiPrompt : handleDomainAiPrompt}
         onImageGenerate={generateFromImage}
         store={{
           features,
@@ -12005,7 +12205,7 @@ export function ShapeGeneratorInner() {
             addSketchFeature(profile, config, plane, operation, planeOffset ?? 0, constraints, dimensions),
           // Tracked wrappers: AI-driven edits land in commandHistory too, so
           // a bad AI patch is one Ctrl+Z away from reverting.
-          updateFeatureParam: updateFeatureParamCmd,
+          updateFeatureParam: updateFeatureParamAiCmd,
           removeFeature,
           moveFeature,
           toggleFeature: toggleFeatureCmd,
@@ -12013,6 +12213,7 @@ export function ShapeGeneratorInner() {
         }}
         promptToIntents={async (prompt) =>
           resolveFeatureEditPrompt(prompt, features, undefined, {
+            domainWorkspace,
             selection: useSelectionStore.getState().selectedElement,
             baseShape: selectedId,
             projectRevision: aiModelRevision,

@@ -49,6 +49,10 @@ import AuthModal from '@/components/nexyfab/AuthModal';
 import { useAnalysisStore } from '../store/analysisStore';
 import { useTouchGestures } from './useTouchGestures';
 import { fmtShell, pickShellDict, type ShellDict } from './shellDict';
+import { CadWorkflowRail } from './CadWorkflowRail';
+import type { AdaptiveComplexProductExecutionPlan } from '@/lib/ai/adaptiveComplexProductExecution';
+import { DomainWorkspaceBar } from './DomainWorkspaceBar';
+import { useDomainWorkspaceSelection } from './domainWorkspaceStore';
 
 // Best-effort keyboard event dispatch so Shell's TitleBar buttons reach Inner's
 // existing keyboard shortcut handlers (Inner registers global Ctrl+Z / ⌘K /
@@ -110,6 +114,18 @@ export function ModelerShell() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [tool, setTool] = useState<string | null>(null);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
+  const [complexExecutionPlan, setComplexExecutionPlan] = useState<AdaptiveComplexProductExecutionPlan | null>(null);
+  const [domainWorkspace] = useDomainWorkspaceSelection();
+
+  useEffect(() => {
+    const accept = (value: unknown) => {
+      if (value && typeof value === 'object' && (value as { schema?: string }).schema === 'nexyfab.adaptive-complex-product-execution.v1') setComplexExecutionPlan(value as AdaptiveComplexProductExecutionPlan);
+    };
+    try { const stored = window.sessionStorage.getItem('nexyfab:ai-complex-execution-plan:v1'); if (stored) accept(JSON.parse(stored)); } catch { /* unavailable or invalid session data */ }
+    const onPlan = (event: Event) => accept((event as CustomEvent<AdaptiveComplexProductExecutionPlan>).detail);
+    window.addEventListener('nexyfab:complex-execution-plan', onPlan);
+    return () => window.removeEventListener('nexyfab:complex-execution-plan', onPlan);
+  }, []);
 
   const d = pickShellDict(lang);
   // Deferred sub-panels (Onboarding/EmailVerify/AccountType/Motion/Versions)
@@ -320,6 +336,7 @@ export function ModelerShell() {
   const bridgeSketchStatus = useShellBridge(s => s.sketchStatus);
   const bridgeSketchDof = useShellBridge(s => s.sketchDof);
   const bridgeSketchRedundant = useShellBridge(s => s.sketchRedundantCount);
+  const bridgeDfmWarningCount = useShellBridge(s => s.dfmWarningCount);
 
   // Sync shell mode + active sketch tab to Inner's sketch state. When the
   // user toggles sketch mode in Inner, the shell ribbon switches to the
@@ -403,6 +420,25 @@ export function ModelerShell() {
   return (
     <Shell
       mode={mode}
+      domainWorkspace={<DomainWorkspaceBar lang={langSeg} />}
+      workflow={
+        <CadWorkflowRail
+          lang={lang}
+          domain={domainWorkspace.domain}
+          hasModel={bridgeFeatureCount > 0 || bridgeTriangleCount > 0}
+          dfmWarningCount={bridgeDfmWarningCount}
+          executionPlan={complexExecutionPlan}
+          onAiDesign={() => dispatchTool('ai.suggest')}
+          onPreciseCad={() => { setMode('modeling'); setActiveTab('solid'); }}
+          onVerify={() => {
+            setDrawerTab('dfm');
+            setDrawerOpen(true);
+          }}
+          onExportEvidencePackage={() => {
+            window.dispatchEvent(new CustomEvent('nexyfab:file-export', { detail: { format: 'step' } }));
+          }}
+        />
+      }
       titleBar={{
         filename: bridgeSelectedLabel
           ? `${bridgeSelectedLabel}.nxpart`

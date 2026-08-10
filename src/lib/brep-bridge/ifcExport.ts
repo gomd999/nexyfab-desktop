@@ -15,6 +15,7 @@
  */
 
 import { validateClosedPolyMesh, type PolyMesh } from './satExport';
+import type { BimInformationInstance } from '@/lib/bim/informationRegistry';
 
 export interface IfcWriteStats {
   entities: number;
@@ -27,6 +28,26 @@ export interface IfcWriteStats {
 export type IfcWriteResult =
   | { ok: true; text: string; stats: IfcWriteStats }
   | { ok: false; error: string };
+
+export interface IfcBimExportOptions {
+  instance: BimInformationInstance;
+  quantities: Array<{
+    setName: string;
+    name: string;
+    type: 'length' | 'area' | 'volume' | 'count' | 'weight' | 'time';
+    value: number;
+    unit: 'mm' | 'm' | 'm2' | 'm3' | 'kg' | 'count' | 'none';
+  }>;
+  projectedCrs: {
+    name: string;
+    eastings: number;
+    northings: number;
+    orthogonalHeight: number;
+    xAxisAbscissa: number;
+    xAxisOrdinate: number;
+    scale: number;
+  };
+}
 
 /** STEP(ISO 10303-21) 실수 리터럴 — 소수점 필수·지수 E 표기 정규화 */
 const freal = (v: number): string => {
@@ -66,7 +87,7 @@ export function pseudoGuid(seed: string): string {
  */
 export function writeIfcText(
   mesh: PolyMesh,
-  { name = 'model' }: { name?: string } = {},
+  { name = 'model', bim }: { name?: string; bim?: IfcBimExportOptions } = {},
 ): IfcWriteResult {
   for (const v of mesh.verts) {
     if (v.length < 3 || v.some((c) => !Number.isFinite(c))) return { ok: false, error: '정점 좌표에 비유한값 — 방출 거부' };
@@ -75,6 +96,7 @@ export function writeIfcText(
   if ('error' in val) return { ok: false, error: `IfcFacetedBrep(폐셸) 요건 미달 — ${val.error}` };
 
   const safeName = name.replace(/['\\\r\n]/g, '_').slice(0, 60) || 'model';
+  const ifcText = (value: string): string => value.replaceAll("'", "''").replace(/[\r\n]/g, ' ').slice(0, 2_000);
   const lines: string[] = [];
   let nextId = 1;
   const add = (body: (id: number) => string): number => {
@@ -155,6 +177,88 @@ export function writeIfcText(
   const proxy = add(() => `IFCBUILDINGELEMENTPROXY('${guid('proxy')}',#${hist},'${safeName}',$,$,#${proxyPl},#${pds},$,$)`);
   add(() => `IFCRELCONTAINEDINSPATIALSTRUCTURE('${guid('contain')}',#${hist},$,$,(#${proxy}),#${storey})`);
 
+  if (bim) {
+    const finite = [bim.projectedCrs.eastings, bim.projectedCrs.northings, bim.projectedCrs.orthogonalHeight, bim.projectedCrs.xAxisAbscissa, bim.projectedCrs.xAxisOrdinate, bim.projectedCrs.scale];
+    if (!bim.projectedCrs.name.trim() || finite.some(value => !Number.isFinite(value)) || bim.projectedCrs.scale <= 0) return { ok: false, error: 'BIM projected CRS contains an invalid name, coordinate, axis, or scale.' };
+    if (!bim.instance.registryId.trim() || !bim.instance.registryVersion.trim()) return { ok: false, error: 'BIM registry identity and exact version are required.' };
+
+    const semanticUnits = new Map<string, number>([['mm', uLen], ['m2', uArea], ['m3', uVol]]);
+    const semanticUnit = (code: string): number | null | undefined => {
+      if (code === 'none' || code === 'count') return null;
+      const existing = semanticUnits.get(code); if (existing) return existing;
+      let id: number | undefined;
+      if (code === 'm') id = add(() => 'IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.)');
+      else if (code === 'kg') id = add(() => 'IFCSIUNIT(*,.MASSUNIT.,.KILO.,.GRAM.)');
+      else if (code === 'mm2') {
+        const dimensions = add(() => 'IFCDIMENSIONALEXPONENTS(2,0,0,0,0,0,0)');
+        const conversion = add(() => `IFCMEASUREWITHUNIT(IFCAREAMEASURE(1.E-6),#${uArea})`);
+        id = add(() => `IFCCONVERSIONBASEDUNIT(#${dimensions},.AREAUNIT.,'SQUARE MILLIMETRE',#${conversion})`);
+      } else if (code === 'mm3') {
+        const dimensions = add(() => 'IFCDIMENSIONALEXPONENTS(3,0,0,0,0,0,0)');
+        const conversion = add(() => `IFCMEASUREWITHUNIT(IFCVOLUMEMEASURE(1.E-9),#${uVol})`);
+        id = add(() => `IFCCONVERSIONBASEDUNIT(#${dimensions},.VOLUMEUNIT.,'CUBIC MILLIMETRE',#${conversion})`);
+      }
+      if (id) semanticUnits.set(code, id);
+      return id;
+    };
+    const nominal = (value: unknown, unit: string): string | null => {
+      if (typeof value === 'string') return `IFCLABEL('${ifcText(value)}')`;
+      if (typeof value === 'boolean') return `IFCBOOLEAN(.${value ? 'T' : 'F'}.)`;
+      if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+      if (Number.isSafeInteger(value) && unit === 'count') return `IFCINTEGER(${value})`;
+      const type = unit === 'mm' || unit === 'm' ? 'IFCLENGTHMEASURE'
+        : unit === 'mm2' || unit === 'm2' ? 'IFCAREAMEASURE'
+          : unit === 'mm3' || unit === 'm3' ? 'IFCVOLUMEMEASURE'
+            : unit === 'kg' ? 'IFCMASSMEASURE' : 'IFCREAL';
+      return `${type}(${freal(value)})`;
+    };
+    const propertyGroups = new Map<string, BimInformationInstance['properties']>();
+    for (const property of bim.instance.properties) {
+      const values = propertyGroups.get(property.pset) ?? [];
+      values.push(property); propertyGroups.set(property.pset, values);
+    }
+    propertyGroups.set('Pset_NexyFabRegistry', [
+      { pset: 'Pset_NexyFabRegistry', key: 'RegistryId', value: bim.instance.registryId, unit: 'none', source: 'derived', sourceRef: 'nexyfab:registry-binding' },
+      { pset: 'Pset_NexyFabRegistry', key: 'RegistryVersion', value: bim.instance.registryVersion, unit: 'none', source: 'derived', sourceRef: 'nexyfab:registry-binding' },
+    ]);
+    propertyGroups.set('Pset_NexyFabProvenance', bim.instance.properties.flatMap(property => [
+      { pset: 'Pset_NexyFabProvenance', key: `${property.pset}.${property.key}.Source`, value: property.source, unit: 'none', source: 'derived' as const, sourceRef: 'nexyfab:registry-binding' },
+      { pset: 'Pset_NexyFabProvenance', key: `${property.pset}.${property.key}.SourceRef`, value: property.sourceRef, unit: 'none', source: 'derived' as const, sourceRef: 'nexyfab:registry-binding' },
+    ]));
+    for (const [psetName, properties] of propertyGroups) {
+      const ids: number[] = [];
+      for (const property of properties) {
+        const value = nominal(property.value, property.unit); const unitId = semanticUnit(property.unit);
+        if (!value) return { ok: false, error: `BIM property ${property.pset}.${property.key} has an unsupported or non-finite value.` };
+        if (unitId === undefined) return { ok: false, error: `BIM property ${property.pset}.${property.key} uses unsupported unit ${property.unit}.` };
+        ids.push(add(() => `IFCPROPERTYSINGLEVALUE('${ifcText(property.key)}',$,${value},${unitId === null ? '$' : `#${unitId}`})`));
+      }
+      const pset = add(() => `IFCPROPERTYSET('${guid(`pset-${psetName}`)}',#${hist},'${ifcText(psetName)}',$,(${ids.map(id => `#${id}`).join(',')}))`);
+      add(() => `IFCRELDEFINESBYPROPERTIES('${guid(`pset-rel-${psetName}`)}',#${hist},$,$,(#${proxy}),#${pset})`);
+    }
+    for (const [scheme, classifications] of Object.entries(Object.groupBy(bim.instance.classifications, value => value.scheme))) {
+      const classification = add(() => `IFCCLASSIFICATION('NexyFab','${ifcText(bim.instance.registryVersion)}',$,'${scheme}',$,$,$)`);
+      for (const value of classifications ?? []) {
+        const reference = add(() => `IFCCLASSIFICATIONREFERENCE($,'${ifcText(value.code)}','${ifcText(value.code)}',#${classification})`);
+        add(() => `IFCRELASSOCIATESCLASSIFICATION('${guid(`classification-${scheme}-${value.code}`)}',#${hist},$,$,(#${proxy}),#${reference})`);
+      }
+    }
+    if (bim.quantities.length) {
+      const quantityIds: number[] = [];
+      for (const quantity of bim.quantities) {
+        if (!Number.isFinite(quantity.value)) return { ok: false, error: `BIM quantity ${quantity.name} is not finite.` };
+        const unitId = semanticUnit(quantity.unit); if (unitId === undefined) return { ok: false, error: `BIM quantity ${quantity.name} uses unsupported unit ${quantity.unit}.` };
+        const className = `IFCQUANTITY${quantity.type.toUpperCase()}`;
+        quantityIds.push(add(() => `${className}('${ifcText(quantity.name)}',$,${unitId === null ? '$' : `#${unitId}`},${freal(quantity.value)})`));
+      }
+      const setName = ifcText(bim.quantities[0]!.setName || 'BaseQuantities');
+      const quantitySet = add(() => `IFCELEMENTQUANTITY('${guid(`quantity-${setName}`)}',#${hist},'${setName}',$,$,(${quantityIds.map(id => `#${id}`).join(',')}))`);
+      add(() => `IFCRELDEFINESBYPROPERTIES('${guid(`quantity-rel-${setName}`)}',#${hist},$,$,(#${proxy}),#${quantitySet})`);
+    }
+    const crs = add(() => `IFCPROJECTEDCRS('${ifcText(bim.projectedCrs.name)}',$,$,$,$,$,$)`);
+    add(() => `IFCMAPCONVERSION(#${ctx},#${crs},${freal(bim.projectedCrs.eastings)},${freal(bim.projectedCrs.northings)},${freal(bim.projectedCrs.orthogonalHeight)},${freal(bim.projectedCrs.xAxisAbscissa)},${freal(bim.projectedCrs.xAxisOrdinate)},${freal(bim.projectedCrs.scale)})`);
+  }
+
   const now = new Date().toISOString().slice(0, 19);
   const text = [
     'ISO-10303-21;',
@@ -162,7 +266,7 @@ export function writeIfcText(
     // 정직 선언: 메시 유래 파셋 B-rep + 결정적 의사-GUID
     `FILE_DESCRIPTION(('NexyFab W5-H mesh export: IfcFacetedBrep from welded planar mesh','GlobalIds are deterministic pseudo-GUIDs (format-compliant, not RFC4122)'),'2;1');`,
     `FILE_NAME('${safeName}.ifc','${now}',('NexyFab'),('Nexysys'),'nexyfab-ifc-export W5-H','NexyFab shape-generator','');`,
-    `FILE_SCHEMA(('IFC2X3'));`,
+    `FILE_SCHEMA(('${bim ? 'IFC4' : 'IFC2X3'}'));`,
     'ENDSEC;',
     'DATA;',
     ...lines,
@@ -205,7 +309,7 @@ const REQUIRED_ENTITIES = [
  */
 export function selfCheckIfc(text: string, expected?: { brepPoints?: number }): IfcSelfCheckResult {
   const errors: string[] = [];
-  if (!/FILE_SCHEMA\s*\(\s*\(\s*'IFC2X3'/i.test(text)) errors.push('FILE_SCHEMA IFC2X3 헤더 없음');
+  if (!/FILE_SCHEMA\s*\(\s*\(\s*'IFC(?:2X3|4(?:X3(?:_ADD\d+)?)?)'/i.test(text)) errors.push('FILE_SCHEMA IFC2X3/IFC4 header missing');
   const ents = new Map<number, { name: string; raw: string }>();
   const re = /#(\d+)\s*=\s*([A-Z0-9_]+)\s*\(([\s\S]*?)\)\s*;/g;
   let m: RegExpExecArray | null;

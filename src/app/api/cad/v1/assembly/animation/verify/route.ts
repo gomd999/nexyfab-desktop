@@ -26,6 +26,11 @@ import {
 } from "@/lib/reference/cadFailureTaxonomy";
 import { getTrustedClientIp } from "@/lib/client-ip";
 import { rateLimit } from "@/lib/rate-limit";
+import {
+  evaluateJointEvidenceRelease,
+  type JointEvidenceClaim,
+} from "@/lib/reference/jointEvidenceReleaseGate";
+import { hashNativeCadVerificationInput } from "@/lib/reference/nativeCadExpertReview";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
@@ -45,6 +50,7 @@ export async function POST(req: NextRequest) {
     toiMaxDepth?: number;
     toiFrameTolerance?: number;
     toiMaxEvaluations?: number;
+    jointEvidence?: JointEvidenceClaim;
   } | null;
   if (!b?.state || !b.animation || !b.localBoxes)
     return NextResponse.json(
@@ -55,6 +61,15 @@ export async function POST(req: NextRequest) {
       },
       { status: 400 },
     );
+  const jointEvidenceGate = b.jointEvidence
+    ? evaluateJointEvidenceRelease(b.jointEvidence, undefined, hashNativeCadVerificationInput({ state: b.state, animation: b.animation, localBoxes: b.localBoxes, featureTrees: b.featureTrees ?? null }))
+    : {
+        status: "not_run" as const,
+        nativeKpiEligible: false,
+        manufacturingReleaseEligible: false,
+        usage: "missing" as const,
+        errors: ["joint_evidence_missing"],
+      };
   const boxes = new Map(Object.entries(b.localBoxes));
   const span = b.animation.endFrame - b.animation.startFrame,
     step = Math.max(
@@ -84,6 +99,7 @@ export async function POST(req: NextRequest) {
         failureCodes: [code],
         recovery: [cadFailureDisposition(code)],
       },
+      jointEvidenceGate,
       releaseReady: false,
       quoteOrRfqSideEffects: false,
     });
@@ -264,7 +280,9 @@ export async function POST(req: NextRequest) {
         ),
       },
     },
-    releaseReady: collisionFree,
+    jointEvidenceGate,
+    releaseReady:
+      collisionFree && jointEvidenceGate.manufacturingReleaseEligible,
     quoteOrRfqSideEffects: false,
   });
 }

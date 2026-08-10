@@ -23,6 +23,19 @@ build_log.txt
 .husky
 .cursor
 .claude
+.tmp
+src-tauri
+occt-collab-worker
+occt-worker
+out
+
+# Runtime web image does not execute the reference corpus, crawler index, or
+# development evidence. Excluding these keeps Railway's Docker context small
+# while preserving the build/runtime scripts and the separate local MCP tools.
+docs
+scripts/knowledge-crawler
+validation-reports
+test-results
 
 # Studio client WASM render assets — must deploy despite *.zip rule above
 !public/openscad/bosl2.zip

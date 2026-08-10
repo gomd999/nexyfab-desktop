@@ -1,0 +1,224 @@
+{
+  "schema": "nexyfab.ground-truth-review-submission-validation.v1",
+  "releaseReady": false,
+  "summary": {
+    "forms": 30,
+    "pending": 30,
+    "invalid": 0,
+    "rejected": 0,
+    "changesRequested": 0,
+    "readyForImport": 0
+  },
+  "results": [
+    {
+      "caseId": "factory_equipment-review-02",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-03",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-04",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-08",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-12",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-04",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-11",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-14",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-15",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "gearbox-review-17",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "interior-review-06",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "interior-review-10",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "interior-review-12",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "interior-review-13",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "interior-review-01",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-01",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-03",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-06",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-09",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-02",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "robot-review-01",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "robot-review-06",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "robot-review-07",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "robot-review-03",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "robot-review-08",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-01",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-03",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-05",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-10",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-11",
+      "status": "pending",
+      "issues": [
+        "submission_missing"
+      ]
+    }
+  ]
+}

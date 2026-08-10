@@ -1,0 +1,92 @@
+{
+  "schema": "nexyfab.domain-accuracy-dryrun.v1",
+  "kind": "DRYRUN — toolchain drill, NOT certification evidence",
+  "domain": "landscape",
+  "reviewers": [
+    "DRYRUN-virtual-reviewer-1",
+    "DRYRUN-virtual-reviewer-2"
+  ],
+  "subject": "template-engine cross-process rebuild determinism (no AI subject)",
+  "checks": [
+    {
+      "ok": true,
+      "label": "candidates generated 20/20"
+    },
+    {
+      "ok": true,
+      "label": "every review packet flags independent_holdout_source_required"
+    },
+    {
+      "ok": true,
+      "label": "promote refuses certification path (exit 1)"
+    },
+    {
+      "ok": true,
+      "label": "promote scoreEligible=0 (internal-template locked out)"
+    },
+    {
+      "ok": true,
+      "label": "promote emits zero benchmark cases"
+    },
+    {
+      "ok": true,
+      "label": "required axes discovered from packets (11)"
+    },
+    {
+      "ok": true,
+      "label": "campaign completed (exit 0)"
+    },
+    {
+      "ok": true,
+      "label": "campaign runs 300/300"
+    },
+    {
+      "ok": true,
+      "label": "campaign resume on completed state is a clean no-op"
+    },
+    {
+      "ok": true,
+      "label": "report refuses eligibility (DRYRUN must not certify)"
+    },
+    {
+      "ok": true,
+      "label": "evidence integrity issues: 0"
+    },
+    {
+      "ok": true,
+      "label": "measured axes clean (requirements,dimensions,part_definitions,collision_clearance)"
+    },
+    {
+      "ok": true,
+      "label": "unmeasured axes surface as coverage blockers"
+    },
+    {
+      "ok": true,
+      "label": "gate passes 300/300"
+    }
+  ],
+  "passed": "14/14",
+  "campaign": {
+    "domain": "landscape",
+    "suiteHash": "6f346215f49e59471bf07333803021baee40a14b8f680589920906226b2d06dc",
+    "slots": 300,
+    "completed": 300,
+    "failed": 0
+  },
+  "blockers": [
+    "accuracy:features",
+    "coverage:features",
+    "accuracy:occurrences",
+    "coverage:occurrences",
+    "accuracy:hierarchy",
+    "coverage:hierarchy",
+    "accuracy:transforms",
+    "coverage:transforms",
+    "accuracy:manufacturing",
+    "coverage:manufacturing",
+    "accuracy:step_roundtrip",
+    "coverage:step_roundtrip",
+    "accuracy:repair",
+    "coverage:repair"
+  ]
+}

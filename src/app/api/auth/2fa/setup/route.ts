@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter, toBool } from '@/lib/db-adapter';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
+import { getTrustedClientIp } from '@/lib/client-ip';
 import * as OTPAuth from 'otpauth';
 import type { UserRow } from '@/lib/db-types';
 
@@ -49,7 +50,8 @@ export async function POST(req: NextRequest) {
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   // 브루트포스 방지: 5회/분
-  if (!rateLimit(`2fa-verify:${authUser.userId}`, 5, 60_000).allowed) {
+  const ip = getTrustedClientIp(req.headers);
+  if (!(await rateLimitAsync(`2fa-verify:${authUser.userId}:${ip}`, 5, 60_000)).allowed) {
     return NextResponse.json({ error: '시도 횟수 초과. 1분 후 다시 시도하세요.' }, { status: 429 });
   }
 
@@ -90,7 +92,8 @@ export async function DELETE(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  if (!rateLimit(`2fa-disable:${authUser.userId}`, 5, 60_000).allowed) {
+  const ip = getTrustedClientIp(req.headers);
+  if (!(await rateLimitAsync(`2fa-disable:${authUser.userId}:${ip}`, 5, 60_000)).allowed) {
     return NextResponse.json({ error: '시도 횟수 초과. 1분 후 다시 시도하세요.' }, { status: 429 });
   }
 

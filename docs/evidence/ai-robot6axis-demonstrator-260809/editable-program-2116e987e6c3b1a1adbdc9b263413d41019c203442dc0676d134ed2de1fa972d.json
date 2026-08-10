@@ -1,0 +1,2276 @@
+{
+  "version": 1,
+  "units": "mm",
+  "classification": "concept_only",
+  "name": "NexyFab editable 6-axis demonstrator",
+  "assembly": {
+    "parts": [
+      {
+        "id": "base",
+        "name": "base",
+        "partTemplateId": "base",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": true
+      },
+      {
+        "id": "shoulder",
+        "name": "shoulder",
+        "partTemplateId": "shoulder",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 180
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "upper-arm",
+        "name": "upper-arm",
+        "partTemplateId": "upper-arm",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 240
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "forearm",
+        "name": "forearm",
+        "partTemplateId": "forearm",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 300
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "wrist-1",
+        "name": "wrist-1",
+        "partTemplateId": "wrist-1",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 420
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "wrist-2",
+        "name": "wrist-2",
+        "partTemplateId": "wrist-2",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 510
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "tool-flange",
+        "name": "tool-flange",
+        "partTemplateId": "tool-flange",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 590
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J1:motor:motor-j1-unselected",
+        "name": "J1 motor placeholder",
+        "partTemplateId": "motor-j1-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J1:reducer:reducer-j1-unselected",
+        "name": "J1 reducer placeholder",
+        "partTemplateId": "reducer-j1-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 12
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J1:bearing:bearing-j1-unselected",
+        "name": "J1 bearing placeholder",
+        "partTemplateId": "bearing-j1-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 24
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J2:motor:motor-j2-unselected",
+        "name": "J2 motor placeholder",
+        "partTemplateId": "motor-j2-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 180
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J2:reducer:reducer-j2-unselected",
+        "name": "J2 reducer placeholder",
+        "partTemplateId": "reducer-j2-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 192
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J2:bearing:bearing-j2-unselected",
+        "name": "J2 bearing placeholder",
+        "partTemplateId": "bearing-j2-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 204
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J3:motor:motor-j3-unselected",
+        "name": "J3 motor placeholder",
+        "partTemplateId": "motor-j3-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 240
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J3:reducer:reducer-j3-unselected",
+        "name": "J3 reducer placeholder",
+        "partTemplateId": "reducer-j3-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 252
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J3:bearing:bearing-j3-unselected",
+        "name": "J3 bearing placeholder",
+        "partTemplateId": "bearing-j3-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 264
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J4:motor:motor-j4-unselected",
+        "name": "J4 motor placeholder",
+        "partTemplateId": "motor-j4-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 300
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J4:reducer:reducer-j4-unselected",
+        "name": "J4 reducer placeholder",
+        "partTemplateId": "reducer-j4-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 312
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J4:bearing:bearing-j4-unselected",
+        "name": "J4 bearing placeholder",
+        "partTemplateId": "bearing-j4-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 324
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J5:motor:motor-j5-unselected",
+        "name": "J5 motor placeholder",
+        "partTemplateId": "motor-j5-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 420
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J5:reducer:reducer-j5-unselected",
+        "name": "J5 reducer placeholder",
+        "partTemplateId": "reducer-j5-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 432
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J5:bearing:bearing-j5-unselected",
+        "name": "J5 bearing placeholder",
+        "partTemplateId": "bearing-j5-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 444
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J6:motor:motor-j6-unselected",
+        "name": "J6 motor placeholder",
+        "partTemplateId": "motor-j6-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 510
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J6:reducer:reducer-j6-unselected",
+        "name": "J6 reducer placeholder",
+        "partTemplateId": "reducer-j6-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 522
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      },
+      {
+        "id": "J6:bearing:bearing-j6-unselected",
+        "name": "J6 bearing placeholder",
+        "partTemplateId": "bearing-j6-unselected",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 534
+        },
+        "orientation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "fixed": false
+      }
+    ],
+    "mates": [
+      {
+        "id": "J1",
+        "kind": "hinge",
+        "a": {
+          "partId": "base",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "shoulder",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "limit": {
+          "minAngleDeg": -170,
+          "maxAngleDeg": 170
+        }
+      },
+      {
+        "id": "J2",
+        "kind": "hinge",
+        "a": {
+          "partId": "shoulder",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "upper-arm",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "limit": {
+          "minAngleDeg": -120,
+          "maxAngleDeg": 120
+        }
+      },
+      {
+        "id": "J3",
+        "kind": "hinge",
+        "a": {
+          "partId": "upper-arm",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "forearm",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "limit": {
+          "minAngleDeg": -150,
+          "maxAngleDeg": 150
+        }
+      },
+      {
+        "id": "J4",
+        "kind": "hinge",
+        "a": {
+          "partId": "forearm",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "wrist-1",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "limit": {
+          "minAngleDeg": -180,
+          "maxAngleDeg": 180
+        }
+      },
+      {
+        "id": "J5",
+        "kind": "hinge",
+        "a": {
+          "partId": "wrist-1",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "wrist-2",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "limit": {
+          "minAngleDeg": -120,
+          "maxAngleDeg": 120
+        }
+      },
+      {
+        "id": "J6",
+        "kind": "hinge",
+        "a": {
+          "partId": "wrist-2",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "tool-flange",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "limit": {
+          "minAngleDeg": -180,
+          "maxAngleDeg": 180
+        }
+      },
+      {
+        "id": "J1:motor:motor-j1-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "base",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J1:motor:motor-j1-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J1:motor:motor-j1-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "base",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J1:motor:motor-j1-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J1:reducer:reducer-j1-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "base",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J1:reducer:reducer-j1-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J1:reducer:reducer-j1-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "base",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J1:reducer:reducer-j1-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J1:bearing:bearing-j1-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "base",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J1:bearing:bearing-j1-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J1:bearing:bearing-j1-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "base",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J1:bearing:bearing-j1-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J2:motor:motor-j2-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "shoulder",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J2:motor:motor-j2-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J2:motor:motor-j2-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "shoulder",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J2:motor:motor-j2-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J2:reducer:reducer-j2-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "shoulder",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J2:reducer:reducer-j2-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J2:reducer:reducer-j2-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "shoulder",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J2:reducer:reducer-j2-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J2:bearing:bearing-j2-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "shoulder",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J2:bearing:bearing-j2-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J2:bearing:bearing-j2-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "shoulder",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J2:bearing:bearing-j2-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J3:motor:motor-j3-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "upper-arm",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J3:motor:motor-j3-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J3:motor:motor-j3-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "upper-arm",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J3:motor:motor-j3-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J3:reducer:reducer-j3-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "upper-arm",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J3:reducer:reducer-j3-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J3:reducer:reducer-j3-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "upper-arm",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J3:reducer:reducer-j3-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J3:bearing:bearing-j3-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "upper-arm",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J3:bearing:bearing-j3-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J3:bearing:bearing-j3-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "upper-arm",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J3:bearing:bearing-j3-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J4:motor:motor-j4-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "forearm",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J4:motor:motor-j4-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J4:motor:motor-j4-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "forearm",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J4:motor:motor-j4-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J4:reducer:reducer-j4-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "forearm",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J4:reducer:reducer-j4-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J4:reducer:reducer-j4-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "forearm",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J4:reducer:reducer-j4-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J4:bearing:bearing-j4-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "forearm",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J4:bearing:bearing-j4-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J4:bearing:bearing-j4-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "forearm",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J4:bearing:bearing-j4-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J5:motor:motor-j5-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "wrist-1",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J5:motor:motor-j5-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J5:motor:motor-j5-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "wrist-1",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J5:motor:motor-j5-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J5:reducer:reducer-j5-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "wrist-1",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J5:reducer:reducer-j5-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J5:reducer:reducer-j5-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "wrist-1",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J5:reducer:reducer-j5-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J5:bearing:bearing-j5-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "wrist-1",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J5:bearing:bearing-j5-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J5:bearing:bearing-j5-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "wrist-1",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J5:bearing:bearing-j5-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J6:motor:motor-j6-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "wrist-2",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J6:motor:motor-j6-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J6:motor:motor-j6-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "wrist-2",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J6:motor:motor-j6-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J6:reducer:reducer-j6-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "wrist-2",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J6:reducer:reducer-j6-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J6:reducer:reducer-j6-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "wrist-2",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J6:reducer:reducer-j6-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      },
+      {
+        "id": "J6:bearing:bearing-j6-unselected:axis",
+        "kind": "concentric",
+        "a": {
+          "partId": "wrist-2",
+          "refId": "z_axis",
+          "refKind": "axis"
+        },
+        "b": {
+          "partId": "J6:bearing:bearing-j6-unselected",
+          "refId": "z_axis",
+          "refKind": "axis"
+        }
+      },
+      {
+        "id": "J6:bearing:bearing-j6-unselected:mount",
+        "kind": "coincident",
+        "a": {
+          "partId": "wrist-2",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        },
+        "b": {
+          "partId": "J6:bearing:bearing-j6-unselected",
+          "refId": "xy_plane",
+          "refKind": "plane"
+        }
+      }
+    ]
+  },
+  "parts": [
+    {
+      "instanceId": "base",
+      "definitionId": "robot:base",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "base:body",
+            "name": "base body",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -80,
+                  "y": -80
+                },
+                {
+                  "x": 80,
+                  "y": -80
+                },
+                {
+                  "x": 80,
+                  "y": 80
+                },
+                {
+                  "x": -80,
+                  "y": 80
+                }
+              ],
+              "depth": 160,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "NX-R6-001",
+        "revision": "A",
+        "material": "cast-aluminum",
+        "process": "machining",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "shoulder",
+      "definitionId": "robot:shoulder",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "shoulder:body",
+            "name": "shoulder body",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": 45
+                },
+                {
+                  "x": -45,
+                  "y": 45
+                }
+              ],
+              "depth": 180,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "NX-R6-002",
+        "revision": "A",
+        "material": "aluminum-6061",
+        "process": "machining",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "upper-arm",
+      "definitionId": "robot:upper-arm",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "upper-arm:body",
+            "name": "upper-arm body",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": 45
+                },
+                {
+                  "x": -45,
+                  "y": 45
+                }
+              ],
+              "depth": 260,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "NX-R6-003",
+        "revision": "A",
+        "material": "aluminum-6061",
+        "process": "machining",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "forearm",
+      "definitionId": "robot:forearm",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "forearm:body",
+            "name": "forearm body",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": 45
+                },
+                {
+                  "x": -45,
+                  "y": 45
+                }
+              ],
+              "depth": 220,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "NX-R6-004",
+        "revision": "A",
+        "material": "aluminum-6061",
+        "process": "machining",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "wrist-1",
+      "definitionId": "robot:wrist-1",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "wrist-1:body",
+            "name": "wrist-1 body",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": 45
+                },
+                {
+                  "x": -45,
+                  "y": 45
+                }
+              ],
+              "depth": 120,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "NX-R6-005",
+        "revision": "A",
+        "material": "aluminum-6061",
+        "process": "machining",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "wrist-2",
+      "definitionId": "robot:wrist-2",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "wrist-2:body",
+            "name": "wrist-2 body",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": 45
+                },
+                {
+                  "x": -45,
+                  "y": 45
+                }
+              ],
+              "depth": 90,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "NX-R6-006",
+        "revision": "A",
+        "material": "aluminum-6061",
+        "process": "machining",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "tool-flange",
+      "definitionId": "robot:tool-flange",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "tool-flange:body",
+            "name": "tool-flange body",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -35,
+                  "y": -35
+                },
+                {
+                  "x": 35,
+                  "y": -35
+                },
+                {
+                  "x": 35,
+                  "y": 35
+                },
+                {
+                  "x": -35,
+                  "y": 35
+                }
+              ],
+              "depth": 80,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "NX-R6-007",
+        "revision": "A",
+        "material": "aluminum-6061",
+        "process": "machining",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J1:motor:motor-j1-unselected",
+      "definitionId": "placeholder:motor-j1-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J1:motor:motor-j1-unselected:catalog-envelope",
+            "name": "J1:motor:motor-j1-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -30,
+                  "y": -30
+                },
+                {
+                  "x": 30,
+                  "y": -30
+                },
+                {
+                  "x": 30,
+                  "y": 30
+                },
+                {
+                  "x": -30,
+                  "y": 30
+                }
+              ],
+              "depth": 80,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J1 motor placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J1:reducer:reducer-j1-unselected",
+      "definitionId": "placeholder:reducer-j1-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J1:reducer:reducer-j1-unselected:catalog-envelope",
+            "name": "J1:reducer:reducer-j1-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": 45
+                },
+                {
+                  "x": -45,
+                  "y": 45
+                }
+              ],
+              "depth": 60,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J1 reducer placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J1:bearing:bearing-j1-unselected",
+      "definitionId": "placeholder:bearing-j1-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J1:bearing:bearing-j1-unselected:catalog-envelope",
+            "name": "J1:bearing:bearing-j1-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -27.5,
+                  "y": -27.5
+                },
+                {
+                  "x": 27.5,
+                  "y": -27.5
+                },
+                {
+                  "x": 27.5,
+                  "y": 27.5
+                },
+                {
+                  "x": -27.5,
+                  "y": 27.5
+                }
+              ],
+              "depth": 16,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J1 bearing placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J2:motor:motor-j2-unselected",
+      "definitionId": "placeholder:motor-j2-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J2:motor:motor-j2-unselected:catalog-envelope",
+            "name": "J2:motor:motor-j2-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -30,
+                  "y": -30
+                },
+                {
+                  "x": 30,
+                  "y": -30
+                },
+                {
+                  "x": 30,
+                  "y": 30
+                },
+                {
+                  "x": -30,
+                  "y": 30
+                }
+              ],
+              "depth": 80,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J2 motor placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J2:reducer:reducer-j2-unselected",
+      "definitionId": "placeholder:reducer-j2-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J2:reducer:reducer-j2-unselected:catalog-envelope",
+            "name": "J2:reducer:reducer-j2-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": 45
+                },
+                {
+                  "x": -45,
+                  "y": 45
+                }
+              ],
+              "depth": 60,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J2 reducer placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J2:bearing:bearing-j2-unselected",
+      "definitionId": "placeholder:bearing-j2-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J2:bearing:bearing-j2-unselected:catalog-envelope",
+            "name": "J2:bearing:bearing-j2-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -27.5,
+                  "y": -27.5
+                },
+                {
+                  "x": 27.5,
+                  "y": -27.5
+                },
+                {
+                  "x": 27.5,
+                  "y": 27.5
+                },
+                {
+                  "x": -27.5,
+                  "y": 27.5
+                }
+              ],
+              "depth": 16,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J2 bearing placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J3:motor:motor-j3-unselected",
+      "definitionId": "placeholder:motor-j3-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J3:motor:motor-j3-unselected:catalog-envelope",
+            "name": "J3:motor:motor-j3-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -30,
+                  "y": -30
+                },
+                {
+                  "x": 30,
+                  "y": -30
+                },
+                {
+                  "x": 30,
+                  "y": 30
+                },
+                {
+                  "x": -30,
+                  "y": 30
+                }
+              ],
+              "depth": 80,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J3 motor placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J3:reducer:reducer-j3-unselected",
+      "definitionId": "placeholder:reducer-j3-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J3:reducer:reducer-j3-unselected:catalog-envelope",
+            "name": "J3:reducer:reducer-j3-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": 45
+                },
+                {
+                  "x": -45,
+                  "y": 45
+                }
+              ],
+              "depth": 60,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J3 reducer placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J3:bearing:bearing-j3-unselected",
+      "definitionId": "placeholder:bearing-j3-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J3:bearing:bearing-j3-unselected:catalog-envelope",
+            "name": "J3:bearing:bearing-j3-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -27.5,
+                  "y": -27.5
+                },
+                {
+                  "x": 27.5,
+                  "y": -27.5
+                },
+                {
+                  "x": 27.5,
+                  "y": 27.5
+                },
+                {
+                  "x": -27.5,
+                  "y": 27.5
+                }
+              ],
+              "depth": 16,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J3 bearing placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J4:motor:motor-j4-unselected",
+      "definitionId": "placeholder:motor-j4-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J4:motor:motor-j4-unselected:catalog-envelope",
+            "name": "J4:motor:motor-j4-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -30,
+                  "y": -30
+                },
+                {
+                  "x": 30,
+                  "y": -30
+                },
+                {
+                  "x": 30,
+                  "y": 30
+                },
+                {
+                  "x": -30,
+                  "y": 30
+                }
+              ],
+              "depth": 80,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J4 motor placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J4:reducer:reducer-j4-unselected",
+      "definitionId": "placeholder:reducer-j4-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J4:reducer:reducer-j4-unselected:catalog-envelope",
+            "name": "J4:reducer:reducer-j4-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": 45
+                },
+                {
+                  "x": -45,
+                  "y": 45
+                }
+              ],
+              "depth": 60,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J4 reducer placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J4:bearing:bearing-j4-unselected",
+      "definitionId": "placeholder:bearing-j4-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J4:bearing:bearing-j4-unselected:catalog-envelope",
+            "name": "J4:bearing:bearing-j4-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -27.5,
+                  "y": -27.5
+                },
+                {
+                  "x": 27.5,
+                  "y": -27.5
+                },
+                {
+                  "x": 27.5,
+                  "y": 27.5
+                },
+                {
+                  "x": -27.5,
+                  "y": 27.5
+                }
+              ],
+              "depth": 16,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J4 bearing placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J5:motor:motor-j5-unselected",
+      "definitionId": "placeholder:motor-j5-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J5:motor:motor-j5-unselected:catalog-envelope",
+            "name": "J5:motor:motor-j5-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -30,
+                  "y": -30
+                },
+                {
+                  "x": 30,
+                  "y": -30
+                },
+                {
+                  "x": 30,
+                  "y": 30
+                },
+                {
+                  "x": -30,
+                  "y": 30
+                }
+              ],
+              "depth": 80,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J5 motor placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J5:reducer:reducer-j5-unselected",
+      "definitionId": "placeholder:reducer-j5-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J5:reducer:reducer-j5-unselected:catalog-envelope",
+            "name": "J5:reducer:reducer-j5-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": 45
+                },
+                {
+                  "x": -45,
+                  "y": 45
+                }
+              ],
+              "depth": 60,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J5 reducer placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J5:bearing:bearing-j5-unselected",
+      "definitionId": "placeholder:bearing-j5-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J5:bearing:bearing-j5-unselected:catalog-envelope",
+            "name": "J5:bearing:bearing-j5-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -27.5,
+                  "y": -27.5
+                },
+                {
+                  "x": 27.5,
+                  "y": -27.5
+                },
+                {
+                  "x": 27.5,
+                  "y": 27.5
+                },
+                {
+                  "x": -27.5,
+                  "y": 27.5
+                }
+              ],
+              "depth": 16,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J5 bearing placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J6:motor:motor-j6-unselected",
+      "definitionId": "placeholder:motor-j6-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J6:motor:motor-j6-unselected:catalog-envelope",
+            "name": "J6:motor:motor-j6-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -30,
+                  "y": -30
+                },
+                {
+                  "x": 30,
+                  "y": -30
+                },
+                {
+                  "x": 30,
+                  "y": 30
+                },
+                {
+                  "x": -30,
+                  "y": 30
+                }
+              ],
+              "depth": 80,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J6 motor placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J6:reducer:reducer-j6-unselected",
+      "definitionId": "placeholder:reducer-j6-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J6:reducer:reducer-j6-unselected:catalog-envelope",
+            "name": "J6:reducer:reducer-j6-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": -45
+                },
+                {
+                  "x": 45,
+                  "y": 45
+                },
+                {
+                  "x": -45,
+                  "y": 45
+                }
+              ],
+              "depth": 60,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J6 reducer placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    },
+    {
+      "instanceId": "J6:bearing:bearing-j6-unselected",
+      "definitionId": "placeholder:bearing-j6-unselected",
+      "featureTree": {
+        "nodes": [
+          {
+            "id": "J6:bearing:bearing-j6-unselected:catalog-envelope",
+            "name": "J6:bearing:bearing-j6-unselected catalog envelope",
+            "dependencies": [],
+            "payload": {
+              "kind": "extrude",
+              "loop": [
+                {
+                  "x": -27.5,
+                  "y": -27.5
+                },
+                {
+                  "x": 27.5,
+                  "y": -27.5
+                },
+                {
+                  "x": 27.5,
+                  "y": 27.5
+                },
+                {
+                  "x": -27.5,
+                  "y": 27.5
+                }
+              ],
+              "depth": 16,
+              "direction": "one_sided",
+              "mode": "add"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "partNumber": "J6 bearing placeholder",
+        "revision": "UNSELECTED",
+        "material": "engineering-placeholder",
+        "process": "selection-required",
+        "quantity": 1,
+        "source": "assumed"
+      }
+    }
+  ],
+  "structure": [
+    {
+      "id": "robot-arm",
+      "name": "Robot arm kinematic chain",
+      "instanceIds": [
+        "base",
+        "shoulder",
+        "upper-arm",
+        "forearm",
+        "wrist-1",
+        "wrist-2",
+        "tool-flange"
+      ],
+      "rigid": false
+    },
+    {
+      "id": "drive-J1",
+      "name": "Joint 1 drive",
+      "instanceIds": [
+        "J1:motor:motor-j1-unselected",
+        "J1:reducer:reducer-j1-unselected",
+        "J1:bearing:bearing-j1-unselected"
+      ],
+      "rigid": true
+    },
+    {
+      "id": "drive-J2",
+      "name": "Joint 2 drive",
+      "instanceIds": [
+        "J2:motor:motor-j2-unselected",
+        "J2:reducer:reducer-j2-unselected",
+        "J2:bearing:bearing-j2-unselected"
+      ],
+      "rigid": true
+    },
+    {
+      "id": "drive-J3",
+      "name": "Joint 3 drive",
+      "instanceIds": [
+        "J3:motor:motor-j3-unselected",
+        "J3:reducer:reducer-j3-unselected",
+        "J3:bearing:bearing-j3-unselected"
+      ],
+      "rigid": true
+    },
+    {
+      "id": "drive-J4",
+      "name": "Joint 4 drive",
+      "instanceIds": [
+        "J4:motor:motor-j4-unselected",
+        "J4:reducer:reducer-j4-unselected",
+        "J4:bearing:bearing-j4-unselected"
+      ],
+      "rigid": true
+    },
+    {
+      "id": "drive-J5",
+      "name": "Joint 5 drive",
+      "instanceIds": [
+        "J5:motor:motor-j5-unselected",
+        "J5:reducer:reducer-j5-unselected",
+        "J5:bearing:bearing-j5-unselected"
+      ],
+      "rigid": true
+    },
+    {
+      "id": "drive-J6",
+      "name": "Joint 6 drive",
+      "instanceIds": [
+        "J6:motor:motor-j6-unselected",
+        "J6:reducer:reducer-j6-unselected",
+        "J6:bearing:bearing-j6-unselected"
+      ],
+      "rigid": true
+    }
+  ],
+  "unresolved": [
+    "motor_j1: catalog model and mounting interface must be selected",
+    "reducer_j1: catalog model and mounting interface must be selected",
+    "bearing_set_j1: catalog model and mounting interface must be selected",
+    "motor_j2: catalog model and mounting interface must be selected",
+    "reducer_j2: catalog model and mounting interface must be selected",
+    "bearing_set_j2: catalog model and mounting interface must be selected",
+    "motor_j3: catalog model and mounting interface must be selected",
+    "reducer_j3: catalog model and mounting interface must be selected",
+    "bearing_set_j3: catalog model and mounting interface must be selected",
+    "motor_j4: catalog model and mounting interface must be selected",
+    "reducer_j4: catalog model and mounting interface must be selected",
+    "bearing_set_j4: catalog model and mounting interface must be selected",
+    "motor_j5: catalog model and mounting interface must be selected",
+    "reducer_j5: catalog model and mounting interface must be selected",
+    "bearing_set_j5: catalog model and mounting interface must be selected",
+    "motor_j6: catalog model and mounting interface must be selected",
+    "reducer_j6: catalog model and mounting interface must be selected",
+    "bearing_set_j6: catalog model and mounting interface must be selected",
+    "brake: catalog model and mounting interface must be selected",
+    "encoder: catalog model and mounting interface must be selected",
+    "internal_harness: catalog model and mounting interface must be selected",
+    "tool_connector: catalog model and mounting interface must be selected"
+  ]
+}

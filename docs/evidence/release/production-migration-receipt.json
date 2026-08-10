@@ -1,0 +1,24 @@
+{
+  "schema": "nexyfab.postgres-migration-receipt.v1",
+  "generatedAt": "2026-08-10T04:35:48.410Z",
+  "ok": true,
+  "target": "production",
+  "migration": {
+    "ok": true,
+    "version": 2026081001,
+    "name": "postgres_schema_baseline_20260810",
+    "checksum": "72523113234473afabbc0e3932c08b4c84d3f3f1115a880faf715e48c65a62b3",
+    "decision": "apply"
+  },
+  "before": {
+    "tableCount": 115,
+    "totalRows": 291143,
+    "businessRowCountSha256": "731dd3590fc7d47574ec058dac9edd66ee6aa1ad2e3217374f413072696def89"
+  },
+  "after": {
+    "tableCount": 115,
+    "totalRows": 291144,
+    "businessRowCountSha256": "731dd3590fc7d47574ec058dac9edd66ee6aa1ad2e3217374f413072696def89"
+  },
+  "changedBusinessTables": []
+}

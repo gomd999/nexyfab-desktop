@@ -1,0 +1,105 @@
+{
+  "schema": "nexyfab.deployment-ai-cad-smoke.v1",
+  "generatedAt": "2026-08-10T07:10:24.823Z",
+  "target": "https://nexyfab.com",
+  "status": "pass",
+  "credentials": {
+    "applicationAuthPresent": false,
+    "adminSecretPresent": true
+  },
+  "results": [
+    {
+      "id": "live",
+      "status": "pass",
+      "httpStatus": 200,
+      "redirected": true,
+      "latencyMs": 818,
+      "contentType": "application/json",
+      "summary": {
+        "status": "ok",
+        "build": "20260810070414",
+        "code": null,
+        "error": null,
+        "dbStatus": null,
+        "checks": null
+      }
+    },
+    {
+      "id": "ready",
+      "status": "pass",
+      "httpStatus": 200,
+      "redirected": true,
+      "latencyMs": 424,
+      "contentType": "application/json",
+      "summary": {
+        "status": "ok",
+        "build": null,
+        "code": null,
+        "error": null,
+        "dbStatus": "ok",
+        "checks": null
+      }
+    },
+    {
+      "id": "capabilities",
+      "status": "pass",
+      "httpStatus": 200,
+      "redirected": true,
+      "latencyMs": 431,
+      "contentType": "application/json",
+      "summary": {
+        "status": null,
+        "build": null,
+        "code": null,
+        "error": null,
+        "dbStatus": null,
+        "checks": null
+      }
+    },
+    {
+      "id": "scad-agent-route",
+      "status": "pass",
+      "httpStatus": 405,
+      "redirected": true,
+      "latencyMs": 452,
+      "contentType": "",
+      "summary": null
+    },
+    {
+      "id": "openscad",
+      "status": "pass",
+      "httpStatus": 200,
+      "redirected": true,
+      "latencyMs": 876,
+      "contentType": "application/json",
+      "summary": {
+        "status": "ok",
+        "build": null,
+        "code": null,
+        "error": null,
+        "dbStatus": null,
+        "checks": {
+          "binary": {
+            "ok": true,
+            "ms": 273,
+            "detail": "verified by isolated BOSL2 render",
+            "error": null
+          },
+          "bosl2": {
+            "ok": true,
+            "ms": 273,
+            "detail": "verified by isolated BOSL2 render",
+            "error": null
+          },
+          "render": {
+            "ok": true,
+            "ms": 273,
+            "detail": "1719 bytes via isolated Redis worker",
+            "error": null
+          }
+        }
+      }
+    }
+  ],
+  "sha256": "25e6de15c968277cca508674dbeac57a9c27a3ed1c33e00e1a6762be0c951d5f"
+}

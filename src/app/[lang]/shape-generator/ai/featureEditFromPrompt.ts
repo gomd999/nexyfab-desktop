@@ -22,10 +22,12 @@ import type { PlanIntent } from '@/lib/ai/featureTreePlanner';
 import type { AiModelContext } from '@/lib/ai/modelContext';
 import { selectionContextFromElement } from '@/lib/ai/selectionContext';
 import type { SelectionContext } from '@/lib/ai/selectionContext';
+import type { DesignDomainId, UserExperienceLevel } from '@/lib/ai/domainProfile';
 
 export type PlanFetcher = (text: string, context?: AiModelContext) => Promise<PlanIntent | null>;
 
 export interface ResolveOpts {
+  domainWorkspace?: { domain: DesignDomainId; experience: UserExperienceLevel };
   selection?: ElementSelectionInfo | null;
   baseShape?: string | null;
   projectRevision?: string;
@@ -55,6 +57,7 @@ function buildContext(
   opts: ResolveOpts,
 ): AiModelContext {
   return {
+    domainWorkspace: opts.domainWorkspace,
     baseShape: baseShape ?? null,
     features: features.map((f) => ({ id: f.id, type: f.type, params: f.params })),
     selection: selectionToContext(selection),

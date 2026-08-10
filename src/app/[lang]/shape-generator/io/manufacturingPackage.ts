@@ -4,6 +4,7 @@ import { downloadBlob } from '@/lib/platform';
 import { buildBinaryStl } from './stlEncode';
 import { buildBomCSVString } from './bomExport';
 import type { BomRow } from './bomExport';
+import { cadExportBlockers, type CadReleaseStatus } from '@/lib/cad-release-status';
 
 /** Metadata shipped beside .step for shops / RFQ (machine + human readable). */
 export interface ManufacturingSidecarMeta {
@@ -17,6 +18,23 @@ export interface ManufacturingSidecarMeta {
   generatedAt: string;
   /** Set when a ZIP bundle includes a BOM CSV companion file. */
   hasBom?: boolean;
+  releaseEvidence?: {
+    revisionManifestSha256: string;
+    kernelStackIdentitySha256: string;
+    kernelEvidenceSha256: string;
+    drawingStatus: 'pass' | 'limited' | 'not-run';
+    pmiStatus: 'limited' | 'verified';
+    workflowStatus: CadReleaseStatus;
+  };
+}
+
+const SHA256 = /^[a-f0-9]{64}$/;
+
+async function contentSha256(bytes: Uint8Array): Promise<string> {
+  const owned = new Uint8Array(bytes.byteLength);
+  owned.set(bytes);
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', owned.buffer);
+  return [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
 }
 
 export function triangleCount(geometry: THREE.BufferGeometry): number {
@@ -174,23 +192,31 @@ export async function exportManufacturingZipBundle(
   baseFilename: string,
   meta: ManufacturingSidecarMeta,
   bomRows?: BomRow[],
+  exactStepText?: string,
+  releaseArtifacts: Record<string, Uint8Array> = {},
 ): Promise<void> {
-  const { exportToStepAsync } = await import('./stepExporter');
-  const stepText = await exportToStepAsync(geometry, baseFilename);
+  const reserved = new Set([`${baseFilename}.step`, `${baseFilename}.stl`, `${baseFilename}-manufacturing.json`, `${baseFilename}-MANUFACTURING.txt`, `${baseFilename}-BOM.csv`]);
+  for (const [file, bytes] of Object.entries(releaseArtifacts)) {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/.test(file) || file.includes('..')) throw new Error(`MANUFACTURING_PACKAGE_ARTIFACT_NAME_INVALID:${file}`);
+    if (reserved.has(file)) throw new Error(`MANUFACTURING_PACKAGE_ARTIFACT_RESERVED:${file}`);
+    if (!(bytes instanceof Uint8Array) || bytes.byteLength === 0) throw new Error(`MANUFACTURING_PACKAGE_ARTIFACT_EMPTY:${file}`);
+  }
+  const stepText = exactStepText ?? await (async () => {
+    const { exportToStepAsync } = await import('./stepExporter');
+    return exportToStepAsync(geometry, baseFilename);
+  })();
   const stlBuffer = buildBinaryStl(geometry);
   const tri = Math.round(triangleCount(geometry));
   const lenUnit = meta.unitSystem === 'inch' ? 'in' : 'mm';
 
   const zipName = `${baseFilename}-manufacturing-bundle.zip`;
-  const manifest = buildManifest(geometry, baseFilename, meta, { zipArchiveName: zipName, hasBom: !!bomRows });
-  const json = JSON.stringify(manifest, null, 2);
   const readme = buildReadme({ ...meta, hasBom: !!bomRows }, tri, baseFilename, lenUnit, true);
 
   const filesToZip: Record<string, Uint8Array> = {
     [`${baseFilename}.step`]: strToU8(stepText),
     [`${baseFilename}.stl`]: new Uint8Array(stlBuffer),
-    [`${baseFilename}-manufacturing.json`]: strToU8(json),
     [`${baseFilename}-MANUFACTURING.txt`]: strToU8(readme),
+    ...releaseArtifacts,
   };
 
   if (bomRows && bomRows.length > 0) {
@@ -198,6 +224,37 @@ export async function exportManufacturingZipBundle(
     const bomPrefix = '\uFEFF';
     filesToZip[`${baseFilename}-BOM.csv`] = strToU8(bomPrefix + csvStr);
   }
+
+  const artifacts = await Promise.all(Object.entries(filesToZip).sort(([a], [b]) => a.localeCompare(b)).map(async ([file, bytes]) => ({
+    file,
+    bytes: bytes.byteLength,
+    sha256: await contentSha256(bytes),
+    role: file.endsWith('.step') ? (exactStepText !== undefined ? 'exact-brep-step' : 'tessellated-step') : 'companion',
+  })));
+  const evidence = meta.releaseEvidence;
+  const evidenceHashesValid = evidence !== undefined && [evidence.revisionManifestSha256, evidence.kernelStackIdentitySha256, evidence.kernelEvidenceSha256].every(value => SHA256.test(value));
+  const blockers = [
+    ...(exactStepText === undefined ? ['exact-brep-step-missing'] : []),
+    ...(!evidenceHashesValid ? ['release-evidence-missing-or-invalid'] : []),
+    ...(evidence?.drawingStatus !== 'pass' ? ['exact-drawing-not-passed'] : []),
+    ...(evidence?.pmiStatus !== 'verified' ? ['ap242-pmi-limited'] : []),
+    ...cadExportBlockers(evidence?.workflowStatus ?? 'ai_draft', 'manufacturing_or_construction'),
+  ];
+  const packageContentSha256 = await contentSha256(strToU8(JSON.stringify(artifacts)));
+  const manifest = {
+    ...buildManifest(geometry, baseFilename, meta, { zipArchiveName: zipName, hasBom: !!bomRows }),
+    nexyfabManufacturingManifestVersion: 3,
+    immutableArtifacts: artifacts,
+    packageContentSha256,
+    releaseEvidence: evidence ?? null,
+    releaseDecision: {
+      status: blockers.length === 0 ? 'pass' : 'blocked',
+      purpose: blockers.length === 0 ? 'manufacturing_or_construction' : 'expert_review_only',
+      workflowStatus: evidence?.workflowStatus ?? 'ai_draft',
+      blockers,
+    },
+  };
+  filesToZip[`${baseFilename}-manufacturing.json`] = strToU8(`${JSON.stringify(manifest, null, 2)}\n`);
 
   const zipped = zipSync(filesToZip, { level: 6 });
 

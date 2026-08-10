@@ -1,0 +1,556 @@
+{
+  "schema": "nexyfab.native-worker-execution-batch.v1",
+  "manifestSha256": "28b2fc04d5718fd246c5cf6e248e2f0b65018be65f4074482aad8a393e328ad4",
+  "releaseReady": false,
+  "summary": {
+    "requested": 108,
+    "accepted": 0,
+    "resumed": 0,
+    "notRun": 108,
+    "failed": 0
+  },
+  "accepted": [],
+  "notRun": [
+    {
+      "jobId": "f6542eed1c9f4f206a82c286",
+      "caseId": "robot-review-02",
+      "reason": "NEXYFAB_PARASOLID_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "f23c29068faa44f02b7c21af",
+      "caseId": "robot-review-04",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "f5de4ab98a6b1e2494c68fb8",
+      "caseId": "robot-review-05",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "eb392b41966995f44e1853ea",
+      "caseId": "robot-review-09",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "064a43854adfd9390ec6e4e1",
+      "caseId": "gearbox-review-01",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "f38ff0c295879cccc858684f",
+      "caseId": "gearbox-review-02",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "bad9c197700fa40a26fbd0be",
+      "caseId": "gearbox-review-03",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "b277c3330844b7062d9e187e",
+      "caseId": "gearbox-review-05",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "ce0b8dd4d8ee797f568c0071",
+      "caseId": "gearbox-review-06",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "df5a717114f9c042b7f55170",
+      "caseId": "gearbox-review-07",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "1d1de823a33f6bb5d6fd68b9",
+      "caseId": "gearbox-review-08",
+      "reason": "NEXYFAB_CATIA_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "c29630f93cf101b21bd88f39",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "5d41726b80e3ac290406a1fd",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "6b286b1f226d2eb1da9e9f1b",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "47c7dde13af69decfe0d237c",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "bc51c5be1fb224a2bae9ade6",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "4322f4cc83fd46790c452725",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "43272b2714eba79b5662fe1d",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "3e1cee0c209aaad6784de00a",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "018c48778afe958d8224a1ae",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "1678d80fd26ccb06cfcc62b1",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "88a5ca9f3713655347c64476",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "e63273a295f8d9100ea795ec",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "15a0cd7d71636c6105449cf5",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "1ce565b90916a29dbca7d2d2",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "a89063aa13e8123acb758b58",
+      "caseId": "gearbox-review-09",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "9b9b560cb81af8dedbe53338",
+      "caseId": "gearbox-review-10",
+      "reason": "NEXYFAB_CREO_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "11c312a7123fea17e602dce7",
+      "caseId": "gearbox-review-12",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "7588b719fe6e27fe55064b62",
+      "caseId": "gearbox-review-13",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "ac6227915a9fdd0e9ea49322",
+      "caseId": "gearbox-review-16",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "bea2cd401ace846ad9e4ce60",
+      "caseId": "pressure_vessel-review-02",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "a2a9643aabd95faf967ddb2d",
+      "caseId": "pressure_vessel-review-04",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "b9335f736726c99d70e1cf83",
+      "caseId": "pressure_vessel-review-05",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "c6b7d6512bd7954b190ba6cd",
+      "caseId": "pressure_vessel-review-07",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "0095b45228a6cce9e79d1d47",
+      "caseId": "pressure_vessel-review-08",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "8149cfb2cbeb00d82f47c966",
+      "caseId": "pressure_vessel-review-10",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "1206006079c201b328ea4a4a",
+      "caseId": "pressure_vessel-review-11",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "05059c3fbd835ffa7cb0502e",
+      "caseId": "turbomachinery-review-04",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "8ae66944849bccf8acf34800",
+      "caseId": "turbomachinery-review-04",
+      "reason": "NEXYFAB_REVIT_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "7a42feb6576159f69dd74edb",
+      "caseId": "turbomachinery-review-07",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "0713648a10efc8c633c8b655",
+      "caseId": "turbomachinery-review-08",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "1e0daef7b2c980dfcc23df12",
+      "caseId": "factory_equipment-review-01",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "5f33df44f395b7f3b090453a",
+      "caseId": "factory_equipment-review-05",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "332c7eba002a419f4f55351c",
+      "caseId": "factory_equipment-review-06",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "caa40bc1f075fdcfab0516a0",
+      "caseId": "factory_equipment-review-06",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "4e483423b7395d77bab4aa32",
+      "caseId": "factory_equipment-review-06",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "8953e5b1d0f0130e029523fc",
+      "caseId": "factory_equipment-review-06",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "3b6e4fd40196e94361ecd45f",
+      "caseId": "factory_equipment-review-07",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "0741e27cc889b49016fc5064",
+      "caseId": "factory_equipment-review-07",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "e61fef246d2e3a9677b85515",
+      "caseId": "factory_equipment-review-07",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "7f94ac07a076e34b42d32cb0",
+      "caseId": "factory_equipment-review-07",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "f21a570bbac9f33286edba3e",
+      "caseId": "factory_equipment-review-09",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "48883e821b5e666adec8112d",
+      "caseId": "factory_equipment-review-10",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "1ef6f31eaeb0911c32295110",
+      "caseId": "factory_equipment-review-11",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "4086adef3accf18c731852b7",
+      "caseId": "factory_equipment-review-13",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "730230ced8f00133ebf23f14",
+      "caseId": "factory_equipment-review-14",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "cefde8e9edd43d6c91d9fcea",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "52161d5fb81f8bb2d884954c",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "e473b80ebc6b4fc6adefae0a",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "1127f7624e6eefd6857a1cb2",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "1ba8a76dade0bf4d39fbf886",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "1c6927984f28d5c5cc794618",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "d3693c5612796bd8a57a8353",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "f9d8717d754a18fba03f24cd",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "753826560b5770f426daa26e",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "16ce99d6b1bda08b2eda8e50",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "da1fa64600c5a8c8daf0835e",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "af3586eeb8a92b6a6959331a",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "0ce42528fb3502b1aba2f382",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "3401ad9d0d38e176a8a58cca",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "ea1219018c5607236b6e4a22",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "1436c11bbdbc6d5b0556b737",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "de5e8891ac55cb397d7a6eca",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "b2e0f5bfb583a918cf8c669a",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "aa3b61edd33c3ba14b1608e4",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "e3867aea3ff4cea87ec98bed",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "7fdb178d15085b70dce0d6c7",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "45212a6b5cadb8e41c7f8cd1",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "bcf9e2951b661077ea918a91",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "d67955993e23f497efdd8b9e",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "e87b42224fca0b7bc3bbf779",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "bfa25136695f347bfb7cff6f",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "2f92f3809d896ac6df730fca",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "3136f533a3065fab384fc35d",
+      "caseId": "factory_equipment-review-15",
+      "reason": "NEXYFAB_INVENTOR_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "77ca39626a3e567b7278e02c",
+      "caseId": "factory_equipment-review-16",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "e174da9a8390746418c1bef6",
+      "caseId": "factory_equipment-review-18",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "18b7ab326abbb228c716e770",
+      "caseId": "factory_equipment-review-19",
+      "reason": "NEXYFAB_SOLIDWORKS_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "9d0f2bc6032e819017a9361b",
+      "caseId": "interior-review-01",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "9be22d66f292e9b7d7a3c05d",
+      "caseId": "interior-review-02",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "aa3ecb381a1c84aaa79516e8",
+      "caseId": "interior-review-02",
+      "reason": "NEXYFAB_REVIT_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "760456bbc606af0f90346aa5",
+      "caseId": "interior-review-03",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "dc4a15e1de70eb9134b93c3d",
+      "caseId": "interior-review-04",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "57986cb4bf3da221959bf66e",
+      "caseId": "interior-review-05",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "7c9830bed20cbcfa8d553ea4",
+      "caseId": "interior-review-07",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "e5ed4e5820356ae3d6169217",
+      "caseId": "interior-review-08",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "344632be156eabaec9c24968",
+      "caseId": "interior-review-09",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "06427cc581898b44152a994a",
+      "caseId": "interior-review-11",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "53044257b1b96384f1d83b11",
+      "caseId": "interior-review-14",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "fb58417cab60793e13b7112b",
+      "caseId": "interior-review-14",
+      "reason": "NEXYFAB_REVIT_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "d9e106904d4ab9ee5223b88b",
+      "caseId": "interior-review-15",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "50b43841c013992f84ddf56e",
+      "caseId": "interior-review-15",
+      "reason": "NEXYFAB_REVIT_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "406a3a74d31ce683d907c229",
+      "caseId": "interior-review-16",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "c126111c38147b631b3826cf",
+      "caseId": "interior-review-16",
+      "reason": "NEXYFAB_REVIT_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "e1d3167d4aa5ddebce33f73c",
+      "caseId": "interior-review-17",
+      "reason": "NEXYFAB_REVIT_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "ea4ea574231edf60603db232",
+      "caseId": "interior-review-17",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "39be750eb7425e8db4402c06",
+      "caseId": "interior-review-18",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "08a9b8a17f50bafdda8a4d28",
+      "caseId": "interior-review-19",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    },
+    {
+      "jobId": "abea564e76f7c6bdc88b5949",
+      "caseId": "interior-review-20",
+      "reason": "NEXYFAB_DWG_WORKER_COMMAND_unconfigured"
+    }
+  ],
+  "failed": []
+}

@@ -1,0 +1,3324 @@
+{
+  "schema": "nexyfab.complex-ground-truth-approval-queue.v1",
+  "generatedAt": "2026-08-06T15:03:55.286Z",
+  "policy": {
+    "automaticEvidenceGrantsApproval": false,
+    "dualIndependentSignoffRequired": true,
+    "artifactMutationInvalidatesApproval": true,
+    "sourceBytesEmbedded": false
+  },
+  "summary": {
+    "cases": 115,
+    "approved": 0,
+    "pending": 115,
+    "scoreEligible": 0
+  },
+  "byFamily": {
+    "robot": {
+      "cases": 20,
+      "approved": 0,
+      "pending": 20
+    },
+    "gearbox": {
+      "cases": 20,
+      "approved": 0,
+      "pending": 20
+    },
+    "pressure_vessel": {
+      "cases": 20,
+      "approved": 0,
+      "pending": 20
+    },
+    "turbomachinery": {
+      "cases": 15,
+      "approved": 0,
+      "pending": 15
+    },
+    "factory_equipment": {
+      "cases": 20,
+      "approved": 0,
+      "pending": 20
+    },
+    "interior": {
+      "cases": 20,
+      "approved": 0,
+      "pending": 20
+    }
+  },
+  "tasks": [
+    {
+      "caseId": "robot-review-01",
+      "family": "robot",
+      "tier": "T1",
+      "sourceHash": "50b18803427d0f5d4998cbab3cffae3c63dd83ee4ecb4883cd90fd07fcaf8008",
+      "artifactSetHash": "bd0e943d74e933ef17a51b490156a571f076de286fbdbb0262da9e57f308cdb4",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-02",
+      "family": "robot",
+      "tier": "T1",
+      "sourceHash": "c96a6c7c34e5bd26d14d3315ae47d2f5e1cf1c0e165392826f9a9e0a584ac0ae",
+      "artifactSetHash": "fca61d9cbfa110187ad3d7800119ef034bd207520a57bd85ca42ec718631643f",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-03",
+      "family": "robot",
+      "tier": "T1",
+      "sourceHash": "ae100a589cdf84d92f2bd529d1f703c9d9ac174026d0d6687533494901dce02e",
+      "artifactSetHash": "c5a20d569dd07cffd45df1f0c475d3b90e6a63e10e40afd02febcd3add9720e6",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-04",
+      "family": "robot",
+      "tier": "T1",
+      "sourceHash": "480325e9e9e249186ca5f79a2b42af9884bd81e06604a06970b522c7c962601a",
+      "artifactSetHash": "95bb18656aa8fd9e5fcc812187f68b013a366ef41563a5042e73c4a79881fbe2",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-05",
+      "family": "robot",
+      "tier": "T1",
+      "sourceHash": "f2912108234ba40d3e9938621bab4c804d7511aa02816a74179dde5e8c9d039f",
+      "artifactSetHash": "24e5975cedf475a212dc40f8213e52acc5e355f3afeda850b611e60ea2b6e1ff",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-06",
+      "family": "robot",
+      "tier": "T1",
+      "sourceHash": "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103",
+      "artifactSetHash": "e8a678f4e49f4189dcb8bee540c1b869d6dcdde4f0815ff79f5e4c498568cf1a",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-07",
+      "family": "robot",
+      "tier": "T2",
+      "sourceHash": "c99aa30f426054651f33f1790f8c6c2e3dcaf228a45bb45b37f362df692f8bb6",
+      "artifactSetHash": "edf7e03b8ecbf2b7aacfaeabb871f4db4c481c68b967b3237b0ccc0d6677ec2a",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-08",
+      "family": "robot",
+      "tier": "T2",
+      "sourceHash": "242f6dd6f3096246d010eaf282b8a01b6dcdabb56a919e1d502fff411253edea",
+      "artifactSetHash": "11d8544e5843787f6b5ce4bea95f752bb20c253634591d5794bbe714329ea8c0",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-09",
+      "family": "robot",
+      "tier": "T3",
+      "sourceHash": "d2665fa621d78a78d97ab7e7cf999f2dee3c4ace1f1199552db8a2156ab29bfb",
+      "artifactSetHash": "61e962a2bb2e689d4095176bcf9e48b9e2ccbbc3f5247fd85e595fa00c3d0fb7",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-10",
+      "family": "robot",
+      "tier": "T1",
+      "sourceHash": "fabf997b27909c9ac626892bdc8ff580cdbf21dc601d0ba666a4fa9d69a7f718",
+      "artifactSetHash": "56d447d2ad4fcbb1302664b3d74f2e03c86eb03024c42794606536d1d17e6f48",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-11",
+      "family": "robot",
+      "tier": "T2",
+      "sourceHash": "3a448eaf9fe1f096d31590ef69530f5485ae3619f68b7e3dd6ba34ff3ec9b5ce",
+      "artifactSetHash": "ed7e442b2bebd4df288efc7c7540242d0fddc40a85c9a0b3dbfb0af7c3a2ab07",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-12",
+      "family": "robot",
+      "tier": "T2",
+      "sourceHash": "fe4e8bbeb6d68b82527150b7d4189e7feca4c3dfa550dc5415f8c168ff06db12",
+      "artifactSetHash": "c95d8f2e21454d6896c2f7b9498335b313ff00f75580b49f8ca52005c3893bfe",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-13",
+      "family": "robot",
+      "tier": "T2",
+      "sourceHash": "711852bca8789e99e51127d188c5f9ed3e845594addfaf61fddef550e5db7406",
+      "artifactSetHash": "33b8a07b474233051c0ca27f391a1a2086aebb8ef79db466ee0080c46474de5e",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-14",
+      "family": "robot",
+      "tier": "T2",
+      "sourceHash": "4b1218a57eb44eea1462aba62353bac910df7686dfc2c1b91d48ee1f3f0f8d84",
+      "artifactSetHash": "f54725b9b3bc8999a26c132979019392f8db445e5fc32f5074bf63aaae4e94e4",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-15",
+      "family": "robot",
+      "tier": "T2",
+      "sourceHash": "64b89e40cd89485402c65af37b9226f396005b2ec0b453928272454edda44261",
+      "artifactSetHash": "2a2bee3c793fc7b79d663f95df97c44afc4c910c7a9f8010354a67cc5dba6c13",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-16",
+      "family": "robot",
+      "tier": "T2",
+      "sourceHash": "87bc26b5bbbd02758a22e9df62bedbe371998dc177fff82b45a4877a7dda67ea",
+      "artifactSetHash": "b038af7ad4c478bc4a1798a928195ec54e970530470f2d2e6b41d1764b918756",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-17",
+      "family": "robot",
+      "tier": "T2",
+      "sourceHash": "51483ceb79c161549fe8b9c44460f0693f6e68a161027691c4c7475f1b8b61b4",
+      "artifactSetHash": "d4ce0804d47877df2ccc78f110f31615c3be2e49743badaa872be8fb18170beb",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-18",
+      "family": "robot",
+      "tier": "T2",
+      "sourceHash": "0744a05761aab09adad9405d4dc230fa6f752d5a0533b0283890b43614f3da2b",
+      "artifactSetHash": "2e45562a16b57123b803af244ef3ad3dda488fe4d3f3420bb088f79026131ad8",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-19",
+      "family": "robot",
+      "tier": "T2",
+      "sourceHash": "aa82052666e16e22ba919acc68e1a276d9c68e668b460b864221c8a65819b84b",
+      "artifactSetHash": "0126ad156a464e3412cd341bb4e2b6df027fc3a694e8efb73f3b37ff490f6076",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "robot-review-20",
+      "family": "robot",
+      "tier": "T2",
+      "sourceHash": "15746a0ef71d3caf7fcc55c2cc8f0a1d62133e2a8e18c89bc4b13ea73af9e838",
+      "artifactSetHash": "5e01e928daf53b3d88fd31d2c06e55ef80225ab3506154b873672c66636d97f9",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-01",
+      "family": "gearbox",
+      "tier": "T3",
+      "sourceHash": "fdd1aec8d83151704f5445bfc4c374acb1c62f1091ea5a019ecda82a778c1bb3",
+      "artifactSetHash": "b9e1e3a871304738bd6e237a898103d7d8119d177073a11b60d65e951ecadf37",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-02",
+      "family": "gearbox",
+      "tier": "T2",
+      "sourceHash": "69c3dbcb1b120623eaf0e5e525bfa7e5e2e3638aa9dce2a26c427c47602280b4",
+      "artifactSetHash": "73c42ed1802f12e808359ab6b2c718ebd64fe8a84e9b580862739f72ce3460e8",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-03",
+      "family": "gearbox",
+      "tier": "T2",
+      "sourceHash": "5e171f9695873a0fb0933dd7d333b30b89809fc7ad8d1e915dad1d9a3d066009",
+      "artifactSetHash": "f959662713477fed8d718770f9e22b652d433048a5dd62eb67590f83cb1c494b",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-04",
+      "family": "gearbox",
+      "tier": "T2",
+      "sourceHash": "234a768f45040a1df2ec2d47554fe048f8f9dfe293c0590b0d56476559436104",
+      "artifactSetHash": "3113bc1908bff2e289555664e4c74459826686e2636272156fddcb9e4b6d22e7",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-05",
+      "family": "gearbox",
+      "tier": "T1",
+      "sourceHash": "7dfe9e91c66bc0ed0721b82af6bcbed3130e28cb7aa8a882c398b4f97228d957",
+      "artifactSetHash": "1e1f9f25b7a6f59766cd84200430e969d2cd56a6ef1d4f763c35f231ebcd97a5",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-06",
+      "family": "gearbox",
+      "tier": "T3",
+      "sourceHash": "4d11d0e27d0cc0912c28a8727d4cc2ce6869f2fda418dfe7f7f10a742d2c1d6f",
+      "artifactSetHash": "edae845281a361aba7a991684513ced1ae99dbd9714adc7cbb2a43967bf33b33",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-07",
+      "family": "gearbox",
+      "tier": "T2",
+      "sourceHash": "0b9069caa4d457021df7825d6365183166df6914d86561638fc3002e1fedee04",
+      "artifactSetHash": "a0896f70a22839be6bfaab10f025c46e7e1106df4f14da425f7b7566d11c491d",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-08",
+      "family": "gearbox",
+      "tier": "T2",
+      "sourceHash": "b5aa4955b6e4e441f33e6d67f2b42a1b0c01e5aa5dd2e2810e85265215b71f36",
+      "artifactSetHash": "3931db81ad17eead955c9f7bb60aa78c8e8a4b4c2b16e3be80e12be51620fecd",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-09",
+      "family": "gearbox",
+      "tier": "T3",
+      "sourceHash": "b29a2f238b92b6616818d7b74a0ad8a85d52ac496f8d61bfc79cb1b1fe41725b",
+      "artifactSetHash": "0fcb968beddd51af32d9f81c9f0a7e7ddfddabd058cd05f564c92a6d4c024317",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-10",
+      "family": "gearbox",
+      "tier": "T3",
+      "sourceHash": "9e50abefed3a2a81a09fde4a3b31fc74dadf49a7b92f907e7e3535f5d12bd141",
+      "artifactSetHash": "f54379ff02f793d2cc4a44f35d6b8a9b2974cc5c141e183469207ee624a1bbaa",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-11",
+      "family": "gearbox",
+      "tier": "T3",
+      "sourceHash": "292afbd451ab1ce04fe3158f5adb575627c358c51f4ea768d3bc430eed2d6a40",
+      "artifactSetHash": "2502fe41a23bfa5b8c95736049af64f67926c9482b2d4d0b9a2b9cbf119f94f2",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-12",
+      "family": "gearbox",
+      "tier": "T1",
+      "sourceHash": "6a66de0b245fd5f3764358c105f39845922fb9485d5617e6537e39686844d51c",
+      "artifactSetHash": "38124a1d310e7ee5ac609263dcd323ae8cbcc9497b17532a33b43126c6227912",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-13",
+      "family": "gearbox",
+      "tier": "T2",
+      "sourceHash": "4d0fe353e753d07504e2ab4a1458b348304726cb1f4c9f0be0ca8d35061b0e49",
+      "artifactSetHash": "d23755efb4d9d5e917e43f02eaaa9c4d97298b5e4f1b39e2f51ea9d2fa5c010e",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-14",
+      "family": "gearbox",
+      "tier": "T1",
+      "sourceHash": "5b0b36d1168a1a3e89627712c774e6ec9f31ef86eb80934e5c7202f224b6807a",
+      "artifactSetHash": "818de5b217c2b29e2d87315e7fa5d1b3c6f90dff4a4ee7b15ccb34ba585b682f",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-15",
+      "family": "gearbox",
+      "tier": "T2",
+      "sourceHash": "58c33910be55d7819dba9ba6ab427799c1795abc1f795e05ba6db9b62080352a",
+      "artifactSetHash": "71a4f09de167ed0e759da2bfeb70cc8c570d4ddd5a558fcd1c3ef6daf9cb4b2d",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-16",
+      "family": "gearbox",
+      "tier": "T3",
+      "sourceHash": "64261c77be694cdf75b9d9383e58d73ac3e5a5c7f8e9eddad343f6ea53fec70a",
+      "artifactSetHash": "52ccf2c051b2765dce72e84e6131ceb1a554a9d35d7e6fda145e8dc844e154ee",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-17",
+      "family": "gearbox",
+      "tier": "T3",
+      "sourceHash": "8fac8fd28aa3c537679d8c2bfdb801c29fd01f5b13044af2ce388d6ea274e756",
+      "artifactSetHash": "d01771bf4971661bbbef17851ac261f0917974052be301952145797e720abd2e",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-18",
+      "family": "gearbox",
+      "tier": "T2",
+      "sourceHash": "f88f2b80dc74d5b756b5267ff6817107118fa50e0931f5de67f01ce409f7e204",
+      "artifactSetHash": "b2c761ce68ebec7f106a0bb713719d0ed99ebb9b92e0d69230630058e5591ffa",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-19",
+      "family": "gearbox",
+      "tier": "T3",
+      "sourceHash": "dfd73a4f40d4a8959fe535717a3a4e01e6cd8b1e776b7b017a8174fe37b29c03",
+      "artifactSetHash": "bf9b84bbd14fd80363e5e8ec2374d35d2d0152b7c863b4b62373af6f489436fd",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "gearbox-review-20",
+      "family": "gearbox",
+      "tier": "T2",
+      "sourceHash": "bb68f1875e2a724ffc8d6776584401243c308bb842a25bbd582f6565a63a5400",
+      "artifactSetHash": "ccaa278f511e7c8e7dc16c6fb6e1f90bee0fbd19d01bcec22371d602e1cdc269",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-01",
+      "family": "pressure_vessel",
+      "tier": "T3",
+      "sourceHash": "ebffe1fc48d9d736881e8ffb42fe4ecd33567872ed235137ed0011558223a7fd",
+      "artifactSetHash": "fdc95aaa90a1a48392feb0c789f84b99408d8421e53b876e7ea3da56b5b29491",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-02",
+      "family": "pressure_vessel",
+      "tier": "T3",
+      "sourceHash": "6ed434925bd098cb0c66615bd96ccbc6e19d4b0a142b0bedac5c412e2ff0e1e9",
+      "artifactSetHash": "ba7e7d37324d979391a0387735e236583b3adda0c28bda20de90c575159a92db",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-03",
+      "family": "pressure_vessel",
+      "tier": "T2",
+      "sourceHash": "50f0c1c0debdc35ac11682d3880011876141c936182989f4413e8a98f284c5e0",
+      "artifactSetHash": "b4c7842f2db4a3e063fe3a435205bc23d4e0ceee273c4b45256c3a9da3e6c232",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-04",
+      "family": "pressure_vessel",
+      "tier": "T1",
+      "sourceHash": "8c6aeed65c3a169f1c4f6ae6c83492b72c693b6d4fa56332f0e3749c6032bd4b",
+      "artifactSetHash": "7edc6f7a1d3a4fbcc361988b5f49067e536bebee7070c8bc946a958a767c64eb",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-05",
+      "family": "pressure_vessel",
+      "tier": "T2",
+      "sourceHash": "363d28e4cac6d5271ee04177ae14ccd3acc44dd8ba928188946e3545acf4eaea",
+      "artifactSetHash": "29f2b859d6d3650709cd1ea8ab669e9e50434ca4441821a34bcabd214b2d5da4",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-06",
+      "family": "pressure_vessel",
+      "tier": "T2",
+      "sourceHash": "f698142d610dd4270d5213362edba0343fb94392f34e8fa03cb86e73154b7b55",
+      "artifactSetHash": "2b8745cb6c4f77370b30de224cf94268ce1cbca1516e32b210044d653a8c537b",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-07",
+      "family": "pressure_vessel",
+      "tier": "T1",
+      "sourceHash": "03d809467c582641626debc7b3579a4f00e99b2be01b1c3e18b85b69f5685d93",
+      "artifactSetHash": "d31e153e295acb57721316f9cd1e040261ae76bc8128d41b18f52fa99be758c8",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-08",
+      "family": "pressure_vessel",
+      "tier": "T1",
+      "sourceHash": "f9f07db86ae166ce935f7c74d61a7a12dc67cb3f8b1c5a6999b33a81fec1b2d4",
+      "artifactSetHash": "90a4190cac5ccb0e05cc0e7e653b05378c77ec27bbb0f570cff631ee6b8940f9",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-09",
+      "family": "pressure_vessel",
+      "tier": "T2",
+      "sourceHash": "065e0d2cb5c3a767b4fa590fd0f89dd9ee3c15fee63274a5a17db4a1ccd5355a",
+      "artifactSetHash": "971d1b6a1cf022cbb40ef99ac9e21a1922650430c49514fe0b30faeffc6a2cd2",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-10",
+      "family": "pressure_vessel",
+      "tier": "T3",
+      "sourceHash": "9ab6e4f7ed2fd2f0155d13350203bbf0ccdc331c2a5217a75882bedadb2092bb",
+      "artifactSetHash": "f63138ae1e97c95b26af45ea661cc1d6d47966625634a7116bfdb14e6c3fb922",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-11",
+      "family": "pressure_vessel",
+      "tier": "T1",
+      "sourceHash": "493dff8203ef2ac1b215d398a8cfeee52991c35d61ecd864005f48983e15a946",
+      "artifactSetHash": "b69ade1cd76117709de71d0a0044b205322f6dd4bd9692f38c8e03da62234170",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-12",
+      "family": "pressure_vessel",
+      "tier": "T1",
+      "sourceHash": "b2a29a800fccd3cfb24d9e2a02a7064d293db3bb584dc084dbb3cb09c05b455c",
+      "artifactSetHash": "95251170445658e417af6e66363b89bbde9d4ba6cab1ab0eb993a9e0cb4bc3da",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-13",
+      "family": "pressure_vessel",
+      "tier": "T1",
+      "sourceHash": "c4625d2d9cbf060e3b5deda183326ed6d3d1365f509a1d99e957d5ed7a08eb2b",
+      "artifactSetHash": "672f8bfb0c2de9006eba4d7d6db14a2b07609b867bda025b272299c122d7654e",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-14",
+      "family": "pressure_vessel",
+      "tier": "T1",
+      "sourceHash": "099c5ae609ab7ee6884d52835219905d15cdc3b6bf20ef6c3f13d174109c9009",
+      "artifactSetHash": "d6837f51187b648e573d78c5618a65f738787bc745f2a1cc6ebbd3937e7fc383",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-15",
+      "family": "pressure_vessel",
+      "tier": "T3",
+      "sourceHash": "dd64f9c4f2c4ac50c9699baf8f3c9231368277961713298f37e0ca10f8def077",
+      "artifactSetHash": "bc27cfc6491be1c33375afda17831d8b42e7165808faeaaa285cd5f8de4f58ed",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-16",
+      "family": "pressure_vessel",
+      "tier": "T3",
+      "sourceHash": "46a60e84230d8dffe5d31d0117eed1f1e44bea7cda70a9fb707ec606bf12458e",
+      "artifactSetHash": "44be5b918fa0a7af6947de7342f34b7e6b6e8e259894ab173700d8c33d20ef79",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-17",
+      "family": "pressure_vessel",
+      "tier": "T3",
+      "sourceHash": "45e7462cb4d1250ddc119ded2087fbe798708f27e64f99784804c7eccf5017de",
+      "artifactSetHash": "951fe8bed5c86781ebcb0ab6d1b1d1993fc17f060a48526bcb98c876230e3e85",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-18",
+      "family": "pressure_vessel",
+      "tier": "T1",
+      "sourceHash": "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3",
+      "artifactSetHash": "40cce17b5fe8a68656a38e89afb4fe2e97591859feb3f9929ade85ad82f664de",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-19",
+      "family": "pressure_vessel",
+      "tier": "T3",
+      "sourceHash": "49383fe2a7c870ca2be402b550f8a743f6457a8d6c5d2c18c53017d384497e0b",
+      "artifactSetHash": "d2dcc2a448fe0f8b43218b5c2bd4c46f3c4aa979eaa17fdc710400c66d3b7b67",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-20",
+      "family": "pressure_vessel",
+      "tier": "T2",
+      "sourceHash": "b55534d0ee21e1bd487b90a4a064a10fdac0d606c3fbd85b05eb203dabf4dd1f",
+      "artifactSetHash": "ba8ba5f9d524f821e7a875524a9960bc0eae90411f99739d4faf7f7bc769386b",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-01",
+      "family": "turbomachinery",
+      "tier": "T3",
+      "sourceHash": "a410cbdb4d445ede228132662f3bc2828704533d01acb42e14c3c9b934dccd04",
+      "artifactSetHash": "161852b249a7bf250a70b9ec69a48169e15a68d51330c69041ed0fe5fa1ffd98",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-02",
+      "family": "turbomachinery",
+      "tier": "T1",
+      "sourceHash": "a3b31ac6fcd3b4075bcc705e5ab9e926710d7b185ec709203019705690b1e00f",
+      "artifactSetHash": "e08a14c44fedbb23221ae8f1cf984a9098496bf48cf1826dba154ae7a2cbf66f",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-03",
+      "family": "turbomachinery",
+      "tier": "T3",
+      "sourceHash": "0add54435647798697b9e3514952f4b75709ba9b8267e0f77762fb4e7225f2d2",
+      "artifactSetHash": "8288c32e351eb73f5fb2c40305995e4a7bf63a2d743c9b7f903367ef4bb4505a",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-04",
+      "family": "turbomachinery",
+      "tier": "T2",
+      "sourceHash": "2d4ca8f075f65006cc153dd16c5275d0e43ff4bb56741bd64126b2291272f6fc",
+      "artifactSetHash": "305722d02bcadc810b33838ec3700fa509a2c0556a2ffbf9f392a42033654767",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-05",
+      "family": "turbomachinery",
+      "tier": "T2",
+      "sourceHash": "ac47f94dec47cfacf52d7cc778389dbb27c15e2396a8961f24124cca79267ed5",
+      "artifactSetHash": "ea7f37eda97e7dcf6eec90b047e9898180a85862705366ce1291502c86b3127b",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-06",
+      "family": "turbomachinery",
+      "tier": "T1",
+      "sourceHash": "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b",
+      "artifactSetHash": "40bd513306fa1a58c09b0ab37d82edcc1b2ec843248d0ced2dd860e8962fa4b2",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-07",
+      "family": "turbomachinery",
+      "tier": "T1",
+      "sourceHash": "58cc596957c6818ac6deae5a2d0e2db8be4d35b16563a6c1503f24f494532229",
+      "artifactSetHash": "3f0a182582896fe234af4a9bb9125eae55f8da0411bdd0f55297b36260541e1d",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-08",
+      "family": "turbomachinery",
+      "tier": "T3",
+      "sourceHash": "62821b5b8eb4e25c3ee6c80a20158135e2e2a87fb5b971d0a78e91233e7c836f",
+      "artifactSetHash": "ca9f15995561d5827e2785fbe731ec77ee79eaafc56a2706f027d22d4ba58afd",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-09",
+      "family": "turbomachinery",
+      "tier": "T3",
+      "sourceHash": "b375dee43eb099043cf9dab7553835cc58cef5165d202bb5954328ae26866e20",
+      "artifactSetHash": "f9347708118235b3d241932312af681aeee39e76ec099c5430783bf7fda3c1dc",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-10",
+      "family": "turbomachinery",
+      "tier": "T3",
+      "sourceHash": "c66dc66ec44193845d0035baa984dab788ba3a02f2e58112dc7bb406d4f10e42",
+      "artifactSetHash": "687b4b4777a29ea35e54bb9bbd54b158b788a42b29bec1b3bd09c9d331c9ed7a",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-11",
+      "family": "turbomachinery",
+      "tier": "T1",
+      "sourceHash": "586e39d8d37694d2db53345430eb3012b7fa46eb12ac81dfd376804594d3cb45",
+      "artifactSetHash": "827ec879ee2d2072449f5ba714191ed527e6dea3848436e5fb632f5e49d7397b",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-12",
+      "family": "turbomachinery",
+      "tier": "T1",
+      "sourceHash": "630ca7bff17c36d0474c9e1faf8e642cac3d48967b11553351d253fef64c1988",
+      "artifactSetHash": "fddabaa99db60b59dfa3547d3f5d5773ffe58db240f9ca037bf8a1efcca3a120",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-13",
+      "family": "turbomachinery",
+      "tier": "T3",
+      "sourceHash": "790039e07be68d0a37ff82f859628f5454e21d831b2f396292315ba728d00427",
+      "artifactSetHash": "28e179b48f0127d1f6cb4bcd92fd33e8c3a8736d02595d0bdb362221f08ad2f6",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-14",
+      "family": "turbomachinery",
+      "tier": "T3",
+      "sourceHash": "ff5eb857b2c593b3b4a3694d32c907cc64571990b4ef52e96d819d8c1adaa4c1",
+      "artifactSetHash": "35b19a505d654a738070235b4d8a69c9aa9f63dbf3f61f999390016bf1393e84",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-15",
+      "family": "turbomachinery",
+      "tier": "T1",
+      "sourceHash": "1729564cde783c659edad2d7307ea575e367287cc8aa86a37b7bd64343e911f5",
+      "artifactSetHash": "0e21653ae69272e5aca4c81f713b80bd6dee090fcde3cc0150a3845c10e9b93d",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-01",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "e1ec023dd4f37d1ada0283b8afb44715d2c821d29603fa62bda0fd2b2476d222",
+      "artifactSetHash": "08442f4ef05f438cd593b04794314b063508eb9be188a95fcca91d7001a1e7a6",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-02",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "da6e16cd8aa230b88170120ebdbea6518932eeda126483b220e840597d79dc01",
+      "artifactSetHash": "b67972006717340d4a3f991a99a830a0bde23b0978ce62673af660f459ff9d6b",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-03",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "44e86604b749c5c317f8a5cd2caa56c47d7e0acc733bcd22dfbf6d446118d40a",
+      "artifactSetHash": "f9ad6209d8c33029fb7273a709289ef9aaee8cda5ec3e2e36ff8046cd14bbafa",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-04",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "5177fd3342514c97222530561fd5e1936984ef0e5f778da4868e35f356bcf13e",
+      "artifactSetHash": "6aa25c5473efc612b9a737e4ab09dd3a20a59875e3e3aee947e1e4ed1d9ee6ad",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-05",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "82c45a79dc1ddab3df10759e954f03ddc67820412a4723df349a655dc1999f00",
+      "artifactSetHash": "4f8a077899fa1b655d6891753ee5c5ae777a0b16ecab48016fa5ea8dd5e975ab",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-06",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "88912d84be2213989efbadb1581de32e544bf5f6fb32ae432248af21c29101b9",
+      "artifactSetHash": "fa499284d2db93c79d39c7c246aeea1d9ec45eaf3af5c8b11e928e5ea1b54ee0",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-07",
+      "family": "factory_equipment",
+      "tier": "T3",
+      "sourceHash": "203c6a549256546bd5eb6e52a3885b7deabe63afe8c3317e30b055a71883eb31",
+      "artifactSetHash": "819a4881a7e1e49297ac9961beaf773024c86e10a0319d069a8ae55cb06b5e11",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-08",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "bba69739c306fca451490a153d867dce10b97d4c2d3b569c947f3f51507efae0",
+      "artifactSetHash": "3a48f17277fa651a65727f0f049d336a42075f73297c9c4f432c3494099d403e",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-09",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "30be3ac734504e58ab9344c5208846b8f1782f8f7406e2ed90e141527554ce5c",
+      "artifactSetHash": "a1a47b0ba7245b93aae79be347581e8aeb63073f4dabbcae9f9df9a438ec7e21",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-10",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "dcf9555241db72f4d7df6ca55821f1f3b762c0606587324d222525a77d03c97b",
+      "artifactSetHash": "b698e25b6fe226cac15a1ac7e874bd53188826f891637a8908c58973f5bbc296",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-11",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "adbd309e954ccc4cb3ac8f5cc85daf9c1c3cb452e72928f676f906be5a013dc4",
+      "artifactSetHash": "1e4cd7453ab3d67b7a884b2da49dba39fc4bd0e794b666b3e8cba4a751f5dbb6",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-12",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "accb39abe0201252aeb49b8a593e07842acdbc39c7ebc84c8f5c7196258cce7c",
+      "artifactSetHash": "1b86d9461a46f5625f5b07c383589ec2a25c7c6c53120625fbd4ead285665518",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-13",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "959bd95113ddd77cf10d487c19b457cbcee9af38e62ce6760ac512aaaacd754c",
+      "artifactSetHash": "9a187dc87d95bcb6cdcb72edf32b0107f5faaa032515ec44d02e95670031225e",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-14",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "1e1ea5a6d65b4fa97e40841740ffbb3902376042601994a3fbc37a628a24a502",
+      "artifactSetHash": "736b7aeb085dfc58618db9e32426ae1f36af920c3ead245f01425a45f1ce0181",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-15",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "7dbff038c6b2ac2051d774854d32ba622ac0508e220209a05d5c0bf9e62e5b75",
+      "artifactSetHash": "42fe7ccce09dceab4eb1295ac0c9ef0bfd9ca5a2d7611800b6a470911252e2b5",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-16",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "e9de6710b78167cf0429b5d2bd23ddc311f50c2246049667bbf8f1f8b52760df",
+      "artifactSetHash": "8bd437fd31ac45484a1b65d7f82e7c48294928d8657dcb4d350afda8aac14b0c",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-17",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "a1bfbc1110c5ccd848a29a460560ce8ba005e4ed688f8ba25a80393130919666",
+      "artifactSetHash": "cc39cc3cb1107d1c5568c3e9d01e4061655ed4b4eb0de552e258212ab6207017",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-18",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "c9be6bf9eb716a3fefc2a15a57809e57aa78a7b0f1e83990763e29fdee0e33b7",
+      "artifactSetHash": "52ea823b39af1cd40337c7ed99f8095ae248e28db5fef367babac2350400fb54",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-19",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "57a301387e3a9188ec2caf3c7a880d6dfaadf6d56cc9558bc9deb7b7133b4394",
+      "artifactSetHash": "3195fdf1d92b8c8cd17a87732f90fd8fc7847ec17e0e7d9edfd59111be3eb636",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "factory_equipment-review-20",
+      "family": "factory_equipment",
+      "tier": "T2",
+      "sourceHash": "29a138839c211003a1e62cf58017a03ed7d0a0c22c4ccf4577b2b1744fb626b1",
+      "artifactSetHash": "b6201dc8969d52ac3ce3f3d398545eedb81dcf646aa52ea04341bb8e735d68f2",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-01",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "65b8b42f41ac9d545c1c695a2f2d0819b7af9dd4136673c36d387baa1259ceb5",
+      "artifactSetHash": "cbbd044d9be7dc4d1de4125f8d53a50ad95eee423b0d0de1115d10e57ef80d2f",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-02",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "535ae44a61a2023c77ac45c68039e69f1826de222cf5d75cce7834b5af282bca",
+      "artifactSetHash": "b4cdcaffd8b6ef0762f54763416ee04e09adbef3655717895202cec5f321c2e5",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-03",
+      "family": "interior",
+      "tier": "T1",
+      "sourceHash": "ee69c99ad3965e28d4ab58bc86fbff37b69ddafa3fbfbbcb2c805894110d86da",
+      "artifactSetHash": "8ab57419cb58f10222d2396a553cf649fe0ed74e114ded628b81952a228523d0",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-04",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "9623975cea242ed42881d37ea07e67268ac15df03bb8b1f38d0715aab4c2fccc",
+      "artifactSetHash": "ac988fc50d9125db78b82d505472e6fb1a95582bfaeebc71a1a6c8a8d156f5ca",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-05",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "507c01a31e48c1102b1b99b5071eafa8518a8c23bca9341ce400be6c0ffa4774",
+      "artifactSetHash": "c2167528a8e71f4a97302583ec939a8af5399a8bdcadf3a88f5677b4fac6eadb",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-06",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "d23ba207b032910b352ee1d8146412de3ece8fd4ae6bd92c74970901f2d49dc7",
+      "artifactSetHash": "fa915627d23a9c7dd6d2e792c5c22045d9476f96bd4f89191074516d037f5147",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-07",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "152699c9a9b0930d5f4b49851b551ee56549d6e3cad4b9d911a7feb6df779716",
+      "artifactSetHash": "7c7b8f3ece888563d122b6f581a77fb647961e572157c38d83925490969a4240",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-08",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "b9ad0a38dbccd29e040b2af7d81b089f474b55a40242fcbe10fca53e1a8e1a4d",
+      "artifactSetHash": "f2e2cb8c3c086413ac9eace6c6ecfb23451f301b610b3dbe850cfec669b8d725",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-09",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "0ec25f41c7a231268f97544543f4cdd9ba33b2dc4d490cdce4d64b51c6d91605",
+      "artifactSetHash": "e1e0012451ae0b50fd8412ff3d8a0fad937cb6579110ef36669c1c67368aea3b",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-10",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "ea6f7406331edf8c878dad6d21a8e47265e385e34e884c1ca7a9020ea508d756",
+      "artifactSetHash": "9dfdf081ca2805f595aa9fcc7454dd6d76cbbe55296c07ca5a5f0ea1c33e4e56",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-11",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "8a7a47a997c9ca630bbc5dc59b5c76e24fe39b0dd71dac49b8caf7222e179625",
+      "artifactSetHash": "e64d8308692af359fe4b6bbe68c08f71751fa057cd311c40676f9e7c00a830bc",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-12",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "d4909667dbfa24d8271d6b374390885748352015e67afcc8d6791541e9262159",
+      "artifactSetHash": "818c70d04a553eacbbc304bfd86f9a31f51cd4deada8d25809c37dd2d7d72830",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-13",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "22806fb5aac7ba5916f739d550027c1f6e04dc23e0f184ea48cf0fb7074292ec",
+      "artifactSetHash": "6e51a81abfc8253b50ba35c51052808199526a3cae335c83d2ccab5ff817bf9c",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-14",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "3688c0fa32236469bf72173ced8ce4e476dfd384cb3ed8aded797fbfb1db77d3",
+      "artifactSetHash": "84d5606188fbe5b57adeabeb5f73f9711bffb7c7db9a8ef9ae3c18880ae7025e",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-15",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "35b28cb1c4e8bb5ee00624aa7b53be232563a99eb90273690ea1d5be36d21166",
+      "artifactSetHash": "0f2cfd786c222f4045af4b9a17f43e9ffd99b04ab4cabf908a35a6247611e640",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-16",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "6edbd4f915ae9704fad91124af4d79940101512d01c68908f0f994260e5113bb",
+      "artifactSetHash": "27a325d8179d8c6b96be624043f0cd1f34345f58870ec55845a0261499ddf7c3",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-17",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "7bc3bdaaa41b0fe390efb70a45d89608b652adde99bd04731ac8f0f2d87d4b24",
+      "artifactSetHash": "cd52b93044b0c7b10b121c3b5fb40b93f308aa68844473875e4ac1e18510dbb9",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-18",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "ef04a38466fbfb4a4b8e540a2abd2ee1d973663edb9ea5b359dba535862299f1",
+      "artifactSetHash": "7a73cccfa6252cd0f3d32dc4e35ed1c9803374a9a3f0bfaadceac06d75baaa2e",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-19",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "89bd6ed1cbca2f2023320bdb8060278a502c83cd024fc5bd60bafb00e609f52b",
+      "artifactSetHash": "e7092d27351209658a243238cb115748e71e743e22e79c477ce1ab8dc39effec",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    },
+    {
+      "caseId": "interior-review-20",
+      "family": "interior",
+      "tier": "T3",
+      "sourceHash": "2f0ddfee466206c959faf0b5398ac200738b13791ea6ac202ab8e1c6a3cac997",
+      "artifactSetHash": "5543ab8fb94d4e1db83c25b53ff7d6effe85cba19fe45546fc935b82884cd6e5",
+      "requiredAssertionIds": [
+        "requirements:source-intent",
+        "part-definitions:count",
+        "occurrences:count",
+        "hierarchy:structure",
+        "dimensions:governed",
+        "features:required",
+        "step-roundtrip:preservation",
+        "transforms:occurrences",
+        "joints:interfaces",
+        "body-membership:definitions",
+        "motion:operating-range",
+        "collision-clearance:operating-range",
+        "manufacturing:release"
+      ],
+      "status": "pending",
+      "scoreEligible": false,
+      "licenseReview": null,
+      "holdoutIsolationReview": null,
+      "assertionReviews": [],
+      "signoffs": {
+        "domainReviewer": null,
+        "independentReviewer": null
+      }
+    }
+  ]
+}

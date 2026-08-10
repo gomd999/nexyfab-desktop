@@ -1,0 +1,8 @@
+{
+  "status": "not_run",
+  "releaseReady": false,
+  "errors": [
+    "native_assembly_evidence_not_run"
+  ],
+  "warnings": []
+}

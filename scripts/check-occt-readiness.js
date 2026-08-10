@@ -46,6 +46,9 @@ const path = require('node:path');
 /** Repo-root-relative paths the checker cares about. */
 const WORKER_JS_REL = 'public/occt-worker/occt-worker.js';
 const WASM_REL = 'public/occt-worker/opencascade.wasm';
+const COMMERCIAL_WORKER_REL = 'public/occt-worker/occt-worker-commercial.js';
+const REAL_WORKER_REL = 'public/occt-worker/occt-worker-real.js';
+const LOADER_REL = 'public/occt-worker/opencascade.js';
 
 /**
  * 1 MB threshold. Real OCCT WASM is ~12 MB; the bare opencascade.js loader
@@ -54,7 +57,7 @@ const WASM_REL = 'public/occt-worker/opencascade.wasm';
  */
 const MIN_WASM_BYTES = 1 * 1024 * 1024;
 
-const VALID_MODES = new Set(['stub', 'wasm', 'auto']);
+const VALID_MODES = new Set(['stub', 'wasm', 'commercial', 'auto']);
 
 /**
  * Run the readiness check.
@@ -82,7 +85,7 @@ function checkOcctReadiness(opts) {
 
   if (!VALID_MODES.has(requestedMode)) {
     errors.push(
-      `invalid mode '${requestedMode}': must be one of stub|wasm|auto`,
+      `invalid mode '${requestedMode}': must be one of stub|wasm|commercial|auto`,
     );
     return { mode: 'stub', warnings, errors };
   }
@@ -112,11 +115,11 @@ function checkOcctReadiness(opts) {
       }
     }
   } else {
-    mode = requestedMode;
+    mode = requestedMode === 'commercial' ? 'wasm' : requestedMode;
   }
 
   // ─── shared check: worker JS must always be present ───────────────────
-  if (!workerJsExists) {
+  if (requestedMode !== 'commercial' && !workerJsExists) {
     errors.push(
       `missing ${WORKER_JS_REL} — run the copy step from occt-worker/CONFIG.md ` +
         `(\`cp occt-worker/occt-worker.js public/occt-worker/occt-worker.js\`)`,
@@ -136,6 +139,15 @@ function checkOcctReadiness(opts) {
         `${WASM_REL} is only ${wasmSize} bytes (< ${MIN_WASM_BYTES}) — ` +
           `placeholder file? Real OCCT WASM is ~12 MB raw.`,
       );
+    }
+  }
+
+  if (requestedMode === 'commercial') {
+    for (const required of [COMMERCIAL_WORKER_REL, REAL_WORKER_REL, LOADER_REL]) {
+      const absolute = path.join(root, required);
+      if (!safeExists(fs, absolute) || safeSize(fs, absolute) <= 0) {
+        errors.push(`mode=commercial requires non-empty ${required}`);
+      }
     }
   }
 
@@ -206,6 +218,9 @@ module.exports = {
   parseModeArg,
   WORKER_JS_REL,
   WASM_REL,
+  COMMERCIAL_WORKER_REL,
+  REAL_WORKER_REL,
+  LOADER_REL,
   MIN_WASM_BYTES,
   VALID_MODES,
 };

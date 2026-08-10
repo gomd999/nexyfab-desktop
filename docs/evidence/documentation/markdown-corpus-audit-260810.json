@@ -1,0 +1,4219 @@
+{
+  "schema": "nexyfab.markdown-corpus-audit.v1",
+  "generatedAt": "2026-08-09T23:49:18.016Z",
+  "policy": {
+    "sourceMutation": false,
+    "dependenciesExcluded": [
+      "node_modules",
+      ".git",
+      ".next"
+    ],
+    "semanticAuthority": "ACTIVE_EXECUTION_MASTER.md; historical plans remain non-authoritative"
+  },
+  "roots": [
+    {
+      "label": "new/docs",
+      "exists": true,
+      "markdownCount": 225
+    },
+    {
+      "label": "7.3 example",
+      "exists": true,
+      "markdownCount": 38
+    },
+    {
+      "label": "new root",
+      "exists": true,
+      "markdownCount": 11
+    },
+    {
+      "label": "nexyfab.com root",
+      "exists": true,
+      "markdownCount": 1
+    }
+  ],
+  "nonMarkdownReferenceRoots": [
+    {
+      "label": "document(manuals)",
+      "exists": true,
+      "markdownCount": 0
+    },
+    {
+      "label": "BIM 적용지침(단지분야) 개정(안) 및 부속서 전문",
+      "exists": true,
+      "markdownCount": 0
+    }
+  ],
+  "summary": {
+    "markdownFiles": 275,
+    "bytes": 3688562,
+    "filesWithoutH1": 4,
+    "duplicateContentGroups": 4,
+    "missingLocalMarkdownLinks": 0,
+    "markerCounts": {
+      "todo": 21,
+      "notRun": 335,
+      "planned": 97,
+      "blocked": 110,
+      "incompleteKo": 290
+    }
+  },
+  "missingLinks": [],
+  "duplicateContent": [
+    {
+      "sha256": "83d9a1fb26e6fd6814be1e4872489539c23367ac1ae5c58d7382ec80406d7315",
+      "paths": [
+        "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.7.3_CONTACT_CONNECTOR_NATIVE_SI_KO.md",
+        "7.3 example/PBAS_0.7.3_CONTACT_CONNECTOR_NATIVE_SI_KO.md"
+      ]
+    },
+    {
+      "sha256": "cadd19b858a1301ad3ca8f617124f87bfe0fcc2b2f6dae9be9fcb106ba965a0f",
+      "paths": [
+        "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.7.3_IMPLEMENTATION_REPORT_KO.md",
+        "7.3 example/PBAS_0.7.3_IMPLEMENTATION_REPORT_KO.md"
+      ]
+    },
+    {
+      "sha256": "0f4aac25d957edae7a8511050cbbbdef54b8f7177e87aa9bcef263fc6779d0b0",
+      "paths": [
+        "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.7.3_VERIFICATION_SUMMARY_KO.md",
+        "7.3 example/PBAS_0.7.3_VERIFICATION_SUMMARY_KO.md"
+      ]
+    },
+    {
+      "sha256": "5d9f34cbf39c70eb4634d653c04a4bfe08bca196c5b59c666070b07edd366878",
+      "paths": [
+        "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/VERIFICATION_SUMMARY.md",
+        "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/VERIFICATION_SUMMARY_V0.6.md"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/ADVANCED_MECHANICS_IMPLEMENTATION_STATUS_KO.md",
+      "bytes": 1232,
+      "sha256": "4f0ac2f58b692b2bc5236dd348df3bdc0a9e4da15d993fe02c43b625f03daae3",
+      "title": "P-BAS Advanced Mechanics 구현 상태 — v0.7.3",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/ARCHITECTURE.md",
+      "bytes": 3865,
+      "sha256": "f1d56b67893b84266aa75d91c7bd09093b49233fb6b97e5e6af61a821af2c83b",
+      "title": "P-BAS 0.6 시스템 구조",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/CHANGELOG_PBAS_0.3.md",
+      "bytes": 1282,
+      "sha256": "19bcf11d8520f2e75050a1eb84d92a86c5d5ed32a0040aa0b6478f981c972ff8",
+      "title": "P-BAS 0.3 변경 기록",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/CHANGELOG_PBAS_0.4.md",
+      "bytes": 2617,
+      "sha256": "4d8b6b7d1ffd90fcc4ddd46ffedb6632dfc642f34f9560c535accfc61925ffa1",
+      "title": "P-BAS 0.4 변경 내역",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/CHANGELOG_PBAS_0.5.md",
+      "bytes": 3060,
+      "sha256": "80b67ef4f5c9f31d0f154245b89882edd67032434d8d7d3360d49e51356feb5f",
+      "title": "P-BAS 0.5 변경 내역",
+      "headings": 12,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 2,
+        "incompleteKo": 2
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/CHANGELOG_PBAS_0.6.md",
+      "bytes": 2609,
+      "sha256": "ad46396c0f45c8ff990dec6529af1ccb371bc66d3d5e4c63fe5d491bbb9fb540",
+      "title": "P-BAS 0.6 변경 내역 — Solver Qualification",
+      "headings": 14,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/CHANGELOG_PBAS_0.7.1.md",
+      "bytes": 1412,
+      "sha256": "58d25a9fc716056a553679b3a265d60f514862485fbf766fb76a027dbb6b46d8",
+      "title": "P-BAS 0.7.1 Canonical Mechanics Integration 변경 내역",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/CHANGELOG_PBAS_0.7.2.md",
+      "bytes": 1660,
+      "sha256": "ec983fea908842089e0f81737d039628e7368c45c5794634ffc048473171d324",
+      "title": "P-BAS 0.7.2 Native SI Migration 변경 내역",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/CHANGELOG_PBAS_0.7.3.md",
+      "bytes": 1760,
+      "sha256": "252c2b13c9b8d1242947896911664a64e2c929d589829881c5668e20a334270c",
+      "title": "P-BAS 0.7.3 변경 내역",
+      "headings": 9,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/CHANGELOG_PBAS_0.7_ALPHA.md",
+      "bytes": 1548,
+      "sha256": "495c2a84bc928c4ee8220f32fb28d92e0574847a1961a55262d30cf8a67790d4",
+      "title": "P-BAS 0.7.0-alpha.1 변경 내역",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/IMPLEMENTATION_REPORT_PBAS_0.5_KO.md",
+      "bytes": 3580,
+      "sha256": "9ba71a7653d4d6ce8ee27be1ab703867084b8946ae947cdb5c13ea19948366ae",
+      "title": "P-BAS 0.5 전체 역학·검증 통합 구현 보고서",
+      "headings": 12,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 3
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/IMPLEMENTATION_REPORT_PBAS_0.6_KO.md",
+      "bytes": 3848,
+      "sha256": "2520a134ff1dd8d0aaec459090ccd1dd9d15e79b9ff82669640caa76713e975b",
+      "title": "P-BAS 0.6 Solver Qualification 구현 보고서",
+      "headings": 9,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.4_ENGINEERING_INPUT.md",
+      "bytes": 1893,
+      "sha256": "e1a5335b7521b6091dcdf81573ced05fce91fb2fd9e660ec1e2b34b8556aa79a",
+      "title": "P-BAS 0.4 엔지니어링 입력",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.5_ENGINEERING_INPUT.md",
+      "bytes": 3876,
+      "sha256": "edc26137bc92607cbeab786f8675a8697fbf5f97cd88c668b1f4577e00343e3c",
+      "title": "P-BAS 0.5 엔지니어링 입력 예",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.6_ENGINEERING_INPUT.md",
+      "bytes": 6147,
+      "sha256": "e9bd32417cb3c744ce183c3a55a6edd67fe3a8a2a0b05bbeb4e8f268a04ff776",
+      "title": "P-BAS 0.6 엔지니어링 입력",
+      "headings": 3,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.7.1_CANONICAL_INPUT_KO.md",
+      "bytes": 1129,
+      "sha256": "8843d6a3f7224c5bcda42bf5a7142d4e5ef5d4beeb80b73ce93c68c203995d21",
+      "title": "P-BAS 0.7.1 Canonical 입력 형식",
+      "headings": 2,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.7.1_IMPLEMENTATION_REPORT_KO.md",
+      "bytes": 2657,
+      "sha256": "0658ad24b2bec974f94db4871b2e52fcfe72828fa56b148c14c6dcf00f36f122",
+      "title": "P-BAS 0.7.1 Canonical Mechanics Integration 구현 보고서",
+      "headings": 9,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.7.1_VERIFICATION_SUMMARY_KO.md",
+      "bytes": 1089,
+      "sha256": "a82a704f3e8a76314d61e953367be4364a761c372a97bd6f340760d104a62225",
+      "title": "P-BAS 0.7.1 검증 요약",
+      "headings": 3,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 1,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.7.2_IMPLEMENTATION_REPORT_KO.md",
+      "bytes": 2455,
+      "sha256": "c534ac3d056fbdd19efc1d89c22edfd488299502a662249925eefcc0a6a400e9",
+      "title": "P-BAS 0.7.2 Native SI Migration 구현 보고서",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.7.2_NATIVE_SI_MODEL_KO.md",
+      "bytes": 2003,
+      "sha256": "595ac9d810f119c76d123079ded54d6daae7b70264d46f877bb0a17e09d93dd2",
+      "title": "P-BAS 0.7.2 Native SI 모델",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.7.2_VERIFICATION_SUMMARY_KO.md",
+      "bytes": 1316,
+      "sha256": "62c4ed88319b36add6769d1dedd813637b45afefe9c481f32765e2a296c20cd3",
+      "title": "P-BAS 0.7.2 검증 요약",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 4,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.7.3_CONTACT_CONNECTOR_NATIVE_SI_KO.md",
+      "bytes": 2907,
+      "sha256": "83d9a1fb26e6fd6814be1e4872489539c23367ac1ae5c58d7382ec80406d7315",
+      "title": "P-BAS 0.7.3 Contact & Connector Native-SI 데이터 모델",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.7.3_IMPLEMENTATION_REPORT_KO.md",
+      "bytes": 2639,
+      "sha256": "cadd19b858a1301ad3ca8f617124f87bfe0fcc2b2f6dae9be9fcb106ba965a0f",
+      "title": "P-BAS 0.7.3 구현 보고서",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.7.3_VERIFICATION_SUMMARY_KO.md",
+      "bytes": 1678,
+      "sha256": "0f4aac25d957edae7a8511050cbbbdef54b8f7177e87aa9bcef263fc6779d0b0",
+      "title": "P-BAS 0.7.3 검증 요약",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 4,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_0.7_FOUNDATION_VERIFICATION_KO.md",
+      "bytes": 1226,
+      "sha256": "c6f73010253ce4650be7dce1082ab2a48dd9bc8364fbd8adfdb4df483254f690",
+      "title": "P-BAS 0.7 Advanced Mechanics Foundation 검증 요약",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PBAS_ADVANCED_MECHANICS_MASTER_PLAN_KO.md",
+      "bytes": 15446,
+      "sha256": "8bdd492d5393a1c427829e18008ea4848f718951cd52319bea089a1ce7b26a89",
+      "title": "P-BAS 고급 역학 마스터 플랜",
+      "headings": 40,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/PHYSICS_GROUNDED_BREP_METHOD.md",
+      "bytes": 5958,
+      "sha256": "a0c1b1bf340b617d4c57227873c7c915e7b9a2dd1af9eeb8f1124a95d657ae8e",
+      "title": "NexyFab P-BAS 3.0 / 구현 버전 0.5",
+      "headings": 15,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/README.md",
+      "bytes": 6977,
+      "sha256": "5579f412964c0b384e76602862955327be6d5ab673090a750ecf55646ebbab7b",
+      "title": "NexyFab Assembly Studio — P-BAS 0.7.3 Contact & Connector Native-SI",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 2,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/STRUCTURED_EXTRACTION_METHODOLOGY.md",
+      "bytes": 4655,
+      "sha256": "e9dcfa52bf4579f9c062e67701ffa1c047b6a460af716df064aedc5d6d1109f3",
+      "title": "NexyFab 구조화 추출·계산 방법론 v2.0",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 1,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/UNIVERSAL_ASSEMBLY_IMPLEMENTATION.md",
+      "bytes": 3582,
+      "sha256": "1783297c34bfb434f61413521170d5a65643e5c074a429c25f03ac5379275cd7",
+      "title": "NexyFab Physics-Grounded Assembly Implementation 0.3",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 1,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/VERIFICATION_SUMMARY.md",
+      "bytes": 2069,
+      "sha256": "5d9f34cbf39c70eb4634d653c04a4bfe08bca196c5b59c666070b07edd366878",
+      "title": "P-BAS 0.6 검증 요약",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 5,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/VERIFICATION_SUMMARY_V0.4.md",
+      "bytes": 1462,
+      "sha256": "3b857c16c1579e8eb4b7276e4778daac1de345822beebc012f032749f8d185ed",
+      "title": "P-BAS 0.4 검증 요약",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/VERIFICATION_SUMMARY_V0.5.md",
+      "bytes": 2232,
+      "sha256": "c78cdff70c1ad4dd20b48783686eeeeff7e080fe9a3a1061b48ccdf690303d04",
+      "title": "P-BAS 0.5 검증 요약",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 3,
+        "incompleteKo": 2
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/VERIFICATION_SUMMARY_V0.6.md",
+      "bytes": 2069,
+      "sha256": "5d9f34cbf39c70eb4634d653c04a4bfe08bca196c5b59c666070b07edd366878",
+      "title": "P-BAS 0.6 검증 요약",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 5,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/CAD_통합_백과사전_공학이론_수학과학_공식_계산체계_최종판.md",
+      "bytes": 521339,
+      "sha256": "0fdef4828e62dc4cfe317527e992299838c789fc458aca7e677b54ba7018aa03",
+      "title": "CAD 통합 백과사전",
+      "headings": 1983,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 116
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/PBAS_0.7.3_CONTACT_CONNECTOR_NATIVE_SI_KO.md",
+      "bytes": 2907,
+      "sha256": "83d9a1fb26e6fd6814be1e4872489539c23367ac1ae5c58d7382ec80406d7315",
+      "title": "P-BAS 0.7.3 Contact & Connector Native-SI 데이터 모델",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/PBAS_0.7.3_IMPLEMENTATION_REPORT_KO.md",
+      "bytes": 2639,
+      "sha256": "cadd19b858a1301ad3ca8f617124f87bfe0fcc2b2f6dae9be9fcb106ba965a0f",
+      "title": "P-BAS 0.7.3 구현 보고서",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "7.3 example/PBAS_0.7.3_VERIFICATION_SUMMARY_KO.md",
+      "bytes": 1678,
+      "sha256": "0f4aac25d957edae7a8511050cbbbdef54b8f7177e87aa9bcef263fc6779d0b0",
+      "title": "P-BAS 0.7.3 검증 요약",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 4,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "CURRENT_WORKSPACE_STATUS_GPT_260807.md",
+      "bytes": 6085,
+      "sha256": "2be50b5437c031c5c5cd22fc605d4ea6fe55903e2cddc8fd3f33971962944a18",
+      "title": "NexyFab 작업공간 현황 기록",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/AGENTS.md",
+      "bytes": 678,
+      "sha256": "63f2c50380ed6303237cce215ce27af1d620d094c215e28d1b1538a3c070e3bb",
+      "title": "This is NOT the Next.js you know",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/BREP_QA_CHECKLIST.md",
+      "bytes": 2397,
+      "sha256": "9fd879f584cbde89b0456f8a608196650b4e431aa5a37ac4564659d446cffca5",
+      "title": "NexyFab 3D — B-rep / 위상추적 브라우저 QA 체크리스트",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/CHANGELOG.md",
+      "bytes": 4639,
+      "sha256": "ce1e0c33bf16a2b26bf2a62405ee63ab28ecb678cde52d3130edeb531b91374b",
+      "title": "Changelog",
+      "headings": 15,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/CLAUDE.md",
+      "bytes": 11,
+      "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
+      "title": null,
+      "headings": 0,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/NEXT_IMPROVEMENTS.md",
+      "bytes": 1891,
+      "sha256": "cb0f7c5b21588f467305b1c9155d8bf76f6f73971211e354aba02aa7510b6a99",
+      "title": "NexyFab — 다음 개선 백로그",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/RAILWAY_DEPLOY_GUIDE.md",
+      "bytes": 7518,
+      "sha256": "b19b3b8922196cd605bfacfe4e8e397b4d574ed2b629d7ee399b03706af758e4",
+      "title": "Railway 배포 가이드 (NexyFab 기준)",
+      "headings": 44,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/RAILWAY_ENV_SETUP.md",
+      "bytes": 4641,
+      "sha256": "982af45f7b5adc411c9a50aaca3e742853d4c62f634d040f2d22c4102db09ca2",
+      "title": "Railway Env 설정 가이드 (nexyfab.com)",
+      "headings": 22,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/README.md",
+      "bytes": 1450,
+      "sha256": "60b55ff7df79af72590f9524208e46642bc32bdc175cdad41349681c0e2f958f",
+      "title": "or",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/deepseek_3d_review.md",
+      "bytes": 16277,
+      "sha256": "54f00b530eaaa94c114b426c7e836176e239922355c901ea12747c5fc0ef8714",
+      "title": null,
+      "headings": 9,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/deepseek_out.md",
+      "bytes": 2492,
+      "sha256": "c98ba4b3607ded23acb40a3c844e69b969fc0626e0109735a1c4e793b51bb76b",
+      "title": null,
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/deepseek_out2.md",
+      "bytes": 2209,
+      "sha256": "15ad53a1c0122bd15366cfdbae6bf1434a4fbafa888cea93be11afbd52c9fcf5",
+      "title": null,
+      "headings": 0,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/3d-tools.md",
+      "bytes": 10311,
+      "sha256": "a1ad9e934177ec16c0428e6932ab535c68bd2016fe84210a82665a27d212e599",
+      "title": "NexyFab 3D 툴 / CAD 스위트",
+      "headings": 24,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/ACTIVE_EXECUTION_MASTER.md",
+      "bytes": 78926,
+      "sha256": "f51c6d22c780a64997e3a2961ba065b544db31887d07d221772bb9c1ace5e389",
+      "title": "NexyFab 활성 실행 기준서",
+      "headings": 36,
+      "markers": {
+        "todo": 0,
+        "notRun": 36,
+        "planned": 1,
+        "blocked": 9,
+        "incompleteKo": 14
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/AI_MANUAL_HYBRID_DESIGN_AND_REFERENCE_REVIEW_260809.md",
+      "bytes": 9750,
+      "sha256": "f0b5537f3dc81bfbea428964be75083623ff3dc2b9e4177174b183a8d93e6063",
+      "title": "NexyFab AI + 수동 혼합 설계 및 참고파일 재검토",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/CAD_INDEPENDENT_IMPLEMENTATION_AND_COMMERCIAL_REVIEW_260809.md",
+      "bytes": 12749,
+      "sha256": "15f1d8b66b8705c4d2fa4acf9ff26e6c2d37d79db2bd71c7fadabb7031b500f9",
+      "title": "NexyFab 외부 CAD 비의존 구현·검증 및 상용화 리뷰",
+      "headings": 14,
+      "markers": {
+        "todo": 0,
+        "notRun": 2,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/COMMERCIAL_READINESS_ASSESSMENT_AND_PLAN_260809.md",
+      "bytes": 15484,
+      "sha256": "2230fe07fff5ed952758e1c9500ed7e4f02ee0d96aeef8ccbda623903e0141bc",
+      "title": "NexyFab 상업화 준비도 평가 및 실행 계획",
+      "headings": 27,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 2
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/COMPLEX_AI_GENERATION_ACCURACY_IMPROVEMENT_260809.md",
+      "bytes": 6309,
+      "sha256": "c6ec140c5ff45222d22554bb35f9ca3868c2355fbcf7626e6f00333060fe7b78",
+      "title": "NexyFab 복잡 제품 AI 생성 정확도 개선",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/MULTI_DOMAIN_AI_CAD_IMPLEMENTATION_REVIEW_260809.md",
+      "bytes": 15325,
+      "sha256": "eeaa725c51fffc936950af4da3d8284f978f151536a6bda00503aafeec0253e7",
+      "title": "NexyFab 다분야 AI·정밀 CAD 구현 및 검증 리뷰 (260809)",
+      "headings": 27,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 3,
+        "incompleteKo": 4
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/NEXYFAB_CAD_INDEPENDENT_COMMERCIALIZATION_PLAN_260809.md",
+      "bytes": 20089,
+      "sha256": "6c14c01937e3f498eee286d25ed5c9c929050695e8c4a4e503e9900498aa05b3",
+      "title": "NexyFab 독립형 AI·정밀 CAD 상업화 전체 계획",
+      "headings": 45,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 2
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/NEXYFAB_CAD_INDEPENDENT_DETAILED_IMPLEMENTATION_PLAN_260809.md",
+      "bytes": 26413,
+      "sha256": "93b89cfef594e25e8b74d90c9eceb83c6a61a5c9ac385a05293111e40bfc11e4",
+      "title": "NexyFab 독립형 CAD 세부 구현 계획",
+      "headings": 96,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/NEXYFAB_CAD_INDEPENDENT_FINAL_PLAN_AUDIT_260809.md",
+      "bytes": 17601,
+      "sha256": "83b2db2eb94564241dbbae542e91bbf91566210254f17cb1e7041c1171fb48bd",
+      "title": "NexyFab 독립형 CAD 최종 계획 감사",
+      "headings": 30,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 3
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/NEXYFAB_CAD_INDEPENDENT_PLAN_VALIDATION_REVIEW_260809.md",
+      "bytes": 13481,
+      "sha256": "962989ba5adb50a8283666c38894975c88b852e7ab0b9f6b6164e48e4a758cff",
+      "title": "NexyFab 독립형 CAD 계획 재검증 보고서",
+      "headings": 47,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/PERFORMANCE_SECURITY_MULTI_DOMAIN_PRECISION_CAD_EXECUTION_PLAN_260810.md",
+      "bytes": 48406,
+      "sha256": "f9bbfc624a775e7fadc80b3f80de755aa3d5600d801c2208817e30a2b8124145",
+      "title": "NexyFab 성능·보안·5개 분야 정밀 CAD 통합 실행계획",
+      "headings": 84,
+      "markers": {
+        "todo": 0,
+        "notRun": 6,
+        "planned": 2,
+        "blocked": 7,
+        "incompleteKo": 8
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/ROBOT_AI_CAD_IMPLEMENTATION_STATUS_REVIEW_260809.md",
+      "bytes": 12420,
+      "sha256": "3a0207a71af773c64f1a99cd85ceaac777f39e6aa9bc9140ced36f7eb8bae2e5",
+      "title": "NexyFab AI 3D·정밀 CAD 구현 현황 및 검토 보고서",
+      "headings": 22,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/TECHNICAL_LAUNCH_IMPLEMENTATION_REVIEW_260809.md",
+      "bytes": 8861,
+      "sha256": "67943e6cc91f1d313f6b1ddef644cd227aa9e36eba88fa1b9cba1c0c3b1beca0",
+      "title": "NexyFab 기술 출시 구현·검증 리뷰 (260809)",
+      "headings": 14,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 2,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/accuracy-roadmap.md",
+      "bytes": 4823,
+      "sha256": "1c4d90134f38193dc18bb663436cc1e68820e6a3b080b617cb122a8b4098482b",
+      "title": "정확도 로드맵 (260719 — 260719b 갱신: A1·B1·C1·D1·E1·E2·F2 완료) — 축별 진단과 실행 항목",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/accuracy/README.md",
+      "bytes": 1594,
+      "sha256": "7fbfff7745378bda98159e9531783c541a63d10bf143c277dc7ea42d331b73b6",
+      "title": "Domain accuracy working area (NOT certification evidence)",
+      "headings": 3,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/adr/000-template.md",
+      "bytes": 2238,
+      "sha256": "9c2226ef8c9e3ce7bd3ec6eab075e669f427619de93401842f0379b4a5af1f42",
+      "title": "NNN — <Decision title in imperative voice>",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/adr/011-crdt-architecture-and-phase-2-scope.md",
+      "bytes": 36560,
+      "sha256": "0ac3e273c1e7d48e8ba9878e1d263d6fa5a9ad559ab03d9567faadc3db30ef8c",
+      "title": "011 — Adopt CRDT-first state and scope Phase 2 around consolidating existing assets",
+      "headings": 28,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/adr/012-wave-2-phase-3-crdt-integration-and-direct-edit.md",
+      "bytes": 40324,
+      "sha256": "8d63ffa22c7137d8f57ff498d0b6d84e91664ea8a4ad3c8fad6ab212eb135866",
+      "title": "012 — Wire CRDT into the production editor and add direct edit as a second modeling modality (Wave 2 Phase 3)",
+      "headings": 23,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 1,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/adr/013-own-pro-cad-track.md",
+      "bytes": 5716,
+      "sha256": "81cb86b7ac3c374f298c15ece9aca8dd611cec125ff9ca100b2c20e913ed6e3f",
+      "title": "013 — Commit to own pro-CAD track (NexyFab Pro)",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/adr/014-occt-kernel-promotion.md",
+      "bytes": 5122,
+      "sha256": "d8a2e1db145fb1c512026f37c2781ffd07bf68124559a83a4c76cf0c435ab3e6",
+      "title": "ADR-014 — OCCT kernel promotion (own pro-CAD geometry source of truth)",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/adr/015-intent-whitelist-break.md",
+      "bytes": 2928,
+      "sha256": "b14956c74dc2368edb64b7a5dc499b6c598198d5cbf48d9ba84c856717448cce",
+      "title": "ADR-015 — Break the intent shape whitelist via verified composition",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/adr/016-kernel-of-record-and-engine-selection.md",
+      "bytes": 5568,
+      "sha256": "5c9d187c65f294f48741bff6461b7ead1238502ff90b9e80c416322e9eaad911",
+      "title": "ADR-016 — Kernel of record + the engine-selection policy (F1)",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/adr/017-topological-naming-k22-spike.md",
+      "bytes": 9680,
+      "sha256": "075484669f2a103c7c6f9e6fdb9319d159141445b8070c97cc566ccc6b8b58e2",
+      "title": "ADR-017 — 위상 명명 K2.2 스파이크 + 피처 트리 OCCT 수렴",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/ai-manufacturing-gates.md",
+      "bytes": 2280,
+      "sha256": "156033f17ef730187ad676736299944a026a101d8ddc478daf08fec39c8c024d",
+      "title": "AI 제조 검증 게이트 G0–G9",
+      "headings": 2,
+      "markers": {
+        "todo": 0,
+        "notRun": 4,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/ai-manufacturing-sales-scope.md",
+      "bytes": 2466,
+      "sha256": "3a1d0b7a0312c922ec15b6e858dcfefce4d41d8e611dc6af1e14dd5a205bf3e3",
+      "title": "AI 3D 판매·검증 범위 v1",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/ai-path-measurement-260731.md",
+      "bytes": 20358,
+      "sha256": "600aa6745bd00a725fdfec0143e62c359f34c3643fcd934c81d735e677d2ee9d",
+      "title": "AI 입력 경로 성능 실측과 결함 보고 (2026-07-31)",
+      "headings": 24,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/bm-cron-runbook.md",
+      "bytes": 2236,
+      "sha256": "cc5981cb39af3958f92cb3c08f4d8b2933e40ae2a597e1308ebf84eef740accf",
+      "title": "BM · Stage 크론 실행 순서 (Runbook)",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/cad-program/requirements/nist-ap242-full-roundtrip-baseline.md",
+      "bytes": 1117,
+      "sha256": "8e6b31fdd28346ed9f495f271eb8b92c67989020670be4c5b2d3ddf5bba0d85e",
+      "title": "NIST AP242 full STEP roundtrip baseline",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/cad-program/requirements/requirement-traceability.md",
+      "bytes": 3784,
+      "sha256": "e321d914bcb3de0e338aef524131faf8e33daa06be2cf0cd7f731c3398bc937d",
+      "title": "CAD manual requirement traceability baseline",
+      "headings": 2,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/competitive-gap-260801.md",
+      "bytes": 9257,
+      "sha256": "e336f9427cbdbeac04ed22c54918a9a5d511bb85a342003bb44f11f03f561cd2",
+      "title": "경쟁 서비스 대비 격차와 계획 (2026-08-01)",
+      "headings": 13,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/current-status.md",
+      "bytes": 14571,
+      "sha256": "b5419123c4aa5aff31abb80e9460150f7304c21bfebf60982b41f1f42b73e7d8",
+      "title": "NexyFab 현재 현황 (Status Snapshot)",
+      "headings": 33,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/customer-partner.md",
+      "bytes": 11137,
+      "sha256": "eb16fbdc895250ac7bf588fa5cddb0b554d5cef2281a91463826903d2299c92c",
+      "title": "NexyFab 고객·파트너사 기능",
+      "headings": 41,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/database-migration.md",
+      "bytes": 1367,
+      "sha256": "e5154fac6d5ab902697608330c35899719591d1249cf6f4e5d5827c63d011ad8",
+      "title": "Database Migration Guide: SQLite → Turso",
+      "headings": 9,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/design/w2-downstream-regen.md",
+      "bytes": 17813,
+      "sha256": "c8efd05ca785f2b095f2d838b1ff87fd642ac32b6e71c647408c8c13f86e524e",
+      "title": "W2-0 — 하류 재생성: 상류 참조 패턴 (설계 확정)",
+      "headings": 23,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/detail-refinement-plan.md",
+      "bytes": 4269,
+      "sha256": "df08ca1bfec5e5441f3054bfbcf3338d1f7b8515022339b964a3e70ec7f43e11",
+      "title": "NexyFab 정교화 구현계획 — 코퍼스 환류 (260718 수립)",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/dogfood-findings-260719.md",
+      "bytes": 7201,
+      "sha256": "7c61997866077aaa693ded41a80e50ce083b28fd46dca6f62db5ee68bc3fd786",
+      "title": "도그푸딩 발견 (260719b) — 실제 모델링에서만 드러난 결함",
+      "headings": 12,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/drawing-to-3d-methodology.md",
+      "bytes": 29278,
+      "sha256": "0c4dfa4b681f5bd048d4f4a6d44fbb83225f97e409f197f4af289bf0d688c1cc",
+      "title": "도면 기반 3D 생성 방법론 (Drawing-to-3D Methodology)",
+      "headings": 43,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 2
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/email-deliverability.md",
+      "bytes": 6107,
+      "sha256": "e53e859fa8f96ee271a742578c6bf6314315ed5c5aa2dce40b948f0630b1c119",
+      "title": "Email Deliverability — SPF / DKIM / DMARC for nexyfab@nexysys.com",
+      "headings": 20,
+      "markers": {
+        "todo": 2,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/env-setup.md",
+      "bytes": 7739,
+      "sha256": "0eb60098dd1b1eb4d409c36be6b41d99eb1d31f1379e2a87633cfab79e3bed90",
+      "title": "Environment Variables Setup",
+      "headings": 51,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-building-v2-260810/DRYRUN-README.md",
+      "bytes": 716,
+      "sha256": "f8d6bab60078a7f7244699f96999b81c1fce77f96187e829f233fa74a9c2d5ac",
+      "title": "도메인 정확도 캠페인 드라이런 — building",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-building/DRYRUN-README.md",
+      "bytes": 716,
+      "sha256": "b8f84523ffa39ba2fbbe48a6016c8a53fab05bbbbf93fed543c611516b2ef6a6",
+      "title": "도메인 정확도 캠페인 드라이런 — building",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-building/SUPERSEDED-260810.md",
+      "bytes": 274,
+      "sha256": "45b92a2d99687904c5fbcef41bf0403c56f5e36b04efd2f9142ba2c384a754a2",
+      "title": "Superseded building dry-run evidence",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-civil-v2-260810/DRYRUN-README.md",
+      "bytes": 713,
+      "sha256": "42069b1ec7004884850b0b38c0e4dc1329744d17a55d59d9646e4c7966d3422d",
+      "title": "도메인 정확도 캠페인 드라이런 — civil",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-civil/DRYRUN-README.md",
+      "bytes": 712,
+      "sha256": "beac0645fd27c359ca1ac7dfd790cd2a8329c7017ac6a3557badc0f1647b0e01",
+      "title": "도메인 정확도 캠페인 드라이런 — civil",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-interior-v2-260810/DRYRUN-README.md",
+      "bytes": 716,
+      "sha256": "5719013f1fd71e18220ee5f65df040bf3121528233195252a6ffeb4cf4b70427",
+      "title": "도메인 정확도 캠페인 드라이런 — interior",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-interior/DRYRUN-README.md",
+      "bytes": 716,
+      "sha256": "5b83da6365f12942df9a8096785e7d8b3078d96b91de10e633372538dbe93093",
+      "title": "도메인 정확도 캠페인 드라이런 — interior",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-landscape-v2-260810/DRYRUN-README.md",
+      "bytes": 717,
+      "sha256": "faabe86c5c8915f9c677e0def38d389786f532c67e10076412abaef338629c0b",
+      "title": "도메인 정확도 캠페인 드라이런 — landscape",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-landscape/DRYRUN-README.md",
+      "bytes": 717,
+      "sha256": "b51d9e317740e74657a3a9450d2796135beb936d8e4d6b484958a88a9d537bea",
+      "title": "도메인 정확도 캠페인 드라이런 — landscape",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-mechanical-v2-260810/DRYRUN-README.md",
+      "bytes": 718,
+      "sha256": "cb82f0bbfb95f2212517d47e37679825cbfdd1214de23e3bfd073590ae83c21e",
+      "title": "도메인 정확도 캠페인 드라이런 — mechanical",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-mechanical-v2-260810/SUPERSEDED-260810.md",
+      "bytes": 462,
+      "sha256": "6e8a204baeb4430ffab068939fe37c7bfd0f9aa424caca72fa7b2817b385f000",
+      "title": "Superseded mechanical dry-run evidence",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-mechanical-v3-260810/DRYRUN-README.md",
+      "bytes": 718,
+      "sha256": "11850022f62df29203ffdf5cdf666b67954b86e5071d04dfbf2cc3f70455ee18",
+      "title": "도메인 정확도 캠페인 드라이런 — mechanical",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-mechanical/DRYRUN-README.md",
+      "bytes": 718,
+      "sha256": "897c4968b75123321ecab72a91a836a56f01fad1cd371e3c8bd824445a495a22",
+      "title": "도메인 정확도 캠페인 드라이런 — mechanical",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-dryrun-mechanical/SUPERSEDED-260810.md",
+      "bytes": 316,
+      "sha256": "421430f4ac44e4e65d8cc22cac980303bd04d3b9dd92054c66adbb9b9d3cc4bb",
+      "title": "Superseded mechanical dry-run evidence",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/security/route-security-matrix-260810.md",
+      "bytes": 564,
+      "sha256": "cb5e39ef553e765b6567654e46c074c9cea7a1ecf3838bf6c96dad5d46e9d2c6",
+      "title": "NexyFab Route Security Matrix",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/execution-level-plan.md",
+      "bytes": 6918,
+      "sha256": "3f8dca2c332008f1aa908fe1487779bf3914fb0325993440eba986bb956e5278",
+      "title": "NexyFab 실시설계 수준 도달 계획 (260718 수립 · 260718 기준 확정)",
+      "headings": 14,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/fea-gap-vs-ansys-260801.md",
+      "bytes": 23422,
+      "sha256": "1f45053b65b4b122d266dc7ec4ddf159940ef612ff5c63802ed52136e83db5af",
+      "title": "ANSYS 조달 사양 대비 미충족 항목과 계획 (2026-08-01)",
+      "headings": 27,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 2
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/handoff-260807-p0-p2.md",
+      "bytes": 7388,
+      "sha256": "2a9a3b894f1b58eae81a1be35726d1a3550b51434ff85d1408ad3d3753cd39c5",
+      "title": "세션 인수인계 — 2026-08-07 워크스페이스 복구·P0~P2",
+      "headings": 12,
+      "markers": {
+        "todo": 1,
+        "notRun": 2,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/handoff-pbas-port-260804.md",
+      "bytes": 14906,
+      "sha256": "5116afc577fd36668a16fbdf2d6b289a81080a8cf54ec862d689e8d6489eed3a",
+      "title": "PBAS 0.7.3 이식 — 인수인계 (260804)",
+      "headings": 22,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/interactive-edit-plan.md",
+      "bytes": 4326,
+      "sha256": "e481a32bd6177642d06143e1378ff413ada6e8080c75aeddd1b3fd54c5992e6e",
+      "title": "인터랙티브 편집 계획 — 픽킹→대상만 수정 + 다단 LOD (260719, 사용자 방향)",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/legal/GLOBAL_TERMS_BASELINE_260809.md",
+      "bytes": 8237,
+      "sha256": "e2fe29a6cdeb3884013b782e6c96e0e06be20d834c22f2501e0910a4fc9f2cc0",
+      "title": "NexyFab 글로벌 서비스 약관 기준선",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/legal/LGPL_DISTRIBUTION_COMPLIANCE.md",
+      "bytes": 2706,
+      "sha256": "a3e12406c624dcee1494c5e935b53233c40fb878519928f3efa18e790c5e1362",
+      "title": "NexyFab LGPL 배포 준수 기록",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260719.md",
+      "bytes": 4617,
+      "sha256": "551bef81bd63aa9fdae0d59086639d84e900aa186869b90e9a173deb01844cbe",
+      "title": "다음 세션 인수인계 계획 (260719 확정)",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260719b.md",
+      "bytes": 8540,
+      "sha256": "c4392380b3bb2bc8c1d7dbdfa7b1aac76876b8a280231738dd2f6852c586c5fb",
+      "title": "다음 세션 인수인계 계획 (260719b — 큐 1~6 + T1~T3 완료 후)",
+      "headings": 9,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260720.md",
+      "bytes": 7780,
+      "sha256": "07896dbde709d13a4b8717d166a7d69d249edaa4c7a906978667d58d61e53c81",
+      "title": "다음 세션 인수인계 — 2026-07-20 (SolidWorks/Autodesk 대체 로드맵 Wave 1~3 완결)",
+      "headings": 13,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 1,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260721.md",
+      "bytes": 6518,
+      "sha256": "27f79fa54b49f05946c93cfb20750325886fbc2a4db2357b29968595b6d2457b",
+      "title": "다음 세션 인수인계 — 2026-07-21 (Wave 4 도면 트랙 완결 + 스위트 행 근본수정)",
+      "headings": 12,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260721b.md",
+      "bytes": 4862,
+      "sha256": "0bbaabde735c5e2a3774420bee815d9c195dbca58603653030d7755ca9a7bb58",
+      "title": "다음 세션 인수인계 — 2026-07-21b (G2 통과 · Wave 5 1차분 6트랙 · 배포 배치)",
+      "headings": 9,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260722.md",
+      "bytes": 4044,
+      "sha256": "91b0d4db94718cd30345b45bf66c32c51b5c47d458f43facdb02af095ff08bdc",
+      "title": "다음 세션 인수인계 — 2026-07-22 (★G3 통과 = G2+G3 완성 · Wave 5 완주 8/8)",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260722b.md",
+      "bytes": 3599,
+      "sha256": "f4c5b6ad2622092b438d12f8533dcf18b6f5f0e6073053643b8be84b649a44b8",
+      "title": "다음 세션 인수인계 — 2026-07-22b (Wave 5 게이트 공식 통과 · G2/G3 한계 해소 · Wave 6 착수)",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260722c.md",
+      "bytes": 3626,
+      "sha256": "ca9cf9ba2ac8a991dbeb9a08c42172df3f27e64d37d6a91b2cc389234ea6892a",
+      "title": "다음 세션 인수인계 — 2026-07-22c (★G4 통과 = G1~G4 전 게이트 완성 · Wave 6 완주)",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260722d.md",
+      "bytes": 3063,
+      "sha256": "173f605de91f29410c67accd848341a053b95442432a65709e459c93dd9dbec1",
+      "title": "다음 세션 인수인계 — 2026-07-22d (Wave A 1차 — 드라이버 코어·검토 루프·계측 + GA1·GA2 통과)",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260722e.md",
+      "bytes": 3359,
+      "sha256": "8fd9d0ec0eac7d958085fa2eb4a3215c08bc2f4c04c06b08f6d43f5420046581",
+      "title": "다음 세션 인수인계 — 2026-07-22e (Wave A 2차 WA-D 완료 — \"한 문장→검증된 패키지\" 라이브)",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260722f.md",
+      "bytes": 3397,
+      "sha256": "39c2102e4698e5ebdab734ccb3d0e86081126eb89c292989da8414576d347fc3",
+      "title": "다음 세션 인수인계 — 2026-07-22f (Wave A 3차 + Wave B 착수 완료 — 커버리지 매트릭스 정본)",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260722g.md",
+      "bytes": 3650,
+      "sha256": "5787763700935b582ae06a049cefb05acd2ce487b3e7171d2b3bf076aa5f4faa",
+      "title": "다음 세션 인수인계 — 2026-07-22g (Wave B 배치1 + GA3 배선 + G4 영속 완료)",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260723h.md",
+      "bytes": 19356,
+      "sha256": "25b9fe83a5a18557b3a5a91685deb40502dc27616b9373302ade36f8d35a8170",
+      "title": "다음 세션 인수인계 — 2026-07-23h (아키텍처 부채 1~2단계 + 종합 평가 + 발견 3건)",
+      "headings": 18,
+      "markers": {
+        "todo": 1,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260727.md",
+      "bytes": 28876,
+      "sha256": "e052eabc66c3d78bacc8a73f4a1fa19e6ca72a3582c076270fe00ee5352b3bf8",
+      "title": "다음 세션 인수인계 — 2026-07-27 (A-7 전수감사 · A-5/A-3 견고성 · A-4 실측 → WB-9 구멍 편입)",
+      "headings": 23,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260728.md",
+      "bytes": 39862,
+      "sha256": "45b66948bdbec43061255a7491bb58ce7a86490466e9370c5c68a3d09e3c324f",
+      "title": "다음 세션 인수인계 — 2026-07-28 (MCP 발행 규약 · CI 사각지대 2건 · §6-1 산술 이관 · §6-3 정합 도달 · §6-4 플레이크 규명)",
+      "headings": 42,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260729.md",
+      "bytes": 12158,
+      "sha256": "d386a454dcc6f26bfc12d968de4c3f07f44e278bfc585c59c35d2c8bceccd073",
+      "title": "다음 세션 계획 — 260729 (5분야 평가 + 남은 일)",
+      "headings": 14,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 2
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260729b.md",
+      "bytes": 8744,
+      "sha256": "6ad24ae2d597572f1449722bcba3470f7784cfc25c10705a332ebaad57167859",
+      "title": "5분야 전수 평가 + 다음 계획 — 260729b",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 4
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260729c.md",
+      "bytes": 10235,
+      "sha256": "9117de3f46ee6de46f7e885df2bf5e2a57d88b73e446abd78cdd876922b23da2",
+      "title": "5분야 전수 평가 + 다음 계획 — 260729c",
+      "headings": 16,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260729d.md",
+      "bytes": 7992,
+      "sha256": "3c271c231da3278e425e769d41b8f8703b97088e88b03be15f783b26b70e1219",
+      "title": "5분야 전수 평가 + 다음 계획 — 260729d",
+      "headings": 12,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260730.md",
+      "bytes": 5853,
+      "sha256": "358d23c23e042c2735b3c06a75458b3f73593ae979a1349efd5087aa52270892",
+      "title": "5분야 전수 평가 + 다음 계획 — 260730",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260731.md",
+      "bytes": 10375,
+      "sha256": "a443d5443cd498010c106c8cedb2f39522e06318f67b0d8cf1c081c80b4eafb1",
+      "title": "5분야 전수 평가 + 다음 계획 — 260731",
+      "headings": 21,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260731b.md",
+      "bytes": 11398,
+      "sha256": "bf7da32a86f8b7a42b9164cfdfea07bba63628b9c7d4fc7fca12312fd43facf9",
+      "title": "5분야 전수 평가 + 다음 계획 — 260731b",
+      "headings": 19,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260801.md",
+      "bytes": 12771,
+      "sha256": "67bff5b187c2b4ca9b231df6a5eef66a7b83214c67674e8afa224253bc2975f6",
+      "title": "5분야 전수 평가 + 다음 계획 — 260801",
+      "headings": 17,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 3
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260801b.md",
+      "bytes": 31534,
+      "sha256": "e00ead2765c22f04f09e42a050e42a191ba5e05ff0a281197f2ef74bd907c39f",
+      "title": "상세 어휘 확장 + 5분야 평가 — 260801b",
+      "headings": 51,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260802.md",
+      "bytes": 48298,
+      "sha256": "2e638ebcb6ef77560b42e8666e47160ef23c8433282a9d4c1c1b9b3e598ed744",
+      "title": "NexyFab 다음 계획 (260802) — **실측 기반 로드맵**",
+      "headings": 85,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/next-session-plan-260803.md",
+      "bytes": 104656,
+      "sha256": "aa9e0ff5250acd8f5e23f8f0de21e297e09d82cab03d197000dfff75f20d46ac",
+      "title": "NexyFab 다음 계획 (260803) — **외부 자산 평가 · 포지셔닝 · 배선 결손**",
+      "headings": 156,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 2,
+        "incompleteKo": 15
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/nexyfab-3d-data-policy.md",
+      "bytes": 6696,
+      "sha256": "d8d15259e3e9e52d73f0e59673596384182a625733961a56aa7c35a5770c809c",
+      "title": "NexyFab 3D — Data Handling Addendum (Draft)",
+      "headings": 12,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/operations/commercial-launch-runbook.md",
+      "bytes": 6945,
+      "sha256": "9117e8199379da0a0e544127c69d9488c22e66697b2f8294d0de05f836532efe",
+      "title": "NexyFab commercial launch runbook",
+      "headings": 12,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/operations/owner-action-checklist.md",
+      "bytes": 7199,
+      "sha256": "e76ca6677476671c50779b0ed08281fe8a7b3ec5408a15f74ae33be5c9387ba1",
+      "title": "NexyFab 운영자 수행 체크리스트",
+      "headings": 16,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/operations/robot-component-catalog.md",
+      "bytes": 1331,
+      "sha256": "81f32d765b77c05cf790da8f503a362c0b15acbe74a22a70fab1f657edb227d6",
+      "title": "Robot production component catalog",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/operations/security-gate-closed-beta.md",
+      "bytes": 4010,
+      "sha256": "e084e7b5c88ebd799e1161a88717fab17a47f703ac2409e77db8e63999f42028",
+      "title": "Closed Beta security gate",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 1,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/operations/security-rotation-and-restore-evidence.md",
+      "bytes": 2943,
+      "sha256": "68852b455a98ff51a96655c0278594ff2f7f74bc3fac9630389209b893533019",
+      "title": "Security rotation and restore evidence",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/paid-beta-runbook.md",
+      "bytes": 7531,
+      "sha256": "06383ef1b83bcbc66f8ea288e17ad2b5b494d8614bdbb6e569d9b0f211b441cd",
+      "title": "NexyFab 유료 베타 런북",
+      "headings": 16,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/partner/AI_DESIGN_PARTNER_ONBOARDING.md",
+      "bytes": 8924,
+      "sha256": "884946383de69b38dc21242603b3354676f7c66b9f7941a02a3ee6214fe73d63",
+      "title": "AI Design Partner — Onboarding",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/phase-5-occt-activation-runbook.md",
+      "bytes": 5604,
+      "sha256": "cbd0faf4bb2d474628bfdca96eba31f5f032e687c509e758bdffa71e80a95807",
+      "title": "Phase 5 — Real OCCT (browser) activation runbook",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/canary-deploy.md",
+      "bytes": 3849,
+      "sha256": "04c6f9175bbd2de1b26a0beac5a870c70fc67b5b77368f7db3be197bb2d6757b",
+      "title": "Canary Deploy Strategy",
+      "headings": 13,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/commit-policy.md",
+      "bytes": 7973,
+      "sha256": "3bc9e5fc9e31e3b4a0c1f568504a675ce103c7d0b9bf0f988c0d8119600a04cc",
+      "title": "Commit Policy",
+      "headings": 18,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/error-prevention-plan.md",
+      "bytes": 2707,
+      "sha256": "8a7f4f3370b9d758e38e45d9e943028ef8ad8dcb1d9b545ec2abd40d1e269604",
+      "title": "Error Prevention Plan — Index",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/risk-policy.md",
+      "bytes": 3764,
+      "sha256": "f6bff9c556825d27d36c63201b52dc1ec2833d49781647ce8be53baa0c1f377c",
+      "title": "Risk Tier Policy",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/self-review-policy.md",
+      "bytes": 3567,
+      "sha256": "d8d9476ca77e071ae8fb817a939b2b676779400e459215a86652b3aebade6177",
+      "title": "Self-Review Policy",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 1,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/sentry-alert-rules.md",
+      "bytes": 3615,
+      "sha256": "75d9f2ec1732cccffa7a0c51ad05f8e7ba8b2ba468f2d067d04a60ffa1268f56",
+      "title": "Sentry Alert Rules",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/solidworks-parity-roadmap.md",
+      "bytes": 3092,
+      "sha256": "9131f250dd7e0eb5c696ef2c15c91c6a9bfe5ea69306cc81dcd475f3e4fa1b69",
+      "title": "SolidWorks-Parity Roadmap (2026-06-10)",
+      "headings": 9,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/staging-setup-runbook.md",
+      "bytes": 3588,
+      "sha256": "675554fb3e175cecb4637c167a18d3d6e4c491ea2ce67008b7af78d002b7d7f4",
+      "title": "Staging Environment Setup — Railway",
+      "headings": 15,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/visual-regression.md",
+      "bytes": 4295,
+      "sha256": "7e46cdd78cd7086ad560b798aa1acb75e807ed351849a61bb47c404c97049028",
+      "title": "Visual Regression (3D Viewport)",
+      "headings": 9,
+      "markers": {
+        "todo": 1,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/radiance-deployment.md",
+      "bytes": 3801,
+      "sha256": "adce4fd215d19c256089c2e2f133c0c7071c3042d996a0bb183109de82d3f9bc",
+      "title": "Radiance deployment and release gate",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 3,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/reference-corpus-integration.md",
+      "bytes": 2811,
+      "sha256": "898e071a9804aeeb7dead34ad531901cc453636861a8d640039a5ca023ffcb23",
+      "title": "Reference CAD corpus integration",
+      "headings": 3,
+      "markers": {
+        "todo": 0,
+        "notRun": 4,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/roadmap/AI_COVERAGE_MATRIX.md",
+      "bytes": 18472,
+      "sha256": "8a34504bf72e9f0b51c750c4994ff842ad959b33b1f3887bb3fbbf8660223386",
+      "title": "WB-0 — AI 경로 커버리지 매트릭스 (정본)",
+      "headings": 12,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/roadmap/COMPLETION_PLAN.md",
+      "bytes": 6622,
+      "sha256": "29b417df2952651791c9f70d4653953dcca3c676f2da53a2b5bdc876da538b29",
+      "title": "완주 계획 — \"AI가 대부분·사람이 최종 검토·기존 툴 대체 수준\"까지 남은 것",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/roadmap/EXECUTION_PLAN_PARALLEL.md",
+      "bytes": 19957,
+      "sha256": "c5184b2c449847c5f1d268e14b89ece1752c68f4571f568c76e10aaea588b6a8",
+      "title": "병렬 실행 계획 — 전면 구현까지 (260719b)",
+      "headings": 22,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 2
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/roadmap/FEA_VALIDATION.md",
+      "bytes": 26095,
+      "sha256": "885238cd1510d83ad962a03768a75da8e00eec2347ae6edcf7f6fb8efc776324",
+      "title": "NexyFab FEA — Honest Validation Report",
+      "headings": 16,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/roadmap/MULTI_DOMAIN_EXPANSION_PLAN.md",
+      "bytes": 12699,
+      "sha256": "d08d5b06ac7354cc68383f6f540ab82c9e1645651c3f441759b3836a39ac4919",
+      "title": "다분야 확장 계획 — 토목·건설·조경·인테리어를 대응 단계로",
+      "headings": 17,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/roadmap/OWN_PRO_CAD.md",
+      "bytes": 9938,
+      "sha256": "3f37dbadff7c65a022c3158232b11f8add94a379f64580788b07641ffd0b57f0",
+      "title": "NexyFab Pro — Own CAD Roadmap",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/roadmap/REAL_CAD_CORPUS_PRIORS.md",
+      "bytes": 21201,
+      "sha256": "1eea90735eea33e4237f4f4af169930a48557c3819a66055a78a712e7c81d7b1",
+      "title": "실 CAD 코퍼스가 말해주는 것 — 합성 브리프가 못 주는 사전확률 (260728)",
+      "headings": 33,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/roadmap/REPLACEMENT_ROADMAP.md",
+      "bytes": 13448,
+      "sha256": "30adecb01ea085f3391ea1044f153a31a43d1726359fe7928cc9a3bf3b289bca",
+      "title": "대체 로드맵 — 실측 기반 (260719b)",
+      "headings": 21,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/roadmap/WAVE_A_AI_DRIVER.md",
+      "bytes": 9442,
+      "sha256": "e7ae1b5db228ba4a97185e557b8a8fcd1cbe2e605eb60d3c89aeb1968204a8d7",
+      "title": "Wave A — AI 설계 드라이버 (사람=최종 검토자, AI=작업자)",
+      "headings": 12,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/session-summary-260802.md",
+      "bytes": 9791,
+      "sha256": "f32dde2d1c7a8a90027fe76593a0deb7294e877ebde95ff927f96c42496a00c0",
+      "title": "세션 정리 (260801~260802)",
+      "headings": 22,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy-path-a.md",
+      "bytes": 9896,
+      "sha256": "e7f143f0cc3c27c565be2db7f8c1aecc3606545e3fdc6e5cf06e28a803f2993b",
+      "title": "Path A 대체 전략 — OCCT + planegcs 자체 커널 (260719b)",
+      "headings": 17,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/3D_MODELER_STATUS_AND_ROADMAP.md",
+      "bytes": 22242,
+      "sha256": "b67f1b8463d586bdf180cd95fb1755cbe93af26a454417b54b7da00565993de6",
+      "title": "NexyFab 3D Modeler — Implementation Status & Roadmap",
+      "headings": 17,
+      "markers": {
+        "todo": 1,
+        "notRun": 0,
+        "planned": 1,
+        "blocked": 2,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/3D_SEQUENTIAL_IMPLEMENTATION.md",
+      "bytes": 3742,
+      "sha256": "1a55ec96ea4a682efdb28507e5b3f8a50e2ea58665d8f7f221f5e3ea8627ffce",
+      "title": "3D 툴 순차 구현 트래커",
+      "headings": 8,
+      "markers": {
+        "todo": 1,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/AI_SELECTION_ASSEMBLY_CAD_PLAN_2026-08-04.md",
+      "bytes": 8620,
+      "sha256": "cf5d54adf844ce6c51cd4fec0cf1a771acba4615f4b587d81c3a4a4d3b54cf3b",
+      "title": "AI 선택·채팅 기반 다부품 CAD 통합 계획",
+      "headings": 21,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/ASSEMBLY_MATES_MANIFEST_v1.md",
+      "bytes": 8945,
+      "sha256": "630096e09eb25327295b5e1b735f8afae270539f4f36d72fada1e6b5d998233a",
+      "title": "Assembly Mates Manifest — schema v1",
+      "headings": 14,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/BM_MATRIX_CODE_GAP.md",
+      "bytes": 7428,
+      "sha256": "aafbfad3509d87ac7da21246d10d9509240c637072ef40682afddb34ea853b0a",
+      "title": "BM Matrix ↔ 코드·UI 갭 목록 (롤링)",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/C2_GDT_POLICY.md",
+      "bytes": 4125,
+      "sha256": "54b007c994d2332a391f62a1f2f2fad99bcd55502df051ca8e4e7b4fce17e991",
+      "title": "Phase C2 — GD&T 방향 정책 (v1)",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/CAD_COMMERCIAL_COMPLETION_ROADMAP.md",
+      "bytes": 10283,
+      "sha256": "f3f6da1c7f873ff816b548877c72af5e63fc25492dcfc7d7ac23213a9b56641e",
+      "title": "NexyFab — 상용 완성 로드맵 (재정리)",
+      "headings": 13,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/CAD_FULLSTACK_MILESTONES.md",
+      "bytes": 14687,
+      "sha256": "3ccd309f444f439cae314c446b97c2edd47a5e8e4295a517fa95a1debc43a147",
+      "title": "풀스택 기계 CAD 로드맵 — 마일스톤",
+      "headings": 13,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/DESIGN_PARTNER_OUTREACH_EXECUTION.md",
+      "bytes": 6530,
+      "sha256": "8625f20b9a9b676485b82d939f8bcece36ec861d0b2512cca63d1d03107e1f08",
+      "title": "Design Partner Outreach — Week 1 Execution Plan",
+      "headings": 11,
+      "markers": {
+        "todo": 3,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/DESIGN_PARTNER_OUTREACH_KIT.md",
+      "bytes": 9931,
+      "sha256": "7b9c21bb29933e97501b83fc856226795930665782607195769b373654ee15fe",
+      "title": "Design Partner Outreach Kit — NexyFab AI-CAD Beta",
+      "headings": 24,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/JSCAD_OPENSCAD_BRIDGE.md",
+      "bytes": 3723,
+      "sha256": "2a632f9a682c6224fcb918dfacd270bb4d98a6f74385eba7f983bbdcbf9b6bf8",
+      "title": "JSCAD ↔ OpenSCAD CLI 브리지 (설계 초안)",
+      "headings": 9,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M0_BASELINE.md",
+      "bytes": 1663,
+      "sha256": "469733c563d7e9099d9da4b4ea88dc333b6f464defe6d7725fe2ce82a6a01172",
+      "title": "M0 — 기준선 & 회귀",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M0_RELEASE_CHECKLIST.md",
+      "bytes": 1616,
+      "sha256": "96bd04897353f5e6dafc1b9a1096c7bbfb474fd0dade4d279e6b2ad391cff680",
+      "title": "M0 릴리스 수동 체크리스트",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M1_EXCHANGE.md",
+      "bytes": 5676,
+      "sha256": "69c39b10f46a6e6add81bcb0c262fbdbf3a2614070251477a97df9dd02abf8d4",
+      "title": "M1 — 교환(Exchange) v1 **완료 기준**",
+      "headings": 14,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M1_RELEASE_CHECKLIST.md",
+      "bytes": 1430,
+      "sha256": "71a8715c511062f58469c38623fe7a5e0e4d7cdb7a149745f8ce8309935a410b",
+      "title": "M1 릴리스 수동 체크리스트 (교환 + 클라우드 저장)",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M1_STEP_CUSTOMER_LIMITS.md",
+      "bytes": 6188,
+      "sha256": "bd5fbdc1f6fa00d04a3702c6f4af5a1c9b38cca7413b10f12cd47610901103b9",
+      "title": "STEP 교환 — 고객·협력사 안내 (1p)",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M2_MODELING.md",
+      "bytes": 7433,
+      "sha256": "2216aa535472421dd2e0d1aa51ef387a7bce1b74c1840f791923817ae36a617b",
+      "title": "M2 — 히스토리·모델링 신뢰 (Feature 파이프)",
+      "headings": 9,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M2_RELEASE_CHECKLIST.md",
+      "bytes": 1682,
+      "sha256": "78a908299970dc1ff7d96e034533563befbe22d074eb74243f63d2e3174e6690",
+      "title": "M2 릴리스 체크리스트 (모델링 신뢰 · v1)",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M3_ASSEMBLY.md",
+      "bytes": 8328,
+      "sha256": "b77c32891a5609aedf39277c6c1ae345b4a64afdea22cb71ac7ff9db533a2bb5",
+      "title": "M3 — 어셈블리 단일 파이프 (준비 문서)",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M3_RELEASE_CHECKLIST.md",
+      "bytes": 4728,
+      "sha256": "dea6eca5325853221251c18195bd7768996617fb6a001875ba3d1b735db747ae",
+      "title": "M3 릴리스 체크리스트 (어셈블리 파이프)",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M4_DRAWING.md",
+      "bytes": 3953,
+      "sha256": "84f2a522c244321741f32aafd2b19fc7e63b1d20ffc758acfc266524b9da2ea0",
+      "title": "M4 — 2D 도면·MBD v0 (준비 문서)",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M5_CAM_EXPORT.md",
+      "bytes": 3056,
+      "sha256": "79d3c4b0901dce063905504fdd750a6c4fcb2f02e3801279b87f169e7f06ba8a",
+      "title": "M5 — CAM 라이트·STEP·공구 기준 (v0 출하 정책)",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M5_FEA_TUTORIAL.md",
+      "bytes": 2900,
+      "sha256": "049a13e0519c2bc27dccd9c8d830255d77bba8fdfb743ddfc73c029d5797b91d",
+      "title": "M5 — FEA 워크플로 튜토리얼 (v0)",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M5_FIELD_VALIDATION_WORKSHEET.md",
+      "bytes": 6367,
+      "sha256": "c4b57f485a0ed2071dfacb3ded6537b031f6f87131bacd5d1f018ff7a9c28e4d",
+      "title": "M5 — 현장 검증 Worksheet (FEA + CAM 실측)",
+      "headings": 18,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M5_SIMULATION_DFM_CAM.md",
+      "bytes": 2012,
+      "sha256": "15ab0978ed8abb3dc1b64a4dc46a20e7dec3c3680521991042d8614d84ce54d5",
+      "title": "M5 — 시뮬레이션·DFM·CAM 브리지 v0 (준비 문서)",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M6_BACKUP_RECOVERY.md",
+      "bytes": 1476,
+      "sha256": "f5a7eb5af7aae2cd2ecb12b2077e37f9ce8b103734fcfcc4bac6910c084fddd2",
+      "title": "M6 — 백업·복구와 `.nfab` (요약)",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M6_PART_ID_POLICY.md",
+      "bytes": 1603,
+      "sha256": "31e8d9f92035b56700b0e2a7e898a4a3fbce922a59c625aff9f6a0111a082c71",
+      "title": "M6 — 부품·프로젝트 ID 정책 (v1 요약)",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M6_PDM_LITE.md",
+      "bytes": 5209,
+      "sha256": "2da770a5568e610e1e111d0745ce023a10db4cf01c96355ac244a189b9de88bc",
+      "title": "M6 — PDM-lite & 협업 (준비·v0 범위)",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M6_TEAM_MANUAL.md",
+      "bytes": 3336,
+      "sha256": "65083076e13ac2996fd5bdd9b2fb382a11c8eb4ee8d67500820d26adc9988451",
+      "title": "M6 — 팀·권한 수동 시나리오 (DoD)",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M7_ASSEMBLY_SCALE.md",
+      "bytes": 1970,
+      "sha256": "904106392efc38cfdecb4a23c356e918bd12867ef6fe927b283a087f2244c41d",
+      "title": "M7 — 대형 어셈블리·스케일 정책 (요약)",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M7_PERFORMANCE_BUDGETS.md",
+      "bytes": 2063,
+      "sha256": "9dabe93044687bec9965d722d72f230b54f57e2e387a6d46726238b7c4f2502f",
+      "title": "M7 — 성능 예산 (초안)",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/M7_SECURITY_ENTERPRISE.md",
+      "bytes": 1583,
+      "sha256": "4583f681b919d8108117e719423c4df98fe3bcf50642af6f2e2a7b49f364e370",
+      "title": "M7 — 보안·엔터프라이즈 체크리스트 (롤링)",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/NEXT_STEPS_PLAN_2026-05-29.md",
+      "bytes": 7396,
+      "sha256": "55ff06d595fcc5c85f3371f1bc87adc4b0f9430ea5b49a0e3fa9131ee092ac31",
+      "title": "다음 단계 계획서 (2026-05-29 기준)",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/OCCT_W3_DESIGN.md",
+      "bytes": 11200,
+      "sha256": "24ee47ef862649417e073e33070affe9a5ef4a42dcaca3905856f265ed42dd03",
+      "title": "OCCT Migration — W3 Design: route `occtEngine` to the K-series",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/OCCT_WORKER_MIGRATION_PLAN.md",
+      "bytes": 10388,
+      "sha256": "07ec63084ca702d9224903d9f44c9b20ee201cb2b1170f2c414f5dec39b8d64e",
+      "title": "OCCT K-series → Browser-Worker Migration Plan",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/PARALLEL_EXECUTION_PLAN.md",
+      "bytes": 19280,
+      "sha256": "78dce86ddaa3248e218f1ee67c31a60490eaf386b3e5850adee9f46d3e5272ba",
+      "title": "NexyFab Pro — Parallel Execution Plan",
+      "headings": 26,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 1,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/PHASE_B_CLOSE.md",
+      "bytes": 3910,
+      "sha256": "d041da5e5862ba25fca9844ff1fb3840df4769d0661f33e5dbde9900fb256b8b",
+      "title": "Phase B (상용 CAD 코어 갭 축소) — Close Memo",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/RAILWAY_CRON_SETUP.md",
+      "bytes": 4901,
+      "sha256": "7c3521d3549ed0a12f90f6ecefc1556c328fcdc443bf170691cbb6c81ac78e58",
+      "title": "Railway Cron Job Setup",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/SW_FUSION_FEATURE_SPEC.md",
+      "bytes": 37335,
+      "sha256": "494a6466aaa67c9d05f3d275489c3b4d32844c79f0fdbccf18d374f02b59a7c6",
+      "title": "NexyFab Pro — Full SW/Fusion Parity Feature Spec",
+      "headings": 49,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 85,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/SW_FUSION_FEATURE_SPEC_FULL.md",
+      "bytes": 79099,
+      "sha256": "27a97eea1af49b3d096bf4e7bc07e6a3bcc144621b6541ff17560095c8bd47f0",
+      "title": "NexyFab Pro — Full Detailed Feature Spec (SolidWorks / Fusion 360 Parity)",
+      "headings": 126,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 1,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/SW_FUSION_PARITY_PLAN.md",
+      "bytes": 14217,
+      "sha256": "d87cbe472df5590633bf752c8f1d27b147f973fae274240063bcbc9d561806ae",
+      "title": "NexyFab Pro → SolidWorks / Fusion 360 Parity Plan",
+      "headings": 24,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/ai-complex-product-95-plan-260806.md",
+      "bytes": 14504,
+      "sha256": "bd7c1a0d263ffe2b67d725de1bc969ea442be70a8f5cc9ef64d4798b4f1493fc",
+      "title": "AI 복잡 제품·다중 부품 생성 정확도 95% 실행 계획",
+      "headings": 29,
+      "markers": {
+        "todo": 0,
+        "notRun": 11,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/b1-face-provenance.md",
+      "bytes": 4361,
+      "sha256": "75a7a196421c3f14fe21f94001b010634a027e80520f5342594f0aeae934fa84",
+      "title": "B1 Face Provenance — Current State and Deep-Impl Path",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/bm-logging-coverage.md",
+      "bytes": 3215,
+      "sha256": "ea55c9ea2ef21c38a839794c5fb00a8670e291a3d13cc32b98271cfe628b4e80",
+      "title": "BM §4.4 로깅 의무 — 코드 커버리지 (G-M2)",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/bm-matrix.md",
+      "bytes": 20843,
+      "sha256": "c0e9548a7c73b8a91adc1f9850818c5f22ef81a37dc62693ce3ae275856644c8",
+      "title": "NexyFab BM Matrix — Stage·Pricing·Data Monetization Spec",
+      "headings": 29,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/bm-ui-screen-map.md",
+      "bytes": 3868,
+      "sha256": "f75dec355b279a6f0f783bbaf5e90b3966c37c2c544af0986182b970b673e4d4",
+      "title": "BM §1.2 UI 기능 번호 ↔ 화면·라우트 매핑 (G-U1)",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/cad-accuracy-execution-status-and-next-plan-260806.md",
+      "bytes": 31066,
+      "sha256": "9dd82505213df379ac6578d39bf15687dc2c8721a3d71793f991eaf2ed74e640",
+      "title": "CAD 정확도 구축 현황 및 다음 통합 실행 계획",
+      "headings": 61,
+      "markers": {
+        "todo": 0,
+        "notRun": 30,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 10
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/cad-occt-work-completed-and-detailed-next-plan-260807.md",
+      "bytes": 54957,
+      "sha256": "8ad701a1a6796fcf58dfea9d7b3b47d5e5b841eb99f053b4f612aa64dc3476a6",
+      "title": "NexyFab CAD/OCCT 완료 현황과 상세 후속 실행 계획",
+      "headings": 88,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 7
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/commercial-parity-roadmap.md",
+      "bytes": 14467,
+      "sha256": "5445b45960e9f928b981813af44ac948b800863af44fe09a457d67a538e39eed",
+      "title": "NexyFab — Commercial-CAD parity roadmap (depth + robustness)",
+      "headings": 14,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/commercial-readiness-assessment-260808.md",
+      "bytes": 9036,
+      "sha256": "8b5c7443a1e1d376e1b1356f37db4324ec87c9a81aac27a916306ff95c0959f3",
+      "title": "NexyFab 상용 준비도 평가 및 실행 계획 — 2026-08-08",
+      "headings": 13,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/complex-scale-plan-260808.md",
+      "bytes": 8440,
+      "sha256": "5f305688dafc901d06c0f5dc5e1f40d206c38c2f0b7b45010e938c4f73166508",
+      "title": "복잡·대규모 대응 계획 — 고층건물(내부 전체)·복잡 교량·복잡 인테리어·복잡 제품 (2026-08-08)",
+      "headings": 14,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/complex-system-ai-cad-roadmap-260804.md",
+      "bytes": 12069,
+      "sha256": "c4869563ecbc3c319432bf6ae67eda1bfdc4bc7ac0a7f15935d82e3bfd6c529d",
+      "title": "복합 시스템 AI CAD 구축 계획 — 로봇·제트엔진·공장",
+      "headings": 26,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 4
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/current-ai-complex-cad-audit-and-next-plan-260806.md",
+      "bytes": 12189,
+      "sha256": "60aafcc24d41668f2c22c4c418ec35565cf577c7b330bedb36e74d7fa1b39824",
+      "title": "AI 복잡 제품 CAD 현재 감사 및 다음 실행 계획",
+      "headings": 15,
+      "markers": {
+        "todo": 0,
+        "notRun": 13,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 4
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/current-status-and-next-execution-plan-260807-v2.md",
+      "bytes": 14286,
+      "sha256": "ab76016f14dcf96271c9cb151c8d810a0a3020e0e79226e4608c98284f985dbe",
+      "title": "Nexyfab AI CAD 현재 상태 점검 및 다음 실행 계획 v2",
+      "headings": 25,
+      "markers": {
+        "todo": 0,
+        "notRun": 15,
+        "planned": 0,
+        "blocked": 12,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/current-status-evaluation-and-execution-tracker-260807.md",
+      "bytes": 31870,
+      "sha256": "48e735e4b0bd37e4e6377cfd7fff5723de88f62cf013a0f138af8d463739bd4a",
+      "title": "NexyFab AI CAD 현재 상태·평가·실행 추적기",
+      "headings": 42,
+      "markers": {
+        "todo": 0,
+        "notRun": 21,
+        "planned": 0,
+        "blocked": 8,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/design-domain-ia.md",
+      "bytes": 4828,
+      "sha256": "b4ca900468a1599467b17ea24760db98e6bdeb49192fc3e3244595bd81a1708b",
+      "title": "설계 분야별 IA — 사이드바 재구성 (아이디어→설계→검증(상시)→제조)",
+      "headings": 9,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/domain-accuracy-95-plan-260808.md",
+      "bytes": 18139,
+      "sha256": "2fae94247f6dcba878b2daae48106498904d116ef7338e86ed2da750c5f0bc18",
+      "title": "3D 정확도 95% 달성 계획 — 기계설계~인테리어 5분야 (2026-08-08)",
+      "headings": 20,
+      "markers": {
+        "todo": 0,
+        "notRun": 4,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/domain-expansion-plan.md",
+      "bytes": 20384,
+      "sha256": "3db374edeba7eb423c6c6ed6711a394439fc9a2aebf0db74dc3da12fbaade010",
+      "title": "도메인 확장 계획 — 2D도안·토목·건축·건축설계 (+사이트 전면 개편안)",
+      "headings": 17,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/domain-perfection-plan.md",
+      "bytes": 7189,
+      "sha256": "229ad57fc717dfab5bb61caed1060f36d18147b73b638432e578e0309324b316",
+      "title": "분야 완벽화 계획 — 토목·건축·인테리어·조경 (2026-07-14)",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/drawing-annotation-schema.md",
+      "bytes": 3510,
+      "sha256": "f73be48932d9840984069bf5e08fef9aa9a6651e3d8903f79cc1d3cbbfe3bf33",
+      "title": "도면 어노테이션 스키마 v0.1 — 자체 합성 데이터 표준",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/execution-plan-260808b.md",
+      "bytes": 31004,
+      "sha256": "50dae71a1b2b4d8bb20ee1c41f57b38338ed57ffd20b8fe77f8802fec88b9605",
+      "title": "정교화 실행 계획 260808b — 95% 인증 준비 완성 + 복잡도 사다리 상위 티어",
+      "headings": 28,
+      "markers": {
+        "todo": 0,
+        "notRun": 6,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/gap-matrix-260803.md",
+      "bytes": 11821,
+      "sha256": "cb69afc685d1d63ec8dd1dde3d8626f6e5ce1fac214de751062220c8cb2d11d3",
+      "title": "기능 갭 매트릭스 — 상용 CAD 20권 vs NexyFab (260803, D5)",
+      "headings": 12,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/integrated-ai-cad-audit-and-master-plan-260806.md",
+      "bytes": 72636,
+      "sha256": "d6596c21c9f5a9f05207946b44202a22edea41daa670f732956c71d4e46618a1",
+      "title": "NexyFab AI CAD 통합 현황 감사 및 개발 마스터 계획",
+      "headings": 73,
+      "markers": {
+        "todo": 0,
+        "notRun": 38,
+        "planned": 0,
+        "blocked": 3,
+        "incompleteKo": 9
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/landing-refs/README.md",
+      "bytes": 1762,
+      "sha256": "4dd6fc8cb3e31c86012eca75193480b38ca55897f9a491f639b176070b90c596",
+      "title": "NexyFab 공개 페이지 개편 전 백업 (2026-07-11)",
+      "headings": 2,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/linear-drawing-plan.md",
+      "bytes": 14009,
+      "sha256": "21fa97761aeb05678fcf3fbb9da25e36c69a71541a506d0e084782be54a5c0be",
+      "title": "선형·도서 심화 계획 — 공차·중첩·정합 무결 스펙 (2026-07-17)",
+      "headings": 24,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 2
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/mainworkspace-decomposition.md",
+      "bytes": 12423,
+      "sha256": "18aff95c3b3c6196740c6f99f37e2f6354af0eac8fcf433627ad00697cc34434",
+      "title": "MainWorkspace Decomposition — Plan, Context Shapes, Sequencing",
+      "headings": 14,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/mc4-certification-kit-260808.md",
+      "bytes": 5946,
+      "sha256": "ee690aa6a6b5dd06398e6baed49d45e31f23068d0a4a047d237bef91ce197a8b",
+      "title": "M-C4 인증 수치 1호 — 실행 킷 (토목 파일럿, 260808)",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/native-cad-worker-host-deployment-260807.md",
+      "bytes": 8807,
+      "sha256": "0273804bed6a614c7694345bb2a1c27f7c138cb27a85f7d4c18e58db5ff0861c",
+      "title": "Native CAD worker host deployment contract",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 2,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/next-complex-cad-execution-plan-260804.md",
+      "bytes": 10164,
+      "sha256": "097113c4be03454ecd1327602514946fd939836b0988f822ad5665a743eac993",
+      "title": "NexyFab 복합 CAD 다음 실행계획 — 로봇 ReleaseReady부터 제트엔진·공장까지",
+      "headings": 35,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 3
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/next-integrated-cad-build-plan-260804.md",
+      "bytes": 18050,
+      "sha256": "bd9a3ce530a205f731791654df6357d5701db45da280b5ec2416e6bb9a694420",
+      "title": "NexyFab 다음 통합 CAD 구축계획 — 2026-08-04",
+      "headings": 39,
+      "markers": {
+        "todo": 0,
+        "notRun": 2,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 3
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/openscad-ai-calibration-260806.md",
+      "bytes": 7080,
+      "sha256": "53e0354f30a5f413b3be03f6dad0c4e0d6c282d82c8156ff22b344ee53a0549d",
+      "title": "OpenSCAD AI Calibration — 2026-08-06",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/phase-b-human-review-runbook-260807.md",
+      "bytes": 1684,
+      "sha256": "e85dd443034ae5109ba822a5a50ef3930b83c17275e450d722ee90c1df57d7ca",
+      "title": "Phase B human ground-truth review runbook",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/post-scad-manufacturing-cad-execution-plan-260806.md",
+      "bytes": 25875,
+      "sha256": "df8e3ae2db1b5a8c5f01b7f99bee738b6bc5b9e5d9efb3f2488e16a1efcddc12",
+      "title": "SCAD 이후 제조 CAD 고도화 실행 계획 — 2026-08-06",
+      "headings": 24,
+      "markers": {
+        "todo": 0,
+        "notRun": 32,
+        "planned": 0,
+        "blocked": 2,
+        "incompleteKo": 6
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/reference-derived-cad-accuracy-plan-260805.md",
+      "bytes": 105284,
+      "sha256": "75fa37a5995bc07e70b8b7183a139d91e5cea137f1511ca6c7c9dea3178ccddd",
+      "title": "참고 자료 기반 CAD 정확도 다음 통합 계획",
+      "headings": 228,
+      "markers": {
+        "todo": 0,
+        "notRun": 57,
+        "planned": 1,
+        "blocked": 3,
+        "incompleteKo": 14
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/reference-reaudit-a-e-260805.md",
+      "bytes": 22818,
+      "sha256": "1713299895967fdfcd60cd8cfe2c8bf96bc3edd97a56013cc681560c6848d7e2",
+      "title": "A–E reference re-audit — 2026-08-05",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 21,
+        "planned": 0,
+        "blocked": 1,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/scad-interface-joint-evidence-260806.md",
+      "bytes": 3885,
+      "sha256": "86514bbf8f789056b95a492a9104d9045653137b3aa67545fffff2153b188de1",
+      "title": "SCAD interface and joint evidence — 2026-08-06",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 5,
+        "planned": 0,
+        "blocked": 3,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/session-handoff-260808.md",
+      "bytes": 13920,
+      "sha256": "a6877a108d48cb374b85eb42248639101567b6337673d5b442fe6ea763b53089",
+      "title": "NexyFab 새 세션 인계 문서 — 2026-08-08",
+      "headings": 28,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 2
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/session-handoff-260809.md",
+      "bytes": 6445,
+      "sha256": "018b952b098b395070301ab7ddb3873308960975d241452093b1c3d8d1d03d6b",
+      "title": "세션 인수인계 260809 — F-track 완주 후 잔여 1건 + 상용 관문",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/smoke-test-3d-2026-05-13.md",
+      "bytes": 5255,
+      "sha256": "83f30914aed06acbe3242d30f434cfa9d3c908e2e6b81ddbc45dabb6219db6e6",
+      "title": "3D Tool Smoke Test — 2026-05-13 session",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/stage-e-business-account-policy.md",
+      "bytes": 2915,
+      "sha256": "253a4925fe3f2adec54df5bb157505bd816e2e13368c4dc1375a806a54507893",
+      "title": "Stage E — 법인·조직 조건 운영 정책 (G-S1)",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/step-export-gating.md",
+      "bytes": 3767,
+      "sha256": "09261a7c8481e1f10cc24e73ce2b294a84a01f58a9063111301da72a7055ab29",
+      "title": "STEP Export Gating — Current State and AP242 Compatibility Path",
+      "headings": 8,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/track-c-gate-decision.md",
+      "bytes": 4276,
+      "sha256": "69b6b7fa70e8a24048635c042243db13e0fcaa81f2aee125676fb3c3120f218f",
+      "title": "Track C — 2026-06-19 Gate Decision Matrix",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/verdict-fail-closed-audit-260805.md",
+      "bytes": 7026,
+      "sha256": "81a4490135a560ab32ee4cbbeff43969b5ed45c8eb16d7d96dac6dea2c593755",
+      "title": "CAD 판정 `pass/fail/not_run` 전역 감사 — 2026-08-05",
+      "headings": 9,
+      "markers": {
+        "todo": 0,
+        "notRun": 15,
+        "planned": 0,
+        "blocked": 2,
+        "incompleteKo": 5
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-1-compat-matrix-viewer-runbook.md",
+      "bytes": 31159,
+      "sha256": "338d5a8a475a5d3cd86ed88670d0d80eb9b5f9a2613722d2dec947645e257c18",
+      "title": "Wave 1 GA — STEP Roundtrip 매트릭스 Viewer Runbook",
+      "headings": 52,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 2
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-1-compat-matrix.md",
+      "bytes": 24896,
+      "sha256": "62e5147eddd8de068c908ae682afa25d93a4aeaaec1efa719fdff4c5ad81fe1a",
+      "title": "Wave 1 GA — STEP Roundtrip 호환성 매트릭스 (20 × 5)",
+      "headings": 40,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 3
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-cad-advisor-jd.md",
+      "bytes": 25697,
+      "sha256": "3fd25ad3c372c665986c279e65aba4c779d1f84ef93276685557f497e7eaa2da",
+      "title": "Senior CAD/CAM Advisor (Part-time / Consultant)",
+      "headings": 62,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-cloud-document-migration.md",
+      "bytes": 54185,
+      "sha256": "5c8d765e962de47c43703de0fa7edb6c3c3dd5efb159ce8b5a87c42ab1e0cfc8",
+      "title": "Wave 2 — Cloud Document Migration (Local `.nfab` → R2 + Postgres)",
+      "headings": 63,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-crdt-architecture.md",
+      "bytes": 48683,
+      "sha256": "1652d5582602979649b8abcc56fe1c600831f4ba10339fa15efaad493a7d2291",
+      "title": "Wave 2 — CRDT-first State Architecture (Design Spike)",
+      "headings": 59,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 1,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-1-checkpoint-crdt-smoke.md",
+      "bytes": 29226,
+      "sha256": "14565aa9a848bec7a86555151e3b8020e5a649a8041722e2062c2f27bfe4705c",
+      "title": "Phase 1 Review — CRDT Smoke Harness Runbook",
+      "headings": 18,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-1-status.md",
+      "bytes": 4643,
+      "sha256": "3c432b4ef674ff8be0ab777e22074ba3b6cb4e395b04a7ee4c4fb731ceaa7c4d",
+      "title": "Wave 2 Phase 1 — Status Brief",
+      "headings": 16,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 6,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-2-configurations-spec.md",
+      "bytes": 37597,
+      "sha256": "d268390a8acfbaf428b57d6001181d0e572a836792824ecf8d99150fdef451a4",
+      "title": "Wave 2 — Phase 2 · Configurations (Parametric Family of Parts) — Design Spec",
+      "headings": 49,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 3,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-2-hole-wizard-spec.md",
+      "bytes": 61349,
+      "sha256": "4fdf21da2f4dcb0de73d95640cd34ce41476682359c16a88567a3024b36c056f",
+      "title": "Wave 2 — Phase 2 Hole Wizard Feature Spec (Design Only)",
+      "headings": 71,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-2-master-task-tracker.md",
+      "bytes": 48471,
+      "sha256": "25ef9170bb82e0278992b575ca6b86481fd178c96951992a03abed8d5650757b",
+      "title": "Wave 2 — Phase 2 · Master Task Tracker",
+      "headings": 43,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 4,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-2-reference-geometry-spec.md",
+      "bytes": 32968,
+      "sha256": "b40fea254f383193a24dadda3cc7da60884b274f755e0e9ae8ac35501e8ec934",
+      "title": "Wave 2 Phase 2 — Reference Geometry (Plane / Axis / Point / CSys)",
+      "headings": 52,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-2-sheet-metal-spec.md",
+      "bytes": 41337,
+      "sha256": "a031dc793828ccf05080f1addd04a1c030fafc31bcff18c15cd585c03b2bd54c",
+      "title": "Wave 2 — Phase 2 Sheet Metal Spec",
+      "headings": 54,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 1,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-2-threads-spec.md",
+      "bytes": 42624,
+      "sha256": "79691e66d380eb0047e0247461c12e7a0119fe426a28a8c87e46c9520fb21cec",
+      "title": "Wave 2 — Phase 2: Threads (나사산) Feature Spec",
+      "headings": 53,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-3-awareness-latency-runbook.md",
+      "bytes": 5995,
+      "sha256": "0646b1e1e523f3d2c75e09adcd09da25f9a1f19dbec3a7eec168bf907120a846",
+      "title": "Phase 3 Hands-on — Awareness Latency Runbook",
+      "headings": 12,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-3-compat-evidence.md",
+      "bytes": 11208,
+      "sha256": "56719fe15a18ba7dcbb1d27b4e07faab6cacce41af21868d4ad12c70f8c06813",
+      "title": "Wave 2 Phase 3 — Compat / Perf / Soak Evidence Summary",
+      "headings": 8,
+      "markers": {
+        "todo": 3,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-3-exit.md",
+      "bytes": 10232,
+      "sha256": "eaf6ed22ba7ed75158a006bbedcb8294901de1b4d944f1c9d11bb11c06ad0c2d",
+      "title": "Wave 2 — Phase 3 Exit Memo",
+      "headings": 14,
+      "markers": {
+        "todo": 1,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-3-master-task-tracker.md",
+      "bytes": 49814,
+      "sha256": "3ad748edad891cba61f964e3c9a2e7afb526e3e44c41284a4a9139577db07755",
+      "title": "Wave 2 — Phase 3 · Master Task Tracker",
+      "headings": 42,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 3,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-3-w11-burnin.md",
+      "bytes": 5005,
+      "sha256": "aa756e8eadeebc278b44a98690115f6ee97767bb7a54858663367701d341d625",
+      "title": "Wave 2 — Phase 3 W11 (Q1) Burn-in Evidence",
+      "headings": 9,
+      "markers": {
+        "todo": 2,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-phase-3-w4-gate-runbook.md",
+      "bytes": 13989,
+      "sha256": "0e799f691896af9d08438a34c2932eb7dacf0de381249ca829937858b281c271",
+      "title": "Wave 2 Phase 3 — W4 Mid-Phase-3 Gate Runbook",
+      "headings": 28,
+      "markers": {
+        "todo": 5,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-postgres-migration-runbook.md",
+      "bytes": 17173,
+      "sha256": "1511f93f743c3271c0d71bc40098d6e384c4731a3729dc7b4d723e378333f9dc",
+      "title": "Wave 2 — Postgres Migration Runbook",
+      "headings": 29,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-sheet-metal-asset-map.md",
+      "bytes": 25445,
+      "sha256": "7a8e13e62b9682612505d193928a6a04002afa7a315680a01a1c1b45e2687628",
+      "title": "Wave 2 — Sheet-Metal Asset Map",
+      "headings": 30,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-sheet-metal-consolidation-plan.md",
+      "bytes": 25643,
+      "sha256": "51b3340a5ea47794fd2ca2f90724ed76ead67774fb33ac30e7035e2b883eea5f",
+      "title": "Wave 2 — Sheet-Metal Consolidation Plan",
+      "headings": 35,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 1,
+        "blocked": 1,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/wave-2-soak-runbook.md",
+      "bytes": 20084,
+      "sha256": "a28acd1638215df74835a7aa6d1a9e71a03c45e264becd751f51d00209b28d18",
+      "title": "Wave 1 GA Gate — 4시간 Soak 런북",
+      "headings": 39,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    }
+  ]
+}

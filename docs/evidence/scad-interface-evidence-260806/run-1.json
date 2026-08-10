@@ -1,0 +1,887 @@
+{
+  "schema": "nexyfab.scad-interface-evidence-campaign.v1",
+  "generatedAt": "2026-08-06T10:40:21.122Z",
+  "inputs": {
+    "bridge": "docs/evidence/scad-assembly-bridge-260806/run-3.json",
+    "canonical": "docs/evidence/scad-canonical-features-260806/run-3.json",
+    "brep": "docs/evidence/scad-analytic-brep-260806/run-9.json"
+  },
+  "summary": {
+    "scenarios": 4,
+    "pass": 1,
+    "fail": 2,
+    "notRun": 1
+  },
+  "results": [
+    {
+      "scenarioId": "sc7_gear_train",
+      "status": "not_run",
+      "evidence": {
+        "schema": "nexyfab.scad-interface-evidence.v1",
+        "scenarioId": "sc7_gear_train",
+        "status": "not_run",
+        "architecture": {
+          "schema": "nexyfab.complex-product-architecture.v1",
+          "requirements": [
+            {
+              "id": "scad:req:source",
+              "kind": "manufacturing",
+              "text": "Preserve independent SCAD modules and placements for sc7_gear_train.",
+              "status": "confirmed",
+              "sourceRefs": [
+                "scad-agent:session"
+              ]
+            },
+            {
+              "id": "scad:req:gear-mesh",
+              "kind": "motion",
+              "text": "20/30 tooth module-2 spur gears mesh at their pitch-center distance.",
+              "status": "confirmed",
+              "sourceRefs": [
+                "scad-agent:validation-scenario"
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "id": "scad:def:product",
+              "name": "sc7_gear_train",
+              "kind": "product",
+              "sourcing": "make",
+              "independentlyReplaceable": false,
+              "bodyIntent": {
+                "policy": "multi_body",
+                "expectedBodies": null
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:gear20",
+              "name": "gear20",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:gear30",
+              "name": "gear30",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            }
+          ],
+          "occurrences": [
+            {
+              "id": "scad:occ:root",
+              "definitionId": "scad:def:product",
+              "parentOccurrenceId": null,
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:gear20:1",
+              "definitionId": "scad:def:gear20",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:gear30:2",
+              "definitionId": "scad:def:gear30",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            }
+          ],
+          "interfaces": [
+            {
+              "id": "scad:if:gear-mesh",
+              "occurrenceA": "scad:occ:gear20:1",
+              "occurrenceB": "scad:occ:gear30:2",
+              "type": "contact",
+              "datumA": "pitch-cylinder:z",
+              "datumB": "pitch-cylinder:z",
+              "requirementIds": [
+                "scad:req:gear-mesh"
+              ]
+            }
+          ],
+          "interfaceExpectation": "articulated"
+        },
+        "joints": [
+          {
+            "interfaceId": "scad:if:gear-mesh",
+            "occurrenceA": "scad:occ:gear20:1",
+            "occurrenceB": "scad:occ:gear30:2",
+            "type": "contact",
+            "solved": true,
+            "residual": 0
+          }
+        ],
+        "checks": [
+          {
+            "id": "gear-mesh",
+            "status": "pass",
+            "residual": 0,
+            "tolerance": 0.000049999999999999996,
+            "unit": "mm",
+            "codes": []
+          },
+          {
+            "id": "gear-support-joints",
+            "status": "not_run",
+            "residual": null,
+            "tolerance": null,
+            "unit": "count",
+            "codes": [
+              "GEAR_SUPPORT_JOINTS_NOT_MODELED"
+            ]
+          }
+        ],
+        "codes": [
+          "GEAR_SUPPORT_JOINTS_NOT_MODELED"
+        ]
+      },
+      "assemblyCertificate": {
+        "schema": "nexyfab.product-assembly-certificate.v1",
+        "status": "pass",
+        "releaseReady": true,
+        "definitionCount": 3,
+        "occurrenceCount": 3,
+        "gates": [
+          {
+            "gate": "architecture",
+            "status": "pass",
+            "codes": []
+          },
+          {
+            "gate": "part_certificates",
+            "status": "pass",
+            "codes": []
+          },
+          {
+            "gate": "transforms",
+            "status": "pass",
+            "codes": []
+          },
+          {
+            "gate": "joints",
+            "status": "pass",
+            "codes": []
+          }
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc8_pipe_joint",
+      "status": "fail",
+      "evidence": {
+        "schema": "nexyfab.scad-interface-evidence.v1",
+        "scenarioId": "sc8_pipe_joint",
+        "status": "fail",
+        "architecture": {
+          "schema": "nexyfab.complex-product-architecture.v1",
+          "requirements": [
+            {
+              "id": "scad:req:source",
+              "kind": "manufacturing",
+              "text": "Preserve independent SCAD modules and placements for sc8_pipe_joint.",
+              "status": "confirmed",
+              "sourceRefs": [
+                "scad-agent:session"
+              ]
+            },
+            {
+              "id": "scad:req:pipe-flow-path",
+              "kind": "interface",
+              "text": "Three pipe sections meet at the origin as one fixed T flow path.",
+              "status": "confirmed",
+              "sourceRefs": [
+                "scad-agent:validation-scenario"
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "id": "scad:def:product",
+              "name": "sc8_pipe_joint",
+              "kind": "product",
+              "sourcing": "make",
+              "independentlyReplaceable": false,
+              "bodyIntent": {
+                "policy": "multi_body",
+                "expectedBodies": null
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:main_pipe_left",
+              "name": "main_pipe_left",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:main_pipe_right",
+              "name": "main_pipe_right",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:branch_pipe",
+              "name": "branch_pipe",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            }
+          ],
+          "occurrences": [
+            {
+              "id": "scad:occ:root",
+              "definitionId": "scad:def:product",
+              "parentOccurrenceId": null,
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:main_pipe_left:1",
+              "definitionId": "scad:def:main_pipe_left",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:main_pipe_right:2",
+              "definitionId": "scad:def:main_pipe_right",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:branch_pipe:3",
+              "definitionId": "scad:def:branch_pipe",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            }
+          ],
+          "interfaces": [
+            {
+              "id": "scad:if:main-seam",
+              "occurrenceA": "scad:occ:main_pipe_left:1",
+              "occurrenceB": "scad:occ:main_pipe_right:2",
+              "type": "fixed",
+              "datumA": "end-face:x+",
+              "datumB": "end-face:x-",
+              "requirementIds": [
+                "scad:req:pipe-flow-path"
+              ]
+            },
+            {
+              "id": "scad:if:branch-seam",
+              "occurrenceA": "scad:occ:main_pipe_right:2",
+              "occurrenceB": "scad:occ:branch_pipe:3",
+              "type": "fixed",
+              "datumA": "centerline-origin",
+              "datumB": "end-face:z-",
+              "requirementIds": [
+                "scad:req:pipe-flow-path"
+              ]
+            }
+          ],
+          "interfaceExpectation": "fixed"
+        },
+        "joints": [
+          {
+            "interfaceId": "scad:if:main-seam",
+            "occurrenceA": "scad:occ:main_pipe_left:1",
+            "occurrenceB": "scad:occ:main_pipe_right:2",
+            "type": "fixed",
+            "solved": false,
+            "residual": 50
+          },
+          {
+            "interfaceId": "scad:if:branch-seam",
+            "occurrenceA": "scad:occ:main_pipe_right:2",
+            "occurrenceB": "scad:occ:branch_pipe:3",
+            "type": "fixed",
+            "solved": false,
+            "residual": 50
+          }
+        ],
+        "checks": [
+          {
+            "id": "pipe-junction",
+            "status": "fail",
+            "residual": 50,
+            "tolerance": 0.01,
+            "unit": "mm",
+            "codes": [
+              "PIPE_JUNCTION_NOT_COINCIDENT"
+            ]
+          },
+          {
+            "id": "pipe-flow-openness",
+            "status": "not_run",
+            "residual": null,
+            "tolerance": null,
+            "unit": "count",
+            "codes": [
+              "PIPE_FLOW_OPENNESS_NATIVE_BOOLEAN_REQUIRED"
+            ]
+          }
+        ],
+        "codes": [
+          "PIPE_JUNCTION_NOT_COINCIDENT",
+          "PIPE_FLOW_OPENNESS_NATIVE_BOOLEAN_REQUIRED"
+        ]
+      },
+      "assemblyCertificate": {
+        "schema": "nexyfab.product-assembly-certificate.v1",
+        "status": "fail",
+        "releaseReady": false,
+        "definitionCount": 4,
+        "occurrenceCount": 4,
+        "gates": [
+          {
+            "gate": "architecture",
+            "status": "pass",
+            "codes": []
+          },
+          {
+            "gate": "part_certificates",
+            "status": "pass",
+            "codes": []
+          },
+          {
+            "gate": "transforms",
+            "status": "pass",
+            "codes": []
+          },
+          {
+            "gate": "joints",
+            "status": "fail",
+            "codes": [
+              "ASSEMBLY_JOINT_UNSOLVED:scad:if:main-seam",
+              "ASSEMBLY_JOINT_UNSOLVED:scad:if:branch-seam"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc9_simple_car",
+      "status": "fail",
+      "evidence": {
+        "schema": "nexyfab.scad-interface-evidence.v1",
+        "scenarioId": "sc9_simple_car",
+        "status": "fail",
+        "architecture": {
+          "schema": "nexyfab.complex-product-architecture.v1",
+          "requirements": [
+            {
+              "id": "scad:req:source",
+              "kind": "manufacturing",
+              "text": "Preserve independent SCAD modules and placements for sc9_simple_car.",
+              "status": "confirmed",
+              "sourceRefs": [
+                "scad-agent:session"
+              ]
+            },
+            {
+              "id": "scad:req:wheel-axis-y",
+              "kind": "motion",
+              "text": "Each wheel revolves about the global Y axis.",
+              "status": "confirmed",
+              "sourceRefs": [
+                "scad-agent:validation-scenario"
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "id": "scad:def:product",
+              "name": "sc9_simple_car",
+              "kind": "product",
+              "sourcing": "make",
+              "independentlyReplaceable": false,
+              "bodyIntent": {
+                "policy": "multi_body",
+                "expectedBodies": null
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:body",
+              "name": "body",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:wheel",
+              "name": "wheel",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:window",
+              "name": "window",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            }
+          ],
+          "occurrences": [
+            {
+              "id": "scad:occ:root",
+              "definitionId": "scad:def:product",
+              "parentOccurrenceId": null,
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:body:1",
+              "definitionId": "scad:def:body",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:wheel:2",
+              "definitionId": "scad:def:wheel",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:wheel:3",
+              "definitionId": "scad:def:wheel",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 2
+            },
+            {
+              "id": "scad:occ:wheel:4",
+              "definitionId": "scad:def:wheel",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 3
+            },
+            {
+              "id": "scad:occ:wheel:5",
+              "definitionId": "scad:def:wheel",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 4
+            },
+            {
+              "id": "scad:occ:window:6",
+              "definitionId": "scad:def:window",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:window:7",
+              "definitionId": "scad:def:window",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 2
+            }
+          ],
+          "interfaces": [
+            {
+              "id": "scad:if:wheel:1",
+              "occurrenceA": "scad:occ:body:1",
+              "occurrenceB": "scad:occ:wheel:2",
+              "type": "revolute",
+              "datumA": "wheel-mount-axis:y",
+              "datumB": "cylinder-axis:1.000000,0.000000,0.000000",
+              "requirementIds": [
+                "scad:req:wheel-axis-y"
+              ]
+            },
+            {
+              "id": "scad:if:wheel:2",
+              "occurrenceA": "scad:occ:body:1",
+              "occurrenceB": "scad:occ:wheel:3",
+              "type": "revolute",
+              "datumA": "wheel-mount-axis:y",
+              "datumB": "cylinder-axis:1.000000,0.000000,0.000000",
+              "requirementIds": [
+                "scad:req:wheel-axis-y"
+              ]
+            },
+            {
+              "id": "scad:if:wheel:3",
+              "occurrenceA": "scad:occ:body:1",
+              "occurrenceB": "scad:occ:wheel:4",
+              "type": "revolute",
+              "datumA": "wheel-mount-axis:y",
+              "datumB": "cylinder-axis:1.000000,0.000000,0.000000",
+              "requirementIds": [
+                "scad:req:wheel-axis-y"
+              ]
+            },
+            {
+              "id": "scad:if:wheel:4",
+              "occurrenceA": "scad:occ:body:1",
+              "occurrenceB": "scad:occ:wheel:5",
+              "type": "revolute",
+              "datumA": "wheel-mount-axis:y",
+              "datumB": "cylinder-axis:1.000000,0.000000,0.000000",
+              "requirementIds": [
+                "scad:req:wheel-axis-y"
+              ]
+            }
+          ],
+          "interfaceExpectation": "articulated"
+        },
+        "joints": [
+          {
+            "interfaceId": "scad:if:wheel:1",
+            "occurrenceA": "scad:occ:body:1",
+            "occurrenceB": "scad:occ:wheel:2",
+            "type": "revolute",
+            "solved": false,
+            "residual": 90
+          },
+          {
+            "interfaceId": "scad:if:wheel:2",
+            "occurrenceA": "scad:occ:body:1",
+            "occurrenceB": "scad:occ:wheel:3",
+            "type": "revolute",
+            "solved": false,
+            "residual": 90
+          },
+          {
+            "interfaceId": "scad:if:wheel:3",
+            "occurrenceA": "scad:occ:body:1",
+            "occurrenceB": "scad:occ:wheel:4",
+            "type": "revolute",
+            "solved": false,
+            "residual": 90
+          },
+          {
+            "interfaceId": "scad:if:wheel:4",
+            "occurrenceA": "scad:occ:body:1",
+            "occurrenceB": "scad:occ:wheel:5",
+            "type": "revolute",
+            "solved": false,
+            "residual": 90
+          }
+        ],
+        "checks": [
+          {
+            "id": "wheel-axis",
+            "status": "fail",
+            "residual": 90,
+            "tolerance": 0.1,
+            "unit": "deg",
+            "codes": [
+              "CAR_WHEEL_AXIS_MISMATCH"
+            ]
+          },
+          {
+            "id": "duplicate-window-occurrence",
+            "status": "fail",
+            "residual": 1,
+            "tolerance": 0,
+            "unit": "count",
+            "codes": [
+              "CAR_DUPLICATE_WINDOW_OCCURRENCE"
+            ]
+          }
+        ],
+        "codes": [
+          "CAR_WHEEL_AXIS_MISMATCH",
+          "CAR_DUPLICATE_WINDOW_OCCURRENCE"
+        ]
+      },
+      "assemblyCertificate": {
+        "schema": "nexyfab.product-assembly-certificate.v1",
+        "status": "fail",
+        "releaseReady": false,
+        "definitionCount": 4,
+        "occurrenceCount": 8,
+        "gates": [
+          {
+            "gate": "architecture",
+            "status": "pass",
+            "codes": []
+          },
+          {
+            "gate": "part_certificates",
+            "status": "pass",
+            "codes": []
+          },
+          {
+            "gate": "transforms",
+            "status": "pass",
+            "codes": []
+          },
+          {
+            "gate": "joints",
+            "status": "fail",
+            "codes": [
+              "ASSEMBLY_JOINT_UNSOLVED:scad:if:wheel:1",
+              "ASSEMBLY_JOINT_UNSOLVED:scad:if:wheel:2",
+              "ASSEMBLY_JOINT_UNSOLVED:scad:if:wheel:3",
+              "ASSEMBLY_JOINT_UNSOLVED:scad:if:wheel:4"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc10_brackets_grid",
+      "status": "pass",
+      "evidence": {
+        "schema": "nexyfab.scad-interface-evidence.v1",
+        "scenarioId": "sc10_brackets_grid",
+        "status": "pass",
+        "architecture": {
+          "schema": "nexyfab.complex-product-architecture.v1",
+          "requirements": [
+            {
+              "id": "scad:req:source",
+              "kind": "manufacturing",
+              "text": "Preserve independent SCAD modules and placements for sc10_brackets_grid.",
+              "status": "confirmed",
+              "sourceRefs": [
+                "scad-agent:session"
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "id": "scad:def:product",
+              "name": "sc10_brackets_grid",
+              "kind": "product",
+              "sourcing": "make",
+              "independentlyReplaceable": false,
+              "bodyIntent": {
+                "policy": "multi_body",
+                "expectedBodies": null
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            },
+            {
+              "id": "scad:def:bracket",
+              "name": "bracket",
+              "kind": "part",
+              "sourcing": "make",
+              "independentlyReplaceable": true,
+              "bodyIntent": {
+                "policy": "single_body",
+                "expectedBodies": 1
+              },
+              "requirementIds": [
+                "scad:req:source"
+              ]
+            }
+          ],
+          "occurrences": [
+            {
+              "id": "scad:occ:root",
+              "definitionId": "scad:def:product",
+              "parentOccurrenceId": null,
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:bracket:1",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 1
+            },
+            {
+              "id": "scad:occ:bracket:2",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 2
+            },
+            {
+              "id": "scad:occ:bracket:3",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 3
+            },
+            {
+              "id": "scad:occ:bracket:4",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 4
+            },
+            {
+              "id": "scad:occ:bracket:5",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 5
+            },
+            {
+              "id": "scad:occ:bracket:6",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 6
+            },
+            {
+              "id": "scad:occ:bracket:7",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 7
+            },
+            {
+              "id": "scad:occ:bracket:8",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 8
+            },
+            {
+              "id": "scad:occ:bracket:9",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 9
+            },
+            {
+              "id": "scad:occ:bracket:10",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 10
+            },
+            {
+              "id": "scad:occ:bracket:11",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 11
+            },
+            {
+              "id": "scad:occ:bracket:12",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 12
+            },
+            {
+              "id": "scad:occ:bracket:13",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 13
+            },
+            {
+              "id": "scad:occ:bracket:14",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 14
+            },
+            {
+              "id": "scad:occ:bracket:15",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 15
+            },
+            {
+              "id": "scad:occ:bracket:16",
+              "definitionId": "scad:def:bracket",
+              "parentOccurrenceId": "scad:occ:root",
+              "quantityIndex": 16
+            }
+          ],
+          "interfaces": [],
+          "interfaceExpectation": "none"
+        },
+        "joints": [],
+        "checks": [
+          {
+            "id": "declared-static-array",
+            "status": "pass",
+            "residual": 0,
+            "tolerance": 0,
+            "unit": "count",
+            "codes": []
+          }
+        ],
+        "codes": []
+      },
+      "assemblyCertificate": {
+        "schema": "nexyfab.product-assembly-certificate.v1",
+        "status": "pass",
+        "releaseReady": true,
+        "definitionCount": 2,
+        "occurrenceCount": 17,
+        "gates": [
+          {
+            "gate": "architecture",
+            "status": "pass",
+            "codes": []
+          },
+          {
+            "gate": "part_certificates",
+            "status": "pass",
+            "codes": []
+          },
+          {
+            "gate": "transforms",
+            "status": "pass",
+            "codes": []
+          },
+          {
+            "gate": "joints",
+            "status": "pass",
+            "codes": []
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -26,6 +26,12 @@ import {
   faceProvenanceTransferables,
   type FaceProvenancePayload,
 } from './faceProvenanceTransfer';
+import {
+  handleProjectViewsRequest,
+  type DrawingViewName,
+  type ProjectedViewData,
+} from './projectViewsRpc';
+import { handleExportStepRequest } from './exportStepRpc';
 
 // ─── Message types ───────────────────────────────────────────────────────────
 
@@ -37,8 +43,13 @@ export interface ProjectViewsInput {
   payload: {
     requestId: number;
     handle: string;
-    views: Array<'front' | 'top' | 'right' | 'left' | 'back' | 'bottom'>;
+    views: DrawingViewName[];
   };
+}
+
+export interface ExportStepInput {
+  type: 'EXPORT_STEP';
+  payload: { requestId: number; handle: string };
 }
 
 export interface PipelineWorkerInput {
@@ -60,11 +71,13 @@ export interface PipelineWorkerInput {
 }
 
 export interface PipelineWorkerOutput {
-  type: 'PIPELINE_RESULT' | 'PIPELINE_ERROR' | 'PIPELINE_PROGRESS' | 'PROJECT_RESULT';
+  type: 'PIPELINE_RESULT' | 'PIPELINE_ERROR' | 'PIPELINE_PROGRESS' | 'PROJECT_RESULT' | 'EXPORT_STEP_RESULT';
   /** PROJECT_VIEWS RPC 상관관계 id — PROJECT_RESULT 에만. */
   requestId?: number;
   /** PROJECT_RESULT: 뷰별 SVG 경로(직렬화 가능한 순수 데이터) 또는 실패 null. */
-  projectedViews?: Record<string, { visible: unknown[]; hidden: unknown[]; viewBox: string | null }> | null;
+  projectedViews?: Record<string, ProjectedViewData> | null;
+  /** Exact STEP text exported inside the registry-owning worker. */
+  stepText?: string | null;
   /** 파이프라인 결과의 B-rep 핸들(워커 레지스트리 소속 — PROJECT_VIEWS 로만
    *  사용 가능, 메인 스레드 레지스트리에선 조회 불가). */
   occtHandle?: string | null;
@@ -97,17 +110,16 @@ export interface PipelineWorkerOutput {
 
 const ctx = self as unknown as Worker;
 
-ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput | ProjectViewsInput>) => {
+ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput | ProjectViewsInput | ExportStepInput>) => {
   const { type } = event.data;
   if (type === 'PROJECT_VIEWS') {
-    const { requestId, handle, views } = event.data.payload;
-    try {
-      const { occtProjectViews } = await import('../features/occtEngine');
-      const projected = occtProjectViews(handle, views);
-      ctx.postMessage({ type: 'PROJECT_RESULT', requestId, projectedViews: projected ?? null } satisfies PipelineWorkerOutput);
-    } catch {
-      ctx.postMessage({ type: 'PROJECT_RESULT', requestId, projectedViews: null } satisfies PipelineWorkerOutput);
-    }
+    const response = await handleProjectViewsRequest(event.data.payload);
+    ctx.postMessage(response satisfies PipelineWorkerOutput);
+    return;
+  }
+  if (type === 'EXPORT_STEP') {
+    const response = await handleExportStepRequest(event.data.payload);
+    ctx.postMessage(response satisfies PipelineWorkerOutput);
     return;
   }
   if (type !== 'RUN_PIPELINE') return;

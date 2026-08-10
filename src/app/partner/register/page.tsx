@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePartnerLang } from '../_lib/partnerLang';
 import { registerDict } from '../_lib/dicts/register';
+import { executeRecaptchaV3 } from '@/lib/recaptcha-client';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -223,10 +224,12 @@ export default function PartnerRegisterPage() {
     setSubmitting(true);
     setSubmitError('');
     try {
+      const recaptchaToken = await executeRecaptchaV3('partner_register');
       const res = await fetch('/api/partner/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          recaptcha_token: recaptchaToken,
           company_name: form.companyName.trim(),
           biz_number: form.bizNumber.trim(),
           ceo_name: form.ceoName.trim(),

@@ -1,0 +1,435 @@
+{
+  "schema": "nexyfab.topology-consumer-rebind-evidence.v1",
+  "generatedAt": "2026-08-06T12:13:41.714Z",
+  "scope": "20 calibrated mate+product-interface datum remaps with broken/ambiguous solver-block negative controls.",
+  "status": "passed",
+  "summary": {
+    "fixtures": 20,
+    "pass": 20,
+    "fail": 0,
+    "safeSolveCalls": 20,
+    "blockedSolveCalls": 0
+  },
+  "fixtures": [
+    {
+      "id": "assembly-rebind-01",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-0",
+        "interfaceDatum": "axis-new-0",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "broken",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-0"
+        ],
+        "blockingInterfaceIds": [
+          "interface-0"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-02",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-1",
+        "interfaceDatum": "axis-new-1",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "ambiguous",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-1"
+        ],
+        "blockingInterfaceIds": [
+          "interface-1"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-03",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-2",
+        "interfaceDatum": "axis-new-2",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "broken",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-2"
+        ],
+        "blockingInterfaceIds": [
+          "interface-2"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-04",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-3",
+        "interfaceDatum": "axis-new-3",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "ambiguous",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-3"
+        ],
+        "blockingInterfaceIds": [
+          "interface-3"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-05",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-4",
+        "interfaceDatum": "axis-new-4",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "broken",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-4"
+        ],
+        "blockingInterfaceIds": [
+          "interface-4"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-06",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-5",
+        "interfaceDatum": "axis-new-5",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "ambiguous",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-5"
+        ],
+        "blockingInterfaceIds": [
+          "interface-5"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-07",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-6",
+        "interfaceDatum": "axis-new-6",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "broken",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-6"
+        ],
+        "blockingInterfaceIds": [
+          "interface-6"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-08",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-7",
+        "interfaceDatum": "axis-new-7",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "ambiguous",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-7"
+        ],
+        "blockingInterfaceIds": [
+          "interface-7"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-09",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-8",
+        "interfaceDatum": "axis-new-8",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "broken",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-8"
+        ],
+        "blockingInterfaceIds": [
+          "interface-8"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-10",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-9",
+        "interfaceDatum": "axis-new-9",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "ambiguous",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-9"
+        ],
+        "blockingInterfaceIds": [
+          "interface-9"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-11",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-10",
+        "interfaceDatum": "axis-new-10",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "broken",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-10"
+        ],
+        "blockingInterfaceIds": [
+          "interface-10"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-12",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-11",
+        "interfaceDatum": "axis-new-11",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "ambiguous",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-11"
+        ],
+        "blockingInterfaceIds": [
+          "interface-11"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-13",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-12",
+        "interfaceDatum": "axis-new-12",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "broken",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-12"
+        ],
+        "blockingInterfaceIds": [
+          "interface-12"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-14",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-13",
+        "interfaceDatum": "axis-new-13",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "ambiguous",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-13"
+        ],
+        "blockingInterfaceIds": [
+          "interface-13"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-15",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-14",
+        "interfaceDatum": "axis-new-14",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "broken",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-14"
+        ],
+        "blockingInterfaceIds": [
+          "interface-14"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-16",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-15",
+        "interfaceDatum": "axis-new-15",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "ambiguous",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-15"
+        ],
+        "blockingInterfaceIds": [
+          "interface-15"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-17",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-16",
+        "interfaceDatum": "axis-new-16",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "broken",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-16"
+        ],
+        "blockingInterfaceIds": [
+          "interface-16"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-18",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-17",
+        "interfaceDatum": "axis-new-17",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "ambiguous",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-17"
+        ],
+        "blockingInterfaceIds": [
+          "interface-17"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-19",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-18",
+        "interfaceDatum": "axis-new-18",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "broken",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-18"
+        ],
+        "blockingInterfaceIds": [
+          "interface-18"
+        ],
+        "solveCalls": 0
+      }
+    },
+    {
+      "id": "assembly-rebind-20",
+      "status": "passed",
+      "safe": {
+        "assemblySolveReady": true,
+        "mateDatum": "axis-new-19",
+        "interfaceDatum": "axis-new-19",
+        "solveCalls": 1
+      },
+      "negative": {
+        "quality": "ambiguous",
+        "assemblySolveReady": false,
+        "blockingMateIds": [
+          "mate-19"
+        ],
+        "blockingInterfaceIds": [
+          "interface-19"
+        ],
+        "solveCalls": 0
+      }
+    }
+  ]
+}

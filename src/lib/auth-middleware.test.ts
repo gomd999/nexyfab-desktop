@@ -27,15 +27,39 @@ function makeRequest(token?: string): TestRequest {
   return req;
 }
 
+let apiKeyFixtureEnabled = false;
+let userFixtureExists = true;
+let userFixtureLockedUntil: number | null = null;
+
 describe('getAuthUser', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
     vi.resetModules();
+    apiKeyFixtureEnabled = false;
+    userFixtureExists = true;
+    userFixtureLockedUntil = null;
     vi.doMock('./db-adapter', () => ({
       getDbAdapter: () => ({
         queryAll: vi.fn().mockResolvedValue([]),
-        queryOne: vi.fn().mockResolvedValue({ role: 'user', email_verified: 1 }),
+        queryOne: vi.fn(async (sql: string) => {
+          if (apiKeyFixtureEnabled && sql.includes('FROM nf_api_keys')) return { id: 'ak-1', user_id: 'user-42', scopes: '["read:projects"]', ip_whitelist: '[]', status: 'active', expires_at: null };
+          if (apiKeyFixtureEnabled && sql.includes('SELECT id, email, plan FROM nf_users')) return { id: 'user-42', email: 'api@example.com', plan: 'pro' };
+          if (sql.includes('FROM nf_users WHERE id = ?')) {
+            if (!userFixtureExists) return undefined;
+            return {
+              email: apiKeyFixtureEnabled ? 'api@example.com' : 'hello@example.com',
+              plan: 'pro',
+              role: 'user',
+              email_verified: 1,
+              locked_until: userFixtureLockedUntil,
+              pro_grace_until: null,
+              plan_expires_at: null,
+              plan_fallback: null,
+            };
+          }
+          return undefined;
+        }),
         execute: vi.fn().mockResolvedValue({ changes: 0 }),
       }),
     }));
@@ -97,6 +121,31 @@ describe('getAuthUser', () => {
     expect(result?.userId).toBe('user-42');
     expect(result?.email).toBe('hello@example.com');
     expect(result?.plan).toBe('pro');
+  });
+
+  it('rejects a still-valid access token after the account is deleted', async () => {
+    userFixtureExists = false;
+    const getAuthUser = await importModule();
+    const token = await signJWT({ sub: 'user-42', email: 'old@example.com', plan: 'pro' });
+
+    expect(await getAuthUser(asNextRequest(makeRequest(token)))).toBeNull();
+  });
+
+  it('rejects a still-valid access token after the account is locked', async () => {
+    userFixtureLockedUntil = Date.now() + 60_000;
+    const getAuthUser = await importModule();
+    const token = await signJWT({ sub: 'user-42', email: 'old@example.com', plan: 'pro' });
+
+    expect(await getAuthUser(asNextRequest(makeRequest(token)))).toBeNull();
+  });
+
+  it('attaches validated API key id and scopes without exposing the raw key', async () => {
+    apiKeyFixtureEnabled = true;
+    const getAuthUser = await importModule();
+    const raw = `nf_live_${'a'.repeat(64)}`;
+    const result = await getAuthUser(asNextRequest(makeRequest(raw)));
+    expect(result?.apiKey).toEqual({ id: 'ak-1', scopes: ['read:projects'] });
+    expect(JSON.stringify(result)).not.toContain(raw);
   });
 
   it('returns null for demo token when ALLOW_DEMO_AUTH is not set', async () => {

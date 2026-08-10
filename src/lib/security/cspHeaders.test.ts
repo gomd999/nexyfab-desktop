@@ -5,7 +5,11 @@
  * edit that drops one must fail CI here rather than in production.
  */
 import { describe, it, expect } from 'vitest';
-import { buildCspValue, buildSecurityHeaders } from './cspHeaders';
+import {
+  buildCspValue,
+  buildExactCadCspHeaders,
+  buildSecurityHeaders,
+} from './cspHeaders';
 
 describe('buildCspValue — Phase 5 OCCT WASM directives', () => {
   it("script-src permits 'wasm-unsafe-eval' (WebAssembly.compile)", () => {
@@ -25,6 +29,12 @@ describe('buildCspValue — Phase 5 OCCT WASM directives', () => {
   it('appends extra connect-src origins when provided', () => {
     const csp = buildCspValue({ extraConnectSrc: 'https://example.test' });
     expect(csp).toMatch(/connect-src[^;]*https:\/\/example\.test/);
+  });
+
+  it("does not grant JavaScript eval in production", () => {
+    const script = buildCspValue({ isDev: false }).split(';')
+      .find(value => value.trim().startsWith('script-src')) ?? '';
+    expect(script.split(/\s+/)).not.toContain("'unsafe-eval'");
   });
 
   it('omits upgrade-insecure-requests when explicitly disabled (local HTTP)', () => {
@@ -57,5 +67,28 @@ describe('buildSecurityHeaders — /occt-worker/* asset headers', () => {
     const withCors = buildSecurityHeaders({ corsAllowedOrigins: ['https://app.example'] });
     const cors = withCors.find((g) => g.source === '/api/(.*)');
     expect(cors?.headers.find((h) => h.key === 'Access-Control-Allow-Origin')?.value).toBe('https://app.example');
+    expect(cors?.headers.some((h) => h.key === 'Access-Control-Allow-Credentials')).toBe(false);
+  });
+
+  it('drops malformed CORS origins instead of reflecting them', () => {
+    const groups = buildSecurityHeaders({ corsAllowedOrigins: ['https://safe.example\r\nX-Evil: 1'] });
+    expect(groups.some((g) => g.source === '/api/(.*)')).toBe(false);
+  });
+});
+
+describe('buildExactCadCspHeaders — route-scoped Emscripten exception', () => {
+  it("grants ambient eval only on the precision-CAD route", () => {
+    const global = buildSecurityHeaders({ isDev: false })
+      .find(group => group.source === '/(.*)')!
+      .headers.find(header => header.key === 'Content-Security-Policy')!.value;
+    const exactCad = buildExactCadCspHeaders({ isDev: false });
+    const scoped = exactCad[0].headers[0].value;
+
+    expect(exactCad).toHaveLength(1);
+    expect(exactCad[0].source).toBe('/:lang(kr|en|ja|cn|es|ar)/shape-generator/:path*');
+    expect(global.split(';').find(value => value.trim().startsWith('script-src')))
+      .not.toContain("'unsafe-eval'");
+    expect(scoped.split(';').find(value => value.trim().startsWith('script-src')))
+      .toContain("'unsafe-eval'");
   });
 });

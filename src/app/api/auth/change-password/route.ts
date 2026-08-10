@@ -18,7 +18,7 @@ import { createHash, randomBytes } from 'crypto';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { logAudit } from '@/lib/audit';
 import { sendEmail } from '@/lib/email';
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   const ip = getTrustedClientIp(req.headers);
   // 현재 비밀번호 추측을 막는다 — 로그인과 같은 성격의 시도다.
-  if (!rateLimit(`change-password:${user.userId}`, 10, 3_600_000).allowed) {
+  if (!(await rateLimitAsync(`change-password:${user.userId}:${ip}`, 10, 3_600_000)).allowed) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
   }
 

@@ -3,7 +3,9 @@ import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const root = path.resolve(process.argv[2] || 'C:/Users/gomd9/Downloads/참고파일들');
+const rootArg = process.argv[2] || process.env.NEXYFAB_REFERENCE_CORPUS_ROOT;
+if (!rootArg) throw new Error('Corpus root is required as the first argument or NEXYFAB_REFERENCE_CORPUS_ROOT.');
+const root = path.resolve(rootArg);
 const outputArg = process.argv.find(arg => arg.startsWith('--output='));
 const output = outputArg ? path.resolve(outputArg.slice(9)) : null;
 const excluded = p => {
@@ -59,4 +61,3 @@ const report = {
 const json = JSON.stringify(report, null, 2);
 if (output) writeFileSync(output, json);
 else process.stdout.write(`${json}\n`);
-

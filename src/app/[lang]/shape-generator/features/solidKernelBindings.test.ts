@@ -6,7 +6,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { boundsOf, replicadDeps, selectSolidKernel } from './solidKernelBindings';
+import { boundsOf, replicadDeps, selectOcctWorkerUrl, selectSolidKernel } from './solidKernelBindings';
+import { COMMERCIAL_WORKER_URL, LAUNCHER_WORKER_URL } from '@/lib/occt/wasmBridge';
 
 describe('boundsOf', () => {
   it('returns the axis-aligned bounds of a BufferGeometry', () => {
@@ -38,6 +39,12 @@ describe('replicadDeps wiring', () => {
 });
 
 describe('selectSolidKernel', () => {
+  it('uses a no-stub worker in production/CAD-independent mode', () => {
+    expect(selectOcctWorkerUrl({ nodeEnv: 'production' })).toBe(COMMERCIAL_WORKER_URL);
+    expect(selectOcctWorkerUrl({ nodeEnv: 'development', cadIndependentMode: '1' })).toBe(COMMERCIAL_WORKER_URL);
+    expect(selectOcctWorkerUrl({ nodeEnv: 'development', cadIndependentMode: '0' })).toBe(LAUNCHER_WORKER_URL);
+  });
+
   it('default → a replicad-backed kernel; useWorker → a K-series kernel; both expose the full op set', () => {
     for (const useWorker of [false, true]) {
       const k = selectSolidKernel(useWorker);

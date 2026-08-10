@@ -15,13 +15,14 @@
  *   5. `/occt-worker/(.*)` has `Cache-Control: public, max-age=31536000, immutable`.
  *   6. CORS group is gated by the allow-list.
  *   7. `upgrade-insecure-requests` can be opted out (CSP_OMIT_UPGRADE_INSECURE).
- *   8. Dev mode CSP keeps `'unsafe-eval'` for HMR.
+ *   8. Dev keeps `'unsafe-eval'` for HMR while production removes it.
  *   9. The connect-src directive extends with env-provided extras.
  *   10. The global `/(.*)` row stays in place with all classic security headers.
  */
 import { describe, it, expect } from 'vitest';
 import {
   buildCspValue,
+  buildExactCadCspHeaders,
   buildSecurityHeaders,
 } from '../../lib/security/cspHeaders';
 
@@ -106,11 +107,11 @@ describe('buildCspValue', () => {
     expect(csp).toMatch(/script-src[^;]*'unsafe-eval'/);
   });
 
-  it("prod mode also keeps 'unsafe-eval' today (GA/reCAPTCHA still need it)", () => {
-    // Documented in the cspHeaders module — tightening prod is a future pass.
-    // This test pins the current behaviour so a future tighten is a deliberate diff.
+  it("prod mode removes ambient 'unsafe-eval'", () => {
     const csp = buildCspValue({ isDev: false });
-    expect(csp).toMatch(/script-src[^;]*'unsafe-eval'/);
+    const script = csp.split(';').find(value => value.trim().startsWith('script-src')) ?? '';
+    expect(script.split(/\s+/)).not.toContain("'unsafe-eval'");
+    expect(script.split(/\s+/)).toContain("'wasm-unsafe-eval'");
   });
 
   it('connect-src appends extra origins when provided', () => {
@@ -143,5 +144,30 @@ describe('buildCspValue', () => {
   it("frame-ancestors is 'none' (clickjacking defence)", () => {
     const csp = buildCspValue();
     expect(csp).toMatch(/frame-ancestors 'none'/);
+  });
+
+  it('rejects CSP directive injection from environment origins', () => {
+    const csp = buildCspValue({ extraConnectSrc: "https://ok.example; script-src *" });
+    expect(csp).not.toContain('ok.example');
+    expect(csp).not.toContain('script-src *');
+  });
+
+  it('adds object/base/form restrictions', () => {
+    const csp = buildCspValue({ isDev: false });
+    expect(csp).toContain("object-src 'none'");
+    expect(csp).toContain("base-uri 'self'");
+    expect(csp).toContain("form-action 'self'");
+  });
+});
+
+describe('precision-CAD production CSP exception', () => {
+  it('is limited to the localized shape-generator route', () => {
+    const groups = buildExactCadCspHeaders({ isDev: false });
+    expect(groups.map(group => group.source)).toEqual([
+      '/:lang(kr|en|ja|cn|es|ar)/shape-generator/:path*',
+    ]);
+    const csp = groups[0].headers.find(header => header.key === 'Content-Security-Policy')!.value;
+    const script = csp.split(';').find(value => value.trim().startsWith('script-src')) ?? '';
+    expect(script.split(/\s+/)).toContain("'unsafe-eval'");
   });
 });

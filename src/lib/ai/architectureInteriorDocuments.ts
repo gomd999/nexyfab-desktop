@@ -2,6 +2,10 @@ type V2 = [number, number];
 type V3 = [number, number, number];
 
 export interface ArchitectureStorey { id: string; name: string; elevationMm: number; heightMm: number }
+export interface ArchitectureGridLine { id: string; name: string; axis: 'x' | 'y' | 'radial'; startMm: V2; endMm: V2 }
+export interface ArchitectureRoof { id: string; storeyId: string; boundaryMm: V2[]; baseElevationMm: number; slopeDeg: number }
+export interface ArchitectureStair { id: string; fromStoreyId: string; toStoreyId: string; widthMm: number; riserCount: number; treadDepthMm: number; pathMm: V3[] }
+export interface ArchitectureZone { id: string; name: string; kind: 'fire' | 'occupancy' | 'thermal' | 'security'; spaceIds: string[] }
 export type ArchitectureBoundaryEdge =
   | { kind: 'line'; startMm: V2; endMm: V2 }
   | { kind: 'arc'; centerMm: V2; radiusMm: number; startAngleDeg: number; endAngleDeg: number };
@@ -15,12 +19,20 @@ export interface ArchitectureOpening { id: string; kind: 'window' | 'door'; host
 export interface ArchitectureServiceOpening { id: string; hostId: string; sourceRouteId: string; sourceSleeveId: string; shape: 'round'; centerMm: V3; axis: V3; cutDiameterMm: number; depthMm: number; firestopAnnulusMm: number; structuralApprovalId?: string }
 export interface ArchitectureDocument {
   schema: 'nexyfab.architecture.v1'; revision: number; storeys: ArchitectureStorey[]; spaces: ArchitectureSpace[]; walls: ArchitectureWall[]; slabs: ArchitectureSlab[]; ceilings: ArchitectureCeiling[]; openings: ArchitectureOpening[]; serviceOpenings?: ArchitectureServiceOpening[];
+  projectNorthDeg?: number; siteCoordinateSystemId?: string; grids?: ArchitectureGridLine[]; roofs?: ArchitectureRoof[]; stairs?: ArchitectureStair[]; zones?: ArchitectureZone[];
 }
 
 export interface InteriorLight { id: string; spaceId: string; hostCeilingId: string; positionMm: V3; suspensionMm: number; lumens: number; cctK: number; iesProfileId?: string; yawDeg?: number; worldToPhotometricQuaternion?: { x: number; y: number; z: number; w: number } }
 export interface InteriorFurniture { id: string; spaceId: string; positionMm: V3; sizeMm: V3; clearanceMm: number; rotationDeg?: number }
 export interface InteriorFinish { id: string; spaceId: string; hostId: string; surface: 'floor' | 'wall' | 'ceiling'; material: string }
-export interface InteriorDocument { schema: 'nexyfab.interior.v1'; revision: number; architectureDocumentId: string; lights: InteriorLight[]; furniture: InteriorFurniture[]; finishes: InteriorFinish[] }
+export interface InteriorMillwork { id: string; spaceId: string; hostWallId?: string; positionMm: V3; sizeMm: V3; material: string; clearanceMm: number }
+export interface InteriorCeilingSystem { id: string; spaceId: string; hostCeilingId: string; kind: 'gypsum' | 'grid' | 'open' | 'acoustic'; elevationMm: number; moduleMm?: V2 }
+export interface InteriorAcousticZone { id: string; spaceId: string; targetRt60Sec: number; absorptionClass?: string }
+export interface InteriorFieldMeasurement { sourceRef: string; measuredAt: string; architectureRevision: number; toleranceMm: number }
+export interface InteriorDocument {
+  schema: 'nexyfab.interior.v1'; revision: number; architectureDocumentId: string; lights: InteriorLight[]; furniture: InteriorFurniture[]; finishes: InteriorFinish[];
+  millwork?: InteriorMillwork[]; ceilingSystems?: InteriorCeilingSystem[]; acousticZones?: InteriorAcousticZone[]; fieldMeasurement?: InteriorFieldMeasurement;
+}
 
 export type ArchitectureEdit =
   | { kind: 'set_space_boundary'; spaceId: string; boundaryMm: V2[] }
@@ -64,6 +76,11 @@ export function validateArchitectureDocument(document: ArchitectureDocument): st
   });
   document.openings.forEach(item => { register(item.id); if (![item.offsetMm, item.widthMm, item.heightMm, item.sillMm].every(Number.isFinite) || item.offsetMm < 0 || item.sillMm < 0 || !positive(item.widthMm) || !positive(item.heightMm) || !finite3(item.positionMm)) issues.push(`${item.id}: invalid opening.`); });
   document.serviceOpenings?.forEach(item => { register(item.id); if (!item.hostId.trim() || !item.sourceRouteId.trim() || !item.sourceSleeveId.trim() || !finite3(item.centerMm) || !finite3(item.axis) || !positive(item.cutDiameterMm) || !positive(item.depthMm) || item.firestopAnnulusMm < 0 || Math.abs(Math.hypot(...item.axis) - 1) > 1e-6) issues.push(`${item.id}: invalid service opening.`); });
+  document.grids?.forEach(item => { register(item.id); if (!item.name.trim() || !finite2(item.startMm) || !finite2(item.endMm) || Math.hypot(item.endMm[0] - item.startMm[0], item.endMm[1] - item.startMm[1]) === 0) issues.push(`${item.id}: invalid grid line.`); });
+  document.roofs?.forEach(item => { register(item.id); if (item.boundaryMm.length < 3 || item.boundaryMm.some(point => !finite2(point)) || !Number.isFinite(item.baseElevationMm) || !Number.isFinite(item.slopeDeg) || Math.abs(item.slopeDeg) >= 90) issues.push(`${item.id}: invalid roof.`); });
+  document.stairs?.forEach(item => { register(item.id); if (!positive(item.widthMm) || !Number.isSafeInteger(item.riserCount) || item.riserCount < 1 || !positive(item.treadDepthMm) || item.pathMm.length < 2 || item.pathMm.some(point => !finite3(point))) issues.push(`${item.id}: invalid stair.`); });
+  document.zones?.forEach(item => { register(item.id); if (!item.name.trim() || !item.spaceIds.length) issues.push(`${item.id}: invalid building zone.`); });
+  if (!Number.isFinite(document.projectNorthDeg ?? 0) || (document.siteCoordinateSystemId !== undefined && !document.siteCoordinateSystemId.trim())) issues.push('Invalid building coordinate metadata.');
   const storeys = new Set(document.storeys.map(item => item.id)), walls = new Map(document.walls.map(item => [item.id, item])), spaces = new Map(document.spaces.map(item => [item.id, item])), slabs = new Map(document.slabs.map(item => [item.id, item])), ceilings = new Map(document.ceilings.map(item => [item.id, item]));
   for (const wall of document.walls) if (!storeys.has(wall.storeyId)) issues.push(`${wall.id}: unknown storey.`);
   for (const space of document.spaces) {
@@ -81,6 +98,9 @@ export function validateArchitectureDocument(document: ArchitectureDocument): st
   for (const ceiling of document.ceilings) if (!spaces.has(ceiling.spaceId)) issues.push(`${ceiling.id}: unknown space.`);
   const serviceHosts = new Set([...document.walls.map(item => item.id), ...document.slabs.map(item => item.id)]);
   for (const opening of document.serviceOpenings ?? []) if (!serviceHosts.has(opening.hostId)) issues.push(`${opening.id}: unknown wall or slab host.`);
+  for (const roof of document.roofs ?? []) if (!storeys.has(roof.storeyId)) issues.push(`${roof.id}: unknown storey.`);
+  for (const stair of document.stairs ?? []) if (!storeys.has(stair.fromStoreyId) || !storeys.has(stair.toStoreyId) || stair.fromStoreyId === stair.toStoreyId) issues.push(`${stair.id}: invalid storey connection.`);
+  for (const zone of document.zones ?? []) if (zone.spaceIds.some(id => !spaces.has(id))) issues.push(`${zone.id}: unknown space in zone.`);
   return issues;
 }
 
@@ -91,6 +111,11 @@ export function validateInteriorDocument(interior: InteriorDocument, architectur
   interior.lights.forEach(item => { register(item.id); const quaternion = item.worldToPhotometricQuaternion; if (!spaces.has(item.spaceId) || !ceilings.has(item.hostCeilingId) || !finite3(item.positionMm) || item.suspensionMm < 0 || !positive(item.lumens) || !positive(item.cctK) || !Number.isFinite(item.yawDeg ?? 0) || (quaternion && ![quaternion.x, quaternion.y, quaternion.z, quaternion.w].every(Number.isFinite))) issues.push(`${item.id}: invalid light or architecture host.`); });
   interior.furniture.forEach(item => { register(item.id); if (!spaces.has(item.spaceId) || !finite3(item.positionMm) || !finite3(item.sizeMm) || !item.sizeMm.every(positive) || item.clearanceMm < 0 || !Number.isFinite(item.rotationDeg ?? 0)) issues.push(`${item.id}: invalid furniture or space.`); });
   interior.finishes.forEach(item => { register(item.id); if (!spaces.has(item.spaceId) || !hosts.has(item.hostId) || !item.material.trim()) issues.push(`${item.id}: invalid finish host or material.`); });
+  interior.millwork?.forEach(item => { register(item.id); if (!spaces.has(item.spaceId) || (item.hostWallId !== undefined && !architecture.walls.some(wall => wall.id === item.hostWallId)) || !finite3(item.positionMm) || !finite3(item.sizeMm) || !item.sizeMm.every(positive) || !item.material.trim() || item.clearanceMm < 0) issues.push(`${item.id}: invalid millwork or architecture host.`); });
+  interior.ceilingSystems?.forEach(item => { register(item.id); if (!spaces.has(item.spaceId) || !ceilings.has(item.hostCeilingId) || !Number.isFinite(item.elevationMm) || (item.moduleMm && (!finite2(item.moduleMm) || !item.moduleMm.every(positive)))) issues.push(`${item.id}: invalid ceiling system or host.`); });
+  interior.acousticZones?.forEach(item => { register(item.id); if (!spaces.has(item.spaceId) || !positive(item.targetRt60Sec) || (item.absorptionClass !== undefined && !item.absorptionClass.trim())) issues.push(`${item.id}: invalid acoustic zone.`); });
+  const field = interior.fieldMeasurement;
+  if (field && (!field.sourceRef.trim() || !Number.isSafeInteger(field.architectureRevision) || field.architectureRevision < 0 || !positive(field.toleranceMm) || Number.isNaN(Date.parse(field.measuredAt)))) issues.push('Invalid interior field measurement evidence.');
   return issues;
 }
 
@@ -120,8 +145,8 @@ export function applyArchitectureInteriorEdit(architecture: ArchitectureDocument
     nextInterior.lights.filter(item => item.hostCeilingId === ceiling.id).forEach(light => { light.positionMm[2] = ceiling.elevationMm - light.suspensionMm; affected.add(light.id); });
     invalidated.add('lighting'); invalidated.add('mep_interference');
   }
-  const architectureIds = new Set([...nextArchitecture.storeys, ...nextArchitecture.spaces, ...nextArchitecture.walls, ...nextArchitecture.slabs, ...nextArchitecture.ceilings, ...nextArchitecture.openings, ...(nextArchitecture.serviceOpenings ?? [])].map(item => item.id));
-  const interiorIds = new Set([...nextInterior.lights, ...nextInterior.furniture, ...nextInterior.finishes].map(item => item.id));
+  const architectureIds = new Set([...nextArchitecture.storeys, ...nextArchitecture.spaces, ...nextArchitecture.walls, ...nextArchitecture.slabs, ...nextArchitecture.ceilings, ...nextArchitecture.openings, ...(nextArchitecture.serviceOpenings ?? []), ...(nextArchitecture.grids ?? []), ...(nextArchitecture.roofs ?? []), ...(nextArchitecture.stairs ?? []), ...(nextArchitecture.zones ?? [])].map(item => item.id));
+  const interiorIds = new Set([...nextInterior.lights, ...nextInterior.furniture, ...nextInterior.finishes, ...(nextInterior.millwork ?? []), ...(nextInterior.ceilingSystems ?? []), ...(nextInterior.acousticZones ?? [])].map(item => item.id));
   if ([...affected].some(id => architectureIds.has(id))) nextArchitecture.revision++;
   if ([...affected].some(id => interiorIds.has(id))) nextInterior.revision++;
   const issues = [...validateArchitectureDocument(nextArchitecture), ...validateInteriorDocument(nextInterior, nextArchitecture)];

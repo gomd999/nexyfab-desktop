@@ -29,7 +29,7 @@
 | `POST /api/nexyfab/jscad-gen` | 자연어·면 연산 → **JSCAD** 코드 (**권장**) |
 | `POST /api/nexyfab/openscad-gen` | 위와 동일(레거시 별칭 — 클라이언트는 `jscad-gen` 사용) |
 | `POST /api/nexyfab/openscad-render` | **OpenSCAD CLI** `.scad` → STL (동기/비동기); `GET .../openscad-render/job/[id]` 폴링. 다중 인스턴스 시 `REDIS_URL`로 큐 공유, 큰 메시는 `S3_BUCKET` 설정 시 `artifactUrl`, 샌드박스는 `OPENSCAD_USE_DOCKER=1` |
-| `POST /api/nexyfab/brep/step-import` | **STEP** 서버 임포트(동기/비동기); `input.inlineBase64` 또는 `input.objectKey`, `GET …/brep/step-import/job/[id]`. OCCT는 `BREP_WORKER_URL` 워커(`…/tessellate`). 다중 인스턴스는 `REDIS_URL` + 키 `nf:brep:*` |
+| `POST /api/nexyfab/brep/step-import` | **STEP** 서버 임포트(동기/비동기); `input.inlineBase64` 또는 소유권 검증된 `input.objectKey`, `GET …/brep/step-import/job/[id]`. 50MB 초과는 private direct PUT 후 5분 signed `sourceUrl`만 OCCT worker에 전달하며 원본 바이트를 JSON/Redis에 넣지 않음. 다중 인스턴스는 `REDIS_URL` + 키 `nf:brep:*` |
 | (클라이언트) | STEP 선택 시 API 우선 → 실패 시 브라우저 WASM. 비활성: `NEXT_PUBLIC_SERVER_STEP_IMPORT=0` |
 | `POST /api/sim/{kind}` | 시뮬레이션 잡 큐(CFD·MBD·CAM·mold_fill·optics·thermal); `GET /api/sim/{kind}/job/{id}` 폴링. 프로덕션은 `dockerSolverAdapter` 로드맵 주석 참고 |
 | (클라이언트) | **FEA·모달·열 등 주요 CAE**는 `workers/feaWorker.ts` 등 **브라우저 Web Worker** 경로가 기본 |

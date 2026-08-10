@@ -12,17 +12,37 @@ export interface StorageResult {
 
 export interface StorageAdapter {
   upload(buffer: Buffer, filename: string, directory: string): Promise<StorageResult>;
+  uploadPrivate(buffer: Buffer, filename: string, directory: string): Promise<StorageResult>;
   /** Upload directly at an exact key (no UUID prefix) */
   uploadRaw?(buffer: Buffer, key: string, contentType?: string): Promise<void>;
   /** Download raw buffer by key */
   download?(key: string): Promise<Buffer>;
   getSignedUrl(key: string, expiresInSeconds?: number): Promise<string>;
   delete(key: string): Promise<void>;
+  /** Direct browser PUT for large private objects (S3/R2 only). */
+  createPrivateUploadUrl?(
+    filename: string,
+    directory: string,
+    contentType: string,
+    expiresInSeconds?: number,
+  ): Promise<{ key: string; uploadUrl: string }>;
+  /** Authoritative stored byte size after direct upload. */
+  stat?(key: string): Promise<{ size: number }>;
 }
 
 // ─── Local Filesystem Storage ──────────────────────────────────────────────
 
 function getLocalStorage(): StorageAdapter {
+  const privateRoot = path.join(process.cwd(), 'data', 'private-storage');
+  const publicRoot = path.join(process.cwd(), 'public');
+  function resolveUnder(root: string, relativeKey: string): string {
+    const resolvedRoot = path.resolve(root);
+    const resolved = path.resolve(resolvedRoot, relativeKey);
+    if (resolved !== resolvedRoot && !resolved.startsWith(`${resolvedRoot}${path.sep}`)) {
+      throw new Error('invalid storage key');
+    }
+    return resolved;
+  }
   return {
     async upload(buffer, filename, directory) {
       const id = randomUUID();
@@ -33,21 +53,40 @@ function getLocalStorage(): StorageAdapter {
       const key = `${directory}/${id}/${filename}`;
       return { key, url: `/${key}`, size: buffer.length };
     },
+    async uploadPrivate(buffer, filename, directory) {
+      const id = randomUUID();
+      const key = `private/${directory}/${id}/${filename}`;
+      const filePath = path.join(privateRoot, directory, id, filename);
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      fs.writeFileSync(filePath, buffer, { flag: 'wx' });
+      return { key, url: '', size: buffer.length };
+    },
     async uploadRaw(buffer, key) {
       const filePath = path.join(process.cwd(), 'public', key);
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
       fs.writeFileSync(filePath, buffer);
     },
     async download(key) {
-      const filePath = path.join(process.cwd(), 'public', key);
+      const filePath = key.startsWith('private/')
+        ? resolveUnder(privateRoot, key.slice('private/'.length))
+        : resolveUnder(publicRoot, key);
       return fs.readFileSync(filePath);
     },
     async getSignedUrl(key) {
+      if (key.startsWith('private/')) throw new Error('local private files require authenticated streaming');
       return `/${key}`; // local files are publicly accessible
     },
     async delete(key) {
-      const filePath = path.join(process.cwd(), 'public', key);
+      const filePath = key.startsWith('private/')
+        ? resolveUnder(privateRoot, key.slice('private/'.length))
+        : resolveUnder(publicRoot, key);
       try { fs.unlinkSync(filePath); } catch { /* ignore */ }
+    },
+    async stat(key) {
+      const filePath = key.startsWith('private/')
+        ? resolveUnder(privateRoot, key.slice('private/'.length))
+        : resolveUnder(publicRoot, key);
+      return { size: fs.statSync(filePath).size };
     },
   };
 }
@@ -117,6 +156,17 @@ function getS3Storage(): StorageAdapter {
         return { key, url: getFileUrl(key), size: buffer.length };
       });
     },
+    async uploadPrivate(buffer, filename, directory) {
+      return withMeter('putPrivateObject', async () => {
+        const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+        const id = randomUUID();
+        const key = `private/${directory}/${id}/${filename}`;
+        await makeClient(S3Client).send(new PutObjectCommand({
+          Bucket: bucket, Key: key, Body: buffer, ContentType: getMimeType(filename),
+        }));
+        return { key, url: '', size: buffer.length };
+      });
+    },
     async uploadRaw(buffer, key, contentType = 'application/octet-stream') {
       await withMeter('putObject', async () => {
         const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
@@ -145,6 +195,29 @@ function getS3Storage(): StorageAdapter {
       await withMeter('deleteObject', async () => {
         const { S3Client, DeleteObjectCommand } = await import('@aws-sdk/client-s3');
         await makeClient(S3Client).send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+      });
+    },
+    async createPrivateUploadUrl(filename, directory, contentType, expiresInSeconds = 900) {
+      return withMeter('presignPrivatePut', async () => {
+        const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+        const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+        const id = randomUUID();
+        const key = `private/${directory}/${id}/${filename}`;
+        const uploadUrl = await getSignedUrl(
+          makeClient(S3Client),
+          new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType }),
+          { expiresIn: expiresInSeconds },
+        );
+        return { key, uploadUrl };
+      });
+    },
+    async stat(key) {
+      return withMeter('headObject', async () => {
+        const { S3Client, HeadObjectCommand } = await import('@aws-sdk/client-s3');
+        const result = await makeClient(S3Client).send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+        const size = Number(result.ContentLength);
+        if (!Number.isSafeInteger(size) || size < 0) throw new Error('invalid object size');
+        return { size };
       });
     },
   };

@@ -46,6 +46,7 @@ interface HealthReport {
     OPENSCAD_BIN?: string;
     OPENSCADPATH?: string;
     OPENSCAD_USE_DOCKER?: string;
+    OPENSCAD_EXTERNAL_WORKER?: string;
   };
 }
 
@@ -102,6 +103,38 @@ async function checkRender(): Promise<CheckResult> {
   }
 }
 
+async function checkExternalWorkerRender(): Promise<CheckResult> {
+  const start = Date.now();
+  try {
+    const { enqueueOpenScadJob, getOpenScadJobAsync } = await import('@/lib/openscad-render/jobQueue');
+    const userId = `openscad-health-${Date.now()}`;
+    const job = await enqueueOpenScadJob({
+      userId,
+      scad: 'include <BOSL2/std.scad>\ncuboid([1, 1, 1]);',
+      format: 'stl',
+    });
+    if (job.status === 'failed') {
+      return { ok: false, ms: Date.now() - start, error: job.errorMessage ?? 'external worker enqueue failed' };
+    }
+    const deadline = Date.now() + 20_000;
+    while (Date.now() < deadline) {
+      const current = await getOpenScadJobAsync(job.id, userId);
+      if (current?.status === 'failed') {
+        return { ok: false, ms: Date.now() - start, error: current.errorMessage ?? 'external worker render failed' };
+      }
+      if (current?.status === 'complete' && current.resultBase64) {
+        const bytes = Buffer.from(current.resultBase64, 'base64').length;
+        if (bytes < 84) return { ok: false, ms: Date.now() - start, error: `STL too small (${bytes} bytes)` };
+        return { ok: true, ms: Date.now() - start, detail: `${bytes} bytes via isolated Redis worker` };
+      }
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    return { ok: false, ms: Date.now() - start, error: 'external worker render timed out' };
+  } catch (e) {
+    return { ok: false, ms: Date.now() - start, error: (e as Error).message };
+  }
+}
+
 export async function GET(req: NextRequest) {
   // Lightweight admin gate. We don't want this scraped by bots since the
   // OpenSCAD version banner is a (mild) fingerprint vector.
@@ -113,11 +146,24 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const [binary, bosl2, render] = await Promise.all([
-    checkBinary(),
-    checkBosl2(),
-    checkRender(),
-  ]);
+  const externalWorker = process.env.OPENSCAD_EXTERNAL_WORKER === '1';
+  let binary: CheckResult;
+  let bosl2: CheckResult;
+  let render: CheckResult;
+  if (externalWorker) {
+    render = await checkExternalWorkerRender();
+    const delegated = render.ok
+      ? { ok: true, ms: render.ms, detail: 'verified by isolated BOSL2 render' }
+      : { ok: false, ms: render.ms, error: render.error };
+    binary = delegated;
+    bosl2 = delegated;
+  } else {
+    [binary, bosl2, render] = await Promise.all([
+      checkBinary(),
+      checkBosl2(),
+      checkRender(),
+    ]);
+  }
 
   let status: HealthReport['status'] = 'ok';
   if (!binary.ok || !render.ok) status = 'error';
@@ -133,6 +179,7 @@ export async function GET(req: NextRequest) {
       OPENSCAD_BIN: process.env.OPENSCAD_BIN,
       OPENSCADPATH: process.env.OPENSCADPATH,
       OPENSCAD_USE_DOCKER: process.env.OPENSCAD_USE_DOCKER,
+      OPENSCAD_EXTERNAL_WORKER: process.env.OPENSCAD_EXTERNAL_WORKER,
     },
   };
 

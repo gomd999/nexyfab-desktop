@@ -1,0 +1,352 @@
+{
+  "schema": "nexyfab.complex-holdout-review.v1",
+  "family": "turbomachinery",
+  "policy": {
+    "selectedDoesNotMeanApproved": true,
+    "scoreEligible": false,
+    "oneCasePerLineage": true,
+    "requiredApprovedCases": 20
+  },
+  "candidates": 19,
+  "selected": 15,
+  "shortfall": 5,
+  "structurallyRejected": [
+    {
+      "lineageGroup": "turbomachinery:centrifugal-pump-174",
+      "relativePath": "참고파일들4/centrifugal-pump-174.snapshot.8.zip",
+      "reason": "supported_product_cad_missing"
+    },
+    {
+      "lineageGroup": "turbomachinery:centrifugal-pump-93",
+      "relativePath": "참고파일들4/centrifugal-pump-93.snapshot.8.zip",
+      "reason": "supported_product_cad_missing"
+    },
+    {
+      "lineageGroup": "turbomachinery:fan-64",
+      "relativePath": "참고파일들4/fan--64.snapshot.2.zip",
+      "reason": "supported_product_cad_missing"
+    },
+    {
+      "lineageGroup": "turbomachinery:jet-engine-assembly-4",
+      "relativePath": "참고파일들4/jet-engine-assembly-4.snapshot.2.zip",
+      "reason": "supported_product_cad_missing"
+    }
+  ],
+  "items": [
+    {
+      "caseId": "turbomachinery-review-01",
+      "family": "turbomachinery",
+      "tierCandidate": "T3",
+      "holdoutGroup": "turbomachinery:8-hp-open-type-heat-pump-grain-dryer-lightweight-model-1",
+      "sourceHash": "a410cbdb4d445ede228132662f3bc2828704533d01acb42e14c3c9b934dccd04",
+      "bytes": 20114527,
+      "extension": "zip",
+      "localLocator": "참고파일들4/8-hp-open-type-heat-pump-grain-dryer-lightweight-model-1.snapshot.5.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-02",
+      "family": "turbomachinery",
+      "tierCandidate": "T1",
+      "holdoutGroup": "turbomachinery:8hp",
+      "sourceHash": "a3b31ac6fcd3b4075bcc705e5ab9e926710d7b185ec709203019705690b1e00f",
+      "bytes": 16470353,
+      "extension": "step",
+      "localLocator": "참고파일들4/8-hp-open-type-heat-pump-grain-dryer-lightweight-model-1.snapshot.5/8HP-粮食烘干机开式总装图-轻量化.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-03",
+      "family": "turbomachinery",
+      "tierCandidate": "T3",
+      "holdoutGroup": "turbomachinery:ant-liquid-cpu-cooler-dual-rgb-fan-aio-1",
+      "sourceHash": "0add54435647798697b9e3514952f4b75709ba9b8267e0f77762fb4e7225f2d2",
+      "bytes": 13048918,
+      "extension": "zip",
+      "localLocator": "참고파일들2/ant-liquid-cpu-cooler-dual-rgb-fan-aio-1.snapshot.1.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-04",
+      "family": "turbomachinery",
+      "tierCandidate": "T2",
+      "holdoutGroup": "turbomachinery:assem3",
+      "sourceHash": "2d4ca8f075f65006cc153dd16c5275d0e43ff4bb56741bd64126b2291272f6fc",
+      "bytes": 861007,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/jet-engine-345.snapshot.2/Assem3.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-05",
+      "family": "turbomachinery",
+      "tierCandidate": "T2",
+      "holdoutGroup": "turbomachinery:assembly-total",
+      "sourceHash": "ac47f94dec47cfacf52d7cc778389dbb27c15e2396a8961f24124cca79267ed5",
+      "bytes": 569856,
+      "extension": "iam",
+      "localLocator": "참고파일들4/horizontal-pump-motor-and-flexible-coupling-1.snapshot.6/Assembly_Total.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-06",
+      "family": "turbomachinery",
+      "tierCandidate": "T1",
+      "holdoutGroup": "turbomachinery:assy-water-pump-osaka",
+      "sourceHash": "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b",
+      "bytes": 3568600,
+      "extension": "step",
+      "localLocator": "참고파일들4/osaka-water-pump-1.snapshot.1/Water Pump Osaka/Assy_Water Pump Osaka.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-07",
+      "family": "turbomachinery",
+      "tierCandidate": "T1",
+      "holdoutGroup": "turbomachinery:erf-2-rs-d-k-m-g-vdeli-i-ftli-salyangoz-fan",
+      "sourceHash": "58cc596957c6818ac6deae5a2d0e2db8be4d35b16563a6c1503f24f494532229",
+      "bytes": 38521492,
+      "extension": "step",
+      "localLocator": "참고파일들4/erf-2-rs-dokum-govdeli-ciftli-salyangoz-fan-1.snapshot.2/ERF-2-RS DÖKÜM GÖVDELİ ÇİFTLİ SALYANGOZ FAN.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-08",
+      "family": "turbomachinery",
+      "tierCandidate": "T3",
+      "holdoutGroup": "turbomachinery:erf-2-rs-dokum-govdeli-ciftli-salyangoz-fan-1",
+      "sourceHash": "62821b5b8eb4e25c3ee6c80a20158135e2e2a87fb5b971d0a78e91233e7c836f",
+      "bytes": 118803823,
+      "extension": "zip",
+      "localLocator": "참고파일들4/erf-2-rs-dokum-govdeli-ciftli-salyangoz-fan-1.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-09",
+      "family": "turbomachinery",
+      "tierCandidate": "T3",
+      "holdoutGroup": "turbomachinery:horizontal-pump-motor-and-flexible-coupling-1",
+      "sourceHash": "b375dee43eb099043cf9dab7553835cc58cef5165d202bb5954328ae26866e20",
+      "bytes": 6976794,
+      "extension": "zip",
+      "localLocator": "참고파일들4/horizontal-pump-motor-and-flexible-coupling-1.snapshot.6.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-10",
+      "family": "turbomachinery",
+      "tierCandidate": "T3",
+      "holdoutGroup": "turbomachinery:jet-engine-345",
+      "sourceHash": "c66dc66ec44193845d0035baa984dab788ba3a02f2e58112dc7bb406d4f10e42",
+      "bytes": 2682325,
+      "extension": "zip",
+      "localLocator": "참고파일들4/jet-engine-345.snapshot.2.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-11",
+      "family": "turbomachinery",
+      "tierCandidate": "T1",
+      "holdoutGroup": "turbomachinery:liquid-cooler",
+      "sourceHash": "586e39d8d37694d2db53345430eb3012b7fa46eb12ac81dfd376804594d3cb45",
+      "bytes": 8833635,
+      "extension": "step",
+      "localLocator": "참고파일들2/ant-liquid-cpu-cooler-dual-rgb-fan-aio-1.snapshot.1/CPU Liquid Cooler/Liquid Cooler.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-12",
+      "family": "turbomachinery",
+      "tierCandidate": "T1",
+      "holdoutGroup": "turbomachinery:nh-d15-chromax-black",
+      "sourceHash": "630ca7bff17c36d0474c9e1faf8e642cac3d48967b11553351d253fef64c1988",
+      "bytes": 51296007,
+      "extension": "stp",
+      "localLocator": "참고파일들4/noctua-nh-d15-chromax-black-cpu-fan-1.snapshot.4/nh-d15-chromax-black.stp",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-13",
+      "family": "turbomachinery",
+      "tierCandidate": "T3",
+      "holdoutGroup": "turbomachinery:noctua-nh-d15-chromax-black-cpu-fan-1",
+      "sourceHash": "790039e07be68d0a37ff82f859628f5454e21d831b2f396292315ba728d00427",
+      "bytes": 126846961,
+      "extension": "zip",
+      "localLocator": "참고파일들4/noctua-nh-d15-chromax-black-cpu-fan-1.snapshot.4.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-14",
+      "family": "turbomachinery",
+      "tierCandidate": "T3",
+      "holdoutGroup": "turbomachinery:osaka-water-pump-1",
+      "sourceHash": "ff5eb857b2c593b3b4a3694d32c907cc64571990b4ef52e96d819d8c1adaa4c1",
+      "bytes": 12475869,
+      "extension": "zip",
+      "localLocator": "참고파일들4/osaka-water-pump-1.snapshot.1.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-15",
+      "family": "turbomachinery",
+      "tierCandidate": "T1",
+      "holdoutGroup": "turbomachinery:propeller-joint-shaft",
+      "sourceHash": "1729564cde783c659edad2d7307ea575e367287cc8aa86a37b7bd64343e911f5",
+      "bytes": 1511844,
+      "extension": "step",
+      "localLocator": "참고파일들4/surpass-hobby-c5055-brushless-motor-1.snapshot.14/Surpass hobby C5055/files/Propeller joint shaft.STEP",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    }
+  ]
+}

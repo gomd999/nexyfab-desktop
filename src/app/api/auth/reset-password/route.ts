@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbAdapter } from '@/lib/db-adapter';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
-  if (!rateLimit(`reset-pw:${ip}`, 5, 60_000).allowed) {
+  if (!(await rateLimitAsync(`reset-pw:${ip}`, 5, 60_000)).allowed) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
@@ -30,6 +30,9 @@ export async function POST(req: NextRequest) {
   const { token: rawToken, password } = parsed.data;
   const db = getDbAdapter();
   const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+  if (!(await rateLimitAsync(`reset-pw-token:${tokenHash}`, 5, 15 * 60_000)).allowed) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
 
   const row = await db.queryOne<{ id: string; user_id: string }>(
     `SELECT id, user_id FROM nf_password_reset_tokens

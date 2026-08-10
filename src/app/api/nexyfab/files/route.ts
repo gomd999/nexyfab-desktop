@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
       '.step', '.stp', '.stl', '.obj', '.blend',
       '.pdf', '.doc', '.docx', '.dwg', '.dxf',
       '.jpg', '.jpeg', '.png', '.webp', '.gif',
-      '.zip', '.rar', '.7z',
+      '.zip',
     ],
     maxSizeBytes: 100 * 1024 * 1024, // 100MB
     checkMagicBytes: false,
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
 
   let storageResult;
   try {
-    storageResult = await storage.upload(buffer, safeFilename, `files/${authUser.userId}`);
+    storageResult = await storage.uploadPrivate(buffer, safeFilename, `files/${authUser.userId}`);
   } catch (err) {
     console.error('File upload error:', err);
     return NextResponse.json({ error: 'File upload failed' }, { status: 500 });

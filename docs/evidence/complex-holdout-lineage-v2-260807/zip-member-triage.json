@@ -1,0 +1,937 @@
+{
+  "schema": "nexyfab.lineage-v2-zip-member-triage.v1",
+  "generatedAt": "2026-08-06T18:51:44.264Z",
+  "scoreEligible": false,
+  "sourceBytesEmbedded": false,
+  "summary": {
+    "zipCases": 28,
+    "routed": 28,
+    "localExecutorAvailable": 0,
+    "notRun": 0,
+    "fail": 0,
+    "sourceHashMismatch": 0,
+    "routes": {
+      "creo-worker": 1,
+      "solidworks-worker": 9,
+      "inventor-worker": 2,
+      "autocad-or-oda": 11,
+      "revit-api": 5
+    }
+  },
+  "results": [
+    {
+      "caseId": "gearbox-review-09",
+      "status": "routed",
+      "reason": "route_identified:creo-worker",
+      "sourceHashVerified": true,
+      "archiveBytes": 10400789,
+      "entries": 19,
+      "extensionCounts": {
+        "prt": 15,
+        "png": 4
+      },
+      "route": "creo-worker",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "Gearbox/Gearbox Casing - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 1607158,
+          "sha256": "09608ce784c9c027167c1760967a5cfea6515035b2b9090d88f78f35314989ba"
+        },
+        {
+          "name": "Gearbox/Gearbox - Assembly.prt",
+          "extension": "prt",
+          "bytes": 974135,
+          "sha256": "4f2a57e9d5c405698187f993dc781802a448b000f92baaa1e20d5c0e292ebd1a"
+        },
+        {
+          "name": "Gearbox/Primary Shaft Gear G4 - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 840137,
+          "sha256": "097bb3c01d8219e3285316b0e5d720211a70449b6d17605caa4783036e240b79"
+        },
+        {
+          "name": "Gearbox/Secondary Shaft Gear G2 - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 780858,
+          "sha256": "28332afbc9f1613fe6e626c3ae692b3fc459ccf902b1803bdf9750ae6bf0b66f"
+        },
+        {
+          "name": "Gearbox/Primary Shaft Gear G3 - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 772885,
+          "sha256": "85cb59dd574afcae1125a585b7adc9162020996302ef29573c4a3ff7d2d4d298"
+        },
+        {
+          "name": "Gearbox/Secondary Shaft Gear G4 - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 731106,
+          "sha256": "febd70522a1696290515bec31d1d19af8c6ef057fbbee987f5b07f1f8720eeb0"
+        },
+        {
+          "name": "Gearbox/Secondary Shaft Gear G3 - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 729299,
+          "sha256": "c2fb4153a60998c4e8ed9f3c0ba36017f074a4be22eb2756d3c35b992803862e"
+        },
+        {
+          "name": "Gearbox/Primary Shaft Gear G2 - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 676505,
+          "sha256": "a987a809db852e333a7e709d675d696755c50dd4d3a36c031ea9a66a9f9dfaf0"
+        },
+        {
+          "name": "Gearbox/Secondary Shaft Gear G5 - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 675120,
+          "sha256": "05e748455c425a0f40d7175e301da186af26db41d021c30c96aeb8863d1577f5"
+        },
+        {
+          "name": "Gearbox/Primary Shaft Gear G1 - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 618060,
+          "sha256": "ab3ff76e8f06a678cb39ab59f56b121e5e31ebb4acea7bfbffbcc75861c47fb6"
+        },
+        {
+          "name": "Gearbox/Secondary Shaft Gear G1 - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 517141,
+          "sha256": "88ca282ba8412766ed5fa817500908f0e59585ba78a9ed234d937f0fbeb7d0ce"
+        },
+        {
+          "name": "Gearbox/Primary Shaft - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 256869,
+          "sha256": "cc4bea63681c703667a4bf454cda94e5394439a6323d541a71f7d201fcd761e2"
+        },
+        {
+          "name": "Gearbox/Secondary Shaft - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 248563,
+          "sha256": "df4af41753f72115a05ae567d76a2a9abfd614d64b91d01a42a35aa563243d6f"
+        },
+        {
+          "name": "Gearbox/Bearing Cap - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 219202,
+          "sha256": "93a2a0bf8caba24fd63dc681613651c62aa597462b31df0f52b623cf34aa9cf6"
+        },
+        {
+          "name": "Gearbox/Countershaft - Gearbox.prt",
+          "extension": "prt",
+          "bytes": 189029,
+          "sha256": "f5f9301877adaa3cb2cf0e11d66b53656f39a39a52d567b050a6af720b1b5aaf"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-02",
+      "status": "routed",
+      "reason": "route_identified:solidworks-worker",
+      "sourceHashVerified": true,
+      "archiveBytes": 15448721,
+      "entries": 9,
+      "extensionCounts": {
+        "png": 8,
+        "sldprt": 1
+      },
+      "route": "solidworks-worker",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "WT-01-3TN-WATER TANK YM-10.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 78947,
+          "sha256": "987404265081e78fbbd92c96f9bd8b509a5823c1498a19686e477587144d51e2"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-05",
+      "status": "routed",
+      "reason": "route_identified:solidworks-worker",
+      "sourceHashVerified": true,
+      "archiveBytes": 339577,
+      "entries": 1,
+      "extensionCounts": {
+        "sldprt": 1
+      },
+      "route": "solidworks-worker",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "pressure vessel 166.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 339377,
+          "sha256": "47f7055e09db3b6b602062c3dc576f70bd8bc1fba311b72ce00eaa93a5a97942"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-11",
+      "status": "routed",
+      "reason": "route_identified:solidworks-worker",
+      "sourceHashVerified": true,
+      "archiveBytes": 1235764,
+      "entries": 5,
+      "extensionCounts": {
+        "jpg": 4,
+        "sldprt": 1
+      },
+      "route": "solidworks-worker",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "Vertical Air Receiver Tank 2000 Ltrs.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 837120,
+          "sha256": "7402e5dbdd4ca99d1b52220d148c9bc5a951ebeca357b6127c47080fc6721863"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-04",
+      "status": "routed",
+      "reason": "route_identified:inventor-worker",
+      "sourceHashVerified": true,
+      "archiveBytes": 22587015,
+      "entries": 7,
+      "extensionCounts": {
+        "png": 4,
+        "ipt": 1,
+        "mp4": 1,
+        "rfa": 1
+      },
+      "route": "inventor-worker",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "Pump - KSB Etanorm 65-40-250 - emotor 180M.ipt",
+          "extension": "ipt",
+          "bytes": 8219648,
+          "sha256": "0d1391aa77510d97211fad4a4818b81b2c9c2e1a6248fdc34d2aeb6623c2e132"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-01",
+      "status": "routed",
+      "reason": "route_identified:solidworks-worker",
+      "sourceHashVerified": true,
+      "archiveBytes": 5414328,
+      "entries": 6,
+      "extensionCounts": {
+        "png": 5,
+        "sldprt": 1
+      },
+      "route": "solidworks-worker",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "Ton Excavator Skeleton Bucket Heavy Designing.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 666574,
+          "sha256": "a2c10d5d87555cb5215acf1295d805633449140e06cb6f855e642cde6c0e1537"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-06",
+      "status": "routed",
+      "reason": "route_identified:solidworks-worker",
+      "sourceHashVerified": true,
+      "archiveBytes": 7177343,
+      "entries": 13,
+      "extensionCounts": {
+        "jpg": 9,
+        "sldprt": 4
+      },
+      "route": "solidworks-worker",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "DE-001.05.001.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 172826,
+          "sha256": "90c6a60343cdd2916cc644affe0234bb0bf37bc1f98fb84c43895b2d32b103d9"
+        },
+        {
+          "name": "DE-001.05.010.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 123286,
+          "sha256": "3b8b697143b2112c87ebfcb41196d4f5d031a8e9952834da265ecf7e14374067"
+        },
+        {
+          "name": "DE-001.05.005.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 121903,
+          "sha256": "514dc17459585c1a3124060b76c7e09776ce68a85ef36691f4e7b52137f345d6"
+        },
+        {
+          "name": "DE-001.05.004.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 95625,
+          "sha256": "7e1bc7b307c2045623d0a11beba86345bd3f0c2dd10f4ceaf844a2b1c9efed77"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-07",
+      "status": "routed",
+      "reason": "route_identified:solidworks-worker",
+      "sourceHashVerified": true,
+      "archiveBytes": 3725864,
+      "entries": 9,
+      "extensionCounts": {
+        "jpg": 5,
+        "sldprt": 4
+      },
+      "route": "solidworks-worker",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "Ea-Snap-07-01-015.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 89247,
+          "sha256": "16a63b86933ddee9c4f5c4efda40c120f6e665010059a6d6d70b6fe31d87a836"
+        },
+        {
+          "name": "Ea-Snap-07-01-011.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 65416,
+          "sha256": "94482da272052d2a8899b8c07a788f36b7c0af9dbaa873198fb293784644285d"
+        },
+        {
+          "name": "Ea-Snap-07-01-005.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 61811,
+          "sha256": "bf312e64bde089f9950e7c959da87c9e26277efaafe138b8f05b1ddc3fb03fa2"
+        },
+        {
+          "name": "Ea-Snap-07-01-014.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 58308,
+          "sha256": "460217fb14c97c9ebd0a1706dfdb42783809d3c66535d13ada693c1a8632fa23"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-09",
+      "status": "routed",
+      "reason": "route_identified:solidworks-worker",
+      "sourceHashVerified": true,
+      "archiveBytes": 54999224,
+      "entries": 6,
+      "extensionCounts": {
+        "jpg": 5,
+        "sldprt": 1
+      },
+      "route": "solidworks-worker",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "BP30Q.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 50956934,
+          "sha256": "bb65047745bbc532992743c56bcb28db36b7587df1f234a9137e7f74adf373a5"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-10",
+      "status": "routed",
+      "reason": "route_identified:solidworks-worker",
+      "sourceHashVerified": true,
+      "archiveBytes": 24668233,
+      "entries": 2,
+      "extensionCounts": {
+        "sldprt": 1,
+        "stl": 1
+      },
+      "route": "solidworks-worker",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "helix gear 1.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 11463346,
+          "sha256": "395bdb83560265e62f2ad813b16f9177c287652b3e222b7baeb8cd311674fa84"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-15",
+      "status": "routed",
+      "reason": "route_identified:inventor-worker",
+      "sourceHashVerified": true,
+      "archiveBytes": 21498483,
+      "entries": 34,
+      "extensionCounts": {
+        "ipt": 28,
+        "jpeg": 4,
+        "mp4": 2
+      },
+      "route": "inventor-worker",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "bs-bd-bw-2.ipt",
+          "extension": "ipt",
+          "bytes": 331776,
+          "sha256": "55e5d9f17e4518b09abe8cf83c45eac4ff58b1cdef86004631ce6fbf712821f6"
+        },
+        {
+          "name": "bs-bd-bw.ipt",
+          "extension": "ipt",
+          "bytes": 330752,
+          "sha256": "9dc728a2ff8ddbf12f3fa14839bf6d21029d01a1ad17ae790346d8a2f775c433"
+        },
+        {
+          "name": "bs-bdy.ipt",
+          "extension": "ipt",
+          "bytes": 259072,
+          "sha256": "530018309467916273de5b5a26560dac80b63108ed5045ab242aa03eb39cd8d1"
+        },
+        {
+          "name": "bs-bd-kr1.ipt",
+          "extension": "ipt",
+          "bytes": 257536,
+          "sha256": "ebe1731184a5f352076ea18f10aa8dda2442e00c7aaeafa15dd0c66bb6a5cdb7"
+        },
+        {
+          "name": "shf-ctr-2.ipt",
+          "extension": "ipt",
+          "bytes": 215040,
+          "sha256": "953c66ca199acfe59c716f16442bd1d5005ddac6af2d86b806a9600e64a2859f"
+        },
+        {
+          "name": "brg-jst.ipt",
+          "extension": "ipt",
+          "bytes": 190464,
+          "sha256": "5b86ab262c4aaeb2a07c74951669eb34715de78b0a6ca98a18c33b20674a7360"
+        },
+        {
+          "name": "shf-ctr-21.ipt",
+          "extension": "ipt",
+          "bytes": 186368,
+          "sha256": "52cd511ffb5d63976c46c70071a83c6309b259bd31f88143a13e73ba31288915"
+        },
+        {
+          "name": "brg-hs-of.ipt",
+          "extension": "ipt",
+          "bytes": 179200,
+          "sha256": "90e513710b5e68d4d579c55b1f1c3f9fd866516815eeffb9891748049e13a2b2"
+        },
+        {
+          "name": "shf-ctr.ipt",
+          "extension": "ipt",
+          "bytes": 177664,
+          "sha256": "61038e08ad58513fabe172c8d0f5795e1519e54ad8d94b8a088a3d805b6bd159"
+        },
+        {
+          "name": "cut hrz.ipt",
+          "extension": "ipt",
+          "bytes": 174080,
+          "sha256": "f793c5b1c0cfaf4aef6001977308fbff984b30eb14e774a24cebc6f807071acf"
+        },
+        {
+          "name": "cut hrz-b1.ipt",
+          "extension": "ipt",
+          "bytes": 166912,
+          "sha256": "2741911aec94fd300f40b5f29b4e62964f39ba1d5e32728cc390cc1abd12893c"
+        },
+        {
+          "name": "mgz-3.ipt",
+          "extension": "ipt",
+          "bytes": 153600,
+          "sha256": "736e99570a3484e12e3675e32fc0df923c54f8874006a1eccc5f71ac29b0cca1"
+        },
+        {
+          "name": "ttp-pl.ipt",
+          "extension": "ipt",
+          "bytes": 145920,
+          "sha256": "55ce04ed9882fa5b984c461cd813f71502e009bacb6acd1e06b6fdaf539176af"
+        },
+        {
+          "name": "sld-ct.ipt",
+          "extension": "ipt",
+          "bytes": 139776,
+          "sha256": "5d7db30ecf31ecbeb9e76f1d00e115ad0577ced4eea984481b952c45c6cb3d14"
+        },
+        {
+          "name": "shf-js.ipt",
+          "extension": "ipt",
+          "bytes": 129024,
+          "sha256": "7c4e25dbf98dd7496e703a9dfae645be6117dbdea731c3d2d100add015231189"
+        },
+        {
+          "name": "ct-rt.ipt",
+          "extension": "ipt",
+          "bytes": 126464,
+          "sha256": "df162012051aa0488db32d1e6c0633c62cf345741ee3f3ad4466cefb1e701c79"
+        },
+        {
+          "name": "stt-plt.ipt",
+          "extension": "ipt",
+          "bytes": 126464,
+          "sha256": "971ceaedd76f7023209dcfde256faa8bd65f0fc46e033d213ee5ca879fe7b7ad"
+        },
+        {
+          "name": "st-drt-ct.ipt",
+          "extension": "ipt",
+          "bytes": 122880,
+          "sha256": "fd649c763c6b7cb658ccb4b13bbd562359f53195b7c3634118151b9716d11765"
+        },
+        {
+          "name": "spc-rg.ipt",
+          "extension": "ipt",
+          "bytes": 115712,
+          "sha256": "cb913af4e438c7e36fb310e06e4e3be70f4d1efd5f6cace8c0fa828fe8853d37"
+        },
+        {
+          "name": "mgz-4.ipt",
+          "extension": "ipt",
+          "bytes": 103424,
+          "sha256": "edad52d3c098b9bed01b8de40bdf5f28a314564a64c600d7e57a21ff56997303"
+        },
+        {
+          "name": "pld-ct.ipt",
+          "extension": "ipt",
+          "bytes": 103424,
+          "sha256": "e395a64d5a4436c1056e29e9602522d38ddd302a3846cd2474ed8dcfca4d66fc"
+        },
+        {
+          "name": "rll.ipt",
+          "extension": "ipt",
+          "bytes": 102912,
+          "sha256": "29cb8207dee08bdc49f875098822410cf822a2e802bd309b04bce3c3afd1090c"
+        },
+        {
+          "name": "shf-ct.ipt",
+          "extension": "ipt",
+          "bytes": 102400,
+          "sha256": "d9def38dcf0ed9ed1465a9f6c372cd197f83dbf1f636f3407e2a9437cd9a8e04"
+        },
+        {
+          "name": "stt-h.ipt",
+          "extension": "ipt",
+          "bytes": 99840,
+          "sha256": "c2fc1f0d5987ef741499840686607237b43932a4696c78f77ad6a084dfee495d"
+        },
+        {
+          "name": "shf-stt.ipt",
+          "extension": "ipt",
+          "bytes": 96768,
+          "sha256": "3c327b50db56b5b754750dfba9fbcc4b892aa0cd6fa51e306ead574485305d1c"
+        },
+        {
+          "name": "ddk-ct.ipt",
+          "extension": "ipt",
+          "bytes": 94208,
+          "sha256": "2408173237073eb668aaef059765c39f9dbe54875d19aa5ccb905ab8b828dba0"
+        },
+        {
+          "name": "ct-rt-pt.ipt",
+          "extension": "ipt",
+          "bytes": 87552,
+          "sha256": "6fdc92d34eee976aa55afe4db5d69a583b65c45a8a41352fe10b85285577c33c"
+        },
+        {
+          "name": "ct-hrz-pt.ipt",
+          "extension": "ipt",
+          "bytes": 81408,
+          "sha256": "77edf1a79ae5f8f357e4e5ba797f83f0e3d04429f5fb1b210c354577418820b0"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-18",
+      "status": "routed",
+      "reason": "route_identified:solidworks-worker",
+      "sourceHashVerified": true,
+      "archiveBytes": 28910600,
+      "entries": 11,
+      "extensionCounts": {
+        "png": 10,
+        "sldprt": 1
+      },
+      "route": "solidworks-worker",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "SMR-30  çeki.SLDPRT",
+          "extension": "sldprt",
+          "bytes": 59567,
+          "sha256": "e4116865f80d6dfdfa9aba6a3e4f3f0747163b75137083baddd8c249f518470b"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-01",
+      "status": "routed",
+      "reason": "route_identified:autocad-or-oda",
+      "sourceHashVerified": true,
+      "archiveBytes": 2576781,
+      "entries": 3,
+      "extensionCounts": {
+        "dwg": 1,
+        "jpg": 1,
+        "pdf": 1
+      },
+      "route": "autocad-or-oda",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "KODI BUILDERS - PROJECT 01.dwg",
+          "extension": "dwg",
+          "bytes": 173881,
+          "sha256": "b9e868b4f9bceb5f1171ddbdbc792c845642ad4ebb18514c9d6186ed1594952a"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-02",
+      "status": "routed",
+      "reason": "route_identified:revit-api",
+      "sourceHashVerified": true,
+      "archiveBytes": 118428504,
+      "entries": 21,
+      "extensionCounts": {
+        "jpg": 14,
+        "png": 5,
+        "dwg": 1,
+        "rvt": 1
+      },
+      "route": "revit-api",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "3story 100m villa  (2).rvt",
+          "extension": "rvt",
+          "bytes": 67670016,
+          "sha256": "ca5dcd947d40f83be80134607e77ec564ccbb084a26e793a34a5d5f76792f9a4"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-03",
+      "status": "routed",
+      "reason": "route_identified:autocad-or-oda",
+      "sourceHashVerified": true,
+      "archiveBytes": 2946655,
+      "entries": 2,
+      "extensionCounts": {
+        "dwg": 1,
+        "jpg": 1
+      },
+      "route": "autocad-or-oda",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "kottar - 3D View - {3D}.dwg",
+          "extension": "dwg",
+          "bytes": 198225,
+          "sha256": "d254bdc3c0dc3d6b0176c05ff2b51e728b521a65c61151cea5c1b6c95623380a"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-04",
+      "status": "routed",
+      "reason": "route_identified:autocad-or-oda",
+      "sourceHashVerified": true,
+      "archiveBytes": 2591598,
+      "entries": 2,
+      "extensionCounts": {
+        "dwg": 1,
+        "jpg": 1
+      },
+      "route": "autocad-or-oda",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "1st flr hall - 3D View - {3D}.dwg",
+          "extension": "dwg",
+          "bytes": 341362,
+          "sha256": "55c528da7c0f63a7713ae610eb4a1d0ce70de27a277040299524d6439d65b0da"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-05",
+      "status": "routed",
+      "reason": "route_identified:autocad-or-oda",
+      "sourceHashVerified": true,
+      "archiveBytes": 926818,
+      "entries": 4,
+      "extensionCounts": {
+        "jpg": 3,
+        "dwg": 1
+      },
+      "route": "autocad-or-oda",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "master bed - 3D View - {3D}.dwg",
+          "extension": "dwg",
+          "bytes": 53947,
+          "sha256": "c8d50ba8217ead14566359d5b9122e8328c14ab3d3f673d1cd904060a2aa109c"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-07",
+      "status": "routed",
+      "reason": "route_identified:autocad-or-oda",
+      "sourceHashVerified": true,
+      "archiveBytes": 2826245,
+      "entries": 2,
+      "extensionCounts": {
+        "dwg": 1,
+        "jpg": 1
+      },
+      "route": "autocad-or-oda",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "GH-PR-36 - 3D View - {3D}.dwg",
+          "extension": "dwg",
+          "bytes": 374051,
+          "sha256": "8bdc9740b841ea70ea3fd5de9876f81091b73d413358de9f21557a088bcf0fa2"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-08",
+      "status": "routed",
+      "reason": "route_identified:autocad-or-oda",
+      "sourceHashVerified": true,
+      "archiveBytes": 22758292,
+      "entries": 13,
+      "extensionCounts": {
+        "bmp": 12,
+        "dwg": 1
+      },
+      "route": "autocad-or-oda",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "Glavni projekt-bs - kopija.dwg",
+          "extension": "dwg",
+          "bytes": 808672,
+          "sha256": "ca218ef96d46132a9c518d2f641a0a176d04258caf43e85ad333603600987c88"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-09",
+      "status": "routed",
+      "reason": "route_identified:autocad-or-oda",
+      "sourceHashVerified": true,
+      "archiveBytes": 107926289,
+      "entries": 11,
+      "extensionCounts": {
+        "png": 10,
+        "dwg": 1
+      },
+      "route": "autocad-or-oda",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "Half-story house A01/3D Model Half-story house A01.dwg",
+          "extension": "dwg",
+          "bytes": 99615344,
+          "sha256": "5bd868f6c8c0e12029133c1cdc9b2e910ebf88c6958c1a6eeda62105073598f8"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-11",
+      "status": "routed",
+      "reason": "route_identified:autocad-or-oda",
+      "sourceHashVerified": true,
+      "archiveBytes": 38690769,
+      "entries": 5,
+      "extensionCounts": {
+        "jpg": 4,
+        "dwg": 1
+      },
+      "route": "autocad-or-oda",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "rar/1111111.dwg",
+          "extension": "dwg",
+          "bytes": 34922675,
+          "sha256": "0577eb8dadc3d614dbf252327f73886fb04bceb3a822e57e0f35f1097aa6e8b9"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-14",
+      "status": "routed",
+      "reason": "route_identified:revit-api",
+      "sourceHashVerified": true,
+      "archiveBytes": 22416920,
+      "entries": 4,
+      "extensionCounts": {
+        "dwg": 1,
+        "png": 1,
+        "rvt": 1,
+        "skp": 1
+      },
+      "route": "revit-api",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "4x15.rvt",
+          "extension": "rvt",
+          "bytes": 20369408,
+          "sha256": "dc8fd649e4b035a23c98801b0ab8049359b2e78fc4bdfb121a9d5df829a2b976"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-15",
+      "status": "routed",
+      "reason": "route_identified:revit-api",
+      "sourceHashVerified": true,
+      "archiveBytes": 17865256,
+      "entries": 11,
+      "extensionCounts": {
+        "jpg": 9,
+        "dwg": 1,
+        "rvt": 1
+      },
+      "route": "revit-api",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "ARASU HOUSE.rvt",
+          "extension": "rvt",
+          "bytes": 17469440,
+          "sha256": "89d0b567d1edfc47d4d00756e9325c7221d54439576f0ab59d751eb4ff98dc16"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-16",
+      "status": "routed",
+      "reason": "route_identified:revit-api",
+      "sourceHashVerified": true,
+      "archiveBytes": 12657019,
+      "entries": 5,
+      "extensionCounts": {
+        "jpg": 3,
+        "dwg": 1,
+        "rvt": 1
+      },
+      "route": "revit-api",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "House Planning Of 3BKH/Revit 2009 Files.rvt",
+          "extension": "rvt",
+          "bytes": 9023488,
+          "sha256": "a257167f774921dae4590d1e5958cf9cdf0c55cbab3346753685a8c18253d248"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-17",
+      "status": "routed",
+      "reason": "route_identified:revit-api",
+      "sourceHashVerified": true,
+      "archiveBytes": 80850503,
+      "entries": 14,
+      "extensionCounts": {
+        "jpg": 8,
+        "bmp": 2,
+        "dwf": 1,
+        "dwg": 1,
+        "fbx": 1,
+        "rvt": 1
+      },
+      "route": "revit-api",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "Project1.rvt",
+          "extension": "rvt",
+          "bytes": 30244864,
+          "sha256": "f392c49d9cbb5360fa7037daae8f2e799bda8021184a367976699c9f5ba61dd2"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-18",
+      "status": "routed",
+      "reason": "route_identified:autocad-or-oda",
+      "sourceHashVerified": true,
+      "archiveBytes": 970078,
+      "entries": 3,
+      "extensionCounts": {
+        "jpg": 2,
+        "dwg": 1
+      },
+      "route": "autocad-or-oda",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "Nibedita Roy (Basu).dwg",
+          "extension": "dwg",
+          "bytes": 846117,
+          "sha256": "26f1413eaeb9d5a1a6b01c648d33ddea5b6a8281c10d6e0dad717fe0e7485346"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-19",
+      "status": "routed",
+      "reason": "route_identified:autocad-or-oda",
+      "sourceHashVerified": true,
+      "archiveBytes": 27909279,
+      "entries": 7,
+      "extensionCounts": {
+        "bmp": 3,
+        "jpeg": 2,
+        "dae": 1,
+        "dwg": 1
+      },
+      "route": "autocad-or-oda",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "binod ground.dwg",
+          "extension": "dwg",
+          "bytes": 102336,
+          "sha256": "a7db52a0af486db9a99e0864eb3fba57bef09244e5edcbadd7f7700f1999c7e9"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-20",
+      "status": "routed",
+      "reason": "route_identified:autocad-or-oda",
+      "sourceHashVerified": true,
+      "archiveBytes": 42011758,
+      "entries": 4,
+      "extensionCounts": {
+        "jpeg": 2,
+        "dae": 1,
+        "dwg": 1
+      },
+      "route": "autocad-or-oda",
+      "localExecutor": false,
+      "memberSelections": [
+        {
+          "name": "Madhu Ghosh & Sadagar Sarkar.dwg",
+          "extension": "dwg",
+          "bytes": 135136,
+          "sha256": "9f51c9766b1d20d0a476589977ee45a932642ceb4ef7bf9b3b2ff55040d440d3"
+        }
+      ]
+    }
+  ]
+}

@@ -5,10 +5,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { enqueueJob } from '@/lib/job-queue';
 import { randomUUID, createHash } from 'crypto';
+import { checkOrigin } from '@/lib/csrf';
+import { getTrustedClientIp } from '@/lib/client-ip';
+import { rateLimitAsync, rateLimitHeaders } from '@/lib/rate-limit';
+import { verifyRecaptchaV3 } from '@/lib/recaptcha';
 
 export const dynamic = 'force-dynamic';
 
 interface RegisterBody {
+  recaptcha_token?: string;
   company_name: string;
   biz_number: string;
   ceo_name: string;
@@ -46,15 +51,67 @@ async function ensureTable(): Promise<void> {
       industries       TEXT,
       bio              TEXT,
       homepage         TEXT,
+      active_key       TEXT,
       status           TEXT NOT NULL DEFAULT 'pending',
       created_at       BIGINT NOT NULL
     )
   `);
+  await db.execute('ALTER TABLE partner_applications ADD COLUMN active_key TEXT').catch(() => {});
+  await db.execute(
+    'CREATE UNIQUE INDEX IF NOT EXISTS ux_partner_applications_active_key ON partner_applications(active_key)',
+  );
 }
 
 export async function POST(req: NextRequest) {
   try {
+    if (!checkOrigin(req)) {
+      return NextResponse.json({ error: 'forbidden origin' }, { status: 403 });
+    }
+    const ip = getTrustedClientIp(req.headers);
+    const limit = await rateLimitAsync(`partner-register:${ip}`, 5, 60 * 60 * 1000);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: 'too many applications' },
+        { status: 429, headers: rateLimitHeaders(limit, 5) },
+      );
+    }
     const body = await req.json() as RegisterBody;
+
+    if (!process.env.RECAPTCHA_SECRET_KEY?.trim()) {
+      return NextResponse.json({ error: 'registration verification unavailable' }, { status: 503 });
+    }
+    if (!await verifyRecaptchaV3(body.recaptcha_token ?? '', { action: 'partner_register', remoteIp: ip })) {
+      return NextResponse.json({ error: 'registration verification failed' }, { status: 403 });
+    }
+
+    const boundedStrings: Array<[unknown, number]> = [
+      [body.company_name, 120], [body.biz_number, 20], [body.ceo_name, 80],
+      [body.contact_name, 80], [body.contact_email, 254], [body.contact_phone, 30],
+      [body.contact_title, 80], [body.employee_count, 40], [body.monthly_capacity, 120],
+      [body.bio, 4000], [body.homepage, 500],
+    ];
+    if (boundedStrings.some(([value, max]) => typeof value === 'string' && value.length > max)
+        || (body.processes?.length ?? 0) > 50 || (body.certifications?.length ?? 0) > 50
+        || (body.industries?.length ?? 0) > 50) {
+      return NextResponse.json({ error: 'input too long' }, { status: 400 });
+    }
+    if (boundedStrings.some(([value]) => typeof value === 'string' && /[<>\r\n]/.test(value))) {
+      return NextResponse.json({ error: 'invalid characters' }, { status: 400 });
+    }
+    const lists = [body.processes, body.certifications, body.industries];
+    if (lists.some((list) => list && list.some(
+      (value) => typeof value !== 'string' || value.length > 100 || /[<>\r\n]/.test(value),
+    ))) {
+      return NextResponse.json({ error: 'invalid list value' }, { status: 400 });
+    }
+    if (body.homepage?.trim()) {
+      try {
+        const homepage = new URL(body.homepage.trim());
+        if (!['http:', 'https:'].includes(homepage.protocol)) throw new Error('invalid protocol');
+      } catch {
+        return NextResponse.json({ error: 'invalid homepage URL' }, { status: 400 });
+      }
+    }
 
     // Basic validation
     if (!body.company_name?.trim()) {
@@ -85,22 +142,27 @@ export async function POST(req: NextRequest) {
     const id = `pa-${randomUUID().slice(0, 12)}`;
     const now = Date.now();
 
-    // Check for duplicate submission by same email
-    const existing = await db.queryOne<{ id: string }>(
-      `SELECT id FROM partner_applications WHERE contact_email = ? AND status = 'pending'`,
-      body.contact_email.trim(),
-    );
-    if (existing) {
-      return NextResponse.json({ error: '동일 이메일로 이미 신청이 접수되어 있습니다.' }, { status: 409 });
-    }
+    const facId = `FAC-${now}-${id.slice(-6)}`;
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    const code = String(100000 + (buf[0] % 900000));
+    const tokenHash = createHash('sha256').update(code).digest('hex');
+    const tokenId = `PT-${now}-${randomUUID().slice(0, 8)}`;
 
-    await db.execute(
+    const created = await db.transaction(async (tx) => {
+      const existing = await tx.queryOne<{ id: string }>(
+        `SELECT id FROM partner_applications WHERE LOWER(contact_email) = ? AND status = 'pending'`,
+        body.contact_email.trim().toLowerCase(),
+      );
+      if (existing) return false;
+
+      await tx.execute(
       `INSERT INTO partner_applications
         (id, company_name, biz_number, ceo_name, founded_year, employee_count,
          contact_name, contact_email, contact_phone, contact_title,
          processes, certifications, monthly_capacity, industries,
-         bio, homepage, status, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',?)`,
+         bio, homepage, active_key, status, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',?)`,
       id,
       body.company_name.trim(),
       body.biz_number.trim(),
@@ -117,13 +179,13 @@ export async function POST(req: NextRequest) {
       JSON.stringify(body.industries ?? []),
       body.bio?.trim() ?? null,
       body.homepage?.trim() ?? null,
+      body.contact_email.trim().toLowerCase(),
       now,
     );
 
     // ── 1. 파트너 factory 레코드 즉시 생성 (status='pending_approval') ──
-    const facId = `FAC-${now}-${id.slice(-6)}`;
-    await db.execute(
-      `INSERT OR IGNORE INTO nf_factories
+      await tx.execute(
+      `INSERT INTO nf_factories
          (id, name, region, processes, certifications, description,
           contact_email, contact_phone, partner_email, website,
           status, created_at, updated_at)
@@ -141,16 +203,10 @@ export async function POST(req: NextRequest) {
       'pending_approval',
       now,
       now,
-    ).catch(() => {});
+      );
 
     // ── 2. OTP 토큰 생성 → 파트너에게 환영 이메일 발송 ──
-    const buf = new Uint32Array(1);
-    crypto.getRandomValues(buf);
-    const code = String(100000 + (buf[0] % 900000));
-    const tokenHash = createHash('sha256').update(code).digest('hex');
-    const tokenId = `PT-${now}-${randomUUID().slice(0, 8)}`;
-
-    await db.execute(
+      await tx.execute(
       `INSERT INTO nf_partner_tokens
          (id, partner_id, email, company, token_hash, expires_at, used, created_at)
        VALUES (?,?,?,?,?,?,FALSE,?)`,
@@ -160,7 +216,12 @@ export async function POST(req: NextRequest) {
       tokenHash,
       now + 7 * 86_400_000,
       now,
-    ).catch(() => {});
+      );
+      return true;
+    });
+    if (!created) {
+      return NextResponse.json({ error: '동일 이메일로 이미 신청이 접수되어 있습니다.' }, { status: 409 });
+    }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nexyfab.com';
     const { sendEmail } = await import('@/lib/nexyfab-email');
@@ -230,6 +291,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, id, facId }, { status: 201 });
   } catch (err) {
+    const dbError = err as { code?: string; message?: string };
+    if (dbError.code === '23505' || dbError.code === 'SQLITE_CONSTRAINT_UNIQUE'
+        || dbError.message?.includes('partner_applications.active_key')) {
+      return NextResponse.json({ error: '동일 이메일로 이미 신청이 접수되어 있습니다.' }, { status: 409 });
+    }
     console.error('[partner/register] POST error:', err);
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }

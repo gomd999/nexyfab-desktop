@@ -107,6 +107,18 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+describe('STEP worker format contract', () => {
+  it('advertises only STEP/STP and rejects IGES before parsing', async () => {
+    render(<StepUploader onAnalysisComplete={vi.fn()} lang="en" />);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(input.accept).toBe('.step,.stp');
+    const iges = new File(['S      1'], 'unsupported.iges', { type: 'model/iges' });
+    await act(async () => { fireEvent.change(input, { target: { files: [iges] } }); });
+    expect(screen.getByText(/Unsupported file type/)).toBeInTheDocument();
+    expect(screen.queryByTestId('classification-banner')).toBeNull();
+  });
+});
+
 describe('ClassificationBanner — details toggle visibility', () => {
   it('does not render the details toggle before any file is uploaded', () => {
     render(<StepUploader onAnalysisComplete={vi.fn()} lang="en" />);

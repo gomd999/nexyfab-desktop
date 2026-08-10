@@ -9,6 +9,7 @@
  */
 
 import type { SelectionContext } from './selectionContext';
+import type { DesignDomainId, UserExperienceLevel } from './domainProfile';
 
 export interface AiContextFeature {
   /** Stable feature id (used by update/remove intents to target it). */
@@ -26,6 +27,11 @@ export interface AiContextSelection {
 }
 
 export interface AiModelContext {
+  /** Active discipline and UX contract selected in the shared workspace bar. */
+  domainWorkspace?: {
+    domain: DesignDomainId;
+    experience: UserExperienceLevel;
+  };
   /** Base primitive id (e.g. "box", "cylinder") when one is set, else null. */
   baseShape?: string | null;
   /** Feature tree, oldest→newest. The last entry is "the last feature". */
@@ -43,6 +49,12 @@ export interface AiModelContext {
 export function renderModelContext(ctx: AiModelContext | undefined | null): string {
   if (!ctx) return '';
   const lines: string[] = [];
+
+  if (ctx.domainWorkspace) {
+    const { domain, experience } = ctx.domainWorkspace;
+    lines.push(`Design domain: ${domain}. User workflow: ${experience}.`);
+    lines.push(`Use ${domain}-specific objects, units, terminology, and validation; do not silently reinterpret the request as mechanical CAD.`);
+  }
 
   if (ctx.baseShape) {
     lines.push(`Base shape: ${ctx.baseShape}`);

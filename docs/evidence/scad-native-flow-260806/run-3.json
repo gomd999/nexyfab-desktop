@@ -1,0 +1,14 @@
+{
+  "schema": "nexyfab.scad-native-flow-evidence.v1",
+  "generatedAt": "2026-08-06T10:59:50.167Z",
+  "results": [
+    {
+      "scenarioId": "sc8_pipe_joint",
+      "status": "pass",
+      "connectedComponentCount": 1,
+      "blockedJunctionCount": 0,
+      "flowVolumeMm3": 43605.524475424194,
+      "codes": []
+    }
+  ]
+}

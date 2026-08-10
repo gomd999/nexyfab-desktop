@@ -19,9 +19,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const IR_ROOT =
-  process.argv[2] ||
-  'C:/Users/gomd9/Downloads/참고파일들/result/ir';
+const corpusRoot = process.env.NEXYFAB_REFERENCE_CORPUS_ROOT;
+const IR_ROOT = process.argv[2] || process.env.NEXYFAB_REFERENCE_IR_ROOT || (corpusRoot ? path.join(corpusRoot, 'result', 'ir') : '');
+if (!IR_ROOT) throw new Error('Reference IR root is required as an argument, NEXYFAB_REFERENCE_IR_ROOT, or NEXYFAB_REFERENCE_CORPUS_ROOT.');
 const OUT = path.resolve(
   path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')),
   '../../src/lib/ai/reference/refPartIndex.json',

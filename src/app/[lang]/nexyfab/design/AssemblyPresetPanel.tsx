@@ -1553,6 +1553,12 @@ export default function AssemblyPresetPanel({
 }) {
   const ko = isKorean(lang);
   const t = dict[toIsoLang(lang)] ?? dict.ko;
+  const advancedTitle = domain === 'civil' || domain === 'bridge'
+    ? t.advTitle
+    : ko ? '고급 입력(JSON — 선택 템플릿 파라미터)' : 'Advanced input (JSON — selected template parameters)';
+  const advancedPlaceholder = domain === 'civil' || domain === 'bridge'
+    ? '{ "ips": [[0,0],[120000,0]], "curves": [{"ip":1,"R":30000}], "structures": [{"sta":60000,"type":"culvert"}], "earthwork": {"formationElevM":6,"widthM":3,"slopeN":1.5}, "surveyPoints": [[E,N,EL(m)],...], "origin": {"E":200000,"N":450000} }'
+    : '{ "parameterName": 1000 }';
   const [templates, setTemplates] = useState<Template[] | null>(null);
   const [tid, setTid] = useState('');
   const [params, setParams] = useState<Record<string, number>>({});
@@ -2112,6 +2118,13 @@ export default function AssemblyPresetPanel({
 
   // 실물 STEP 임포트(260718 — 브리지 UI): 파일→/api/import-step→기존 빌드 플로우 재사용
   const importStepFile = useCallback(async (file: File) => {
+    const { browserNativeCadImportPolicy } = await import('@/lib/reference/browserNativeCadImportPolicy');
+    const nativePolicy = browserNativeCadImportPolicy(file.name);
+    if (nativePolicy.action === 'block-before-read') {
+      setStepGate(null);
+      setMsg(nativePolicy.message);
+      return;
+    }
     const ext = (file.name.split('.').pop() ?? '').toLowerCase();
     let fmt = ext === 'stl' ? 'stl' : ext === 'ifc' ? 'ifc' : ext === 'igs' || ext === 'iges' ? 'iges' : ext === 'dwg' ? 'dwg' : ext === 'sat' || ext === 'sab' ? 'sat' : ext === 'x_t' || ext === 'xmt_txt' ? 'x_t' : ['skp', 'f3d', 'sldprt', 'sldasm', 'ipt', 'iam'].includes(ext) ? ext : 'step';
     // 위장 확장자 감지(코퍼스4 실측 — .step 인데 내용은 STL): 헤더 검사로 자동 전환
@@ -2978,12 +2991,12 @@ export default function AssemblyPresetPanel({
         // 스키마 오류=게이트 문구 그대로 표시.
         <details style={{ margin: '4px 0 2px' }}>
           <summary style={{ fontSize: 11, fontWeight: 700, cursor: 'pointer', color: 'var(--nx-text-2, #46505e)' }}>
-            {t.advTitle}
+            {advancedTitle}
           </summary>
           <textarea
             value={advJson}
             onChange={(e) => { setAdvJson(e.target.value); setAdvErr(null); }}
-            placeholder={'{ "ips": [[0,0],[120000,0]], "curves": [{"ip":1,"R":30000}], "structures": [{"sta":60000,"type":"culvert"}], "earthwork": {"formationElevM":6,"widthM":3,"slopeN":1.5}, "surveyPoints": [[E,N,EL(m)],...], "origin": {"E":200000,"N":450000} }'}
+            placeholder={advancedPlaceholder}
             spellCheck={false}
             style={{ width: '100%', minHeight: 84, fontFamily: 'ui-monospace, monospace', fontSize: 11, padding: 8, borderRadius: 8, border: '1px solid var(--nx-line, #d6dbe3)', background: 'var(--nx-bg-1, #fff)', color: 'inherit', marginTop: 6 }}
           />

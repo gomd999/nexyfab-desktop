@@ -1,0 +1,216 @@
+{
+  "schema": "nexyfab.exact-cad-worker-request-batch.v1",
+  "generatedAt": "2026-08-06T14:49:52.041Z",
+  "scoreEligible": false,
+  "sourceBytesEmbedded": false,
+  "summary": {
+    "jobs": 13,
+    "dwgExact": 8,
+    "revitNative": 5
+  },
+  "jobs": [
+    {
+      "schema": "nexyfab.exact-cad-worker-request.v1",
+      "jobId": "dwg-af79ad6f1439a9b58961bd5b",
+      "caseId": "interior-review-04",
+      "sourceHash": "9623975cea242ed42881d37ea07e67268ac15df03bb8b1f38d0715aab4c2fccc",
+      "sourceMember": {
+        "path": "kottar - 3D View - {3D}.dwg",
+        "sha256": "d254bdc3c0dc3d6b0176c05ff2b51e728b521a65c61151cea5c1b6c95623380a",
+        "bytes": 198225
+      },
+      "workerKind": "dwg-exact",
+      "required": {
+        "exactGeometry": true,
+        "nativeSemantics": false
+      }
+    },
+    {
+      "schema": "nexyfab.exact-cad-worker-request.v1",
+      "jobId": "dwg-71c6f3cad233232b51b9242a",
+      "caseId": "interior-review-05",
+      "sourceHash": "507c01a31e48c1102b1b99b5071eafa8518a8c23bca9341ce400be6c0ffa4774",
+      "sourceMember": {
+        "path": "1st flr hall - 3D View - {3D}.dwg",
+        "sha256": "55c528da7c0f63a7713ae610eb4a1d0ce70de27a277040299524d6439d65b0da",
+        "bytes": 341362
+      },
+      "workerKind": "dwg-exact",
+      "required": {
+        "exactGeometry": true,
+        "nativeSemantics": false
+      }
+    },
+    {
+      "schema": "nexyfab.exact-cad-worker-request.v1",
+      "jobId": "dwg-af4a5500714724d731578f85",
+      "caseId": "interior-review-06",
+      "sourceHash": "d23ba207b032910b352ee1d8146412de3ece8fd4ae6bd92c74970901f2d49dc7",
+      "sourceMember": {
+        "path": "master bed - 3D View - {3D}.dwg",
+        "sha256": "c8d50ba8217ead14566359d5b9122e8328c14ab3d3f673d1cd904060a2aa109c",
+        "bytes": 53947
+      },
+      "workerKind": "dwg-exact",
+      "required": {
+        "exactGeometry": true,
+        "nativeSemantics": false
+      }
+    },
+    {
+      "schema": "nexyfab.exact-cad-worker-request.v1",
+      "jobId": "dwg-b9eee6a16248825168113eff",
+      "caseId": "interior-review-08",
+      "sourceHash": "b9ad0a38dbccd29e040b2af7d81b089f474b55a40242fcbe10fca53e1a8e1a4d",
+      "sourceMember": {
+        "path": "GH-PR-36 - 3D View - {3D}.dwg",
+        "sha256": "8bdc9740b841ea70ea3fd5de9876f81091b73d413358de9f21557a088bcf0fa2",
+        "bytes": 374051
+      },
+      "workerKind": "dwg-exact",
+      "required": {
+        "exactGeometry": true,
+        "nativeSemantics": false
+      }
+    },
+    {
+      "schema": "nexyfab.exact-cad-worker-request.v1",
+      "jobId": "dwg-bf0da7e2bb77b80bfd1d4efc",
+      "caseId": "interior-review-12",
+      "sourceHash": "d4909667dbfa24d8271d6b374390885748352015e67afcc8d6791541e9262159",
+      "sourceMember": {
+        "path": "rar/1111111.dwg",
+        "sha256": "0577eb8dadc3d614dbf252327f73886fb04bceb3a822e57e0f35f1097aa6e8b9",
+        "bytes": 34922675
+      },
+      "workerKind": "dwg-exact",
+      "required": {
+        "exactGeometry": true,
+        "nativeSemantics": false
+      }
+    },
+    {
+      "schema": "nexyfab.exact-cad-worker-request.v1",
+      "jobId": "dwg-52bd68a66967288853930953",
+      "caseId": "interior-review-14",
+      "sourceHash": "3688c0fa32236469bf72173ced8ce4e476dfd384cb3ed8aded797fbfb1db77d3",
+      "sourceMember": {
+        "path": "3D.dwg",
+        "sha256": "d7d92ad6870112a0db265373eaf44ca48102d3e3df2845f55886126cdb47805f",
+        "bytes": 570400
+      },
+      "workerKind": "dwg-exact",
+      "required": {
+        "exactGeometry": true,
+        "nativeSemantics": false
+      }
+    },
+    {
+      "schema": "nexyfab.exact-cad-worker-request.v1",
+      "jobId": "dwg-04dd6244896e42813b91c730",
+      "caseId": "interior-review-16",
+      "sourceHash": "6edbd4f915ae9704fad91124af4d79940101512d01c68908f0f994260e5113bb",
+      "sourceMember": {
+        "path": "House Planning Of 3BKH/Autocad 2016 Files.dwg",
+        "sha256": "f18dfa49be0282d50bff2a34aa4bfeeae7e621be93ba545556b5afe6bde6365d",
+        "bytes": 2252000
+      },
+      "workerKind": "dwg-exact",
+      "required": {
+        "exactGeometry": true,
+        "nativeSemantics": false
+      }
+    },
+    {
+      "schema": "nexyfab.exact-cad-worker-request.v1",
+      "jobId": "dwg-4e123595bf785d7c96eacc1d",
+      "caseId": "interior-review-17",
+      "sourceHash": "7bc3bdaaa41b0fe390efb70a45d89608b652adde99bd04731ac8f0f2d87d4b24",
+      "sourceMember": {
+        "path": "villa.dwg",
+        "sha256": "3c0dd3ae8c2d5f6c55c9a9466f5146eb18cabae9008e214f87a23655349ddd6f",
+        "bytes": 2524288
+      },
+      "workerKind": "dwg-exact",
+      "required": {
+        "exactGeometry": true,
+        "nativeSemantics": false
+      }
+    },
+    {
+      "schema": "nexyfab.exact-cad-worker-request.v1",
+      "jobId": "revit-309f502e360aba4cc0d02105",
+      "caseId": "interior-review-02",
+      "sourceHash": "535ae44a61a2023c77ac45c68039e69f1826de222cf5d75cce7834b5af282bca",
+      "sourceMember": {
+        "path": "3story 100m villa  (2).rvt",
+        "sha256": "ca5dcd947d40f83be80134607e77ec564ccbb084a26e793a34a5d5f76792f9a4"
+      },
+      "workerKind": "revit-native",
+      "required": {
+        "exactGeometry": true,
+        "nativeSemantics": true
+      }
+    },
+    {
+      "schema": "nexyfab.exact-cad-worker-request.v1",
+      "jobId": "revit-61f63bf9224bc8cf302ea152",
+      "caseId": "interior-review-14",
+      "sourceHash": "3688c0fa32236469bf72173ced8ce4e476dfd384cb3ed8aded797fbfb1db77d3",
+      "sourceMember": {
+        "path": "4x15.rvt",
+        "sha256": "dc8fd649e4b035a23c98801b0ab8049359b2e78fc4bdfb121a9d5df829a2b976"
+      },
+      "workerKind": "revit-native",
+      "required": {
+        "exactGeometry": true,
+        "nativeSemantics": true
+      }
+    },
+    {
+      "schema": "nexyfab.exact-cad-worker-request.v1",
+      "jobId": "revit-2aaf307e55227b4bb8b7527a",
+      "caseId": "interior-review-15",
+      "sourceHash": "35b28cb1c4e8bb5ee00624aa7b53be232563a99eb90273690ea1d5be36d21166",
+      "sourceMember": {
+        "path": "ARASU HOUSE.rvt",
+        "sha256": "89d0b567d1edfc47d4d00756e9325c7221d54439576f0ab59d751eb4ff98dc16"
+      },
+      "workerKind": "revit-native",
+      "required": {
+        "exactGeometry": true,
+        "nativeSemantics": true
+      }
+    },
+    {
+      "schema": "nexyfab.exact-cad-worker-request.v1",
+      "jobId": "revit-5572819cd679dd646e0f873f",
+      "caseId": "interior-review-16",
+      "sourceHash": "6edbd4f915ae9704fad91124af4d79940101512d01c68908f0f994260e5113bb",
+      "sourceMember": {
+        "path": "House Planning Of 3BKH/Revit 2009 Files.rvt",
+        "sha256": "a257167f774921dae4590d1e5958cf9cdf0c55cbab3346753685a8c18253d248"
+      },
+      "workerKind": "revit-native",
+      "required": {
+        "exactGeometry": true,
+        "nativeSemantics": true
+      }
+    },
+    {
+      "schema": "nexyfab.exact-cad-worker-request.v1",
+      "jobId": "revit-dba9e6f2bbcfc04067942657",
+      "caseId": "interior-review-17",
+      "sourceHash": "7bc3bdaaa41b0fe390efb70a45d89608b652adde99bd04731ac8f0f2d87d4b24",
+      "sourceMember": {
+        "path": "Project1.rvt",
+        "sha256": "f392c49d9cbb5360fa7037daae8f2e799bda8021184a367976699c9f5ba61dd2"
+      },
+      "workerKind": "revit-native",
+      "required": {
+        "exactGeometry": true,
+        "nativeSemantics": true
+      }
+    }
+  ]
+}

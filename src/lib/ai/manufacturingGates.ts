@@ -270,7 +270,7 @@ export function evaluateManufacturingGates(
               : []),
             ...features.skipped.map((value) => `Skipped: ${value}`),
             ...features.mismatches,
-            ...(features.requested !== features.verified
+            ...(features.applicable !== false && features.requested !== features.verified
               ? ["Requested and verified feature counts differ."]
               : []),
           ]

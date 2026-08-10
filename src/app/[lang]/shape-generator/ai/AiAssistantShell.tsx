@@ -29,6 +29,7 @@ import { useVoiceInput } from './useVoiceInput';
 import type { SelectionContext } from '@/lib/ai/selectionContext';
 import { selectionRequiresConfirmation } from '@/lib/ai/selectionContext';
 import { updateGenerationSessionForEdit } from './generationSessionClient';
+import { useManualEditProtectionLocks } from './manualEditProtectionStore';
 
 export interface AiAssistantShellProps {
   lang: string;
@@ -53,6 +54,8 @@ export interface AiAssistantShellProps {
   onAiBatch?: (batchId: string, intentCount: number) => void;
   /** Optional: open the full chat sidebar. */
   onOpenFullChat?: () => void;
+  /** Project/lineage scope prevents locks from one design affecting another. */
+  protectionScope?: string;
   /** When true (a mesh has been imported), route prompts to onScadEdit — the
    *  SCAD path that edits the import — instead of parametric feature intents. */
   scadEditActive?: boolean;
@@ -66,13 +69,14 @@ export interface AiAssistantShellProps {
 export default function AiAssistantShell({
   lang, store, promptToIntents, onAiBatch, onOpenFullChat, disabled,
   scadEditActive, onScadEdit, onImageGenerate, getCurrentRevision, confirmPlan,
-  captureEditSnapshot, restoreEditSnapshot,
+  captureEditSnapshot, restoreEditSnapshot, protectionScope,
 }: AiAssistantShellProps) {
   const trackerRef = useRef<EditOriginTracker | null>(null);
   if (!trackerRef.current) trackerRef.current = new EditOriginTracker();
 
   const [voiceTranscript, setVoiceTranscript] = useState<string>('');
   const [undoAiEdit, setUndoAiEdit] = useState<(() => Promise<void>) | null>(null);
+  const protectedManualEdits = useManualEditProtectionLocks(protectionScope ?? 'local-workspace');
 
   // Voice input — pipes transcripts into the prompt input via a
   // controlled flow. Caller can subscribe to the latest transcript
@@ -91,6 +95,11 @@ export default function AiAssistantShell({
     // Imported mesh: no feature tree to edit — hand off to the SCAD path which
     // wraps import("model.stl") and edits it through OpenSCAD.
     if (scadEditActive && onScadEdit) {
+      if (protectedManualEdits.length > 0) {
+        return lang === 'ko'
+          ? `사용자가 잠근 값 ${protectedManualEdits.length}개를 보존하기 위해 전체 모델 AI 편집을 차단했습니다. 잠금을 명시적으로 해제하거나 파라메트릭 편집을 사용하세요.`
+          : `The whole-model AI edit was blocked to preserve ${protectedManualEdits.length} user-locked value(s). Explicitly release the locks or use a parametric edit.`;
+      }
       try {
         await onScadEdit(prompt);
         // Never return null here — a silent null reads as "no reaction" in the
@@ -128,6 +137,7 @@ export default function AiAssistantShell({
       if (captureEditSnapshot && restoreEditSnapshot) {
         const atomic = await dispatchFeatureEditBatchAtomic(
           intents, store, captureEditSnapshot, restoreEditSnapshot,
+          { locks: protectedManualEdits },
         );
         results = atomic.results;
         if (!atomic.committed) {
@@ -138,7 +148,7 @@ export default function AiAssistantShell({
           setUndoAiEdit(null);
         });
       } else {
-        results = dispatchFeatureEditBatch(intents, store);
+        results = dispatchFeatureEditBatch(intents, store, { locks: protectedManualEdits });
         setUndoAiEdit(null);
       }
       // Record each applied action in the origin tracker.
@@ -172,7 +182,7 @@ export default function AiAssistantShell({
     } catch (err) {
       return `AI error: ${(err as Error)?.message ?? err}`;
     }
-  }, [disabled, promptToIntents, store, onAiBatch, scadEditActive, onScadEdit, getCurrentRevision, confirmPlan, lang, captureEditSnapshot, restoreEditSnapshot]);
+  }, [disabled, promptToIntents, store, onAiBatch, scadEditActive, onScadEdit, getCurrentRevision, confirmPlan, lang, captureEditSnapshot, restoreEditSnapshot, protectedManualEdits]);
 
   // Cleanup voice on unmount.
   useEffect(() => {

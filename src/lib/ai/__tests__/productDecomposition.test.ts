@@ -12,8 +12,8 @@ const plan: ProductDecompositionPlan = {
   version: 1, units: 'mm', productName: 'Desktop actuator',
   requirements: [{ id: 'req-motion', text: 'shaft rotates in housing', category: 'motion', source: 'user' }],
   definitions: [
-    { id: 'housing', name: 'Housing', responsibility: 'support shaft', makeOrBuy: 'make', featureTree: solidTree('housing'), requirementIds: ['req-motion'], metadata: { partNumber: 'NX-HSG-001', revision: 'A', material: 'Al 6061', source: 'confirmed' } },
-    { id: 'shaft', name: 'Shaft', responsibility: 'transmit torque', makeOrBuy: 'make', featureTree: solidTree('shaft'), requirementIds: ['req-motion'], metadata: { partNumber: 'NX-SFT-001', revision: 'A', material: 'S45C', source: 'confirmed' } },
+    { id: 'housing', name: 'Housing', responsibility: 'support shaft', makeOrBuy: 'make', featureTree: solidTree('housing'), requirementIds: ['req-motion'], parameterEvidence: [], metadata: { partNumber: 'NX-HSG-001', revision: 'A', material: 'Al 6061', source: 'confirmed' } },
+    { id: 'shaft', name: 'Shaft', responsibility: 'transmit torque', makeOrBuy: 'make', featureTree: solidTree('shaft'), requirementIds: ['req-motion'], parameterEvidence: [], metadata: { partNumber: 'NX-SFT-001', revision: 'A', material: 'S45C', source: 'confirmed' } },
   ],
   instances: [
     { id: 'housing-1', definitionId: 'housing', positionMm: [0, 0, 0], fixed: true },

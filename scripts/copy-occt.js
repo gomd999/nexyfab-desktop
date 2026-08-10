@@ -73,7 +73,7 @@ const WORKER_SRC_DIR_REL = 'occt-worker';
  *   - occt-worker-real.js     → the real-OCCT dispatcher (loads opencascade.js)
  *   - occt-worker-launcher.js → feature-detect wrapper (real → stub fallback)
  */
-const WORKER_FILES = ['occt-worker.js', 'occt-worker-real.js', 'occt-worker-launcher.js'];
+const WORKER_FILES = ['occt-worker.js', 'occt-worker-real.js', 'occt-worker-launcher.js', 'occt-worker-commercial.js'];
 
 /**
  * Run the copy.

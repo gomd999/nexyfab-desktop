@@ -1,0 +1,4310 @@
+{
+  "schema": "nexyfab.complex-holdout-structure-evidence.v1",
+  "policy": {
+    "groundTruthApproved": false,
+    "scoreEligible": false,
+    "transformsOrJointsInferred": false
+  },
+  "cases": 115,
+  "axisCounts": {
+    "part_definitions": {
+      "pass": 51,
+      "not_run": 64
+    },
+    "occurrences": {
+      "not_run": 90,
+      "pass": 25
+    },
+    "hierarchy": {
+      "not_run": 90,
+      "pass": 25
+    },
+    "units": {
+      "pass": 38,
+      "not_run": 77
+    }
+  },
+  "results": [
+    {
+      "caseId": "robot-review-01",
+      "family": "robot",
+      "sourceHash": "50b18803427d0f5d4998cbab3cffae3c63dd83ee4ecb4883cd90fd07fcaf8008",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 3,
+            "solids": 3
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "No STEP assembly occurrence relationship.",
+          "measured": 0
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Hierarchy unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-02",
+      "family": "robot",
+      "sourceHash": "c96a6c7c34e5bd26d14d3315ae47d2f5e1cf1c0e165392826f9a9e0a584ac0ae",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 3,
+            "solids": 7
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "No STEP assembly occurrence relationship.",
+          "measured": 0
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Hierarchy unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-03",
+      "family": "robot",
+      "sourceHash": "ae100a589cdf84d92f2bd529d1f703c9d9ac174026d0d6687533494901dce02e",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 4,
+            "solids": 4
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "No STEP assembly occurrence relationship.",
+          "measured": 0
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Hierarchy unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-04",
+      "family": "robot",
+      "sourceHash": "480325e9e9e249186ca5f79a2b42af9884bd81e06604a06970b522c7c962601a",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 3,
+            "solids": 9
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "No STEP assembly occurrence relationship.",
+          "measured": 0
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Hierarchy unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-05",
+      "family": "robot",
+      "sourceHash": "f2912108234ba40d3e9938621bab4c804d7511aa02816a74179dde5e8c9d039f",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 5,
+            "solids": 5
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "No STEP assembly occurrence relationship.",
+          "measured": 0
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Hierarchy unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-06",
+      "family": "robot",
+      "sourceHash": "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 1,
+            "solids": 1
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "No STEP assembly occurrence relationship.",
+          "measured": 0
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Hierarchy unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-07",
+      "family": "robot",
+      "sourceHash": "c99aa30f426054651f33f1790f8c6c2e3dcaf228a45bb45b37f362df692f8bb6",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "iam"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native IAM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-08",
+      "family": "robot",
+      "sourceHash": "242f6dd6f3096246d010eaf282b8a01b6dcdabb56a919e1d502fff411253edea",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-09",
+      "family": "robot",
+      "sourceHash": "d2665fa621d78a78d97ab7e7cf999f2dee3c4ace1f1199552db8a2156ab29bfb",
+      "container": {
+        "kind": "zip",
+        "entries": 15,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 1,
+        "byExtension": {
+          ".stl": 7,
+          ".step": 1,
+          ".igs": 1,
+          ".png": 1,
+          ".jpg": 5
+        },
+        "inspectedExchange": "Robot c 4 a 601 s.STEP"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 8,
+            "solids": 7
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 7
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 7
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-10",
+      "family": "robot",
+      "sourceHash": "fabf997b27909c9ac626892bdc8ff580cdbf21dc601d0ba666a4fa9d69a7f718",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "x_t"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native X_T extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-11",
+      "family": "robot",
+      "sourceHash": "3a448eaf9fe1f096d31590ef69530f5485ae3619f68b7e3dd6ba34ff3ec9b5ce",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-12",
+      "family": "robot",
+      "sourceHash": "fe4e8bbeb6d68b82527150b7d4189e7feca4c3dfa550dc5415f8c168ff06db12",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-13",
+      "family": "robot",
+      "sourceHash": "711852bca8789e99e51127d188c5f9ed3e845594addfaf61fddef550e5db7406",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "iam"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native IAM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-14",
+      "family": "robot",
+      "sourceHash": "4b1218a57eb44eea1462aba62353bac910df7686dfc2c1b91d48ee1f3f0f8d84",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "iam"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native IAM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-15",
+      "family": "robot",
+      "sourceHash": "64b89e40cd89485402c65af37b9226f396005b2ec0b453928272454edda44261",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "iam"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native IAM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-16",
+      "family": "robot",
+      "sourceHash": "87bc26b5bbbd02758a22e9df62bedbe371998dc177fff82b45a4877a7dda67ea",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "iam"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native IAM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-17",
+      "family": "robot",
+      "sourceHash": "51483ceb79c161549fe8b9c44460f0693f6e68a161027691c4c7475f1b8b61b4",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "iam"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native IAM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-18",
+      "family": "robot",
+      "sourceHash": "0744a05761aab09adad9405d4dc230fa6f752d5a0533b0283890b43614f3da2b",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "iam"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native IAM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-19",
+      "family": "robot",
+      "sourceHash": "aa82052666e16e22ba919acc68e1a276d9c68e668b460b864221c8a65819b84b",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "iam"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native IAM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "robot-review-20",
+      "family": "robot",
+      "sourceHash": "15746a0ef71d3caf7fcc55c2cc8f0a1d62133e2a8e18c89bc4b13ea73af9e838",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "iam"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native IAM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-01",
+      "family": "gearbox",
+      "sourceHash": "fdd1aec8d83151704f5445bfc4c374acb1c62f1091ea5a019ecda82a778c1bb3",
+      "container": {
+        "kind": "zip",
+        "entries": 31,
+        "assemblyFiles": 2,
+        "partFiles": 22,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".png": 6,
+          ".sldprt": 22,
+          ".sldasm": 2,
+          ".slddrw": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native part-file definitions counted in archive.",
+          "measured": 22
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-02",
+      "family": "gearbox",
+      "sourceHash": "69c3dbcb1b120623eaf0e5e525bfa7e5e2e3638aa9dce2a26c427c47602280b4",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-03",
+      "family": "gearbox",
+      "sourceHash": "5e171f9695873a0fb0933dd7d333b30b89809fc7ad8d1e915dad1d9a3d066009",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-04",
+      "family": "gearbox",
+      "sourceHash": "234a768f45040a1df2ec2d47554fe048f8f9dfe293c0590b0d56476559436104",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-05",
+      "family": "gearbox",
+      "sourceHash": "7dfe9e91c66bc0ed0721b82af6bcbed3130e28cb7aa8a882c398b4f97228d957",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 19,
+            "solids": 17
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 21
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 21
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-06",
+      "family": "gearbox",
+      "sourceHash": "4d11d0e27d0cc0912c28a8727d4cc2ce6869f2fda418dfe7f7f10a742d2c1d6f",
+      "container": {
+        "kind": "zip",
+        "entries": 4,
+        "assemblyFiles": 1,
+        "partFiles": 2,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".sldprt": 2,
+          ".sldasm": 1,
+          ".gif": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native part-file definitions counted in archive.",
+          "measured": 2
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-07",
+      "family": "gearbox",
+      "sourceHash": "0b9069caa4d457021df7825d6365183166df6914d86561638fc3002e1fedee04",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "asm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native ASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-08",
+      "family": "gearbox",
+      "sourceHash": "b5aa4955b6e4e441f33e6d67f2b42a1b0c01e5aa5dd2e2810e85265215b71f36",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-09",
+      "family": "gearbox",
+      "sourceHash": "b29a2f238b92b6616818d7b74a0ad8a85d52ac496f8d61bfc79cb1b1fe41725b",
+      "container": {
+        "kind": "zip",
+        "entries": 24,
+        "assemblyFiles": 1,
+        "partFiles": 13,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".stl": 9,
+          ".sldprt": 13,
+          ".sldasm": 1,
+          ".mp4": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native part-file definitions counted in archive.",
+          "measured": 13
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-10",
+      "family": "gearbox",
+      "sourceHash": "9e50abefed3a2a81a09fde4a3b31fc74dadf49a7b92f907e7e3535f5d12bd141",
+      "container": {
+        "kind": "zip",
+        "entries": 1,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 1,
+        "byExtension": {
+          ".step": 1
+        },
+        "inspectedExchange": "DIFFERENTIAL GEAR BOX FILE.STEP"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 10,
+            "solids": 9
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 21
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 21
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-11",
+      "family": "gearbox",
+      "sourceHash": "292afbd451ab1ce04fe3158f5adb575627c358c51f4ea768d3bc430eed2d6a40",
+      "container": {
+        "kind": "zip",
+        "entries": 8,
+        "assemblyFiles": 1,
+        "partFiles": 6,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".sldasm": 1,
+          ".sldprt": 6,
+          ".png": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native part-file definitions counted in archive.",
+          "measured": 6
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-12",
+      "family": "gearbox",
+      "sourceHash": "6a66de0b245fd5f3764358c105f39845922fb9485d5617e6537e39686844d51c",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 10,
+            "solids": 9
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 21
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 21
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-13",
+      "family": "gearbox",
+      "sourceHash": "4d0fe353e753d07504e2ab4a1458b348304726cb1f4c9f0be0ca8d35061b0e49",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-14",
+      "family": "gearbox",
+      "sourceHash": "5b0b36d1168a1a3e89627712c774e6ec9f31ef86eb80934e5c7202f224b6807a",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 7,
+            "solids": 6
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 12
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 12
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-15",
+      "family": "gearbox",
+      "sourceHash": "58c33910be55d7819dba9ba6ab427799c1795abc1f795e05ba6db9b62080352a",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-16",
+      "family": "gearbox",
+      "sourceHash": "64261c77be694cdf75b9d9383e58d73ac3e5a5c7f8e9eddad343f6ea53fec70a",
+      "container": {
+        "kind": "zip",
+        "entries": 62,
+        "assemblyFiles": 6,
+        "partFiles": 49,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".sldprt": 49,
+          ".dxf": 1,
+          ".sldasm": 6,
+          ".slddrw": 2,
+          ".png": 3,
+          ".jpg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native part-file definitions counted in archive.",
+          "measured": 49
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-17",
+      "family": "gearbox",
+      "sourceHash": "8fac8fd28aa3c537679d8c2bfdb801c29fd01f5b13044af2ce388d6ea274e756",
+      "container": {
+        "kind": "zip",
+        "entries": 8,
+        "assemblyFiles": 2,
+        "partFiles": 4,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".sldasm": 2,
+          ".sldprt": 4,
+          ".png": 2
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native part-file definitions counted in archive.",
+          "measured": 4
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-18",
+      "family": "gearbox",
+      "sourceHash": "f88f2b80dc74d5b756b5267ff6817107118fa50e0931f5de67f01ce409f7e204",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-19",
+      "family": "gearbox",
+      "sourceHash": "dfd73a4f40d4a8959fe535717a3a4e01e6cd8b1e776b7b017a8174fe37b29c03",
+      "container": {
+        "kind": "zip",
+        "entries": 129,
+        "assemblyFiles": 1,
+        "partFiles": 127,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".catpart": 127,
+          ".catproduct": 1,
+          ".jpg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native part-file definitions counted in archive.",
+          "measured": 127
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "gearbox-review-20",
+      "family": "gearbox",
+      "sourceHash": "bb68f1875e2a724ffc8d6776584401243c308bb842a25bbd582f6565a63a5400",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "asm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native ASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-01",
+      "family": "pressure_vessel",
+      "sourceHash": "ebffe1fc48d9d736881e8ffb42fe4ecd33567872ed235137ed0011558223a7fd",
+      "container": {
+        "kind": "zip",
+        "entries": 3,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 1,
+        "byExtension": {
+          ".step": 1,
+          ".png": 2
+        },
+        "inspectedExchange": "LARGE PLATFORM with ASME TANKS.step"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 201,
+            "solids": 193
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 993
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 993
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-02",
+      "family": "pressure_vessel",
+      "sourceHash": "6ed434925bd098cb0c66615bd96ccbc6e19d4b0a142b0bedac5c412e2ff0e1e9",
+      "container": {
+        "kind": "zip",
+        "entries": 7,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 1,
+        "byExtension": {
+          ".step": 1,
+          ".png": 6
+        },
+        "inspectedExchange": "Pressure Vessel Assembly.STEP"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 6,
+            "solids": 22
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 63
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 63
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-03",
+      "family": "pressure_vessel",
+      "sourceHash": "50f0c1c0debdc35ac11682d3880011876141c936182989f4413e8a98f284c5e0",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-04",
+      "family": "pressure_vessel",
+      "sourceHash": "8c6aeed65c3a169f1c4f6ae6c83492b72c693b6d4fa56332f0e3749c6032bd4b",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 1,
+            "solids": 5
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "No STEP assembly occurrence relationship.",
+          "measured": 0
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Hierarchy unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-05",
+      "family": "pressure_vessel",
+      "sourceHash": "363d28e4cac6d5271ee04177ae14ccd3acc44dd8ba928188946e3545acf4eaea",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-06",
+      "family": "pressure_vessel",
+      "sourceHash": "f698142d610dd4270d5213362edba0343fb94392f34e8fa03cb86e73154b7b55",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-07",
+      "family": "pressure_vessel",
+      "sourceHash": "03d809467c582641626debc7b3579a4f00e99b2be01b1c3e18b85b69f5685d93",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 1,
+            "solids": 1
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "No STEP assembly occurrence relationship.",
+          "measured": 0
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Hierarchy unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-08",
+      "family": "pressure_vessel",
+      "sourceHash": "f9f07db86ae166ce935f7c74d61a7a12dc67cb3f8b1c5a6999b33a81fec1b2d4",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 1,
+            "solids": 1
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "No STEP assembly occurrence relationship.",
+          "measured": 0
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Hierarchy unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-09",
+      "family": "pressure_vessel",
+      "sourceHash": "065e0d2cb5c3a767b4fa590fd0f89dd9ee3c15fee63274a5a17db4a1ccd5355a",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-10",
+      "family": "pressure_vessel",
+      "sourceHash": "9ab6e4f7ed2fd2f0155d13350203bbf0ccdc331c2a5217a75882bedadb2092bb",
+      "container": {
+        "kind": "zip",
+        "entries": 13,
+        "assemblyFiles": 1,
+        "partFiles": 9,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".sldprt": 9,
+          ".jpg": 3,
+          ".sldasm": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native part-file definitions counted in archive.",
+          "measured": 9
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-11",
+      "family": "pressure_vessel",
+      "sourceHash": "493dff8203ef2ac1b215d398a8cfeee52991c35d61ecd864005f48983e15a946",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 201,
+            "solids": 193
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 993
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 993
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-12",
+      "family": "pressure_vessel",
+      "sourceHash": "b2a29a800fccd3cfb24d9e2a02a7064d293db3bb584dc084dbb3cb09c05b455c",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 6,
+            "solids": 22
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 63
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 63
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-13",
+      "family": "pressure_vessel",
+      "sourceHash": "c4625d2d9cbf060e3b5deda183326ed6d3d1365f509a1d99e957d5ed7a08eb2b",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 1,
+            "solids": 1
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "No STEP assembly occurrence relationship.",
+          "measured": 0
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Hierarchy unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-14",
+      "family": "pressure_vessel",
+      "sourceHash": "099c5ae609ab7ee6884d52835219905d15cdc3b6bf20ef6c3f13d174109c9009",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 27,
+            "solids": 30
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 102
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 102
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-15",
+      "family": "pressure_vessel",
+      "sourceHash": "dd64f9c4f2c4ac50c9699baf8f3c9231368277961713298f37e0ca10f8def077",
+      "container": {
+        "kind": "zip",
+        "entries": 7,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 1,
+        "byExtension": {
+          ".step": 1,
+          ".jpg": 5,
+          ".gif": 1
+        },
+        "inspectedExchange": "Shell Tube Heat Exchanger.STEP"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 37,
+            "solids": 33
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 514
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 514
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-16",
+      "family": "pressure_vessel",
+      "sourceHash": "46a60e84230d8dffe5d31d0117eed1f1e44bea7cda70a9fb707ec606bf12458e",
+      "container": {
+        "kind": "zip",
+        "entries": 11,
+        "assemblyFiles": 1,
+        "partFiles": 8,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".sldprt": 8,
+          ".sldasm": 1,
+          ".mp4": 1,
+          ".jpg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native part-file definitions counted in archive.",
+          "measured": 8
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-17",
+      "family": "pressure_vessel",
+      "sourceHash": "45e7462cb4d1250ddc119ded2087fbe798708f27e64f99784804c7eccf5017de",
+      "container": {
+        "kind": "zip",
+        "entries": 11,
+        "assemblyFiles": 1,
+        "partFiles": 6,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".sldprt": 6,
+          ".jpg": 4,
+          ".sldasm": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native part-file definitions counted in archive.",
+          "measured": 6
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-18",
+      "family": "pressure_vessel",
+      "sourceHash": "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 37,
+            "solids": 33
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 514
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 514
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-19",
+      "family": "pressure_vessel",
+      "sourceHash": "49383fe2a7c870ca2be402b550f8a743f6457a8d6c5d2c18c53017d384497e0b",
+      "container": {
+        "kind": "zip",
+        "entries": 11,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 5,
+        "byExtension": {
+          ".png": 6,
+          ".step": 5
+        },
+        "inspectedExchange": "Shell and Tube Heat exchanger.step"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 27,
+            "solids": 30
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 102
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 102
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "pressure_vessel-review-20",
+      "family": "pressure_vessel",
+      "sourceHash": "b55534d0ee21e1bd487b90a4a064a10fdac0d606c3fbd85b05eb203dabf4dd1f",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-01",
+      "family": "turbomachinery",
+      "sourceHash": "a410cbdb4d445ede228132662f3bc2828704533d01acb42e14c3c9b934dccd04",
+      "container": {
+        "kind": "zip",
+        "entries": 7,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 1,
+        "byExtension": {
+          ".step": 1,
+          ".png": 2,
+          ".jpg": 4
+        },
+        "inspectedExchange": "8HP-粮食烘干机开式总装图-轻量化.STEP"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 103,
+            "solids": 76
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 448
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 448
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-02",
+      "family": "turbomachinery",
+      "sourceHash": "a3b31ac6fcd3b4075bcc705e5ab9e926710d7b185ec709203019705690b1e00f",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 103,
+            "solids": 76
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 448
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 448
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-03",
+      "family": "turbomachinery",
+      "sourceHash": "0add54435647798697b9e3514952f4b75709ba9b8267e0f77762fb4e7225f2d2",
+      "container": {
+        "kind": "zip",
+        "entries": 3,
+        "assemblyFiles": 0,
+        "partFiles": 1,
+        "exchangeFiles": 1,
+        "byExtension": {
+          ".step": 1,
+          ".sldprt": 1,
+          ".png": 1
+        },
+        "inspectedExchange": "CPU Liquid Cooler/Liquid Cooler.STEP"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 1,
+            "solids": 5
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "No STEP assembly occurrence relationship.",
+          "measured": 0
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Hierarchy unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-04",
+      "family": "turbomachinery",
+      "sourceHash": "2d4ca8f075f65006cc153dd16c5275d0e43ff4bb56741bd64126b2291272f6fc",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-05",
+      "family": "turbomachinery",
+      "sourceHash": "ac47f94dec47cfacf52d7cc778389dbb27c15e2396a8961f24124cca79267ed5",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "iam"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native IAM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-06",
+      "family": "turbomachinery",
+      "sourceHash": "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 11,
+            "solids": 13
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 31
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 31
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-07",
+      "family": "turbomachinery",
+      "sourceHash": "58cc596957c6818ac6deae5a2d0e2db8be4d35b16563a6c1503f24f494532229",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 10,
+            "solids": 10
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 21
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 21
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-08",
+      "family": "turbomachinery",
+      "sourceHash": "62821b5b8eb4e25c3ee6c80a20158135e2e2a87fb5b971d0a78e91233e7c836f",
+      "container": {
+        "kind": "zip",
+        "entries": 3,
+        "assemblyFiles": 0,
+        "partFiles": 1,
+        "exchangeFiles": 1,
+        "byExtension": {
+          ".sldprt": 1,
+          ".igs": 1,
+          ".step": 1
+        },
+        "inspectedExchange": "ERF-2-RS DÖKÜM GÖVDELİ ÇİFTLİ SALYANGOZ FAN.STEP"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 10,
+            "solids": 10
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 21
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 21
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-09",
+      "family": "turbomachinery",
+      "sourceHash": "b375dee43eb099043cf9dab7553835cc58cef5165d202bb5954328ae26866e20",
+      "container": {
+        "kind": "zip",
+        "entries": 9,
+        "assemblyFiles": 1,
+        "partFiles": 6,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".ipt": 6,
+          ".iam": 1,
+          ".png": 2
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native part-file definitions counted in archive.",
+          "measured": 6
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-10",
+      "family": "turbomachinery",
+      "sourceHash": "c66dc66ec44193845d0035baa984dab788ba3a02f2e58112dc7bb406d4f10e42",
+      "container": {
+        "kind": "zip",
+        "entries": 5,
+        "assemblyFiles": 1,
+        "partFiles": 3,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".sldprt": 3,
+          ".sldasm": 1,
+          ".png": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native part-file definitions counted in archive.",
+          "measured": 3
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-11",
+      "family": "turbomachinery",
+      "sourceHash": "586e39d8d37694d2db53345430eb3012b7fa46eb12ac81dfd376804594d3cb45",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 1,
+            "solids": 5
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "No STEP assembly occurrence relationship.",
+          "measured": 0
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Hierarchy unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-12",
+      "family": "turbomachinery",
+      "sourceHash": "630ca7bff17c36d0474c9e1faf8e642cac3d48967b11553351d253fef64c1988",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 4,
+            "solids": 780
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 18
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 18
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-13",
+      "family": "turbomachinery",
+      "sourceHash": "790039e07be68d0a37ff82f859628f5454e21d831b2f396292315ba728d00427",
+      "container": {
+        "kind": "zip",
+        "entries": 4,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 1,
+        "byExtension": {
+          ".png": 1,
+          ".stp": 1,
+          ".3dm": 1,
+          ".jpg": 1
+        },
+        "inspectedExchange": "nh-d15-chromax-black.stp"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 4,
+            "solids": 780
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 18
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 18
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-14",
+      "family": "turbomachinery",
+      "sourceHash": "ff5eb857b2c593b3b4a3694d32c907cc64571990b4ef52e96d819d8c1adaa4c1",
+      "container": {
+        "kind": "zip",
+        "entries": 13,
+        "assemblyFiles": 1,
+        "partFiles": 7,
+        "exchangeFiles": 1,
+        "byExtension": {
+          ".sldprt": 7,
+          ".jpg": 2,
+          ".png": 1,
+          ".x_b": 1,
+          ".step": 1,
+          ".sldasm": 1
+        },
+        "inspectedExchange": "Water Pump Osaka/Assy_Water Pump Osaka.STEP"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 11,
+            "solids": 13
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 31
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 31
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "turbomachinery-review-15",
+      "family": "turbomachinery",
+      "sourceHash": "1729564cde783c659edad2d7307ea575e367287cc8aa86a37b7bd64343e911f5",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 1,
+            "solids": 1
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "No STEP assembly occurrence relationship.",
+          "measured": 0
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Hierarchy unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-01",
+      "family": "factory_equipment",
+      "sourceHash": "e1ec023dd4f37d1ada0283b8afb44715d2c821d29603fa62bda0fd2b2476d222",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-02",
+      "family": "factory_equipment",
+      "sourceHash": "da6e16cd8aa230b88170120ebdbea6518932eeda126483b220e840597d79dc01",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-03",
+      "family": "factory_equipment",
+      "sourceHash": "44e86604b749c5c317f8a5cd2caa56c47d7e0acc733bcd22dfbf6d446118d40a",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-04",
+      "family": "factory_equipment",
+      "sourceHash": "5177fd3342514c97222530561fd5e1936984ef0e5f778da4868e35f356bcf13e",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-05",
+      "family": "factory_equipment",
+      "sourceHash": "82c45a79dc1ddab3df10759e954f03ddc67820412a4723df349a655dc1999f00",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-06",
+      "family": "factory_equipment",
+      "sourceHash": "88912d84be2213989efbadb1581de32e544bf5f6fb32ae432248af21c29101b9",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "iam"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native IAM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-07",
+      "family": "factory_equipment",
+      "sourceHash": "203c6a549256546bd5eb6e52a3885b7deabe63afe8c3317e30b055a71883eb31",
+      "container": {
+        "kind": "zip",
+        "entries": 28,
+        "assemblyFiles": 1,
+        "partFiles": 22,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".jpg": 4,
+          ".ipt": 22,
+          ".iam": 1,
+          ".dwg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "Native part-file definitions counted in archive.",
+          "measured": 22
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-08",
+      "family": "factory_equipment",
+      "sourceHash": "bba69739c306fca451490a153d867dce10b97d4c2d3b569c947f3f51507efae0",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-09",
+      "family": "factory_equipment",
+      "sourceHash": "30be3ac734504e58ab9344c5208846b8f1782f8f7406e2ed90e141527554ce5c",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-10",
+      "family": "factory_equipment",
+      "sourceHash": "dcf9555241db72f4d7df6ca55821f1f3b762c0606587324d222525a77d03c97b",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-11",
+      "family": "factory_equipment",
+      "sourceHash": "adbd309e954ccc4cb3ac8f5cc85daf9c1c3cb452e72928f676f906be5a013dc4",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-12",
+      "family": "factory_equipment",
+      "sourceHash": "accb39abe0201252aeb49b8a593e07842acdbc39c7ebc84c8f5c7196258cce7c",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-13",
+      "family": "factory_equipment",
+      "sourceHash": "959bd95113ddd77cf10d487c19b457cbcee9af38e62ce6760ac512aaaacd754c",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-14",
+      "family": "factory_equipment",
+      "sourceHash": "1e1ea5a6d65b4fa97e40841740ffbb3902376042601994a3fbc37a628a24a502",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-15",
+      "family": "factory_equipment",
+      "sourceHash": "7dbff038c6b2ac2051d774854d32ba622ac0508e220209a05d5c0bf9e62e5b75",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-16",
+      "family": "factory_equipment",
+      "sourceHash": "e9de6710b78167cf0429b5d2bd23ddc311f50c2246049667bbf8f1f8b52760df",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-17",
+      "family": "factory_equipment",
+      "sourceHash": "a1bfbc1110c5ccd848a29a460560ce8ba005e4ed688f8ba25a80393130919666",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-18",
+      "family": "factory_equipment",
+      "sourceHash": "c9be6bf9eb716a3fefc2a15a57809e57aa78a7b0f1e83990763e29fdee0e33b7",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-19",
+      "family": "factory_equipment",
+      "sourceHash": "57a301387e3a9188ec2caf3c7a880d6dfaadf6d56cc9558bc9deb7b7133b4394",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-20",
+      "family": "factory_equipment",
+      "sourceHash": "29a138839c211003a1e62cf58017a03ed7d0a0c22c4ccf4577b2b1744fb626b1",
+      "container": {
+        "kind": "native",
+        "entries": 1,
+        "extension": "sldasm"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Native SLDASM extractor required."
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Native occurrence extractor required."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-01",
+      "family": "interior",
+      "sourceHash": "65b8b42f41ac9d545c1c695a2f2d0819b7af9dd4136673c36d387baa1259ceb5",
+      "container": {
+        "kind": "zip",
+        "entries": 3,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".jpg": 1,
+          ".pdf": 1,
+          ".dwg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-02",
+      "family": "interior",
+      "sourceHash": "535ae44a61a2023c77ac45c68039e69f1826de222cf5d75cce7834b5af282bca",
+      "container": {
+        "kind": "zip",
+        "entries": 21,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".dwg": 1,
+          ".jpg": 14,
+          ".png": 5,
+          ".rvt": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-03",
+      "family": "interior",
+      "sourceHash": "ee69c99ad3965e28d4ab58bc86fbff37b69ddafa3fbfbbcb2c805894110d86da",
+      "container": {
+        "kind": "direct",
+        "entries": 1
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "STEP product definitions measured.",
+          "measured": {
+            "definitions": 106,
+            "solids": 206
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "STEP assembly occurrences measured.",
+          "measured": 140
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "NEXT_ASSEMBLY_USAGE_OCCURRENCE provides hierarchy edges.",
+          "measured": 140
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "STEP unit declaration measured.",
+          "measured": "mm"
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-04",
+      "family": "interior",
+      "sourceHash": "9623975cea242ed42881d37ea07e67268ac15df03bb8b1f38d0715aab4c2fccc",
+      "container": {
+        "kind": "zip",
+        "entries": 2,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".jpg": 1,
+          ".dwg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-05",
+      "family": "interior",
+      "sourceHash": "507c01a31e48c1102b1b99b5071eafa8518a8c23bca9341ce400be6c0ffa4774",
+      "container": {
+        "kind": "zip",
+        "entries": 2,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".jpg": 1,
+          ".dwg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-06",
+      "family": "interior",
+      "sourceHash": "d23ba207b032910b352ee1d8146412de3ece8fd4ae6bd92c74970901f2d49dc7",
+      "container": {
+        "kind": "zip",
+        "entries": 4,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".jpg": 3,
+          ".dwg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-07",
+      "family": "interior",
+      "sourceHash": "152699c9a9b0930d5f4b49851b551ee56549d6e3cad4b9d911a7feb6df779716",
+      "container": {
+        "kind": "zip",
+        "entries": 6,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 1,
+        "byExtension": {
+          ".jpg": 4,
+          ".ifc": 1,
+          ".dwg": 1
+        },
+        "inspectedExchange": "Untitled.ifc"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "IFC element definitions measured.",
+          "measured": {
+            "projects": 1,
+            "buildings": 1,
+            "storeys": 3,
+            "spaces": 0,
+            "elements": 284
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "IFC object occurrences measured.",
+          "measured": 284
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "IFC spatial aggregation/containment relations measured.",
+          "measured": 20
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "IFC length-unit declaration inspection.",
+          "measured": true
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-08",
+      "family": "interior",
+      "sourceHash": "b9ad0a38dbccd29e040b2af7d81b089f474b55a40242fcbe10fca53e1a8e1a4d",
+      "container": {
+        "kind": "zip",
+        "entries": 2,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".jpg": 1,
+          ".dwg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-09",
+      "family": "interior",
+      "sourceHash": "0ec25f41c7a231268f97544543f4cdd9ba33b2dc4d490cdce4d64b51c6d91605",
+      "container": {
+        "kind": "zip",
+        "entries": 13,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".bmp": 12,
+          ".dwg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-10",
+      "family": "interior",
+      "sourceHash": "ea6f7406331edf8c878dad6d21a8e47265e385e34e884c1ca7a9020ea508d756",
+      "container": {
+        "kind": "zip",
+        "entries": 11,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".png": 10,
+          ".dwg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-11",
+      "family": "interior",
+      "sourceHash": "8a7a47a997c9ca630bbc5dc59b5c76e24fe39b0dd71dac49b8caf7222e179625",
+      "container": {
+        "kind": "zip",
+        "entries": 12,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 1,
+        "byExtension": {
+          ".jpg": 10,
+          ".ifc": 1,
+          ".dwg": 1
+        },
+        "inspectedExchange": "Untitled.ifc"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "IFC element definitions measured.",
+          "measured": {
+            "projects": 1,
+            "buildings": 1,
+            "storeys": 3,
+            "spaces": 0,
+            "elements": 244
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "IFC object occurrences measured.",
+          "measured": 244
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "IFC spatial aggregation/containment relations measured.",
+          "measured": 42
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "IFC length-unit declaration inspection.",
+          "measured": true
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-12",
+      "family": "interior",
+      "sourceHash": "d4909667dbfa24d8271d6b374390885748352015e67afcc8d6791541e9262159",
+      "container": {
+        "kind": "zip",
+        "entries": 5,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".jpg": 4,
+          ".dwg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-13",
+      "family": "interior",
+      "sourceHash": "22806fb5aac7ba5916f739d550027c1f6e04dc23e0f184ea48cf0fb7074292ec",
+      "container": {
+        "kind": "zip",
+        "entries": 10,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 1,
+        "byExtension": {
+          ".ifc": 1,
+          ".jpg": 8,
+          ".dwg": 1
+        },
+        "inspectedExchange": "Untitled.ifc"
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "pass",
+          "reason": "IFC element definitions measured.",
+          "measured": {
+            "projects": 1,
+            "buildings": 1,
+            "storeys": 6,
+            "spaces": 0,
+            "elements": 1278
+          }
+        },
+        {
+          "axis": "occurrences",
+          "status": "pass",
+          "reason": "IFC object occurrences measured.",
+          "measured": 1278
+        },
+        {
+          "axis": "hierarchy",
+          "status": "pass",
+          "reason": "IFC spatial aggregation/containment relations measured.",
+          "measured": 102
+        },
+        {
+          "axis": "units",
+          "status": "pass",
+          "reason": "IFC length-unit declaration inspection.",
+          "measured": true
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-14",
+      "family": "interior",
+      "sourceHash": "3688c0fa32236469bf72173ced8ce4e476dfd384cb3ed8aded797fbfb1db77d3",
+      "container": {
+        "kind": "zip",
+        "entries": 4,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".rvt": 1,
+          ".dwg": 1,
+          ".skp": 1,
+          ".png": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-15",
+      "family": "interior",
+      "sourceHash": "35b28cb1c4e8bb5ee00624aa7b53be232563a99eb90273690ea1d5be36d21166",
+      "container": {
+        "kind": "zip",
+        "entries": 11,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".rvt": 1,
+          ".dwg": 1,
+          ".jpg": 9
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-16",
+      "family": "interior",
+      "sourceHash": "6edbd4f915ae9704fad91124af4d79940101512d01c68908f0f994260e5113bb",
+      "container": {
+        "kind": "zip",
+        "entries": 5,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".dwg": 1,
+          ".rvt": 1,
+          ".jpg": 3
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-17",
+      "family": "interior",
+      "sourceHash": "7bc3bdaaa41b0fe390efb70a45d89608b652adde99bd04731ac8f0f2d87d4b24",
+      "container": {
+        "kind": "zip",
+        "entries": 14,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".jpg": 8,
+          ".bmp": 2,
+          ".dwf": 1,
+          ".rvt": 1,
+          ".fbx": 1,
+          ".dwg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-18",
+      "family": "interior",
+      "sourceHash": "ef04a38466fbfb4a4b8e540a2abd2ee1d973663edb9ea5b359dba535862299f1",
+      "container": {
+        "kind": "zip",
+        "entries": 3,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".jpg": 2,
+          ".dwg": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-19",
+      "family": "interior",
+      "sourceHash": "89bd6ed1cbca2f2023320bdb8060278a502c83cd024fc5bd60bafb00e609f52b",
+      "container": {
+        "kind": "zip",
+        "entries": 7,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".jpeg": 2,
+          ".dwg": 1,
+          ".bmp": 3,
+          ".dae": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    },
+    {
+      "caseId": "interior-review-20",
+      "family": "interior",
+      "sourceHash": "2f0ddfee466206c959faf0b5398ac200738b13791ea6ac202ab8e1c6a3cac997",
+      "container": {
+        "kind": "zip",
+        "entries": 4,
+        "assemblyFiles": 0,
+        "partFiles": 0,
+        "exchangeFiles": 0,
+        "byExtension": {
+          ".dwg": 1,
+          ".jpeg": 2,
+          ".dae": 1
+        }
+      },
+      "checks": [
+        {
+          "axis": "part_definitions",
+          "status": "not_run",
+          "reason": "Part definitions unavailable.",
+          "measured": 0
+        },
+        {
+          "axis": "occurrences",
+          "status": "not_run",
+          "reason": "Archive file counts do not prove native assembly occurrences."
+        },
+        {
+          "axis": "hierarchy",
+          "status": "not_run",
+          "reason": "Native assembly hierarchy extractor required."
+        },
+        {
+          "axis": "units",
+          "status": "not_run",
+          "reason": "Native assembly unit extractor required."
+        }
+      ]
+    }
+  ]
+}

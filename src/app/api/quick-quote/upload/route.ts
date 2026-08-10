@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import fs from 'fs';
 import path from 'path';
 import { getNexyfabAdminEmail } from '@/lib/nexyfab-email';
 import { validateUploadedFile, sanitizeFileName } from '@/lib/file-validation';
@@ -10,7 +9,7 @@ import { getStorage } from '@/lib/storage';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { getRfqAccessForUser } from '@/lib/rfq-partner-access';
-import { rateLimitCheck } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { checkOrigin } from '@/lib/csrf';
 
@@ -21,6 +20,7 @@ const QUICK_QUOTE_CONFIG = {
   maxSizeCad: 50 * 1024 * 1024,  // 50MB
   maxSizeImage: 10 * 1024 * 1024, // 10MB
 };
+const INLINE_OCCT_PARSE_MAX_BYTES = 3 * 1024 * 1024;
 
 // ─── 파일 타입 감지 ─────────────────────────────────────────────────────────
 
@@ -175,13 +175,18 @@ async function processOneFile(
     buffer: Buffer,
     dimensionsRaw: string | null,
     clientGeo: Geometry | null,
-): Promise<{ geometry: Geometry | null; aiAnalysis: Record<string, unknown> | null; fileUrl: string; storageKey: string; fileSize: number }> {
+    persistPrivate: boolean,
+): Promise<{
+    geometry: Geometry | null;
+    aiAnalysis: Record<string, unknown> | null;
+    storageKey: string | null;
+    fileSize: number;
+    filename: string;
+    mimeType: string;
+    category: 'cad' | 'image';
+}> {
     const safeFilename = sanitizeFileName(file.name);
-    const storage = getStorage();
-    const storageResult = await storage.upload(buffer, safeFilename, 'uploads/quick-quote');
-    const fileUrl = storageResult.url;
-    const storageKey = storageResult.key;
-    const fileSize = storageResult.size;
+    const fileSize = buffer.length;
 
     const fileType = getFileType(file.name);
     let geometry: Geometry | null = null;
@@ -197,7 +202,11 @@ async function processOneFile(
             aiAnalysis = { part_type: 'mechanical_part', process: 'cnc', complexity: 5, features: ['client_extracted'], materials: ['steel_s45c', 'aluminum_6061', 'stainless_304'] };
         }
         // Server-side parse only as a fallback when the browser didn't send geometry.
-        if (!geometry) try {
+        if (
+            !geometry
+            && buffer.length <= INLINE_OCCT_PARSE_MAX_BYTES
+            && process.env.NEXYFAB_ENABLE_INLINE_OCCT_PARSE === '1'
+        ) try {
             const occtModule = await import('occt-import-js');
             const wasmPath = path.join(process.cwd(), 'node_modules/occt-import-js/dist/occt-import-js.wasm');
             const occt = await occtModule.default({
@@ -306,6 +315,12 @@ async function processOneFile(
     }
 
     // Async virus scan — delete file and alert admin if infected
+    let storageKey: string | null = null;
+    if (persistPrivate && geometry) {
+        const storageResult = await getStorage().uploadPrivate(buffer, safeFilename, 'quick-quote');
+        storageKey = storageResult.key;
+    }
+
     const _storageKeyForScan = storageKey;
     import('@/lib/virus-scan').then(({ scanBuffer }) =>
       scanBuffer(buffer, safeFilename).then(async result => {
@@ -331,7 +346,15 @@ async function processOneFile(
       })
     ).catch(() => {});
 
-    return { geometry, aiAnalysis, fileUrl, storageKey, fileSize };
+    return {
+        geometry,
+        aiAnalysis,
+        storageKey,
+        fileSize,
+        filename: safeFilename,
+        mimeType: file.type || 'application/octet-stream',
+        category: fileType === 'image' ? 'image' : 'cad',
+    };
 }
 
 // ─── Geometry 합산 ────────────────────────────────────────────────────────────
@@ -358,10 +381,11 @@ export async function POST(req: NextRequest) {
     const ip = getTrustedClientIp(req.headers);
     const rateKey = authUser ? `quick-quote:user:${authUser.userId}` : `quick-quote:anon:${ip}`;
     const rateLimit = authUser ? 10 : 3;
-    if (!rateLimitCheck(rateKey, rateLimit, 60_000)) {
+    if (!(await rateLimitAsync(rateKey, rateLimit, 60_000)).allowed) {
         return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
     }
 
+    let cleanupStorageKeys: string[] = [];
     try {
         const formData = await req.formData();
         const files = formData.getAll('file') as File[];
@@ -420,30 +444,21 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // 로컬 스토리지 사용 시 오래된 파일 정리 (24시간 이상)
-        if (!process.env.S3_BUCKET) {
-            const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'quick-quote');
-            if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-            try {
-                const dirFiles = fs.readdirSync(uploadDir);
-                const now = Date.now();
-                for (const f of dirFiles) {
-                    const fp = path.join(uploadDir, f);
-                    const stat = fs.statSync(fp);
-                    if (!stat.isDirectory() && now - stat.mtimeMs > 24 * 60 * 60 * 1000) fs.unlinkSync(fp);
-                }
-            } catch { /* ignore */ }
-        }
-
         // 모든 파일 처리
         const results = await Promise.all(
             files.map(async (file) => {
                 const ab = await file.arrayBuffer();
                 const buffer = Buffer.from(ab);
                 const cg = clientGeometries[file.name];
-                return processOneFile(file, buffer, dimensionsRaw, isValidGeo(cg) ? cg : null);
+                return processOneFile(file, buffer, dimensionsRaw, isValidGeo(cg) ? cg : null, !!authUser);
             })
         );
+
+        const validGeos = results.map(r => r.geometry).filter(Boolean) as Geometry[];
+        cleanupStorageKeys = results.flatMap(r => r.storageKey ? [r.storageKey] : []);
+        if (validGeos.length === 0) {
+            return NextResponse.json({ error: 'Could not extract geometry. Please provide dimensions.' }, { status: 422 });
+        }
 
         // Save file metadata to nf_files if user is authenticated
         const savedFileIds: string[] = [];
@@ -480,15 +495,17 @@ export async function POST(req: NextRequest) {
                     || parentForVersion.ref_id !== rfqIdRaw
                     || parentForVersion.category !== 'cad'
                 ) {
+                    await Promise.all(cleanupStorageKeys.map(key => getStorage().delete(key).catch(() => {})));
+                    cleanupStorageKeys = [];
                     return NextResponse.json({ error: 'Invalid replacesFileId' }, { status: 400 });
                 }
             }
 
             for (const r of results) {
-                const ext = r.fileUrl.split('.').pop()?.toLowerCase() || '';
-                const category = ['step', 'stp', 'stl', 'obj', 'blend'].includes(ext) ? 'cad' : 'image';
+                if (!r.storageKey) throw new Error('Authenticated upload did not persist to private storage');
+                const category = r.category;
                 const fileId = randomUUID();
-                const safeName = r.fileUrl.split('/').pop() || 'unknown';
+                const safeName = r.filename;
 
                 const refType = rfqIdRaw ? 'rfq' : null;
                 const refId = rfqIdRaw || null;
@@ -513,7 +530,7 @@ export async function POST(req: NextRequest) {
                     authUser.userId,
                     r.storageKey,
                     safeName,
-                    'application/octet-stream',
+                    r.mimeType,
                     r.fileSize,
                     category,
                     refType,
@@ -528,24 +545,22 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const validGeos = results.map(r => r.geometry).filter(Boolean) as Geometry[];
-        if (validGeos.length === 0) {
-            return NextResponse.json({ error: 'Could not extract geometry. Please provide dimensions.' }, { status: 422 });
-        }
-
         const geometry = validGeos.length === 1 ? validGeos[0] : mergeGeometries(validGeos);
         const aiAnalysis = results[0].aiAnalysis; // 첫 파일 기준 AI 분석
-        const fileUrls = results.map(r => r.fileUrl);
+        const fileUrls = savedFileIds.map(id => `/api/nexyfab/files/${encodeURIComponent(id)}/download`);
+        cleanupStorageKeys = [];
 
         return NextResponse.json({
             geometry,
             aiAnalysis,
-            fileUrl: fileUrls[0],
+            fileUrl: fileUrls[0] || '',
             fileUrls,
+            url: fileUrls[0] || '',
             fileCount: files.length,
             ...(savedFileIds.length > 0 ? { savedFileIds } : {}),
         });
     } catch (err) {
+        await Promise.all(cleanupStorageKeys.map(key => getStorage().delete(key).catch(() => {})));
         console.error('quick-quote upload error:', err);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }

@@ -1,0 +1,109 @@
+{
+  "schema": "nexyfab.domain-accuracy-dryrun.v1",
+  "kind": "DRYRUN — toolchain drill, NOT certification evidence",
+  "domain": "civil",
+  "reviewers": [
+    "DRYRUN-virtual-reviewer-1",
+    "DRYRUN-virtual-reviewer-2"
+  ],
+  "subject": "template-engine cross-process rebuild determinism (no AI subject)",
+  "checks": [
+    {
+      "ok": true,
+      "label": "candidates generated 20/20"
+    },
+    {
+      "ok": true,
+      "label": "every review packet flags independent_holdout_source_required"
+    },
+    {
+      "ok": true,
+      "label": "promote refuses certification path (exit 1)"
+    },
+    {
+      "ok": true,
+      "label": "promote scoreEligible=0 (internal-template locked out)"
+    },
+    {
+      "ok": true,
+      "label": "promote emits zero benchmark cases"
+    },
+    {
+      "ok": true,
+      "label": "required axes discovered from packets (22)"
+    },
+    {
+      "ok": true,
+      "label": "campaign completed (exit 0)"
+    },
+    {
+      "ok": true,
+      "label": "campaign runs 300/300"
+    },
+    {
+      "ok": true,
+      "label": "campaign resume on completed state is a clean no-op"
+    },
+    {
+      "ok": true,
+      "label": "report refuses eligibility (DRYRUN must not certify)"
+    },
+    {
+      "ok": true,
+      "label": "evidence integrity issues: 0"
+    },
+    {
+      "ok": true,
+      "label": "measured axes accuracy 1, universal rebuild axes full-coverage (requirements@1,semantic_objects@1,geometry@1,relationships@1,output_consistency@1,structures@0.35,repair@1)"
+    },
+    {
+      "ok": true,
+      "label": "unmeasured axes surface as coverage blockers"
+    },
+    {
+      "ok": true,
+      "label": "gate passes 300/300"
+    }
+  ],
+  "passed": "14/14",
+  "campaign": {
+    "domain": "civil",
+    "suiteHash": "1552d385fc8b5f6dadc4ea57b271b535f7651caf61be98fe136fa6272f6b1eb2",
+    "slots": 300,
+    "completed": 300,
+    "failed": 0
+  },
+  "blockers": [
+    "accuracy:coordinate_units",
+    "coverage:coordinate_units",
+    "accuracy:provenance",
+    "coverage:provenance",
+    "accuracy:revision_integrity",
+    "coverage:revision_integrity",
+    "accuracy:survey_control",
+    "coverage:survey_control",
+    "accuracy:surface_quality",
+    "coverage:surface_quality",
+    "accuracy:alignment",
+    "coverage:alignment",
+    "accuracy:profile",
+    "coverage:profile",
+    "accuracy:cross_sections",
+    "coverage:cross_sections",
+    "accuracy:corridor",
+    "coverage:corridor",
+    "accuracy:earthwork",
+    "coverage:earthwork",
+    "accuracy:drainage",
+    "coverage:drainage",
+    "accuracy:construction_stages",
+    "coverage:construction_stages",
+    "coverage:structures",
+    "accuracy:ifc_landxml_roundtrip",
+    "coverage:ifc_landxml_roundtrip",
+    "accuracy:civil_drawings",
+    "coverage:civil_drawings",
+    "accuracy:quantities",
+    "coverage:quantities"
+  ]
+}

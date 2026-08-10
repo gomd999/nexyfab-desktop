@@ -185,7 +185,7 @@ Email falls back to console.log when `SMTP_HOST` is not set.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `BREP_WORKER_URL` | (unset) | Base URL of OCCT/tessellate worker; `POST {base}/tessellate` with JSON `filename`, `base64`, `jobId`. |
+| `BREP_WORKER_URL` | (unset) | Base URL of OCCT/tessellate worker. Small jobs send `filename`, `base64`, `jobId`; >50 MB private jobs send `filename`, `sourceUrl`, `sourceBytes`, `jobId` and never place STEP bytes in JSON/Redis. |
 | `BREP_WORKER_TIMEOUT_MS` | `120000` | HTTP timeout for worker `fetch` (ms, min 5000). |
 | `BREP_MAX_QUEUE_DEPTH` | `200` | Max **pending** jobs (Redis + in-memory queue) before `503` + `QUEUE_FULL` on async STEP import. |
 | `NEXT_PUBLIC_SERVER_STEP_IMPORT` | (set) | Client: set to `0` to disable server STEP preview and use browser-only import. |

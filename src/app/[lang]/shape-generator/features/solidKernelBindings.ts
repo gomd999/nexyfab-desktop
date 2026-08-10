@@ -15,7 +15,7 @@
  */
 
 import * as THREE from 'three';
-import { createWasmBridge, LAUNCHER_WORKER_URL } from '@/lib/occt/wasmBridge';
+import { createWasmBridge, COMMERCIAL_WORKER_URL, LAUNCHER_WORKER_URL } from '@/lib/occt/wasmBridge';
 import { meshVolume } from './roundingGuard';
 import {
   occtExtrudeProfile,
@@ -56,6 +56,15 @@ export function replicadDeps(): ReplicadKernelDeps {
   };
 }
 
+export function selectOcctWorkerUrl(environment: { nodeEnv?: string; cadIndependentMode?: string } = {
+  nodeEnv: process.env.NODE_ENV,
+  cadIndependentMode: process.env.NEXT_PUBLIC_NEXYFAB_CAD_INDEPENDENT_MODE,
+}): string {
+  return environment.nodeEnv === 'production' || environment.cadIndependentMode === '1'
+    ? COMMERCIAL_WORKER_URL
+    : LAUNCHER_WORKER_URL;
+}
+
 /**
  * The kernel-of-record selector. `?occtWorker=1` (or the equivalent flag) routes
  * solid ops to the K-series worker bridge (real `opencascade.js`, persistent
@@ -69,7 +78,7 @@ export function selectSolidKernel(useWorker: boolean): SolidKernel {
     // and only falls back to the stub if it can't load. Without this the
     // "K-series worker" silently routed every op to the synthetic stub, so the
     // kernel-ceiling ops (thicken/surfaceTrim) never reached real OCCT.
-    return createKSeriesKernel(createWasmBridge({ workerUrl: LAUNCHER_WORKER_URL }));
+    return createKSeriesKernel(createWasmBridge({ workerUrl: selectOcctWorkerUrl() }));
   }
   return createReplicadKernel(replicadDeps());
 }

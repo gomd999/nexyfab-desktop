@@ -12,7 +12,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { readAccessToken, verifyOtpAndElevate, isAdminOtpRequired } from '@/lib/admin-elevation';
 import { ELEV_COOKIE, mintElevToken, sha256Hex } from '@/lib/admin-elev-token';
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   // 코드 대입 시도 자체를 제한한다 — DB 의 attempts 상한과 **이중으로** 막는다.
   const ip = getTrustedClientIp(req.headers);
-  if (!rateLimit(`admin-otp-verify:${user.userId}:${ip}`, 10, 10 * 60_000).allowed) {
+  if (!(await rateLimitAsync(`admin-otp-verify:${user.userId}:${ip}`, 10, 10 * 60_000)).allowed) {
     return NextResponse.json({ ok: false, error: '요청이 많습니다 — 잠시 후 다시 시도하세요.' }, { status: 429 });
   }
 

@@ -1683,4 +1683,4 @@ This matches the [strategic plan](./SW_FUSION_PARITY_PLAN.md): year 10 + $20-50M
 - Current build roadmap (where we are now): [OWN_PRO_CAD.md](../roadmap/OWN_PRO_CAD.md)
 - Architecture commit: [ADR-013](../adr/013-own-pro-cad-track.md)
 - Design partner kit (Y0-1 GTM): [DESIGN_PARTNER_OUTREACH_KIT.md](./DESIGN_PARTNER_OUTREACH_KIT.md)
-- Webpack/Emscripten lesson (deploy pain documented): [feedback_webpack_emscripten_wasm.md](../../C:/Users/gomd9/.claude/projects/C--Users-gomd9/memory/feedback_webpack_emscripten_wasm.md)
+- Webpack/Emscripten lesson (deploy pain documented): private local planning memory (not a repository artifact)

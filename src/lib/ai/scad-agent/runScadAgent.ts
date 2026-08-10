@@ -148,12 +148,34 @@ async function executeToolCall(
   tools: ToolExecutorMap,
   session: AgentSession,
 ): Promise<ToolResult> {
-  const fn: ToolExecutor | undefined = tools[call.name];
+  const hasExecutor = Object.prototype.hasOwnProperty.call(tools, call.name);
+  const fn: ToolExecutor | undefined = hasExecutor ? tools[call.name] : undefined;
   if (!fn) {
     return {
       ok: false,
       error: `Unknown tool "${call.name}". Valid: write_scad, apply_diff, render, get_geometry, add_feature_intent, verify_spec, search_bosl2, read_dfm.`,
       code: 'UNKNOWN_TOOL',
+    };
+  }
+  const authorizedHandles = new Set(session.brepEntries.map(entry => entry.handle));
+  const referencedHandles: string[] = [];
+  const visit = (value: unknown, depth = 0) => {
+    if (depth > 16) return;
+    if (typeof value === 'string' && /^occt:[A-Za-z0-9_-]+$/.test(value)) {
+      referencedHandles.push(value);
+    } else if (Array.isArray(value)) {
+      for (const item of value) visit(item, depth + 1);
+    } else if (value && typeof value === 'object') {
+      for (const child of Object.values(value as Record<string, unknown>)) visit(child, depth + 1);
+    }
+  };
+  visit(call.args);
+  const unauthorized = referencedHandles.find(handle => !authorizedHandles.has(handle));
+  if (unauthorized) {
+    return {
+      ok: false,
+      error: 'The requested geometry handle does not belong to this signed agent session.',
+      code: 'ACCESS_DENIED',
     };
   }
   try {

@@ -1,0 +1,22 @@
+{
+  "schema": "nexyfab.commercial-synthetic-campaign-receipt.v1",
+  "generatedAt": "2026-08-10T03:36:00.000Z",
+  "ok": true,
+  "certificationEvidence": false,
+  "purpose": "internal regression and release-toolchain drill",
+  "domains": {
+    "mechanical": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" },
+    "building": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" },
+    "civil": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" },
+    "landscape": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" },
+    "interior": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" }
+  },
+  "totalCases": 100,
+  "totalRuns": 1500,
+  "totalGatePasses": 1500,
+  "promotionPolicy": {
+    "scoreEligible": 0,
+    "independentHoldoutRequired": true,
+    "virtualReviewerApprovalRejected": true
+  }
+}

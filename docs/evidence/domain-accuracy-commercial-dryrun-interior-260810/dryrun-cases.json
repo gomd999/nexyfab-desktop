@@ -1,0 +1,4242 @@
+[
+  {
+    "caseId": "dryrun-interior-interior_floor-01",
+    "domain": "interior",
+    "sourceHash": "47ebe098a0ac446709b499a528e495afbd6b623b03496d0524723791556d806e",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-apartment_unit-01",
+    "domain": "interior",
+    "sourceHash": "44976469398aba5ac2f5d4bf20458229d4cbc7edc2fa87049fe8a2dc4502c894",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-studio_unit-01",
+    "domain": "interior",
+    "sourceHash": "87405ec33f8b183a8ea47c4412f1ad26d4b5f9fecf1886ae53656edaa40e6fea",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-three_room_unit-01",
+    "domain": "interior",
+    "sourceHash": "51157ff66d641338faf49061d055d56cc1c11c967ef3cf2515308fc8ee8f6125",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-two_room-01",
+    "domain": "interior",
+    "sourceHash": "76c3245c1cf0312c951dbe0955c9d2bb88b7aec935f0eb9b403a2c0710c8f17e",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-cafe_room-01",
+    "domain": "interior",
+    "sourceHash": "94f657b039770504a6161678059c08ddfd6946c1dc9eee76e91ab3974de5ddd9",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-built_in_closet-01",
+    "domain": "interior",
+    "sourceHash": "d4b4a97fcb0299804d8c5e2852b46dd56eb01732f3f67345d92cf91610453889",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-counter_bar-01",
+    "domain": "interior",
+    "sourceHash": "49a716003d99d46534f17d3274eed96d4031891964bf02f049953ba0545ee73a",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-partition_wall-01",
+    "domain": "interior",
+    "sourceHash": "542fe0379ee847cd8fbfe8e50d33a15dbc604dd4e75927e193bdf7d84b03a6cc",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-ceiling_grid-01",
+    "domain": "interior",
+    "sourceHash": "7fc45b3e16cb372eb150f791408c92a9f8204fb8b37134850a37654fdd971073",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-interior_floor-02",
+    "domain": "interior",
+    "sourceHash": "51f8cc732f4fa161605c5088db7f7efcfdd4c7eedbd36dd1b38bed80fb6b7921",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-apartment_unit-02",
+    "domain": "interior",
+    "sourceHash": "32e3921ebde8eee37d3509e5a266e71fad3e180f737d29712c2f50cf01c91510",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-studio_unit-02",
+    "domain": "interior",
+    "sourceHash": "8ebedb848ba0570300d618fe2ffa76da01d5c671c0e28dbf7bef3aaa88f8c300",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-three_room_unit-02",
+    "domain": "interior",
+    "sourceHash": "1a3dac6d95f1a43614deb64cd2368b926d3cee7e37e74aac9af58c843804c1e3",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-two_room-02",
+    "domain": "interior",
+    "sourceHash": "c8df32f6701552e858a818a870896193667f51e8dbf8ea70f25c75154736b22c",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-cafe_room-02",
+    "domain": "interior",
+    "sourceHash": "463318d4426e1fa0f106d50d832408b535ca2ecb65f5e40e89cce3f6991f263a",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-built_in_closet-02",
+    "domain": "interior",
+    "sourceHash": "16a19c55b94c2fb7c79e72b3876fcf74de79b05cd57db5ad0d05efb5ebec638c",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-counter_bar-02",
+    "domain": "interior",
+    "sourceHash": "8303574afc8e6aa02c2530db86fccbdca1c0a97ad22b00ebbde3e04351a3eed0",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-partition_wall-02",
+    "domain": "interior",
+    "sourceHash": "7931e9bb879cb42ee4daad180bd020c0dedffb7da12099e0fc24592631cec717",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f"
+        ]
+      }
+    ]
+  },
+  {
+    "caseId": "dryrun-interior-ceiling_grid-02",
+    "domain": "interior",
+    "sourceHash": "832b07f0864c8671e1429be45fcccb375c6edfdb99be42ac20563609ac6d1ee4",
+    "split": "holdout",
+    "approvalReviewerIds": [
+      "DRYRUN-virtual-reviewer-1",
+      "DRYRUN-virtual-reviewer-2"
+    ],
+    "groundTruthAssertions": [
+      {
+        "axis": "requirements",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "coordinate_units",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "semantic_objects",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "geometry",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "relationships",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "provenance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "revision_integrity",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "output_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "field_measurement",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "space_closure",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "hosts_openings",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "circulation",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "door_swing",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "egress",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "accessibility",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "furniture_clearance",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "ceiling_mep",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "finishes",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "millwork",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "lighting",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "acoustics",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "schedules_quantities",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "drawing_consistency",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "ifc_roundtrip",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      },
+      {
+        "axis": "repair",
+        "tolerancePolicy": "exact-rebuild-v1 (DRYRUN)",
+        "provenance": "DRYRUN-internal-template-not-certifiable",
+        "artifactHashes": [
+          "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0"
+        ]
+      }
+    ]
+  }
+]

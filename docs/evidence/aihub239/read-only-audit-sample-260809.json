@@ -1,0 +1,101 @@
+{
+  "schema": "nexyfab.aihub239-readonly-audit.v1",
+  "generatedAt": "2026-08-09T14:56:30.879Z",
+  "root": "C:\\Users\\gomd9\\Downloads\\239.건축 도면 데이터",
+  "mode": "sample",
+  "split": "validation",
+  "sourcePolicy": {
+    "readOnly": true,
+    "extracted": false,
+    "copiedPayload": false,
+    "trainingAuthorized": false,
+    "commercialEvidenceAuthorized": false
+  },
+  "summary": {
+    "archiveCount": 8,
+    "labelsScanned": 100,
+    "imagesReferenced": 100,
+    "complete": false,
+    "issueCounts": {
+      "TRACK_CONTAMINATION": 3
+    },
+    "issueSampleCount": 3
+  },
+  "archives": [
+    {
+      "path": "01-1.정식개방데이터\\Validation\\01.원천데이터\\VS_OBJ.zip",
+      "split": "validation",
+      "kind": "source",
+      "track": "OBJ",
+      "entryCount": 1014
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\01.원천데이터\\VS_OCR.zip",
+      "split": "validation",
+      "kind": "source",
+      "track": "OCR",
+      "entryCount": 1129
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\01.원천데이터\\VS_SPA.zip",
+      "split": "validation",
+      "kind": "source",
+      "track": "SPA",
+      "entryCount": 1210
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\01.원천데이터\\VS_STR.zip",
+      "split": "validation",
+      "kind": "source",
+      "track": "STR",
+      "entryCount": 1461
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\02.라벨링데이터\\VL_OBJ.zip",
+      "split": "validation",
+      "kind": "label",
+      "track": "OBJ",
+      "entryCount": 1014,
+      "scannedCount": 25
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\02.라벨링데이터\\VL_OCR.zip",
+      "split": "validation",
+      "kind": "label",
+      "track": "OCR",
+      "entryCount": 1129,
+      "scannedCount": 25
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\02.라벨링데이터\\VL_SPA.zip",
+      "split": "validation",
+      "kind": "label",
+      "track": "SPA",
+      "entryCount": 1210,
+      "scannedCount": 25
+    },
+    {
+      "path": "01-1.정식개방데이터\\Validation\\02.라벨링데이터\\VL_STR.zip",
+      "split": "validation",
+      "kind": "label",
+      "track": "STR",
+      "entryCount": 1461,
+      "scannedCount": 25
+    }
+  ],
+  "issueSamples": [
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "validation:SPA:/APT_CS_SPA_114602700.json:track: annotations[4] category 객체_욕조 does not belong to SPA"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "validation:SPA:/APT_CS_SPA_114602700.json:track: annotations[5] category 객체_욕조 does not belong to SPA"
+    },
+    {
+      "code": "TRACK_CONTAMINATION",
+      "detail": "validation:SPA:/APT_CS_SPA_114602700.json:track: annotations[6] category 객체_욕조 does not belong to SPA"
+    }
+  ],
+  "pass": false
+}

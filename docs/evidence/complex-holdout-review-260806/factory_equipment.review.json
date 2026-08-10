@@ -1,0 +1,462 @@
+{
+  "schema": "nexyfab.complex-holdout-review.v1",
+  "family": "factory_equipment",
+  "policy": {
+    "selectedDoesNotMeanApproved": true,
+    "scoreEligible": false,
+    "oneCasePerLineage": true,
+    "requiredApprovedCases": 20
+  },
+  "candidates": 35,
+  "selected": 20,
+  "shortfall": 0,
+  "structurallyRejected": [
+    {
+      "lineageGroup": "factory_equipment:8-deep-pan-conveyor-clinker-silo",
+      "relativePath": "참고파일들4/8-deep-pan-conveyor-clinker-silo.snapshot.2.zip",
+      "reason": "archive_preflight_budget_exceeded"
+    },
+    {
+      "lineageGroup": "factory_equipment:aluminum-conveyor-01-1",
+      "relativePath": "참고파일들4/aluminum-conveyor-01-1.snapshot.3.zip",
+      "reason": "archive_preflight_budget_exceeded"
+    },
+    {
+      "lineageGroup": "factory_equipment:aluminum-tin-foil-cup-forming-packaging-production-line-1",
+      "relativePath": "참고파일들4/aluminum-tin-foil-cup-forming-packaging-production-line-1.snapshot.2.zip",
+      "reason": "supported_product_cad_missing"
+    },
+    {
+      "lineageGroup": "factory_equipment:automatic-wafer-transfer-equipment-machine-1",
+      "relativePath": "참고파일들4/automatic-wafer-transfer-equipment-machine-1.snapshot.2.zip",
+      "reason": "supported_product_cad_missing"
+    },
+    {
+      "lineageGroup": "factory_equipment:curve-90-pu-belt-conveyor-1",
+      "relativePath": "참고파일들4/curve-90-pu-belt-conveyor-1.snapshot.6.zip",
+      "reason": "supported_product_cad_missing"
+    }
+  ],
+  "items": [
+    {
+      "caseId": "factory_equipment-review-01",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:assem-gc",
+      "sourceHash": "e1ec023dd4f37d1ada0283b8afb44715d2c821d29603fa62bda0fd2b2476d222",
+      "bytes": 990618,
+      "extension": "sldasm",
+      "localLocator": "참고파일들/truck-loading-conveyor-4.snapshot.2/Assem GC.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-02",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:assem-hidrolik",
+      "sourceHash": "da6e16cd8aa230b88170120ebdbea6518932eeda126483b220e840597d79dc01",
+      "bytes": 321295,
+      "extension": "sldasm",
+      "localLocator": "참고파일들/truck-loading-conveyor-4.snapshot.2/Assem hidrolik.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-03",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:assembly-full",
+      "sourceHash": "44e86604b749c5c317f8a5cd2caa56c47d7e0acc733bcd22dfbf6d446118d40a",
+      "bytes": 2323292,
+      "extension": "sldasm",
+      "localLocator": "참고파일들/truck-loading-conveyor-4.snapshot.2/Assembly full.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-04",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:assembly-gravity-roller",
+      "sourceHash": "5177fd3342514c97222530561fd5e1936984ef0e5f778da4868e35f356bcf13e",
+      "bytes": 621379,
+      "extension": "sldasm",
+      "localLocator": "참고파일들/truck-loading-conveyor-4.snapshot.2/Assembly gravity roller.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-05",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:assembly-support",
+      "sourceHash": "82c45a79dc1ddab3df10759e954f03ddc67820412a4723df349a655dc1999f00",
+      "bytes": 119373,
+      "extension": "sldasm",
+      "localLocator": "참고파일들/truck-loading-conveyor-4.snapshot.2/assembly support.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-06",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:assembly1",
+      "sourceHash": "88912d84be2213989efbadb1581de32e544bf5f6fb32ae432248af21c29101b9",
+      "bytes": 624128,
+      "extension": "iam",
+      "localLocator": "참고파일들4/automatic-sorting-conveyor-with-pop-up-mechanism-1.snapshot.3/Assembly1.iam",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-07",
+      "family": "factory_equipment",
+      "tierCandidate": "T3",
+      "holdoutGroup": "factory_equipment:automatic-sorting-conveyor-with-pop-up-mechanism-1",
+      "sourceHash": "203c6a549256546bd5eb6e52a3885b7deabe63afe8c3317e30b055a71883eb31",
+      "bytes": 7272480,
+      "extension": "zip",
+      "localLocator": "참고파일들4/automatic-sorting-conveyor-with-pop-up-mechanism-1.snapshot.3.zip",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-08",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:caster-wheel",
+      "sourceHash": "bba69739c306fca451490a153d867dce10b97d4c2d3b569c947f3f51507efae0",
+      "bytes": 713483,
+      "extension": "sldasm",
+      "localLocator": "참고파일들/truck-loading-conveyor-4.snapshot.2/Caster wheel.SLDASM",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-09",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:hmc-02-chain-conveyor-00",
+      "sourceHash": "30be3ac734504e58ab9344c5208846b8f1782f8f7406e2ed90e141527554ce5c",
+      "bytes": 4366680,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-00.sldasm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-10",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:hmc-02-chain-conveyor-01",
+      "sourceHash": "dcf9555241db72f4d7df6ca55821f1f3b762c0606587324d222525a77d03c97b",
+      "bytes": 2367434,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-01.sldasm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-11",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:hmc-02-chain-conveyor-02",
+      "sourceHash": "adbd309e954ccc4cb3ac8f5cc85daf9c1c3cb452e72928f676f906be5a013dc4",
+      "bytes": 83484,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-02.sldasm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-12",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:hmc-02-chain-conveyor-03",
+      "sourceHash": "accb39abe0201252aeb49b8a593e07842acdbc39c7ebc84c8f5c7196258cce7c",
+      "bytes": 530291,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-03.sldasm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-13",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:hmc-02-chain-conveyor-04",
+      "sourceHash": "959bd95113ddd77cf10d487c19b457cbcee9af38e62ce6760ac512aaaacd754c",
+      "bytes": 381059,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-04.sldasm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-14",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:hmc-02-chain-conveyor-05",
+      "sourceHash": "1e1ea5a6d65b4fa97e40841740ffbb3902376042601994a3fbc37a628a24a502",
+      "bytes": 110761,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-05.sldasm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-15",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:hmc-02-chain-conveyor-06",
+      "sourceHash": "7dbff038c6b2ac2051d774854d32ba622ac0508e220209a05d5c0bf9e62e5b75",
+      "bytes": 30111,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-06.sldasm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-16",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:hmc-02-chain-conveyor-07",
+      "sourceHash": "e9de6710b78167cf0429b5d2bd23ddc311f50c2246049667bbf8f1f8b52760df",
+      "bytes": 590015,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-07.sldasm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-17",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:hmc-02-chain-conveyor-08",
+      "sourceHash": "a1bfbc1110c5ccd848a29a460560ce8ba005e4ed688f8ba25a80393130919666",
+      "bytes": 579563,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-08.sldasm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-18",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:hmc-02-chain-conveyor-09",
+      "sourceHash": "c9be6bf9eb716a3fefc2a15a57809e57aa78a7b0f1e83990763e29fdee0e33b7",
+      "bytes": 213872,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-09.sldasm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-19",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:hmc-02-chain-conveyor-10",
+      "sourceHash": "57a301387e3a9188ec2caf3c7a880d6dfaadf6d56cc9558bc9deb7b7133b4394",
+      "bytes": 210749,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-10.sldasm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    },
+    {
+      "caseId": "factory_equipment-review-20",
+      "family": "factory_equipment",
+      "tierCandidate": "T2",
+      "holdoutGroup": "factory_equipment:hmc-02-chain-conveyor-11",
+      "sourceHash": "29a138839c211003a1e62cf58017a03ed7d0a0c22c4ccf4577b2b1744fb626b1",
+      "bytes": 796589,
+      "extension": "sldasm",
+      "localLocator": "참고파일들4/hmc-02-mesh-chain-conveyor-1.snapshot.5/HMC-02-Chain Conveyor/HMC-02-Chain Conveyor-11.sldasm",
+      "split": "holdout_candidate",
+      "groundTruthApproved": false,
+      "scoreEligible": false,
+      "reviewChecklist": [
+        "provenance_and_commercial_license",
+        "lineage_independence",
+        "native_definition_occurrence_counts",
+        "units_and_coordinate_system",
+        "assertion_graph_and_tolerance",
+        "prompt_and_holdout_isolation"
+      ]
+    }
+  ]
+}

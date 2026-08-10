@@ -60,4 +60,28 @@ Step 2
     expect(out.toolCalls).toEqual([]);
     expect(out.narration).toContain('follow-up');
   });
+
+  it('rejects oversized tool envelopes before they enter history', () => {
+    const text = '```tool_call\n' + JSON.stringify({
+      id: 'large', name: 'write_scad', args: { code: 'x'.repeat(111_000) },
+    }) + '\n```';
+    expect(parseToolCalls(text).toolCalls).toEqual([]);
+  });
+
+  it('rejects prototype keys and non-object args', () => {
+    const poisoned = '```tool_call\n{"id":"p","name":"render","args":{"__proto__":{"polluted":true}}}\n```';
+    expect(parseToolCalls(poisoned).toolCalls).toEqual([]);
+    expect(parseToolCalls('```tool_call\n{"id":"a","name":"render","args":[]}\n```').toolCalls).toEqual([]);
+  });
+
+  it('caps tool batches to the execution budget ceiling', () => {
+    const text = Array.from({ length: 40 }, (_, i) =>
+      `\`\`\`tool_call\n{"id":"r${i}","name":"render","args":{}}\n\`\`\``).join('\n');
+    expect(parseToolCalls(text).toolCalls).toHaveLength(30);
+  });
+
+  it('accepts precision tools that are present in the executor map', () => {
+    const out = parseToolCalls('```tool_call\n{"id":"v1","name":"verify_spec","args":{}}\n```');
+    expect(out.toolCalls[0]?.name).toBe('verify_spec');
+  });
 });

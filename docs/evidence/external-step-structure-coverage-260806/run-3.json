@@ -1,0 +1,862 @@
+{
+  "schema": "nexyfab.external-step-structure-coverage.v1",
+  "generatedAt": "2026-08-06T14:24:37.370Z",
+  "status": "pass",
+  "scoreEligible": false,
+  "groundTruthApprovedCases": 0,
+  "scope": "Read-only structure coverage over existing external FreeCAD extraction metadata; no source bytes copied and not an accuracy claim.",
+  "summary": {
+    "selected": 115,
+    "executed": 38,
+    "executionCoverage": 0.33043478260869563,
+    "structuralPass": 38,
+    "structuralFail": 0,
+    "bodyMembershipNotRun": 3,
+    "bodyMembershipPass": 35,
+    "jointsNotRun": 38
+  },
+  "byFamily": {
+    "robot": {
+      "selected": 20,
+      "executed": 7,
+      "executionCoverage": 0.35,
+      "structuralPass": 7,
+      "structuralPassRate": 1
+    },
+    "gearbox": {
+      "selected": 20,
+      "executed": 4,
+      "executionCoverage": 0.2,
+      "structuralPass": 4,
+      "structuralPassRate": 1
+    },
+    "pressure_vessel": {
+      "selected": 20,
+      "executed": 12,
+      "executionCoverage": 0.6,
+      "structuralPass": 12,
+      "structuralPassRate": 1
+    },
+    "turbomachinery": {
+      "selected": 15,
+      "executed": 11,
+      "executionCoverage": 0.7333333333333333,
+      "structuralPass": 11,
+      "structuralPassRate": 1
+    },
+    "factory_equipment": {
+      "selected": 20,
+      "executed": 0,
+      "executionCoverage": 0,
+      "structuralPass": 0,
+      "structuralPassRate": null
+    },
+    "interior": {
+      "selected": 20,
+      "executed": 4,
+      "executionCoverage": 0.2,
+      "structuralPass": 4,
+      "structuralPassRate": 1
+    }
+  },
+  "results": [
+    {
+      "caseId": "gearbox-review-05",
+      "family": "gearbox",
+      "sourceHash": "7dfe9e91c66bc0ed0721b82af6bcbed3130e28cb7aa8a882c398b4f97228d957",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 29,
+        "occurrences": 29,
+        "roots": 1,
+        "transforms": 29,
+        "parts": 20,
+        "bodies": 20
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "gearbox-review-10",
+      "family": "gearbox",
+      "sourceHash": "9e50abefed3a2a81a09fde4a3b31fc74dadf49a7b92f907e7e3535f5d12bd141",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 23,
+        "occurrences": 23,
+        "roots": 1,
+        "transforms": 23,
+        "parts": 21,
+        "bodies": 21
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "gearbox-review-12",
+      "family": "gearbox",
+      "sourceHash": "6a66de0b245fd5f3764358c105f39845922fb9485d5617e6537e39686844d51c",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 23,
+        "occurrences": 23,
+        "roots": 1,
+        "transforms": 23,
+        "parts": 21,
+        "bodies": 21
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "gearbox-review-14",
+      "family": "gearbox",
+      "sourceHash": "5b0b36d1168a1a3e89627712c774e6ec9f31ef86eb80934e5c7202f224b6807a",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 14,
+        "occurrences": 14,
+        "roots": 1,
+        "transforms": 14,
+        "parts": 12,
+        "bodies": 12
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "interior-review-03",
+      "family": "interior",
+      "sourceHash": "ee69c99ad3965e28d4ab58bc86fbff37b69ddafa3fbfbbcb2c805894110d86da",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 424,
+        "occurrences": 424,
+        "roots": 1,
+        "transforms": 424,
+        "parts": 384,
+        "bodies": 384
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "interior-review-07",
+      "family": "interior",
+      "sourceHash": "152699c9a9b0930d5f4b49851b551ee56549d6e3cad4b9d911a7feb6df779716",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 278,
+        "occurrences": 278,
+        "roots": 1,
+        "transforms": 278,
+        "parts": 277,
+        "bodies": null
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "not_run",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "interior-review-11",
+      "family": "interior",
+      "sourceHash": "8a7a47a997c9ca630bbc5dc59b5c76e24fe39b0dd71dac49b8caf7222e179625",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 224,
+        "occurrences": 224,
+        "roots": 1,
+        "transforms": 224,
+        "parts": 223,
+        "bodies": null
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "not_run",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "interior-review-13",
+      "family": "interior",
+      "sourceHash": "22806fb5aac7ba5916f739d550027c1f6e04dc23e0f184ea48cf0fb7074292ec",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 1191,
+        "occurrences": 1191,
+        "roots": 1,
+        "transforms": 1191,
+        "parts": 1190,
+        "bodies": null
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "not_run",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-01",
+      "family": "pressure_vessel",
+      "sourceHash": "ebffe1fc48d9d736881e8ffb42fe4ecd33567872ed235137ed0011558223a7fd",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 2405,
+        "occurrences": 2405,
+        "roots": 1,
+        "transforms": 2405,
+        "parts": 1967,
+        "bodies": 1967
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-02",
+      "family": "pressure_vessel",
+      "sourceHash": "6ed434925bd098cb0c66615bd96ccbc6e19d4b0a142b0bedac5c412e2ff0e1e9",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 84,
+        "occurrences": 84,
+        "roots": 1,
+        "transforms": 84,
+        "parts": 80,
+        "bodies": 80
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-04",
+      "family": "pressure_vessel",
+      "sourceHash": "8c6aeed65c3a169f1c4f6ae6c83492b72c693b6d4fa56332f0e3749c6032bd4b",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 7,
+        "occurrences": 7,
+        "roots": 1,
+        "transforms": 7,
+        "parts": 5,
+        "bodies": 5
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-07",
+      "family": "pressure_vessel",
+      "sourceHash": "03d809467c582641626debc7b3579a4f00e99b2be01b1c3e18b85b69f5685d93",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 2,
+        "occurrences": 2,
+        "roots": 1,
+        "transforms": 2,
+        "parts": 1,
+        "bodies": 1
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-08",
+      "family": "pressure_vessel",
+      "sourceHash": "f9f07db86ae166ce935f7c74d61a7a12dc67cb3f8b1c5a6999b33a81fec1b2d4",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 2,
+        "occurrences": 2,
+        "roots": 1,
+        "transforms": 2,
+        "parts": 1,
+        "bodies": 1
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-11",
+      "family": "pressure_vessel",
+      "sourceHash": "493dff8203ef2ac1b215d398a8cfeee52991c35d61ecd864005f48983e15a946",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 2405,
+        "occurrences": 2405,
+        "roots": 1,
+        "transforms": 2405,
+        "parts": 1967,
+        "bodies": 1967
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-12",
+      "family": "pressure_vessel",
+      "sourceHash": "b2a29a800fccd3cfb24d9e2a02a7064d293db3bb584dc084dbb3cb09c05b455c",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 84,
+        "occurrences": 84,
+        "roots": 1,
+        "transforms": 84,
+        "parts": 80,
+        "bodies": 80
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-13",
+      "family": "pressure_vessel",
+      "sourceHash": "c4625d2d9cbf060e3b5deda183326ed6d3d1365f509a1d99e957d5ed7a08eb2b",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 2,
+        "occurrences": 2,
+        "roots": 1,
+        "transforms": 2,
+        "parts": 1,
+        "bodies": 1
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-14",
+      "family": "pressure_vessel",
+      "sourceHash": "099c5ae609ab7ee6884d52835219905d15cdc3b6bf20ef6c3f13d174109c9009",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 109,
+        "occurrences": 109,
+        "roots": 1,
+        "transforms": 109,
+        "parts": 106,
+        "bodies": 106
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-15",
+      "family": "pressure_vessel",
+      "sourceHash": "dd64f9c4f2c4ac50c9699baf8f3c9231368277961713298f37e0ca10f8def077",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 516,
+        "occurrences": 516,
+        "roots": 1,
+        "transforms": 516,
+        "parts": 513,
+        "bodies": 513
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-18",
+      "family": "pressure_vessel",
+      "sourceHash": "32847b1248cca781f134e7cebf319e73e40469da0a07ca06f71f2101f11a81a3",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 516,
+        "occurrences": 516,
+        "roots": 1,
+        "transforms": 516,
+        "parts": 513,
+        "bodies": 513
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "pressure_vessel-review-19",
+      "family": "pressure_vessel",
+      "sourceHash": "49383fe2a7c870ca2be402b550f8a743f6457a8d6c5d2c18c53017d384497e0b",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 109,
+        "occurrences": 109,
+        "roots": 1,
+        "transforms": 109,
+        "parts": 106,
+        "bodies": 106
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "robot-review-01",
+      "family": "robot",
+      "sourceHash": "50b18803427d0f5d4998cbab3cffae3c63dd83ee4ecb4883cd90fd07fcaf8008",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 4,
+        "occurrences": 4,
+        "roots": 1,
+        "transforms": 4,
+        "parts": 3,
+        "bodies": 3
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "robot-review-02",
+      "family": "robot",
+      "sourceHash": "c96a6c7c34e5bd26d14d3315ae47d2f5e1cf1c0e165392826f9a9e0a584ac0ae",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 10,
+        "occurrences": 10,
+        "roots": 1,
+        "transforms": 10,
+        "parts": 7,
+        "bodies": 7
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "robot-review-03",
+      "family": "robot",
+      "sourceHash": "ae100a589cdf84d92f2bd529d1f703c9d9ac174026d0d6687533494901dce02e",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 21,
+        "occurrences": 21,
+        "roots": 1,
+        "transforms": 21,
+        "parts": 16,
+        "bodies": 16
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "robot-review-04",
+      "family": "robot",
+      "sourceHash": "480325e9e9e249186ca5f79a2b42af9884bd81e06604a06970b522c7c962601a",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 12,
+        "occurrences": 12,
+        "roots": 1,
+        "transforms": 12,
+        "parts": 9,
+        "bodies": 9
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "robot-review-05",
+      "family": "robot",
+      "sourceHash": "f2912108234ba40d3e9938621bab4c804d7511aa02816a74179dde5e8c9d039f",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 27,
+        "occurrences": 27,
+        "roots": 1,
+        "transforms": 27,
+        "parts": 21,
+        "bodies": 21
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "robot-review-06",
+      "family": "robot",
+      "sourceHash": "730ac261fa68abb8f30bc535b327ad18599f24a1e60ceba9ed7d34180880c103",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 2,
+        "occurrences": 2,
+        "roots": 1,
+        "transforms": 2,
+        "parts": 1,
+        "bodies": 1
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "robot-review-09",
+      "family": "robot",
+      "sourceHash": "d2665fa621d78a78d97ab7e7cf999f2dee3c4ace1f1199552db8a2156ab29bfb",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 9,
+        "occurrences": 9,
+        "roots": 1,
+        "transforms": 9,
+        "parts": 7,
+        "bodies": 7
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-01",
+      "family": "turbomachinery",
+      "sourceHash": "a410cbdb4d445ede228132662f3bc2828704533d01acb42e14c3c9b934dccd04",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 686,
+        "occurrences": 686,
+        "roots": 1,
+        "transforms": 686,
+        "parts": 540,
+        "bodies": 540
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-02",
+      "family": "turbomachinery",
+      "sourceHash": "a3b31ac6fcd3b4075bcc705e5ab9e926710d7b185ec709203019705690b1e00f",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 686,
+        "occurrences": 686,
+        "roots": 1,
+        "transforms": 686,
+        "parts": 540,
+        "bodies": 540
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-03",
+      "family": "turbomachinery",
+      "sourceHash": "0add54435647798697b9e3514952f4b75709ba9b8267e0f77762fb4e7225f2d2",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 7,
+        "occurrences": 7,
+        "roots": 1,
+        "transforms": 7,
+        "parts": 5,
+        "bodies": 5
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-06",
+      "family": "turbomachinery",
+      "sourceHash": "3b4b792f50908f99efd989add3396b25b70eba512072bd4aa30ec955ca7f4d5b",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 38,
+        "occurrences": 38,
+        "roots": 1,
+        "transforms": 38,
+        "parts": 34,
+        "bodies": 34
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-07",
+      "family": "turbomachinery",
+      "sourceHash": "58cc596957c6818ac6deae5a2d0e2db8be4d35b16563a6c1503f24f494532229",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 26,
+        "occurrences": 26,
+        "roots": 1,
+        "transforms": 26,
+        "parts": 22,
+        "bodies": 22
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-08",
+      "family": "turbomachinery",
+      "sourceHash": "62821b5b8eb4e25c3ee6c80a20158135e2e2a87fb5b971d0a78e91233e7c836f",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 26,
+        "occurrences": 26,
+        "roots": 1,
+        "transforms": 26,
+        "parts": 22,
+        "bodies": 22
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-11",
+      "family": "turbomachinery",
+      "sourceHash": "586e39d8d37694d2db53345430eb3012b7fa46eb12ac81dfd376804594d3cb45",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 7,
+        "occurrences": 7,
+        "roots": 1,
+        "transforms": 7,
+        "parts": 5,
+        "bodies": 5
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-12",
+      "family": "turbomachinery",
+      "sourceHash": "630ca7bff17c36d0474c9e1faf8e642cac3d48967b11553351d253fef64c1988",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 802,
+        "occurrences": 802,
+        "roots": 1,
+        "transforms": 802,
+        "parts": 795,
+        "bodies": 795
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-13",
+      "family": "turbomachinery",
+      "sourceHash": "790039e07be68d0a37ff82f859628f5454e21d831b2f396292315ba728d00427",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 802,
+        "occurrences": 802,
+        "roots": 1,
+        "transforms": 802,
+        "parts": 795,
+        "bodies": 795
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-14",
+      "family": "turbomachinery",
+      "sourceHash": "ff5eb857b2c593b3b4a3694d32c907cc64571990b4ef52e96d819d8c1adaa4c1",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 38,
+        "occurrences": 38,
+        "roots": 1,
+        "transforms": 38,
+        "parts": 34,
+        "bodies": 34
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    },
+    {
+      "caseId": "turbomachinery-review-15",
+      "family": "turbomachinery",
+      "sourceHash": "1729564cde783c659edad2d7307ea575e367287cc8aa86a37b7bd64343e911f5",
+      "status": "pass",
+      "codes": [],
+      "measured": {
+        "definitions": 2,
+        "occurrences": 2,
+        "roots": 1,
+        "transforms": 2,
+        "parts": 1,
+        "bodies": 1
+      },
+      "axes": {
+        "hierarchy": "pass",
+        "transforms": "pass",
+        "bodyMembership": "pass",
+        "joints": "not_run"
+      }
+    }
+  ]
+}

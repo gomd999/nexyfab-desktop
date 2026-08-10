@@ -3,6 +3,9 @@ import { upsertRecentImportFile } from '@/lib/platform';
 import { makeEdges, meshVolume, meshSurfaceArea } from '../shapes';
 import { trackGeometry } from '../hooks/useGeometryGC';
 import { importPayload } from './importers';
+import { decideStepProcessingRoute, formatStepCapacityMb } from '@/lib/brep-bridge/stepCapacityPolicy';
+import { BREP_STEP_BROWSER_MAX_BYTES } from '@/lib/brep-bridge/constants';
+import { probeStepStructure } from '@/lib/brep-bridge/stepStructureProbe';
 
 export interface PreparedImportedShape {
   geometry: THREE.BufferGeometry;
@@ -33,8 +36,22 @@ function finalizeImported(geometry: THREE.BufferGeometry, filename: string, part
 
 /** Browser File from drag-and-drop or legacy `<input type="file">`. */
 export async function prepareImportedShapeFromFile(file: File): Promise<PreparedImportedShape> {
+  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+  if (ext === 'step' || ext === 'stp') assertBrowserStepCapacity(file.size);
   const buffer = await file.arrayBuffer();
   return prepareImportedShapeFromBuffer(file.name, buffer);
+}
+
+function assertBrowserStepCapacity(bytes: number): void {
+  const capacity = decideStepProcessingRoute(bytes, { authenticated: false, serverEnabled: false });
+  if (capacity.route === 'large-job-required') {
+    throw new Error(
+      `STEP ${formatStepCapacityMb(bytes)} requires the private large-file server job; browser processing is limited to ${formatStepCapacityMb(BREP_STEP_BROWSER_MAX_BYTES)}.`,
+    );
+  }
+  if (capacity.route === 'unsupported-size') {
+    throw new Error(`STEP file size is invalid or exceeds the ${formatStepCapacityMb(capacity.maxBytes)} product limit.`);
+  }
 }
 
 /** Tauri native dialog + buffer, or unified picker on web. */
@@ -44,7 +61,10 @@ export async function prepareImportedShapeFromBuffer(
 ): Promise<PreparedImportedShape> {
   const ext = filename.split('.').pop()?.toLowerCase() || '';
   if (ext === 'step' || ext === 'stp') {
-    try {
+    assertBrowserStepCapacity(buffer.byteLength);
+    // The server preview has no occurrence tree. Keep assemblies on the
+    // hierarchy-aware importer until the server response carries structure.
+    if (!probeStepStructure(buffer).isAssembly) try {
       const { tryServerStepImport } = await import('./serverStepImport');
       const server = await tryServerStepImport(filename, buffer);
       if (server) {

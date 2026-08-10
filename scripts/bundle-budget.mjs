@@ -16,6 +16,7 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { collectAppRouteBundles } from './app-route-bundle-manifest.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
@@ -26,6 +27,7 @@ const budgetPath = join(__dirname, 'bundle-budget.json');
 const args = process.argv.slice(2);
 const flagUpdate = args.includes('--update');
 const flagJson = args.includes('--json');
+const existingBudget = existsSync(budgetPath) ? JSON.parse(readFileSync(budgetPath, 'utf-8')) : null;
 
 if (!existsSync(manifestPath)) {
   console.error('✗ .next/build-manifest.json not found — run `npm run build` first.');
@@ -38,7 +40,8 @@ const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
 const fileBytes = new Map();
 function sizeOf(relPath) {
   if (fileBytes.has(relPath)) return fileBytes.get(relPath);
-  const abs = join(nextDir, relPath);
+  const direct = join(nextDir, relPath);
+  const abs = existsSync(direct) ? direct : join(nextDir, decodeURIComponent(relPath));
   if (!existsSync(abs)) return 0;
   const s = statSync(abs).size;
   fileBytes.set(relPath, s);
@@ -58,21 +61,33 @@ for (const [route, chunks] of Object.entries(manifest.pages ?? {})) {
   perPage[route] = sumChunks(chunks);
 }
 
+const appRouteBundles = collectAppRouteBundles(nextDir);
+for (const route of appRouteBundles) {
+  if (route.measured) perPage[route.route] = route.initialJsBytes;
+}
+
 const totals = {
   shared: sharedBytes,
   routes: perPage,
+  appRoutesMeasured: appRouteBundles.filter(route => route.measured).length,
+  appRouteCss: Object.fromEntries(appRouteBundles.filter(route => route.measured).map(route => [route.route, route.cssBytes])),
   // Total = shared + max(route). Rough proxy for "first-paint JS".
   worstFirstPaint:
     sharedBytes + Math.max(0, ...Object.values(perPage)),
 };
 
 // Budget file: { shared: bytes, worstFirstPaint: bytes, routes: { '/x': bytes } }
+const trackedRoutes = [...new Set([
+  ...Object.keys(existingBudget?.routes ?? {}),
+  ...(existingBudget?.requiredAppRoutes ?? []),
+])];
 const defaultBudget = {
   shared: Math.round(sharedBytes * 1.1),
   worstFirstPaint: Math.round(totals.worstFirstPaint * 1.1),
   routes: Object.fromEntries(
-    Object.entries(perPage).map(([k, v]) => [k, Math.round(v * 1.1)]),
+    trackedRoutes.filter(route => typeof perPage[route] === 'number').map(route => [route, Math.round(perPage[route] * 1.1)]),
   ),
+  requiredAppRoutes: existingBudget?.requiredAppRoutes ?? [],
   note:
     '10% headroom over the build that created this file. Run `npm run bundle:budget -- --update` after intentional growth.',
 };
@@ -87,7 +102,7 @@ if (flagUpdate || !existsSync(budgetPath)) {
   process.exit(0);
 }
 
-const budget = JSON.parse(readFileSync(budgetPath, 'utf-8'));
+const budget = existingBudget;
 const violations = [];
 const fmt = (n) => `${(n / 1024).toFixed(1)} KB`;
 
@@ -108,6 +123,11 @@ check('worstFirstPaint', totals.worstFirstPaint, budget.worstFirstPaint);
 for (const [route, bytes] of Object.entries(perPage)) {
   if (budget.routes?.[route]) check(`route:${route}`, bytes, budget.routes[route]);
 }
+for (const route of budget.requiredAppRoutes ?? []) {
+  if (!appRouteBundles.some(candidate => candidate.route === route && candidate.measured)) {
+    violations.push({ label: `app-route-unmeasured:${route}`, actual: 0, limit: 1, overBy: 1 });
+  }
+}
 
 if (flagJson) {
   console.log(JSON.stringify({ totals, budget, violations }, null, 2));
@@ -118,6 +138,7 @@ console.log('Bundle size report');
 console.log('──────────────────');
 console.log(`Shared chunks: ${fmt(totals.shared)}  (budget ${fmt(budget.shared)})`);
 console.log(`Worst first-paint: ${fmt(totals.worstFirstPaint)}  (budget ${fmt(budget.worstFirstPaint)})`);
+console.log(`Measured App Router entries: ${totals.appRoutesMeasured}`);
 console.log('');
 const topRoutes = Object.entries(perPage)
   .sort((a, b) => b[1] - a[1])

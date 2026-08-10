@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Rate limit: 3 exports per hour per user
-  if (!rateLimit(`export-data:${authUser.userId}`, 3, 3_600_000).allowed) {
+  if (!(await rateLimitAsync(`export-data:${authUser.userId}`, 3, 3_600_000)).allowed) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 1시간 후 다시 시도하세요.' }, { status: 429 });
   }
 

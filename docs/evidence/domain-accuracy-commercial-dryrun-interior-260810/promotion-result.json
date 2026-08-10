@@ -1,0 +1,153 @@
+{
+  "summary": {
+    "candidates": 20,
+    "approved": 20,
+    "scoreEligible": 0,
+    "pending": 0,
+    "rejected": 0,
+    "invalid": 0
+  },
+  "approvedCases": [],
+  "promotions": [
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    },
+    {
+      "status": "approved",
+      "scoreEligible": false,
+      "issues": [
+        "internal_template_not_independent_holdout"
+      ]
+    }
+  ]
+}

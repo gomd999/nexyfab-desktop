@@ -1101,6 +1101,25 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
     ? assemblyToPartsProgram(cad.assembly as { name?: string; parts?: unknown } | undefined)
     : composeIntentToFeatureProgram(cad.composeIntent);
   const openExpert = () => { if (expertProgram) openInPrecisionCad(expertProgram, lang); };
+  const expertCta = expertProgram && (
+    <button
+      type="button"
+      data-testid="chat-open-precision-cad"
+      onClick={openExpert}
+      title={lang === 'kr'
+        ? 'AI 결과의 피처와 치수를 유지해 정밀 3D CAD에서 계속 편집합니다.'
+        : 'Continue editing in precision 3D CAD while preserving features and dimensions.'}
+      style={{
+        ...btnGhost, display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start',
+        gap: 2, padding: '8px 12px', borderColor: `${accent}88`, background: `${accent}18`,
+      }}
+    >
+      <span style={{ fontWeight: 800 }}>🛠 {t.cadOpenExpert}</span>
+      <span style={{ fontSize: 9.5, opacity: 0.72 }}>
+        {lang === 'kr' ? '편집 가능한 피처·치수 인계' : 'Editable features & dimensions transferred'}
+      </span>
+    </button>
+  );
   const tolStr = toleranceRange(cad.isAssembly ? cad.assembly : cad.composeIntent);
   const tolBadge = tolStr && (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, marginBottom: 12, padding: '3px 10px', borderRadius: 999, background: 'rgba(59,130,246,0.12)', color: '#93c5fd' }}>
@@ -1163,7 +1182,7 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
         {/* F-6(260808g) — 정직 범위 어셈블리는 편집 가능한 배치 파트로 핸드오프 */}
         {expertProgram && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-            <button onClick={openExpert} style={btnGhost}>🛠 {t.cadOpenExpert}</button>
+            {expertCta}
           </div>
         )}
         {cad.welds && cad.welds.length > 0 && (
@@ -1219,7 +1238,7 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
           {cad.scad && <button onClick={() => download(cad.scad!, 'model.scad')} style={btnGhost}>⭳ {t.cadDownload}</button>}
           <button onClick={openGA} disabled={gaBusy} style={btnGhost}>{gaBusy ? '…' : `⤢ ${t.cadOpenGA}`}</button>
           <button onClick={runDfm} disabled={dfmBusy} style={btnGhost}>{dfmBusy ? '…' : t.cadDfm}</button>
-          {expertProgram && <button onClick={openExpert} style={btnGhost}>🛠 {t.cadOpenExpert}</button>}
+          {expertCta}
         </div>
         {dfmBlock}
         {err && <div style={{ fontSize: 12, color: '#fca5a5', marginTop: 8 }}>⚠️ {err}</div>}
@@ -1263,7 +1282,7 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
         <button onClick={confirmStep} disabled={building} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: building ? 'wait' : 'pointer', background: building ? 'rgba(148,163,184,0.4)' : `linear-gradient(135deg, ${accent}, #6366f1)`, color: '#fff', border: 'none' }}>
           {building ? t.cadBuilding : `${t.cadConfirm} →`}
         </button>
-        {expertProgram && <button onClick={openExpert} style={btnGhost}>🛠 {t.cadOpenExpert}</button>}
+        {expertCta}
       </div>
       <p style={{ marginTop: 10, fontSize: 10, color: '#6e7681', lineHeight: 1.5 }}>{t.disclaimer}</p>
     </div>

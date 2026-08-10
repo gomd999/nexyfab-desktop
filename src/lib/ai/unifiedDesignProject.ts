@@ -1,6 +1,6 @@
 export type DesignDomain = 'mechanical' | 'architecture' | 'structure' | 'mep' | 'interior' | 'civil' | 'landscape' | 'survey_gis' | 'construction';
 export type RepresentationKind = 'brep' | 'feature_tree' | 'bim' | 'surface' | 'mesh' | 'tin' | 'alignment' | 'graph' | 'gis' | 'procedural' | 'simulation';
-export type CrossDomainRelation = 'HOSTED_BY' | 'CONNECTS_TO' | 'ALIGNED_WITH' | 'DEPENDS_ON_LEVEL' | 'FOLLOWS_TERRAIN' | 'PENETRATES' | 'SERVES' | 'MUST_CLEAR';
+export type CrossDomainRelation = 'HOSTED_BY' | 'CONNECTS_TO' | 'ALIGNED_WITH' | 'DEPENDS_ON_LEVEL' | 'FOLLOWS_TERRAIN' | 'DRAINS_TO' | 'OCCUPIES_SPACE' | 'REFERENCES_MODEL' | 'PROVIDES_OPENING' | 'PENETRATES' | 'SERVES' | 'MUST_CLEAR';
 export type UpdatePolicy = 'follow' | 'notify' | 'locked';
 
 export interface ProjectCoordinateSystem {
@@ -22,6 +22,15 @@ export interface DomainDocument<T = unknown> {
   representations: RepresentationKind[];
   objectIds: string[];
   payload: T;
+  profileId?: 'mechanical' | 'building' | 'civil' | 'landscape' | 'interior';
+  profileVersion?: number;
+  semanticState?: {
+    status: 'deep_document_validated' | 'not_run';
+    targetSchema: string;
+    sourceTemplateId?: string;
+    reasonCode?: 'DEEP_DOCUMENT_ADAPTER_NOT_RUN';
+    note: string;
+  };
 }
 
 export interface CrossDomainReference {
@@ -85,23 +94,42 @@ export function validateUnifiedDesignProject(project: UnifiedDesignProject): str
     if (!finiteV3(coordinate.origin) || !finiteV3(coordinate.rotationDeg) || (coordinate.epsg !== undefined && (!Number.isSafeInteger(coordinate.epsg) || coordinate.epsg <= 0))) issues.push(`${coordinate.id}: invalid coordinate transform.`);
   }
   for (const coordinate of project.coordinateSystems) if (coordinate.parentId && !coordinateIds.has(coordinate.parentId)) issues.push(`${coordinate.id}: unknown parent coordinate system ${coordinate.parentId}.`);
+  const coordinateParents = new Map(project.coordinateSystems.map(item => [item.id, item.parentId]));
+  for (const coordinate of project.coordinateSystems) {
+    const visited = new Set<string>(), path: string[] = [];
+    let current: string | undefined = coordinate.id;
+    while (current) {
+      if (visited.has(current)) { issues.push(`Coordinate system cycle: ${[...path, current].join(' -> ')}.`); break; }
+      visited.add(current); path.push(current); current = coordinateParents.get(current);
+    }
+  }
   const documentIds = new Set<string>(), objectOwners = new Map<string, string>();
   for (const document of project.documents) {
     if (!document.id.trim() || documentIds.has(document.id)) issues.push(`Duplicate or empty document ${document.id || '(empty)'}.`);
     documentIds.add(document.id);
     if (!coordinateIds.has(document.coordinateSystemId)) issues.push(`${document.id}: unknown coordinate system ${document.coordinateSystemId}.`);
-    if (!document.schema.trim() || !Number.isSafeInteger(document.revision) || document.revision < 0 || document.representations.length === 0) issues.push(`${document.id}: invalid document metadata.`);
+    if (!document.schema.trim() || !Number.isSafeInteger(document.revision) || document.revision < 0 || document.representations.length === 0 || (document.profileVersion !== undefined && (!Number.isSafeInteger(document.profileVersion) || document.profileVersion < 1))) issues.push(`${document.id}: invalid document metadata.`);
+    if (document.semanticState) {
+      const semantic = document.semanticState;
+      if (!semantic.targetSchema.trim() || !semantic.note.trim()) issues.push(`${document.id}: invalid semantic state.`);
+      if (semantic.status === 'not_run' && semantic.reasonCode !== 'DEEP_DOCUMENT_ADAPTER_NOT_RUN') issues.push(`${document.id}: not_run semantic state requires an explicit reason code.`);
+      if (semantic.status === 'deep_document_validated' && semantic.reasonCode !== undefined) issues.push(`${document.id}: validated semantic state cannot retain a not_run reason code.`);
+    }
     for (const objectId of document.objectIds) {
       if (!objectId.trim() || objectOwners.has(objectId)) issues.push(`${document.id}: duplicate or empty global object id ${objectId || '(empty)'}.`);
       else objectOwners.set(objectId, document.id);
     }
   }
   const referenceIds = new Set<string>();
+  const referenceSignatures = new Set<string>();
   for (const reference of project.references) {
     if (!reference.id.trim() || referenceIds.has(reference.id)) issues.push(`Duplicate or empty reference ${reference.id || '(empty)'}.`);
     referenceIds.add(reference.id);
     if (!objectOwners.has(reference.sourceObjectId) || !objectOwners.has(reference.targetObjectId)) issues.push(`${reference.id}: cross-domain reference endpoint is missing.`);
     if (reference.sourceObjectId === reference.targetObjectId) issues.push(`${reference.id}: self reference is not allowed.`);
+    const signature = `${reference.sourceObjectId}|${reference.targetObjectId}|${reference.relation}`;
+    if (referenceSignatures.has(signature)) issues.push(`${reference.id}: duplicate cross-domain relation.`);
+    referenceSignatures.add(signature);
   }
   return issues;
 }
@@ -111,11 +139,16 @@ export function analyzeUnifiedChangeImpact(project: UnifiedDesignProject, change
   const allObjects = new Set(project.documents.flatMap(document => document.objectIds));
   const missing = changedObjectIds.filter(id => !allObjects.has(id));
   if (missing.length) throw new Error(`Unknown changed objects: ${missing.join(', ')}.`);
+  const adjacency = new Map<string, CrossDomainReference[]>();
+  for (const reference of project.references) {
+    const source = adjacency.get(reference.sourceObjectId) ?? []; source.push(reference); adjacency.set(reference.sourceObjectId, source);
+    const target = adjacency.get(reference.targetObjectId) ?? []; target.push(reference); adjacency.set(reference.targetObjectId, target);
+  }
   const direct = new Set(changedObjectIds), follow = new Set<string>(), notify = new Set<string>(), locked = new Set<string>(), traversed = new Set<string>();
   const queue = [...direct];
   while (queue.length) {
     const objectId = queue.shift()!;
-    for (const reference of project.references.filter(item => item.sourceObjectId === objectId || item.targetObjectId === objectId)) {
+    for (const reference of adjacency.get(objectId) ?? []) {
       traversed.add(reference.id);
       const other = reference.sourceObjectId === objectId ? reference.targetObjectId : reference.sourceObjectId;
       if (reference.updatePolicy === 'locked') { locked.add(other); continue; }
@@ -140,6 +173,8 @@ export function executeUnifiedProjectTransaction(
   if (baseRevision !== project.revision) return { committed: false, project, impact: emptyImpact, issues: ['Base revision is stale.'], invalidatedDocumentIds: [] };
   const documentIndex = project.documents.findIndex(document => document.id === edit.documentId);
   if (documentIndex < 0) return { committed: false, project, impact: emptyImpact, issues: [`Unknown document ${edit.documentId}.`], invalidatedDocumentIds: [] };
+  const foreignObjects = edit.changedObjectIds.filter(id => !project.documents[documentIndex]!.objectIds.includes(id));
+  if (foreignObjects.length) return { committed: false, project, impact: emptyImpact, issues: [`Changed objects are not owned by ${edit.documentId}: ${foreignObjects.join(', ')}.`], invalidatedDocumentIds: [] };
   let impact: ChangeImpact;
   try { impact = analyzeUnifiedChangeImpact(project, edit.changedObjectIds); }
   catch (error) { return { committed: false, project, impact: emptyImpact, issues: [error instanceof Error ? error.message : 'Impact analysis failed.'], invalidatedDocumentIds: [] }; }
@@ -173,6 +208,12 @@ export function executeUnifiedProjectBatchTransaction(
   if (!edits.length) return { committed: false, project, impact: emptyImpact, issues: ['At least one domain edit is required.'], invalidatedDocumentIds: [] };
   const missingDocuments = edits.filter(edit => !project.documents.some(document => document.id === edit.documentId)).map(edit => edit.documentId);
   if (missingDocuments.length) return { committed: false, project, impact: emptyImpact, issues: [`Unknown documents: ${[...new Set(missingDocuments)].join(', ')}.`], invalidatedDocumentIds: [] };
+  const ownershipIssues = edits.flatMap(edit => {
+    const document = project.documents.find(item => item.id === edit.documentId)!;
+    const foreign = edit.changedObjectIds.filter(id => !document.objectIds.includes(id));
+    return foreign.length ? [`Changed objects are not owned by ${edit.documentId}: ${foreign.join(', ')}.`] : [];
+  });
+  if (ownershipIssues.length) return { committed: false, project, impact: emptyImpact, issues: ownershipIssues, invalidatedDocumentIds: [] };
   let impact: ChangeImpact;
   try { impact = analyzeUnifiedChangeImpact(project, [...new Set(edits.flatMap(edit => edit.changedObjectIds))]); }
   catch (error) { return { committed: false, project, impact: emptyImpact, issues: [error instanceof Error ? error.message : 'Impact analysis failed.'], invalidatedDocumentIds: [] }; }

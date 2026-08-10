@@ -7,13 +7,23 @@ import { getPartnerAuth } from '@/lib/partner-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { findFactoryForPartnerEmail } from '@/lib/partner-factory-access';
 import { getStorage } from '@/lib/storage';
+import { checkOrigin } from '@/lib/csrf';
 
 export const dynamic = 'force-dynamic';
 
 const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
-const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']);
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+function imageExtension(type: string, bytes: Buffer): string | null {
+  if (type === 'image/jpeg' && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpg';
+  if (type === 'image/png' && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return 'png';
+  if (type === 'image/webp' && bytes.subarray(0, 4).toString('ascii') === 'RIFF'
+      && bytes.subarray(8, 12).toString('ascii') === 'WEBP') return 'webp';
+  return null;
+}
 
 export async function POST(req: NextRequest) {
+  if (!checkOrigin(req)) return NextResponse.json({ error: 'forbidden origin' }, { status: 403 });
   const partner = await getPartnerAuth(req);
   if (!partner) return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
 
@@ -34,7 +44,8 @@ export async function POST(req: NextRequest) {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+  const ext = imageExtension(file.type, buffer);
+  if (!ext) return NextResponse.json({ error: 'file content does not match image type' }, { status: 400 });
   const storage = getStorage();
 
   const result = await storage.upload(buffer, `avatar.${ext}`, `partner-avatars/${partner.email.replace(/[^a-z0-9]/gi, '_')}`);

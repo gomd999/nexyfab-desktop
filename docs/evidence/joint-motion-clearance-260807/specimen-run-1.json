@@ -1,0 +1,304 @@
+{
+  "schema": "nexyfab.joint-motion-clearance-capability.v1",
+  "generatedAt": "2026-08-07T01:16:37.225Z",
+  "status": "pass",
+  "scoreEligible": false,
+  "scope": "Deterministic two-link hinge specimen proving sweep×precise-collision fail-closed properties; not an external native joint claim.",
+  "analyticExpectations": {
+    "minimumClearanceMm": 5,
+    "firstContactDegrees": 126.87
+  },
+  "contentSha256": "05e4f62e673741b450efd0e17bc93534c0b21474ad442e60baf6804ec9668345",
+  "expectations": {
+    "clearSweepPasses": true,
+    "foldBackCollisionDetected": true,
+    "budgetExhaustionIsNotRun": true,
+    "missingGeometryIsNotRun": true,
+    "occurrenceHashesBound": true,
+    "repairIsLocalAndRecertified": true,
+    "confirmedJointNeverAutoRepaired": true,
+    "staleConfirmationFailsClosed": true,
+    "editGuardBlocksConfirmedJoint": true
+  },
+  "scenarios": {
+    "clear": {
+      "schema": "nexyfab.joint-motion-clearance-certificate.v1",
+      "status": "pass",
+      "lineageId": "set/hinge.snapshot.1",
+      "binding": {
+        "status": "pass",
+        "joints": [
+          {
+            "jointId": "shoulder",
+            "type": "revolute",
+            "parentOccurrenceId": "base-1",
+            "childOccurrenceId": "link-1",
+            "parentOccurrenceHash": "663e084c63a65ff87254e948628a212b6e9fefe2abde136635ece04f9be15536",
+            "childOccurrenceHash": "0284cac6d5c0296c290cd7f50d815760ba305c484848da9414738ca12faaece9",
+            "axis": [
+              0,
+              0,
+              1
+            ],
+            "originMm": [
+              100,
+              0,
+              0
+            ],
+            "lowerLimit": 0,
+            "upperLimit": 90
+          }
+        ],
+        "errors": []
+      },
+      "sweeps": [
+        {
+          "jointId": "shoulder",
+          "mateId": "native:shoulder",
+          "status": "pass",
+          "framesEvaluated": 19,
+          "pairChecks": 19,
+          "minimumClearanceMm": 5,
+          "collision": null,
+          "reason": null
+        }
+      ],
+      "pairBudget": {
+        "maximumPairChecks": 200000,
+        "usedPairChecks": 19,
+        "exhausted": false
+      },
+      "policy": {
+        "approximateGeometryCertificationForbidden": true,
+        "budgetExhaustionIsNotRun": true,
+        "nonConvergedFrameCertificationForbidden": true,
+        "fixedJointFabricationForbidden": true
+      },
+      "errors": []
+    },
+    "foldBack": {
+      "schema": "nexyfab.joint-motion-clearance-certificate.v1",
+      "status": "fail",
+      "lineageId": "set/hinge.snapshot.1",
+      "binding": {
+        "status": "pass",
+        "joints": [
+          {
+            "jointId": "shoulder",
+            "type": "revolute",
+            "parentOccurrenceId": "base-1",
+            "childOccurrenceId": "link-1",
+            "parentOccurrenceHash": "663e084c63a65ff87254e948628a212b6e9fefe2abde136635ece04f9be15536",
+            "childOccurrenceHash": "0284cac6d5c0296c290cd7f50d815760ba305c484848da9414738ca12faaece9",
+            "axis": [
+              0,
+              0,
+              1
+            ],
+            "originMm": [
+              100,
+              0,
+              0
+            ],
+            "lowerLimit": 0,
+            "upperLimit": 180
+          }
+        ],
+        "errors": []
+      },
+      "sweeps": [
+        {
+          "jointId": "shoulder",
+          "mateId": "native:shoulder",
+          "status": "fail",
+          "framesEvaluated": 37,
+          "pairChecks": 27,
+          "minimumClearanceMm": 0,
+          "collision": {
+            "frameIndex": 26,
+            "parameterValue": 130,
+            "partA": "native:base-1",
+            "partB": "native:link-1"
+          },
+          "reason": null
+        }
+      ],
+      "pairBudget": {
+        "maximumPairChecks": 200000,
+        "usedPairChecks": 27,
+        "exhausted": false
+      },
+      "policy": {
+        "approximateGeometryCertificationForbidden": true,
+        "budgetExhaustionIsNotRun": true,
+        "nonConvergedFrameCertificationForbidden": true,
+        "fixedJointFabricationForbidden": true
+      },
+      "errors": []
+    },
+    "budget": {
+      "schema": "nexyfab.joint-motion-clearance-certificate.v1",
+      "status": "not_run",
+      "lineageId": "set/hinge.snapshot.1",
+      "binding": {
+        "status": "pass",
+        "joints": [
+          {
+            "jointId": "shoulder",
+            "type": "revolute",
+            "parentOccurrenceId": "base-1",
+            "childOccurrenceId": "link-1",
+            "parentOccurrenceHash": "663e084c63a65ff87254e948628a212b6e9fefe2abde136635ece04f9be15536",
+            "childOccurrenceHash": "0284cac6d5c0296c290cd7f50d815760ba305c484848da9414738ca12faaece9",
+            "axis": [
+              0,
+              0,
+              1
+            ],
+            "originMm": [
+              100,
+              0,
+              0
+            ],
+            "lowerLimit": 0,
+            "upperLimit": 90
+          }
+        ],
+        "errors": []
+      },
+      "sweeps": [
+        {
+          "jointId": "shoulder",
+          "mateId": "native:shoulder",
+          "status": "not_run",
+          "framesEvaluated": 19,
+          "pairChecks": 3,
+          "minimumClearanceMm": null,
+          "collision": null,
+          "reason": "pair_budget_exhausted"
+        }
+      ],
+      "pairBudget": {
+        "maximumPairChecks": 3,
+        "usedPairChecks": 3,
+        "exhausted": true
+      },
+      "policy": {
+        "approximateGeometryCertificationForbidden": true,
+        "budgetExhaustionIsNotRun": true,
+        "nonConvergedFrameCertificationForbidden": true,
+        "fixedJointFabricationForbidden": true
+      },
+      "errors": []
+    },
+    "noGeometry": {
+      "schema": "nexyfab.joint-motion-clearance-certificate.v1",
+      "status": "not_run",
+      "lineageId": "set/hinge.snapshot.1",
+      "binding": {
+        "status": "pass",
+        "joints": [
+          {
+            "jointId": "shoulder",
+            "type": "revolute",
+            "parentOccurrenceId": "base-1",
+            "childOccurrenceId": "link-1",
+            "parentOccurrenceHash": "663e084c63a65ff87254e948628a212b6e9fefe2abde136635ece04f9be15536",
+            "childOccurrenceHash": "0284cac6d5c0296c290cd7f50d815760ba305c484848da9414738ca12faaece9",
+            "axis": [
+              0,
+              0,
+              1
+            ],
+            "originMm": [
+              100,
+              0,
+              0
+            ],
+            "lowerLimit": 0,
+            "upperLimit": 90
+          }
+        ],
+        "errors": []
+      },
+      "sweeps": [
+        {
+          "jointId": "shoulder",
+          "mateId": "native:shoulder",
+          "status": "not_run",
+          "framesEvaluated": 19,
+          "pairChecks": 0,
+          "minimumClearanceMm": null,
+          "collision": null,
+          "reason": "collision_geometry_unavailable:native:link-1"
+        }
+      ],
+      "pairBudget": {
+        "maximumPairChecks": 200000,
+        "usedPairChecks": 0,
+        "exhausted": false
+      },
+      "policy": {
+        "approximateGeometryCertificationForbidden": true,
+        "budgetExhaustionIsNotRun": true,
+        "nonConvergedFrameCertificationForbidden": true,
+        "fixedJointFabricationForbidden": true
+      },
+      "errors": []
+    },
+    "guard": {
+      "openRepair": {
+        "status": "pass",
+        "items": [
+          {
+            "jointId": "shoulder",
+            "disposition": "propose",
+            "action": {
+              "jointId": "shoulder",
+              "action": "reduce_upper_limit",
+              "newUpperLimit": 125,
+              "previousUpperLimit": 180,
+              "requiresRecertification": true
+            },
+            "reason": "collision_at:130"
+          }
+        ],
+        "touchedJointIds": [
+          "shoulder"
+        ],
+        "errors": []
+      },
+      "confirmedRepair": {
+        "status": "pass",
+        "items": [
+          {
+            "jointId": "shoulder",
+            "disposition": "user_input",
+            "action": null,
+            "reason": "user_confirmed_joint_requires_decision"
+          }
+        ],
+        "touchedJointIds": [],
+        "errors": []
+      },
+      "staleRepair": {
+        "status": "fail",
+        "items": [],
+        "touchedJointIds": [],
+        "errors": [
+          "user_confirmation_stale:shoulder"
+        ]
+      },
+      "guardBlocked": {
+        "allowed": false,
+        "violations": [
+          "user_confirmed_joint_protected:shoulder:remove_mate"
+        ]
+      },
+      "guardReleased": {
+        "allowed": true,
+        "violations": []
+      }
+    }
+  }
+}

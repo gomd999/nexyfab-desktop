@@ -1,0 +1,806 @@
+{
+  "schema": "nexyfab.native-step-assembly-plan-campaign.v1",
+  "generatedAt": "2026-08-06T10:22:26.092Z",
+  "assignmentsProvided": 0,
+  "summary": {
+    "scenarios": 4,
+    "pass": 0,
+    "notRun": 4,
+    "fail": 0
+  },
+  "plans": [
+    {
+      "scenarioId": "sc7_gear_train",
+      "plan": {
+        "schema": "nexyfab.native-step-assembly-plan.v1",
+        "status": "not_run",
+        "definitions": [],
+        "occurrences": [
+          {
+            "occurrenceId": "scad:occ:root",
+            "definitionId": "scad:def:product",
+            "parentOccurrenceId": null,
+            "localToParent": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:gear20:1",
+            "definitionId": "scad:def:gear20",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:gear30:2",
+            "definitionId": "scad:def:gear30",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              0.9945218953682733,
+              -0.10452846326765346,
+              0,
+              50,
+              0.10452846326765346,
+              0.9945218953682733,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        ],
+        "codes": [
+          "STEP_ASSEMBLY_MANUFACTURING_ASSIGNMENT_MISSING:scad:def:gear20",
+          "STEP_ASSEMBLY_MANUFACTURING_ASSIGNMENT_MISSING:scad:def:gear30"
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc8_pipe_joint",
+      "plan": {
+        "schema": "nexyfab.native-step-assembly-plan.v1",
+        "status": "not_run",
+        "definitions": [],
+        "occurrences": [
+          {
+            "occurrenceId": "scad:occ:root",
+            "definitionId": "scad:def:product",
+            "parentOccurrenceId": null,
+            "localToParent": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:main_pipe_left:1",
+            "definitionId": "scad:def:main_pipe_left",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              6.123233995736766e-17,
+              0,
+              1,
+              -50,
+              0,
+              1,
+              0,
+              0,
+              -1,
+              0,
+              6.123233995736766e-17,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:main_pipe_right:2",
+            "definitionId": "scad:def:main_pipe_right",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              6.123233995736766e-17,
+              0,
+              1,
+              0,
+              0,
+              1,
+              0,
+              0,
+              -1,
+              0,
+              6.123233995736766e-17,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:branch_pipe:3",
+            "definitionId": "scad:def:branch_pipe",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        ],
+        "codes": [
+          "STEP_ASSEMBLY_MANUFACTURING_ASSIGNMENT_MISSING:scad:def:main_pipe_left",
+          "STEP_ASSEMBLY_MANUFACTURING_ASSIGNMENT_MISSING:scad:def:main_pipe_right",
+          "STEP_ASSEMBLY_MANUFACTURING_ASSIGNMENT_MISSING:scad:def:branch_pipe"
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc9_simple_car",
+      "plan": {
+        "schema": "nexyfab.native-step-assembly-plan.v1",
+        "status": "not_run",
+        "definitions": [],
+        "occurrences": [
+          {
+            "occurrenceId": "scad:occ:root",
+            "definitionId": "scad:def:product",
+            "parentOccurrenceId": null,
+            "localToParent": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:body:1",
+            "definitionId": "scad:def:body",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:wheel:2",
+            "definitionId": "scad:def:wheel",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              20,
+              0,
+              1,
+              0,
+              18,
+              0,
+              0,
+              1,
+              7,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:wheel:3",
+            "definitionId": "scad:def:wheel",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              20,
+              0,
+              1,
+              0,
+              -18,
+              0,
+              0,
+              1,
+              7,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:wheel:4",
+            "definitionId": "scad:def:wheel",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              -20,
+              0,
+              1,
+              0,
+              18,
+              0,
+              0,
+              1,
+              7,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:wheel:5",
+            "definitionId": "scad:def:wheel",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              -20,
+              0,
+              1,
+              0,
+              -18,
+              0,
+              0,
+              1,
+              7,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:window:6",
+            "definitionId": "scad:def:window",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              6,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:window:7",
+            "definitionId": "scad:def:window",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              6,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        ],
+        "codes": [
+          "STEP_ASSEMBLY_MANUFACTURING_ASSIGNMENT_MISSING:scad:def:body",
+          "STEP_ASSEMBLY_MANUFACTURING_ASSIGNMENT_MISSING:scad:def:wheel",
+          "STEP_ASSEMBLY_MANUFACTURING_ASSIGNMENT_MISSING:scad:def:window"
+        ]
+      }
+    },
+    {
+      "scenarioId": "sc10_brackets_grid",
+      "plan": {
+        "schema": "nexyfab.native-step-assembly-plan.v1",
+        "status": "not_run",
+        "definitions": [],
+        "occurrences": [
+          {
+            "occurrenceId": "scad:occ:root",
+            "definitionId": "scad:def:product",
+            "parentOccurrenceId": null,
+            "localToParent": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:1",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:2",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              50,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:3",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              100,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:4",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              150,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:5",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              50,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:6",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              50,
+              0,
+              1,
+              0,
+              50,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:7",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              50,
+              0,
+              1,
+              0,
+              100,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:8",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              50,
+              0,
+              1,
+              0,
+              150,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:9",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              100,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:10",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              100,
+              0,
+              1,
+              0,
+              50,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:11",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              100,
+              0,
+              1,
+              0,
+              100,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:12",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              100,
+              0,
+              1,
+              0,
+              150,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:13",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              150,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:14",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              150,
+              0,
+              1,
+              0,
+              50,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:15",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              150,
+              0,
+              1,
+              0,
+              100,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "occurrenceId": "scad:occ:bracket:16",
+            "definitionId": "scad:def:bracket",
+            "parentOccurrenceId": "scad:occ:root",
+            "localToParent": [
+              1,
+              0,
+              0,
+              150,
+              0,
+              1,
+              0,
+              150,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        ],
+        "codes": [
+          "STEP_ASSEMBLY_MANUFACTURING_ASSIGNMENT_MISSING:scad:def:bracket"
+        ]
+      }
+    }
+  ]
+}

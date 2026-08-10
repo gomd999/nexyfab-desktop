@@ -23,7 +23,7 @@
  *
  * In **dev** mode (NODE_ENV !== 'production') we additionally allow
  * `'unsafe-eval'` so Next.js dev tools, React refresh, and Turbopack HMR
- * keep working. Prod ships ONLY `'wasm-unsafe-eval'` — the narrower one.
+ * keep working. Production ships only `'wasm-unsafe-eval'`.
  *
  * This module exports a pure function so vitest can exercise the exact
  * directive strings without spinning up Next.js.
@@ -48,7 +48,16 @@ export interface BuildSecurityHeadersOptions {
   includeUpgradeInsecure?: boolean;
   /** CORS allow-list — when non-empty, emits a CORS group for `/api/(.*)`. */
   corsAllowedOrigins?: string[];
+  /**
+   * Explicitly permit JavaScript string evaluation for a narrowly scoped
+   * consumer. Never enable this on the global production header. The current
+   * exception is the authenticated precision-CAD route whose third-party
+   * Emscripten glue still evaluates generated JavaScript while booting OCCT.
+   */
+  allowUnsafeEval?: boolean;
 }
+
+const EXACT_CAD_ROUTE = '/:lang(kr|en|ja|cn|es|ar)/shape-generator/:path*';
 
 /**
  * Build the CSP `Content-Security-Policy` header value.
@@ -58,16 +67,18 @@ export interface BuildSecurityHeadersOptions {
  */
 export function buildCspValue(opts: BuildSecurityHeadersOptions = {}): string {
   const isDev = opts.isDev === true;
-  const extra = opts.extraConnectSrc?.trim() ?? '';
+  const extra = (opts.extraConnectSrc ?? '')
+    .split(/\s+/)
+    .map(value => safeOrigin(value, isDev, true))
+    .filter((value): value is string => Boolean(value))
+    .join(' ');
   const includeUpgrade = opts.includeUpgradeInsecure !== false;
 
-  // script-src: 'wasm-unsafe-eval' enables WebAssembly.compile in browsers
-  // that enforce strict CSP. We KEEP existing 'unsafe-eval' + 'unsafe-inline'
-  // because Sentry's instrument.js, GA, and reCAPTCHA all need them today.
-  // (Tightening those is a separate hardening pass — track in NEXT_IMPROVEMENTS.)
+  // wasm-unsafe-eval permits WebAssembly compilation without granting ambient
+  // JavaScript eval(). Next's inline bootstrap still requires unsafe-inline
+  // until the application moves to request nonces.
   const scriptSrcParts = [
     "'self'",
-    "'unsafe-eval'",
     "'unsafe-inline'",
     "'wasm-unsafe-eval'",
     // blob: — the client OpenSCAD-WASM render worker imports the emscripten
@@ -79,16 +90,15 @@ export function buildCspValue(opts: BuildSecurityHeadersOptions = {}): string {
     'https://www.google.com/recaptcha/',
     'https://www.gstatic.com/recaptcha/',
   ];
-  // Even though prod no longer needs 'unsafe-eval' for OCCT (wasm-unsafe-eval
-  // covers it), the GA/reCAPTCHA chunks still need it. The dev branch is a
-  // no-op today but kept as a named hook for the future hardening pass that
-  // strips 'unsafe-eval' in prod once GA/reCAPTCHA chunks are isolated.
-  if (isDev) {
-    // dev parity already covered above; reserved for future strict-prod toggle.
+  if (isDev || opts.allowUnsafeEval === true) {
+    scriptSrcParts.splice(1, 0, "'unsafe-eval'");
   }
 
   const directives: string[] = [
     "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "form-action 'self'",
     `script-src ${scriptSrcParts.join(' ')}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://api.dicebear.com https://www.facebook.com",
@@ -99,6 +109,7 @@ export function buildCspValue(opts: BuildSecurityHeadersOptions = {}): string {
     "worker-src 'self' blob:",
     "frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/",
     "frame-ancestors 'none'",
+    "manifest-src 'self'",
   ];
 
   if (includeUpgrade) {
@@ -106,6 +117,27 @@ export function buildCspValue(opts: BuildSecurityHeadersOptions = {}): string {
   }
 
   return directives.join('; ');
+}
+
+/**
+ * Build the sole production CSP exception needed by the browser OCCT kernel.
+ *
+ * Replicad's current Emscripten glue evaluates generated JavaScript during
+ * kernel startup, so `wasm-unsafe-eval` by itself is insufficient. Keeping
+ * this as a later, route-specific header preserves the stricter global CSP.
+ * Moving the kernel to isolated, eval-free worker glue remains future
+ * hardening work.
+ */
+export function buildExactCadCspHeaders(
+  opts: BuildSecurityHeadersOptions = {},
+): SecurityHeadersGroup[] {
+  return [{
+    source: EXACT_CAD_ROUTE,
+    headers: [{
+      key: 'Content-Security-Policy',
+      value: buildCspValue({ ...opts, allowUnsafeEval: true }),
+    }],
+  }];
 }
 
 /**
@@ -122,7 +154,9 @@ export function buildCspValue(opts: BuildSecurityHeadersOptions = {}): string {
 export function buildSecurityHeaders(
   opts: BuildSecurityHeadersOptions = {},
 ): SecurityHeadersGroup[] {
-  const cors = (opts.corsAllowedOrigins ?? []).filter(Boolean);
+  const cors = (opts.corsAllowedOrigins ?? [])
+    .map(value => safeOrigin(value, opts.isDev === true, false))
+    .filter((value): value is string => Boolean(value));
 
   const groups: SecurityHeadersGroup[] = [];
 
@@ -140,6 +174,7 @@ export function buildSecurityHeaders(
           value: 'Content-Type, Authorization, x-admin-token, x-admin-secret',
         },
         { key: 'Access-Control-Max-Age', value: '86400' },
+        { key: 'Vary', value: 'Origin' },
       ],
     });
   }
@@ -168,6 +203,7 @@ export function buildSecurityHeaders(
     source: '/(.*)',
     headers: [
       { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
       { key: 'X-Frame-Options', value: 'DENY' },
       { key: 'X-XSS-Protection', value: '1; mode=block' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
@@ -187,4 +223,24 @@ export function buildSecurityHeaders(
   });
 
   return groups;
+}
+
+function safeOrigin(value: string, allowLocalHttp: boolean, allowWebSocket: boolean): string | null {
+  const trimmed = value.trim();
+  if (!trimmed || /[;\r\n]/.test(trimmed)) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.username || url.password || url.pathname !== '/' || url.search || url.hash) return null;
+    const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]';
+    if (
+      url.protocol !== 'https:'
+      && !(allowWebSocket && url.protocol === 'wss:')
+      && !(allowLocalHttp && local && url.protocol === 'http:')
+    ) {
+      return null;
+    }
+    return url.origin;
+  } catch {
+    return null;
+  }
 }

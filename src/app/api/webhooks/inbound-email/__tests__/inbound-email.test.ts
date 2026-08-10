@@ -160,6 +160,26 @@ describe('inbound email webhook', () => {
     expect(res.status).toBe(201);
   });
 
+  it('fails closed in production when the shared secret is missing', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    try {
+      vi.resetModules();
+      const { POST: P } = await import('../route');
+      const res = await P(makeReq({ from: 'x@y.com', to: 'thread+order-O1@a.b', text: '!' }) as Parameters<typeof P>[0]);
+      expect(res.status).toBe(503);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('rejects an oversized declared payload before parsing', async () => {
+    const res = await POST(makeReq(
+      { from: 'x@y.com' },
+      { 'content-length': String(1024 * 1024 + 1) },
+    ) as Parameters<typeof POST>[0]);
+    expect(res.status).toBe(413);
+  });
+
   it('handles RFQ thread routing with accepted quote partner', async () => {
     vi.mocked(getDbAdapter).mockReturnValue({
       queryOne: vi.fn()

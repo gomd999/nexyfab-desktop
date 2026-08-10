@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import notices from '@/content/third-party-notices.json';
+import notices from '@/content/third-party-notices.generated.json';
 
 const TITLES: Record<string, string> = {
   kr: '오픈소스 및 제3자 구성요소',
@@ -29,7 +29,7 @@ export default async function ThirdPartyNoticesPage({
 }) {
   const { lang } = await params;
   const title = TITLES[lang] ?? TITLES.en;
-  const pkgs = notices.packages as { name: string; license: string; url: string }[];
+  const pkgs = notices.packages as { name: string; version: string; license: string; url: string }[];
 
   return (
     <main className="mx-auto min-h-screen max-w-3xl bg-gray-950 px-4 py-12 text-gray-100">
@@ -46,7 +46,7 @@ export default async function ThirdPartyNoticesPage({
         <tbody>
           {pkgs.map((p) => (
             <tr key={p.name} className="border-b border-gray-800">
-              <td className="py-2 pr-4 align-top">{p.name}</td>
+              <td className="py-2 pr-4 align-top">{p.name}@{p.version}</td>
               <td className="py-2 pr-4 align-top text-gray-300">{p.license}</td>
               <td className="py-2 align-top">
                 <a href={p.url} className="text-blue-400 hover:underline break-all" target="_blank" rel="noopener noreferrer">

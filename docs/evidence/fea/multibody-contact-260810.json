@@ -1,0 +1,41 @@
+{
+  "schema": "nexyfab.multibody-contact-fea-run.v1",
+  "generatedAt": "2026-08-09T16:36:27.283Z",
+  "fixture": {
+    "purpose": "deterministic solver integration; not an independent product holdout",
+    "bodies": 2,
+    "elements": 2,
+    "dof": 48,
+    "contactNodes": 4,
+    "material": {
+      "youngsModulusMpa": 210000,
+      "poissonRatio": 0.3
+    },
+    "externalLoadN": 1000,
+    "bolt": {
+      "designation": "M10-8.8",
+      "preloadN": 23038.5309,
+      "proofLoadN": 32912.187,
+      "withinProof": true
+    }
+  },
+  "result": {
+    "converged": true,
+    "linearConverged": true,
+    "activeSetConverged": true,
+    "nonlinearIterations": 1,
+    "linearIterations": 3,
+    "equilibriumResidualRatio": 1.5927017095950354e-16,
+    "maxDisplacementMm": 0.0005106052564384424,
+    "maxVonMisesMpa": 8.500000000000004,
+    "activeContactCount": 4,
+    "resultantNormalForceN": 24038.530900000005,
+    "preloadCount": 4
+  },
+  "limitations": [
+    "Structured HEX8, small-strain linear elasticity and frictionless normal penalty contact.",
+    "B-Rep face/persistent-ID binding is verified by nexyfab.contact-fea-evidence.v1 but this deterministic fixture is not an external OCCT product holdout.",
+    "Certification and independent reviewer approval remain WP9 not_run."
+  ],
+  "evidenceSha256": "2aecee1522a78871da3a414601d14319ad24d90ece12cabdca01fd00f5084361"
+}

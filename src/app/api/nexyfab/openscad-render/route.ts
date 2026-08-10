@@ -94,7 +94,9 @@ export async function POST(req: NextRequest) {
   }
 
   const forceAsync =
-    asyncMode || Buffer.byteLength(scad, 'utf8') > 200_000;
+    process.env.OPENSCAD_EXTERNAL_WORKER === '1'
+    || asyncMode
+    || Buffer.byteLength(scad, 'utf8') > 200_000;
 
   if (!forceAsync) {
     const r = await runOpenScadCli({ scadSource: scad, format, importStl });
@@ -184,6 +186,12 @@ export async function POST(req: NextRequest) {
   }
 
   const job = await enqueueOpenScadJob({ userId: userId, scad, format });
+  if (job.status === 'failed') {
+    return NextResponse.json(
+      { error: job.errorMessage ?? 'OpenSCAD worker unavailable', code: 'OPENSCAD_WORKER_UNAVAILABLE' },
+      { status: 503 },
+    );
+  }
   logCadPipelineAudit({
     userId: userId,
     plan: planTier,

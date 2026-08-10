@@ -4,6 +4,7 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 import { buildingNetSegments, gableHouseNetSegments, roomNetSegments, segmentsToDxf, segmentsToSvg } from '@/lib/papercraft/netDxf';
 import { chatCompletion } from '@/lib/ai';
 import { visionCompletion } from '@/lib/ai/vision';
+import { guardStudioAi } from '@/lib/studio-ai-guard';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,6 +40,11 @@ export async function POST(req: NextRequest) {
   const imageB64 = typeof b.image === 'string' && b.image.length > 0
     ? b.image.replace(/^data:image\/\w+;base64,/, '')
     : null;
+  const needsAi = (imageB64 || b.prompt) && (width == null || depth == null || height == null);
+  if (needsAi) {
+    const planGuard = await guardStudioAi(req);
+    if (planGuard) return planGuard;
+  }
   if (imageB64 && (width == null || depth == null || height == null)) {
     try {
       const bytes = Uint8Array.from(Buffer.from(imageB64, 'base64'));

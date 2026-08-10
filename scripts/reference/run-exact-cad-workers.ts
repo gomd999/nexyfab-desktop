@@ -8,7 +8,9 @@ import { validateExactCadWorkerResult, type ExactCadWorkerRequest, type ExactCad
 
 type NativeRequest = { caseId: string; sourceHash: string; localLocator: string };
 const reviewRoot = path.resolve(process.argv[2] ?? 'docs/evidence/complex-holdout-review-260806');
-const corpusRoot = path.resolve(process.argv[3] ?? 'C:/Users/gomd9/Downloads/참고파일들');
+const corpusRootInput = process.argv[3] ?? process.env.NEXYFAB_REFERENCE_CORPUS_ROOT?.trim();
+if (!corpusRootInput) throw new Error('reference_corpus_root_required');
+const corpusRoot = path.resolve(corpusRootInput);
 const output = path.resolve(process.argv[4] ?? path.join(reviewRoot, 'exact-cad-worker-results.json'));
 const timeoutMs = Number(process.env.NEXYFAB_EXACT_CAD_WORKER_TIMEOUT_MS ?? 600_000);
 if (!Number.isInteger(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 3_600_000) throw new Error('exact_cad_worker_timeout_invalid');

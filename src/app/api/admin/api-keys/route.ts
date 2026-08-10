@@ -26,7 +26,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
 import { generateApiKey } from '@/lib/api-key';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { logAudit } from '@/lib/audit';
 
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
   const admin = guard.user;
 
   const ip = getTrustedClientIp(req.headers);
-  if (!rateLimit(`admin-api-key-issue:${admin.userId}`, 20, 3_600_000).allowed) {
+  if (!(await rateLimitAsync(`admin-api-key-issue:${admin.userId}`, 20, 3_600_000)).allowed) {
     return NextResponse.json({ error: '발급 요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
   }
 

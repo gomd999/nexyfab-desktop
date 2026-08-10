@@ -6,7 +6,9 @@ export type JointSelection = { joint: number; motor: MotorComponent; reducer: Re
 export type SelectionResult = { ok: true; selections: JointSelection[] } | { ok: false; errors: string[] };
 
 export function selectRobotDriveTrain(requirements: readonly JointSelectionRequirement[], catalog: readonly CatalogComponent[]): SelectionResult {
-  const issues = validateCatalog(catalog); if (issues.length) return { ok: false, errors: issues.map(i => `${i.id}: ${i.message}`) };
+  const requirementErrors = validateRequirements(requirements);
+  const issues = validateCatalog(catalog);
+  if (requirementErrors.length || issues.length) return { ok: false, errors: [...requirementErrors, ...issues.map(i => `${i.id}: ${i.message}`)] };
   const motors = catalog.filter((c): c is MotorComponent => c.kind === 'motor');
   const reducers = catalog.filter((c): c is ReducerComponent => c.kind === 'reducer');
   const bearings = catalog.filter((c): c is BearingComponent => c.kind === 'bearing');
@@ -30,3 +32,18 @@ export function selectRobotDriveTrain(requirements: readonly JointSelectionRequi
   return errors.length ? { ok: false, errors } : { ok: true, selections };
 }
 function score(m: MotorComponent, r: ReducerComponent) { return m.massKg + r.massKg + (m.envelopeMm.x * m.envelopeMm.y * m.envelopeMm.z + r.envelopeMm.x * r.envelopeMm.y * r.envelopeMm.z) / 1e6; }
+
+function validateRequirements(requirements: readonly JointSelectionRequirement[]): string[] {
+  const errors: string[] = [];
+  const joints = new Set<number>();
+  for (const requirement of requirements) {
+    if (!Number.isInteger(requirement.joint) || requirement.joint < 1 || requirement.joint > 6) errors.push(`J${requirement.joint}: joint must be an integer from 1 to 6`);
+    if (joints.has(requirement.joint)) errors.push(`J${requirement.joint}: duplicate selection requirement`);
+    joints.add(requirement.joint);
+    for (const [field, value] of Object.entries({ requiredOutputTorqueNm: requirement.requiredOutputTorqueNm, requiredOutputRpm: requirement.requiredOutputRpm, radialLoadN: requirement.radialLoadN, minShaftDiameterMm: requirement.minShaftDiameterMm })) {
+      if (!(typeof value === 'number' && Number.isFinite(value) && value > 0)) errors.push(`J${requirement.joint}: ${field} must be positive and finite`);
+    }
+    if (requirement.safetyFactor !== undefined && !(Number.isFinite(requirement.safetyFactor) && requirement.safetyFactor >= 1)) errors.push(`J${requirement.joint}: safetyFactor must be finite and at least 1`);
+  }
+  return errors;
+}

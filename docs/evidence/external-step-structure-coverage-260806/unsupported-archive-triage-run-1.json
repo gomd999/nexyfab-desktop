@@ -1,0 +1,333 @@
+{
+  "schema": "nexyfab.unsupported-archive-triage.v1",
+  "generatedAt": "2026-08-06T13:37:27.459Z",
+  "scoreEligible": false,
+  "sourceBytesEmbedded": false,
+  "summary": {
+    "selected": 19,
+    "routed": 19,
+    "notRun": 0,
+    "fail": 0,
+    "routes": {
+      "autocad-or-oda": 11,
+      "ifc-native-import": 3,
+      "revit-api": 5
+    }
+  },
+  "results": [
+    {
+      "caseId": "interior-review-01",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 2576781,
+      "entries": 3,
+      "extensionCounts": {
+        "dwg": 1,
+        "jpg": 1,
+        "pdf": 1
+      },
+      "preferredExtensions": [
+        "dwg"
+      ],
+      "route": "autocad-or-oda"
+    },
+    {
+      "caseId": "interior-review-02",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 118428504,
+      "entries": 21,
+      "extensionCounts": {
+        "jpg": 14,
+        "png": 5,
+        "dwg": 1,
+        "rvt": 1
+      },
+      "preferredExtensions": [
+        "rvt",
+        "dwg"
+      ],
+      "route": "revit-api"
+    },
+    {
+      "caseId": "interior-review-04",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 2946655,
+      "entries": 2,
+      "extensionCounts": {
+        "dwg": 1,
+        "jpg": 1
+      },
+      "preferredExtensions": [
+        "dwg"
+      ],
+      "route": "autocad-or-oda"
+    },
+    {
+      "caseId": "interior-review-05",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 2591598,
+      "entries": 2,
+      "extensionCounts": {
+        "dwg": 1,
+        "jpg": 1
+      },
+      "preferredExtensions": [
+        "dwg"
+      ],
+      "route": "autocad-or-oda"
+    },
+    {
+      "caseId": "interior-review-06",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 926818,
+      "entries": 4,
+      "extensionCounts": {
+        "jpg": 3,
+        "dwg": 1
+      },
+      "preferredExtensions": [
+        "dwg"
+      ],
+      "route": "autocad-or-oda"
+    },
+    {
+      "caseId": "interior-review-07",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 42896746,
+      "entries": 6,
+      "extensionCounts": {
+        "jpg": 4,
+        "dwg": 1,
+        "ifc": 1
+      },
+      "preferredExtensions": [
+        "ifc",
+        "dwg"
+      ],
+      "route": "ifc-native-import"
+    },
+    {
+      "caseId": "interior-review-08",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 2826245,
+      "entries": 2,
+      "extensionCounts": {
+        "dwg": 1,
+        "jpg": 1
+      },
+      "preferredExtensions": [
+        "dwg"
+      ],
+      "route": "autocad-or-oda"
+    },
+    {
+      "caseId": "interior-review-09",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 22758292,
+      "entries": 13,
+      "extensionCounts": {
+        "bmp": 12,
+        "dwg": 1
+      },
+      "preferredExtensions": [
+        "dwg"
+      ],
+      "route": "autocad-or-oda"
+    },
+    {
+      "caseId": "interior-review-10",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 107926289,
+      "entries": 11,
+      "extensionCounts": {
+        "png": 10,
+        "dwg": 1
+      },
+      "preferredExtensions": [
+        "dwg"
+      ],
+      "route": "autocad-or-oda"
+    },
+    {
+      "caseId": "interior-review-11",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 38582210,
+      "entries": 12,
+      "extensionCounts": {
+        "jpg": 10,
+        "dwg": 1,
+        "ifc": 1
+      },
+      "preferredExtensions": [
+        "ifc",
+        "dwg"
+      ],
+      "route": "ifc-native-import"
+    },
+    {
+      "caseId": "interior-review-12",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 38690769,
+      "entries": 5,
+      "extensionCounts": {
+        "jpg": 4,
+        "dwg": 1
+      },
+      "preferredExtensions": [
+        "dwg"
+      ],
+      "route": "autocad-or-oda"
+    },
+    {
+      "caseId": "interior-review-13",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 50681267,
+      "entries": 10,
+      "extensionCounts": {
+        "jpg": 8,
+        "dwg": 1,
+        "ifc": 1
+      },
+      "preferredExtensions": [
+        "ifc",
+        "dwg"
+      ],
+      "route": "ifc-native-import"
+    },
+    {
+      "caseId": "interior-review-14",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 22416920,
+      "entries": 4,
+      "extensionCounts": {
+        "dwg": 1,
+        "png": 1,
+        "rvt": 1,
+        "skp": 1
+      },
+      "preferredExtensions": [
+        "rvt",
+        "dwg",
+        "skp"
+      ],
+      "route": "revit-api"
+    },
+    {
+      "caseId": "interior-review-15",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 17865256,
+      "entries": 11,
+      "extensionCounts": {
+        "jpg": 9,
+        "dwg": 1,
+        "rvt": 1
+      },
+      "preferredExtensions": [
+        "rvt",
+        "dwg"
+      ],
+      "route": "revit-api"
+    },
+    {
+      "caseId": "interior-review-16",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 12657019,
+      "entries": 5,
+      "extensionCounts": {
+        "jpg": 3,
+        "dwg": 1,
+        "rvt": 1
+      },
+      "preferredExtensions": [
+        "rvt",
+        "dwg"
+      ],
+      "route": "revit-api"
+    },
+    {
+      "caseId": "interior-review-17",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 80850503,
+      "entries": 14,
+      "extensionCounts": {
+        "jpg": 8,
+        "bmp": 2,
+        "dwf": 1,
+        "dwg": 1,
+        "fbx": 1,
+        "rvt": 1
+      },
+      "preferredExtensions": [
+        "rvt",
+        "dwg",
+        "fbx"
+      ],
+      "route": "revit-api"
+    },
+    {
+      "caseId": "interior-review-18",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 970078,
+      "entries": 3,
+      "extensionCounts": {
+        "jpg": 2,
+        "dwg": 1
+      },
+      "preferredExtensions": [
+        "dwg"
+      ],
+      "route": "autocad-or-oda"
+    },
+    {
+      "caseId": "interior-review-19",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 27909279,
+      "entries": 7,
+      "extensionCounts": {
+        "bmp": 3,
+        "jpeg": 2,
+        "dae": 1,
+        "dwg": 1
+      },
+      "preferredExtensions": [
+        "dwg",
+        "dae"
+      ],
+      "route": "autocad-or-oda"
+    },
+    {
+      "caseId": "interior-review-20",
+      "status": "pass",
+      "reason": "archive_route_identified",
+      "archiveBytes": 42011758,
+      "entries": 4,
+      "extensionCounts": {
+        "jpeg": 2,
+        "dae": 1,
+        "dwg": 1
+      },
+      "preferredExtensions": [
+        "dwg",
+        "dae"
+      ],
+      "route": "autocad-or-oda"
+    }
+  ]
+}

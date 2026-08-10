@@ -36,6 +36,12 @@ export async function GET(
 
   const storage = getStorage();
   try {
+    if (file.storage_key.startsWith('private/') && !process.env.S3_BUCKET) {
+      return NextResponse.json({
+        url: `/api/nexyfab/files/${encodeURIComponent(file.id)}/download`,
+        filename: file.filename,
+      });
+    }
     const url = await storage.getSignedUrl(file.storage_key, 300);
     return NextResponse.json({ url, filename: file.filename });
   } catch (err) {

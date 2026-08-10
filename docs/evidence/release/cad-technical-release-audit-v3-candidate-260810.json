@@ -1,0 +1,138 @@
+{
+  "schema": "nexyfab.cad-technical-release-audit.v3",
+  "releaseId": "2026.08.10-technical-candidate",
+  "decisionScope": "technical-private-pilot",
+  "deferred": {
+    "payment": true,
+    "legal": true
+  },
+  "externalCadRequired": false,
+  "runtimeKernelMode": "wasm-only-no-stub",
+  "closedBetaIntegrity": {
+    "status": "pass",
+    "reportSha256": "2577b2c717e4e3455ac9d7d83143d97ad3959dd1dca9b40b2f20132eaffb8f58",
+    "tableDiff": 0,
+    "fileDiff": 0
+  },
+  "referenceCorpus": {
+    "status": "pass",
+    "manifestSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+    "sourceWrites": 0
+  },
+  "generationState": {
+    "ownerIsolation": "fail",
+    "compareAndSwap": "fail",
+    "durableProductionStore": "fail",
+    "browserCannotRecordPassedStages": "fail",
+    "evidenceSha256": "b0d4423bfe4a8a17d50dc418a2afdf37b437254c3e3253796f73acdafb8e092d"
+  },
+  "generationAccuracy": {
+    "deepSchemaValidation": "fail",
+    "trustedEvidenceBinding": "fail",
+    "numericParameterCoverage": 0,
+    "missingInputFailsClosed": "fail",
+    "localRepairPreservesLockedParameters": "fail",
+    "evidenceSha256": "b0d4423bfe4a8a17d50dc418a2afdf37b437254c3e3253796f73acdafb8e092d"
+  },
+  "capabilityMatrix": [
+    {
+      "id": "ai-complex-product",
+      "support": "preview",
+      "publicClaimAllowed": false,
+      "evidenceSha256": "7f649364fd5b5140ce997cdafd01a8f9f3d2fe0e365efef5bb37a233ea2f788c",
+      "samples": 0,
+      "passed": 0,
+      "independentHoldout": false,
+      "limitations": [
+        "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+        "collect_approved_independent_holdout:ai-complex-product"
+      ]
+    },
+    {
+      "id": "manual-parametric-editing",
+      "support": "preview",
+      "publicClaimAllowed": false,
+      "evidenceSha256": "74f246a49d7a0985c2c4a90501722cd55a72445505908d543f75f028842c284b",
+      "samples": 0,
+      "passed": 0,
+      "independentHoldout": false,
+      "limitations": [
+        "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+        "collect_approved_independent_holdout:manual-parametric-editing"
+      ]
+    },
+    {
+      "id": "expert-precision-cad",
+      "support": "preview",
+      "publicClaimAllowed": false,
+      "evidenceSha256": "f530ff8c098c14b5e3e276ba1c42dc2cb48fb8544d1b28e61f87549c619c0363",
+      "samples": 0,
+      "passed": 0,
+      "independentHoldout": false,
+      "limitations": [
+        "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+        "collect_approved_independent_holdout:expert-precision-cad"
+      ]
+    },
+    {
+      "id": "assembly-motion",
+      "support": "preview",
+      "publicClaimAllowed": false,
+      "evidenceSha256": "92f77646afa5c3c913024683a23e70e2c73d1f8a88402f942cca6818b52733d4",
+      "samples": 0,
+      "passed": 0,
+      "independentHoldout": false,
+      "limitations": [
+        "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+        "collect_approved_independent_holdout:assembly-motion"
+      ]
+    },
+    {
+      "id": "continuous-collision",
+      "support": "preview",
+      "publicClaimAllowed": false,
+      "evidenceSha256": "bf910c8ed4fe097abc88302a1aa413ba580cd4fbe0b7e26d05eeffc380adbb9f",
+      "samples": 0,
+      "passed": 0,
+      "independentHoldout": false,
+      "limitations": [
+        "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+        "collect_approved_independent_holdout:continuous-collision"
+      ]
+    },
+    {
+      "id": "step-exchange",
+      "support": "preview",
+      "publicClaimAllowed": false,
+      "evidenceSha256": "77e85bc137b48fe760881f8362fb20ce6a7688f63044ae40115eee28d66a6815",
+      "samples": 0,
+      "passed": 0,
+      "independentHoldout": false,
+      "limitations": [
+        "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+        "collect_approved_independent_holdout:step-exchange"
+      ]
+    },
+    {
+      "id": "drawing-bom-manufacturing",
+      "support": "preview",
+      "publicClaimAllowed": false,
+      "evidenceSha256": "32de68ba1d31bfc270d7536574631ba9727c1fc3792de3b62c2b2764aa442ce3",
+      "samples": 0,
+      "passed": 0,
+      "independentHoldout": false,
+      "limitations": [
+        "Local deterministic evidence exists but is not an approved independent holdout campaign.",
+        "collect_approved_independent_holdout:drawing-bom-manufacturing"
+      ]
+    }
+  ],
+  "operations": {
+    "rollback": "fail",
+    "canary": "fail",
+    "monitoring": "fail",
+    "workerResume": "fail",
+    "performanceBudget": "fail",
+    "evidenceSha256": "1cfd63e99051e00c1cf96098a29b68622d82bacbc36336b99ad6673dd99e3bca"
+  }
+}

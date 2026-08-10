@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
+import { existsSync, unlinkSync } from 'fs';
 import { randomUUID } from 'crypto';
 import path from 'path';
-import { rateLimit } from '@/app/lib/rateLimit';
+import { rateLimitAsync } from '@/lib/rate-limit';
 import { logError } from '@/app/lib/errorLog';
 import { getNexyfabAdminEmail } from '@/lib/nexyfab-email';
 import { validateUploadedFile, sanitizeFileName, UPLOAD_CONFIGS } from '@/lib/file-validation';
@@ -64,11 +64,101 @@ function getNextVersion(attachments: ContractAttachmentRow[], originalName: stri
   return existing.length + 1;
 }
 
+function parseAttachments(raw: string | null): ContractAttachmentRow[] {
+  try {
+    const parsed = JSON.parse(raw || '[]') as unknown;
+    return Array.isArray(parsed) ? parsed as ContractAttachmentRow[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function isValidContractId(contractId: string): boolean {
+  return !/[^a-zA-Z0-9\-_]/.test(contractId);
+}
+
+function privateAttachmentUrl(req: NextRequest, contractId: string, attachmentId: string): string {
+  const url = new URL('/api/partner/upload', req.url);
+  url.searchParams.set('contractId', contractId);
+  url.searchParams.set('id', attachmentId);
+  return `${url.pathname}${url.search}`;
+}
+
+function attachmentDisposition(filename: string): string {
+  const asciiName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  return `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
+
+// GET /api/partner/upload?id=ATT-xxx&contractId=xxx
+export async function GET(req: NextRequest) {
+  const partner = await getPartnerAuth(req);
+  if (!partner) {
+    return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+  }
+
+  const attachmentId = req.nextUrl.searchParams.get('id');
+  const contractId = req.nextUrl.searchParams.get('contractId');
+  if (!attachmentId || !contractId || !isValidContractId(contractId)) {
+    return NextResponse.json({ error: 'A valid id and contractId are required.' }, { status: 400 });
+  }
+
+  const db = getDbAdapter();
+  const contractRow = await db.queryOne<{ attachments: string | null }>(
+    `SELECT attachments FROM nf_contracts WHERE id = ?
+       AND partner_email IS NOT NULL AND LOWER(TRIM(partner_email)) = ?`,
+    contractId,
+    normPartnerEmail(partner.email),
+  );
+  if (!contractRow) {
+    return NextResponse.json({ error: 'File not found.' }, { status: 404 });
+  }
+
+  const attachment = parseAttachments(contractRow.attachments).find(row => row.id === attachmentId);
+  if (!attachment) {
+    return NextResponse.json({ error: 'File not found.' }, { status: 404 });
+  }
+
+  try {
+    if (attachment.storageKey) {
+      const storage = getStorage();
+      if (!process.env.S3_BUCKET && attachment.storageKey.startsWith('private/')) {
+        const buffer = await storage.download?.(attachment.storageKey);
+        if (!buffer) throw new Error('Private storage download is unavailable');
+        return new NextResponse(new Uint8Array(buffer), {
+          headers: {
+            'Content-Type': attachment.mimeType || 'application/octet-stream',
+            'Content-Disposition': attachmentDisposition(attachment.originalName),
+            'Cache-Control': 'private, no-store',
+            'X-Content-Type-Options': 'nosniff',
+          },
+        });
+      }
+
+      const signedUrl = await storage.getSignedUrl(attachment.storageKey, 300);
+      return NextResponse.redirect(signedUrl);
+    }
+
+    // Read-only compatibility for Closed Beta attachments created before private storage.
+    const legacyPrefix = `/uploads/contracts/${contractId}/`;
+    if (attachment.url?.startsWith(legacyPrefix) && !attachment.url.slice(legacyPrefix.length).includes('/')) {
+      return NextResponse.redirect(new URL(attachment.url, req.url));
+    }
+  } catch (err) {
+    logError('Partner attachment download failed', err instanceof Error ? err : undefined, {
+      url: '/api/partner/upload',
+      userId: partner.email,
+    });
+    return NextResponse.json({ error: 'Failed to download file.' }, { status: 500 });
+  }
+
+  return NextResponse.json({ error: 'File not found.' }, { status: 404 });
+}
+
 // POST /api/partner/upload
 export async function POST(req: NextRequest) {
   // Rate limiting — IP당 분당 10회
   const ip = getTrustedClientIp(req.headers);
-  if (!rateLimit(`upload:${ip}`, 10, 60 * 1000)) {
+  if (!(await rateLimitAsync(`partner-upload:${ip}`, 10, 60 * 1000)).allowed) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' }, { status: 429 });
   }
 
@@ -145,12 +235,7 @@ export async function POST(req: NextRequest) {
   // 파일 읽기 (저장에 재사용)
   const arrayBuffer = await file.arrayBuffer();
 
-  let attachments: ContractAttachmentRow[];
-  try {
-    attachments = JSON.parse(contractRow.attachments || '[]') as ContractAttachmentRow[];
-  } catch {
-    attachments = [];
-  }
+  const attachments = parseAttachments(contractRow.attachments);
 
   // ─── 버전 감지 ────────────────────────────────────────────────────────────
   const version = getNextVersion(attachments, originalName);
@@ -167,33 +252,21 @@ export async function POST(req: NextRequest) {
   const timestamp = Date.now();
   const filename = `${timestamp}_${originalName}`;
   const buffer = Buffer.from(arrayBuffer);
+  const attachmentId = `ATT-${timestamp}`;
 
-  // 3D 모델(STEP/STL 등)은 R2/S3로, 이미지·문서는 로컬 저장
-  let fileUrl: string;
-  let fileKey: string | undefined;
-
-  if (fileType === 'model' && process.env.S3_BUCKET) {
-    try {
-      const storage = getStorage();
-      const result = await storage.upload(buffer, originalName, `uploads/contracts/${contractId}`);
-      fileUrl = result.url;
-      fileKey = result.key;
-    } catch (err) {
-      logError('R2 업로드 실패', err instanceof Error ? err : undefined, {
-        url: '/api/partner/upload',
-        userId: partner.email,
-        filename: originalName,
-      });
-      return NextResponse.json({ error: '파일 업로드 중 오류가 발생했습니다.' }, { status: 500 });
-    }
-  } else {
-    // 로컬 저장 (이미지, PDF, 또는 S3 미설정 시 모든 파일)
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'contracts', contractId);
-    if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
-    const filePath = path.join(uploadDir, filename);
-    writeFileSync(filePath, buffer);
-    fileUrl = `/uploads/contracts/${contractId}/${filename}`;
+  let fileKey: string;
+  try {
+    const result = await getStorage().uploadPrivate(buffer, originalName, `contracts/${contractId}`);
+    fileKey = result.key;
+  } catch (err) {
+    logError('Private partner upload failed', err instanceof Error ? err : undefined, {
+      url: '/api/partner/upload',
+      userId: partner.email,
+      filename: originalName,
+    });
+    return NextResponse.json({ error: '파일 업로드 중 오류가 발생했습니다.' }, { status: 500 });
   }
+  const fileUrl = privateAttachmentUrl(req, contractId, attachmentId);
 
   // 계약에 attachment 추가 (version 포함)
   const attachment: ContractAttachmentRow & {
@@ -208,7 +281,7 @@ export async function POST(req: NextRequest) {
     storageKey?: string;
     previousVersionId?: string;
   } = {
-    id: `ATT-${timestamp}`,
+    id: attachmentId,
     filename,
     originalName,
     type: fileType,
@@ -232,6 +305,7 @@ export async function POST(req: NextRequest) {
       JSON.stringify(attachments), new Date().toISOString(), contractId,
     );
   } catch (err) {
+    await getStorage().delete(fileKey).catch(() => {});
     logError('파일 업로드 DB 저장 실패', err instanceof Error ? err : undefined, {
       url: '/api/partner/upload',
       userId: partner.email,
@@ -264,7 +338,6 @@ export async function POST(req: NextRequest) {
 
   // Async virus scan — runs after file is saved so we have fileKey/fileUrl for cleanup
   const _scanKey = fileKey;
-  const _scanUrl = fileUrl;
   const _scanContractId = contractId;
   import('@/lib/virus-scan').then(({ scanBuffer }) =>
     scanBuffer(buffer, originalName).then(async result => {
@@ -318,12 +391,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: '계약을 찾을 수 없습니다.' }, { status: 404 });
   }
 
-  let attachments: ContractAttachmentRow[];
-  try {
-    attachments = JSON.parse(contractRow.attachments || '[]') as ContractAttachmentRow[];
-  } catch {
-    attachments = [];
-  }
+  const attachments = parseAttachments(contractRow.attachments);
   const attIdx = attachments.findIndex((a: ContractAttachmentRow) => a.id === attachmentId);
 
   if (attIdx === -1) {
@@ -338,7 +406,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   // 실제 파일 삭제 (R2 or 로컬)
-  if (att.storageKey && process.env.S3_BUCKET) {
+  if (att.storageKey) {
     try {
       const storage = getStorage();
       await storage.delete(att.storageKey);

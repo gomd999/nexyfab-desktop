@@ -55,6 +55,10 @@ admin-settings.json
 /playwright-report/
 /test-results/
 
+# Local validation/runtime scratch spaces (never release inputs)
+/.tmp/
+/.runtime-wp20/
+
 # large binary / archive files
 *.db
 *.db-shm
@@ -63,6 +67,7 @@ admin-settings.json
 *.wasm
 /out2/
 /data/
+/backups/
 
 # Legacy dev/migration scripts (not part of production build)
 ask_deepseek*.py
@@ -116,6 +121,9 @@ cron-worker/.cron-secret.txt
 
 # E2E test account credentials (local only)
 .e2e-*
+
+# Runtime customer uploads must never be committed or served as build assets.
+/public/uploads/
 
 # Client-side OpenSCAD render assets (Studio in-browser CAD) — vendored, must deploy
 !/public/openscad/openscad.wasm

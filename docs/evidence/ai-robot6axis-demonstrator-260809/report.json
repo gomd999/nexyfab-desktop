@@ -1,0 +1,497 @@
+{
+  "schema": "nexyfab.ai-complex-product-demonstrator.v1",
+  "generatedAt": "2026-08-09T01:01:26.697Z",
+  "scoreEligible": false,
+  "releaseReady": false,
+  "policy": {
+    "holdoutAssetsUsedForGeneration": false,
+    "referenceCorpusModified": false,
+    "placeholdersAreManufacturingEvidence": false,
+    "expertApprovalGranted": false
+  },
+  "product": {
+    "family": "robot",
+    "axes": 6,
+    "lineageId": "nexyfab-robot6axis-demonstrator",
+    "revision": 1,
+    "editableParts": 25,
+    "editableFeatureTrees": 25,
+    "mates": 60,
+    "structureGroups": 7,
+    "unresolvedCatalogComponents": 22,
+    "classification": "concept_only",
+    "programSha256": "fb66d10f560747198180790d15f8280cb60a57484fa96549b99ab6a8209c497e",
+    "programArtifact": "editable-program-fb66d10f560747198180790d15f8280cb60a57484fa96549b99ab6a8209c497e.json"
+  },
+  "engineering": {
+    "designOk": true,
+    "sampledPoses": 24,
+    "selfCollisions": 0,
+    "singularSamples": 1,
+    "torquePassed": 6,
+    "cablePassed": 6
+  },
+  "catalogSelection": {
+    "requirementsReady": true,
+    "requirements": [
+      {
+        "joint": 1,
+        "requiredOutputTorqueNm": 60,
+        "requiredOutputRpm": 30,
+        "radialLoadN": 5000,
+        "minShaftDiameterMm": 25,
+        "safetyFactor": 1.5
+      },
+      {
+        "joint": 2,
+        "requiredOutputTorqueNm": 80,
+        "requiredOutputRpm": 30,
+        "radialLoadN": 4500,
+        "minShaftDiameterMm": 25,
+        "safetyFactor": 1.5
+      },
+      {
+        "joint": 3,
+        "requiredOutputTorqueNm": 45,
+        "requiredOutputRpm": 40,
+        "radialLoadN": 3500,
+        "minShaftDiameterMm": 20,
+        "safetyFactor": 1.5
+      },
+      {
+        "joint": 4,
+        "requiredOutputTorqueNm": 20,
+        "requiredOutputRpm": 60,
+        "radialLoadN": 2000,
+        "minShaftDiameterMm": 15,
+        "safetyFactor": 1.5
+      },
+      {
+        "joint": 5,
+        "requiredOutputTorqueNm": 12,
+        "requiredOutputRpm": 60,
+        "radialLoadN": 1400,
+        "minShaftDiameterMm": 12,
+        "safetyFactor": 1.5
+      },
+      {
+        "joint": 6,
+        "requiredOutputTorqueNm": 8,
+        "requiredOutputRpm": 90,
+        "radialLoadN": 900,
+        "minShaftDiameterMm": 10,
+        "safetyFactor": 1.5
+      }
+    ],
+    "errors": [],
+    "productionEvidencePolicy": {
+      "fullSha256Required": true,
+      "artifactRecordRequired": true,
+      "confirmedMassRequired": true
+    },
+    "actualArtifactBytesVerified": false,
+    "selectionStatus": "not_run",
+    "reason": "no externally traceable production component catalog supplied"
+  },
+  "housingFit": {
+    "status": "not_run",
+    "reason": "housing fit runs only after traceable motor, reducer and bearing selections plus traceable internal housing capacities exist"
+  },
+  "pipeline": {
+    "stoppedAt": "assembly_solve",
+    "stages": {
+      "intent": {
+        "status": "passed",
+        "errorCodes": [],
+        "metrics": {}
+      },
+      "decomposition": {
+        "status": "passed",
+        "errorCodes": [],
+        "metrics": {}
+      },
+      "interfaces": {
+        "status": "passed",
+        "errorCodes": [],
+        "metrics": {}
+      },
+      "part_programs": {
+        "status": "passed",
+        "errorCodes": [],
+        "metrics": {}
+      },
+      "kernel": {
+        "status": "passed",
+        "errorCodes": [],
+        "metrics": {
+          "parts": 25,
+          "availableParts": 25
+        }
+      },
+      "topology": {
+        "status": "passed",
+        "errorCodes": [],
+        "metrics": {
+          "bodies": 25
+        }
+      },
+      "assembly_solve": {
+        "status": "failed",
+        "errorCodes": [
+          "ASSEMBLY_NOT_RELEASE_READY"
+        ],
+        "metrics": {
+          "flaggedInterferences": 22
+        }
+      },
+      "motion": {
+        "status": "pending",
+        "errorCodes": [],
+        "metrics": {}
+      },
+      "manufacturing": {
+        "status": "pending",
+        "errorCodes": [],
+        "metrics": {}
+      },
+      "roundtrip": {
+        "status": "pending",
+        "errorCodes": [],
+        "metrics": {}
+      },
+      "release": {
+        "status": "pending",
+        "errorCodes": [],
+        "metrics": {}
+      }
+    }
+  },
+  "assembly": {
+    "verifierReturned": true,
+    "releaseReady": false,
+    "certificate": {
+      "solver": "pass",
+      "converged": true,
+      "finalMaxResidual": 0,
+      "tolerance": 0.0001,
+      "unsupportedResiduals": 0,
+      "approximateDoF": -30,
+      "rankDoF": 6,
+      "constraintRank": {
+        "method": "multi-component-numeric-jacobian",
+        "rank": 138,
+        "dof": 6,
+        "columns": 144,
+        "rows": 276,
+        "redundantRows": 138,
+        "unsupportedMateIds": [],
+        "authoritative": true
+      },
+      "allowedDoF": 6,
+      "dofAccepted": true,
+      "interference": "precise",
+      "intendedContactsDocumented": true,
+      "motion": "not_required"
+    },
+    "preciseInterferenceStatus": "completed",
+    "flaggedInterferences": 22,
+    "code": null,
+    "message": null,
+    "verdict": "solver convergence alone is insufficient; degrees of freedom and every non-whitelisted precise interference must pass"
+  },
+  "interferenceAnalysis": {
+    "categories": {
+      "structural-structural": 0,
+      "drive-structural": 18,
+      "drive-drive": 4
+    },
+    "pairs": [
+      {
+        "partA": "J1:motor:motor-j1-unselected",
+        "partB": "shoulder",
+        "penetrationMm": 60,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J1:reducer:reducer-j1-unselected",
+        "partB": "shoulder",
+        "penetrationMm": 60,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J1:bearing:bearing-j1-unselected",
+        "partB": "shoulder",
+        "penetrationMm": 16,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J2:motor:motor-j2-unselected",
+        "partB": "upper-arm",
+        "penetrationMm": 60,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J2:reducer:reducer-j2-unselected",
+        "partB": "upper-arm",
+        "penetrationMm": 60,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J2:bearing:bearing-j2-unselected",
+        "partB": "upper-arm",
+        "penetrationMm": 16,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J3:motor:motor-j3-unselected",
+        "partB": "forearm",
+        "penetrationMm": 60,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J3:reducer:reducer-j3-unselected",
+        "partB": "forearm",
+        "penetrationMm": 60,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J3:bearing:bearing-j3-unselected",
+        "partB": "forearm",
+        "penetrationMm": 16,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J4:motor:motor-j4-unselected",
+        "partB": "wrist-1",
+        "penetrationMm": 60,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J4:reducer:reducer-j4-unselected",
+        "partB": "wrist-1",
+        "penetrationMm": 40,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J4:reducer:reducer-j4-unselected",
+        "partB": "wrist-2",
+        "penetrationMm": 20,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J4:bearing:bearing-j4-unselected",
+        "partB": "wrist-2",
+        "penetrationMm": 16,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J5:motor:motor-j5-unselected",
+        "partB": "wrist-2",
+        "penetrationMm": 60,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J4:reducer:reducer-j4-unselected",
+        "partB": "J5:motor:motor-j5-unselected",
+        "penetrationMm": 20,
+        "category": "drive-drive"
+      },
+      {
+        "partA": "J4:bearing:bearing-j4-unselected",
+        "partB": "J5:motor:motor-j5-unselected",
+        "penetrationMm": 16,
+        "category": "drive-drive"
+      },
+      {
+        "partA": "J5:reducer:reducer-j5-unselected",
+        "partB": "wrist-2",
+        "penetrationMm": 10,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J5:reducer:reducer-j5-unselected",
+        "partB": "tool-flange",
+        "penetrationMm": 50,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J5:bearing:bearing-j5-unselected",
+        "partB": "tool-flange",
+        "penetrationMm": 16,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J6:motor:motor-j6-unselected",
+        "partB": "tool-flange",
+        "penetrationMm": 60,
+        "category": "drive-structural"
+      },
+      {
+        "partA": "J5:reducer:reducer-j5-unselected",
+        "partB": "J6:motor:motor-j6-unselected",
+        "penetrationMm": 50,
+        "category": "drive-drive"
+      },
+      {
+        "partA": "J5:bearing:bearing-j5-unselected",
+        "partB": "J6:motor:motor-j6-unselected",
+        "penetrationMm": 16,
+        "category": "drive-drive"
+      }
+    ]
+  },
+  "motionStudy": {
+    "exploratoryOnly": true,
+    "releaseEvidence": false,
+    "mateId": "J1",
+    "rangeDeg": [
+      -45,
+      45
+    ],
+    "steps": 12,
+    "apiOk": true,
+    "allConverged": true,
+    "firstFailureFrame": -1,
+    "frameCount": 13,
+    "frames": [
+      {
+        "index": 0,
+        "parameterValue": -45,
+        "success": true,
+        "iterations": 1,
+        "finalMaxResidual": 0,
+        "unsupportedMateIds": []
+      },
+      {
+        "index": 1,
+        "parameterValue": -37.5,
+        "success": true,
+        "iterations": 1,
+        "finalMaxResidual": 0,
+        "unsupportedMateIds": []
+      },
+      {
+        "index": 2,
+        "parameterValue": -30,
+        "success": true,
+        "iterations": 1,
+        "finalMaxResidual": 0,
+        "unsupportedMateIds": []
+      },
+      {
+        "index": 3,
+        "parameterValue": -22.5,
+        "success": true,
+        "iterations": 1,
+        "finalMaxResidual": 0,
+        "unsupportedMateIds": []
+      },
+      {
+        "index": 4,
+        "parameterValue": -15,
+        "success": true,
+        "iterations": 1,
+        "finalMaxResidual": 0,
+        "unsupportedMateIds": []
+      },
+      {
+        "index": 5,
+        "parameterValue": -7.5,
+        "success": true,
+        "iterations": 1,
+        "finalMaxResidual": 0,
+        "unsupportedMateIds": []
+      },
+      {
+        "index": 6,
+        "parameterValue": 0,
+        "success": true,
+        "iterations": 1,
+        "finalMaxResidual": 0,
+        "unsupportedMateIds": []
+      },
+      {
+        "index": 7,
+        "parameterValue": 7.5,
+        "success": true,
+        "iterations": 1,
+        "finalMaxResidual": 0,
+        "unsupportedMateIds": []
+      },
+      {
+        "index": 8,
+        "parameterValue": 15,
+        "success": true,
+        "iterations": 1,
+        "finalMaxResidual": 0,
+        "unsupportedMateIds": []
+      },
+      {
+        "index": 9,
+        "parameterValue": 22.5,
+        "success": true,
+        "iterations": 1,
+        "finalMaxResidual": 0,
+        "unsupportedMateIds": []
+      },
+      {
+        "index": 10,
+        "parameterValue": 30,
+        "success": true,
+        "iterations": 1,
+        "finalMaxResidual": 0,
+        "unsupportedMateIds": []
+      },
+      {
+        "index": 11,
+        "parameterValue": 37.5,
+        "success": true,
+        "iterations": 1,
+        "finalMaxResidual": 0,
+        "unsupportedMateIds": []
+      },
+      {
+        "index": 12,
+        "parameterValue": 45,
+        "success": true,
+        "iterations": 1,
+        "finalMaxResidual": 0,
+        "unsupportedMateIds": []
+      }
+    ],
+    "checkedFrames": 13,
+    "collisionFrameCount": 13,
+    "firstCollisionFrame": 0,
+    "maxPenetrationMm": 60.00000000000006,
+    "code": null,
+    "message": null
+  },
+  "blockers": [
+    "motor_j1",
+    "reducer_j1",
+    "bearing_set_j1",
+    "motor_j2",
+    "reducer_j2",
+    "bearing_set_j2",
+    "motor_j3",
+    "reducer_j3",
+    "bearing_set_j3",
+    "motor_j4",
+    "reducer_j4",
+    "bearing_set_j4",
+    "motor_j5",
+    "reducer_j5",
+    "bearing_set_j5",
+    "motor_j6",
+    "reducer_j6",
+    "bearing_set_j6",
+    "brake",
+    "encoder",
+    "internal_harness",
+    "tool_connector",
+    "motion_study_not_run",
+    "manufacturing_not_run",
+    "step_roundtrip_not_run",
+    "expert_review_not_run"
+  ]
+}

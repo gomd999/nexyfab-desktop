@@ -1,0 +1,456 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-09T06:14:42.247Z",
+  "rootLabel": "참고파일들",
+  "summary": {
+    "pass": 4,
+    "fail": 0,
+    "not_run": 4
+  },
+  "records": [
+    {
+      "schemaVersion": 1,
+      "scenarioId": "mearm-motion",
+      "input": {
+        "sha256": "fabf997b27909c9ac626892bdc8ff580cdbf21dc601d0ba666a4fa9d69a7f718",
+        "extension": "x_t",
+        "sizeBytes": 13873151
+      },
+      "importer": "parasolid_xt_structure_v1",
+      "status": "not_run",
+      "assertions": [
+        {
+          "assertion": "xt_structure",
+          "status": "pass",
+          "reason": "Parasolid XT node stream and body records were parsed.",
+          "measured": 141
+        },
+        {
+          "assertion": "part_count",
+          "status": "pass",
+          "reason": "Multiple Parasolid body records remain independently countable.",
+          "measured": 141
+        },
+        {
+          "assertion": "assembly_hierarchy",
+          "status": "not_run",
+          "reason": "Parasolid body records do not encode a certified assembly hierarchy, mates, or motion constraints in the current adapter."
+        },
+        {
+          "assertion": "mates_or_joints",
+          "status": "not_run",
+          "reason": "Parasolid body records do not encode a certified assembly hierarchy, mates, or motion constraints in the current adapter."
+        },
+        {
+          "assertion": "motion_collision",
+          "status": "not_run",
+          "reason": "Parasolid body records do not encode a certified assembly hierarchy, mates, or motion constraints in the current adapter."
+        }
+      ],
+      "sideEffects": {
+        "quoteCreated": false,
+        "rfqSent": false,
+        "sourceModified": false
+      },
+      "sourceLabel": "Final Assembly.x_t",
+      "selectionEvidence": []
+    },
+    {
+      "schemaVersion": 1,
+      "scenarioId": "fastener-stack",
+      "input": {
+        "sha256": "950610e947294e704fb74087817d70c94e3f3e6791bda272a65cdc205b6788d4",
+        "extension": "step",
+        "sizeBytes": 1374709
+      },
+      "importer": "occt_kernel_mesh_v1",
+      "status": "pass",
+      "assertions": [
+        {
+          "assertion": "geometry_import",
+          "status": "pass",
+          "reason": "Pure-TS classification failed; isolated OCCT imported and measured the real B-rep mesh.",
+          "measured": 2
+        },
+        {
+          "assertion": "independent_parts",
+          "status": "pass",
+          "reason": "STEP assembly occurrences or OCCT solids preserved multiple independent parts.",
+          "measured": 2
+        },
+        {
+          "assertion": "geometry_step_roundtrip",
+          "status": "pass",
+          "reason": "OCCT import/export preserved 2 measured solid(s) and total volume within 0.1%.",
+          "measured": 0
+        },
+        {
+          "assertion": "bom_quantity",
+          "status": "pass",
+          "reason": "STEP product definitions and occurrences produced a deterministic instance quantity.",
+          "measured": 2
+        },
+        {
+          "assertion": "concentric_mate",
+          "status": "pass",
+          "reason": "Distinct STEP part occurrences contain a measured coaxial cylindrical-surface pair.",
+          "measured": "492/53"
+        }
+      ],
+      "sideEffects": {
+        "quoteCreated": false,
+        "rfqSent": false,
+        "sourceModified": false
+      },
+      "sourceLabel": "NutBolt.STEP",
+      "selectionEvidence": []
+    },
+    {
+      "schemaVersion": 1,
+      "scenarioId": "gearbox-assembly",
+      "input": {
+        "sha256": "aaa4267e7bb109c4d83d862392407420c215ac3a5c9abc333b08f7becaea87a8",
+        "extension": "step",
+        "sizeBytes": 33513918
+      },
+      "importer": "step_brep_pure_ts_v1",
+      "status": "not_run",
+      "assertions": [
+        {
+          "assertion": "geometry_import",
+          "status": "pass",
+          "reason": "Faithful STEP geometry was measured.",
+          "measured": 9
+        },
+        {
+          "assertion": "bom_quantity",
+          "status": "pass",
+          "reason": "STEP product definitions and occurrences produced a deterministic instance quantity.",
+          "measured": 57
+        },
+        {
+          "assertion": "assembly_hierarchy",
+          "status": "pass",
+          "reason": "STEP assembly occurrence relationships were preserved.",
+          "measured": 57
+        },
+        {
+          "assertion": "pattern_fidelity",
+          "status": "not_run",
+          "reason": "3 repeated definition group(s) are irregular, but the STEP source contains no authoritative pattern intent to classify that as failure.",
+          "measured": "0/3/0"
+        },
+        {
+          "assertion": "shaft_bearing_layout",
+          "status": "pass",
+          "reason": "Named shaft and bearing occurrences share a measured analytic cylinder axis.",
+          "measured": "588/467"
+        }
+      ],
+      "sideEffects": {
+        "quoteCreated": false,
+        "rfqSent": false,
+        "sourceModified": false
+      },
+      "sourceLabel": "Single Stage Reduction Helical Gear Box.STEP",
+      "selectionEvidence": [
+        "nauo:57",
+        "shaft_name",
+        "bearing_name",
+        "shaft_bearing_cylinders",
+        "repeated_definitions:3"
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "scenarioId": "electrical-cabinet",
+      "input": {
+        "sha256": "e075d49f2ccf007593e022957ae0f91a27a228d18410c27f9f55b742287ff87d",
+        "extension": "step",
+        "sizeBytes": 22547959
+      },
+      "importer": "step_brep_pure_ts_v1",
+      "status": "pass",
+      "assertions": [
+        {
+          "assertion": "geometry_import",
+          "status": "pass",
+          "reason": "Faithful STEP geometry was measured.",
+          "measured": 1
+        },
+        {
+          "assertion": "bom_quantity",
+          "status": "pass",
+          "reason": "STEP product definitions and occurrences produced a deterministic instance quantity.",
+          "measured": 463
+        },
+        {
+          "assertion": "independent_panels",
+          "status": "pass",
+          "reason": "2 distinct constant-thickness STEP occurrences satisfy the governed panel aspect policy.",
+          "measured": 2
+        },
+        {
+          "assertion": "flat_pattern",
+          "status": "pass",
+          "reason": "2 flat panels have exact planar outer-loop patterns with no unrepresented inner loops.",
+          "measured": 2
+        },
+        {
+          "assertion": "bend_table",
+          "status": "pass",
+          "reason": "Authoritative empty bend table: every panel is an exact planar extrude and no in-plane coaxial bend surfaces exist.",
+          "measured": 0
+        }
+      ],
+      "sideEffects": {
+        "quoteCreated": false,
+        "rfqSent": false,
+        "sourceModified": false
+      },
+      "sourceLabel": "A0101.STEP",
+      "selectionEvidence": [],
+      "selectionWarnings": {
+        "skippedOversize": [
+          {
+            "sourceLabel": "kitchen ware cabinet 1512202501.dxf",
+            "sizeBytes": 454839075
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "scenarioId": "welded-structure",
+      "input": {
+        "sha256": "ed418ebd4c9473b112f9d5d23e83d63aae0f59f2a03a5472f2e730c7f609d54b",
+        "extension": "stp",
+        "sizeBytes": 1692390
+      },
+      "importer": "step_brep_pure_ts_v1",
+      "status": "not_run",
+      "assertions": [
+        {
+          "assertion": "geometry_import",
+          "status": "pass",
+          "reason": "Faithful STEP geometry was measured.",
+          "measured": 9
+        },
+        {
+          "assertion": "member_identity",
+          "status": "pass",
+          "reason": "2 elongated STEP solids have measured member axes, profiles, and lengths.",
+          "measured": 2
+        },
+        {
+          "assertion": "cut_list",
+          "status": "pass",
+          "reason": "2 profile/length groups were deterministically aggregated from measured members.",
+          "measured": 2
+        },
+        {
+          "assertion": "miter_lengths",
+          "status": "pass",
+          "reason": "2 members have two authoritative STEP end planes with centreline length and cut angle.",
+          "measured": 2
+        },
+        {
+          "assertion": "mass",
+          "status": "not_run",
+          "reason": "not_run: source material density is not authoritatively bound to each member"
+        }
+      ],
+      "sideEffects": {
+        "quoteCreated": false,
+        "rfqSent": false,
+        "sourceModified": false
+      },
+      "sourceLabel": "SPIRAL STAIRCASE.stp",
+      "selectionEvidence": []
+    },
+    {
+      "schemaVersion": 1,
+      "scenarioId": "heavy-equipment-motion",
+      "input": {
+        "sha256": "e4a7881dbf13f544479c1e3d39396343bffa51cec677679c20abcbd62714ba73",
+        "extension": "step",
+        "sizeBytes": 11253664
+      },
+      "importer": "step_brep_pure_ts_v1",
+      "status": "not_run",
+      "assertions": [
+        {
+          "assertion": "geometry_import",
+          "status": "pass",
+          "reason": "Faithful STEP geometry was measured.",
+          "measured": 166
+        },
+        {
+          "assertion": "independent_parts",
+          "status": "pass",
+          "reason": "Multiple solids remained distinct.",
+          "measured": 166
+        },
+        {
+          "assertion": "pose_preservation",
+          "status": "pass",
+          "reason": "Assembly occurrences and explicit transformation entities preserve a source pose.",
+          "measured": 2
+        },
+        {
+          "assertion": "motion_collision",
+          "status": "not_run",
+          "reason": "No governed roundtrip/assembly adapter is registered for this STEP assertion."
+        },
+        {
+          "assertion": "clearance",
+          "status": "not_run",
+          "reason": "No governed roundtrip/assembly adapter is registered for this STEP assertion."
+        }
+      ],
+      "sideEffects": {
+        "quoteCreated": false,
+        "rfqSent": false,
+        "sourceModified": false
+      },
+      "sourceLabel": "JCB427_bucket down.step",
+      "selectionEvidence": []
+    },
+    {
+      "schemaVersion": 1,
+      "scenarioId": "nist-pmi",
+      "input": {
+        "sha256": "85a5752da05f53c456ca3a9e038c90358e1d5a3141d1f0d6e5f0970f2356e821",
+        "extension": "stp",
+        "sizeBytes": 396445
+      },
+      "importer": "occt_kernel_mesh_v1",
+      "status": "pass",
+      "assertions": [
+        {
+          "assertion": "geometry_import",
+          "status": "pass",
+          "reason": "Pure-TS classification failed; isolated OCCT imported and measured the real B-rep mesh.",
+          "measured": 1
+        },
+        {
+          "assertion": "semantic_pmi_count",
+          "status": "pass",
+          "reason": "Semantic datum, dimension, and GD&T entities were deterministically parsed.",
+          "measured": 20
+        },
+        {
+          "assertion": "topology_reference",
+          "status": "pass",
+          "reason": "20/20 semantic roots reach ADVANCED_FACE through the bounded STEP reference graph; this is linkage evidence, not persistent-name identity.",
+          "measured": 1
+        },
+        {
+          "assertion": "graphical_semantic_separation",
+          "status": "pass",
+          "reason": "Semantic (20) and graphical (46) PMI were counted independently.",
+          "measured": "20/46"
+        },
+        {
+          "assertion": "pmi_semantic_roundtrip",
+          "status": "pass",
+          "reason": "Datum, dimensional tolerance, and geometric tolerance semantics survived normalized AP242 export and re-import. Scope excludes product geometry and persistent topology identity.",
+          "measured": 20
+        },
+        {
+          "assertion": "geometry_step_roundtrip",
+          "status": "pass",
+          "reason": "OCCT import/export preserved 1 measured solid(s) and total volume within 0.1%.",
+          "measured": 0
+        },
+        {
+          "assertion": "step_roundtrip",
+          "status": "pass",
+          "reason": "OCCT preserved measured geometry and all source-present PMI evidence counts. (semantic 20->20, graphical 46->46, topology 1->1).",
+          "measured": "semantic 20->20, graphical 46->46, topology 1->1"
+        }
+      ],
+      "sideEffects": {
+        "quoteCreated": false,
+        "rfqSent": false,
+        "sourceModified": false
+      },
+      "sourceLabel": "nist_ctc_01_asme1_ap242-e1.stp",
+      "selectionEvidence": []
+    },
+    {
+      "schemaVersion": 1,
+      "scenarioId": "ifc43-certification",
+      "input": {
+        "sha256": "a2e088d6c7a07ea7d3498ed494ae4070e9989a5ceac9eb6e2d69184a81e78e41",
+        "extension": "ifc",
+        "sizeBytes": 226087
+      },
+      "importer": "ifc_nexyfab_v1",
+      "status": "pass",
+      "assertions": [
+        {
+          "assertion": "ifc_geometry",
+          "status": "pass",
+          "reason": "IFC physical elements imported.",
+          "measured": 10
+        },
+        {
+          "assertion": "independent_parts",
+          "status": "pass",
+          "reason": "Multiple IFC physical elements remained distinct.",
+          "measured": 10
+        },
+        {
+          "assertion": "ifc_spatial_hierarchy",
+          "status": "pass",
+          "reason": "Explicit IFC spatial/product nodes and parent relations were parsed without counting spatial containers as physical parts.",
+          "measured": "8/14/21"
+        },
+        {
+          "assertion": "ifc_placements",
+          "status": "pass",
+          "reason": "Every measured non-project IFC node has a structurally valid IfcLocalPlacement chain.",
+          "measured": "21/0/0"
+        },
+        {
+          "assertion": "guid",
+          "status": "pass",
+          "reason": "Explicit IFC guid entities were parsed independently of geometry.",
+          "measured": 26
+        },
+        {
+          "assertion": "hierarchy",
+          "status": "pass",
+          "reason": "Explicit IFC hierarchy entities were parsed independently of geometry.",
+          "measured": 11
+        },
+        {
+          "assertion": "material",
+          "status": "pass",
+          "reason": "Explicit IFC material entities were parsed independently of geometry.",
+          "measured": 18
+        },
+        {
+          "assertion": "quantity",
+          "status": "pass",
+          "reason": "Explicit IFC quantity entities were parsed independently of geometry.",
+          "measured": 32
+        },
+        {
+          "assertion": "georeference",
+          "status": "pass",
+          "reason": "Explicit IFC georeference entities were parsed independently of geometry.",
+          "measured": 4
+        }
+      ],
+      "sideEffects": {
+        "quoteCreated": false,
+        "rfqSent": false,
+        "sourceModified": false
+      },
+      "sourceLabel": "Building-Architecture.ifc",
+      "selectionEvidence": []
+    }
+  ]
+}

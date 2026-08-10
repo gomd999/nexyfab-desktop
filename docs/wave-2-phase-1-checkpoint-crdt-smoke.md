@@ -3,7 +3,7 @@
 **Purpose:** Provide two 60-second browser checks that the Phase 1 Week 2
 CRDT prototypes work end-to-end in a real browser. This is checkpoint
 signal #1 of three for the Phase 1 → Phase 2 review decision (per
-[ADR-010](adr/010-wave-2-b-full-collab.md)).
+ADR-010 (historical decision record; not present in this repository snapshot)).
 
 The 161 vitest tests in `src/app/[lang]/shape-generator/collab/__tests__/`
 already exercise the API surface in node with `fake-indexeddb`. These
