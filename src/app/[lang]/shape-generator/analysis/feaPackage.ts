@@ -302,7 +302,10 @@ export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, 
             note: `곡률 응력집중부 정밀 재해석 — gmsh 경계정합 사면체 메시(별도 프로세스), DOF ${fine.dofCount.toLocaleString()}·${fine.converged ? '수렴' : '미수렴'}·벽시계 ${(wallMs / 1000).toFixed(1)}s. 인증후보급(외부 상용해석 교차검증 전).`,
           };
         } else {
-          gmshError = `gmsh 메시는 생성됐으나 FEM 해가 부적합(미수렴/비유한) — DOF ${fine.dofCount.toLocaleString()}`;
+          const deadlineHit = Date.now() >= gmshSolveDeadline - 250;
+          gmshError = `gmsh 메시는 생성됐으나 FEM 해가 부적합 — DOF ${fine.dofCount.toLocaleString()}, ` +
+            `수렴=${fine.converged}, 반복=${fine.iterations}, 최대변위=${Number.isFinite(fine.maxDisplacement) ? fine.maxDisplacement.toExponential(3) : '비유한'}, ` +
+            `최대응력=${Number.isFinite(fine.maxStress) ? fine.maxStress.toExponential(3) : '비유한'}, 마감중단=${deadlineHit}`;
         }
       } catch (e) { gmshError = `gmsh 메시 FEM 조립/해석 예외: ${(e as Error)?.message ?? String(e)}`; }
     } else if (gmshMesh) {

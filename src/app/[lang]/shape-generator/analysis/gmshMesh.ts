@@ -239,7 +239,7 @@ export interface GmshMeshOptions {
   maxNodes?: number;
   /** Reject above the exact TET10 DOF count, which is the real FEM memory/CPU cost. */
   maxTet10Dof?: number;
-  /** Curvature elements per full circle. Default 18; clamped to a governed range. */
+  /** Curvature elements per full circle. Default 12; TET10 promotion doubles sampling. */
   curvatureElements?: number;
   /** Whether fine boundary sizing propagates into the volume. Default false. */
   extendFromBoundary?: boolean;
@@ -268,7 +268,7 @@ export function gmshSizingForBBox(
   return {
     nearMm: maxDim / 500,
     farMm: Math.max(maxDim / 10_000, Math.min(maxDim, requestedSize)),
-    curvatureElements: Math.max(8, Math.min(48, Math.round(opts.curvatureElements ?? 18))),
+    curvatureElements: Math.max(8, Math.min(48, Math.round(opts.curvatureElements ?? 12))),
     extendFromBoundary: opts.extendFromBoundary ?? false,
   };
 }
@@ -368,8 +368,9 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
     `Mesh.Algorithm3D = 1;`,          // Delaunay — robust for arbitrary closed surfaces
     `Mesh.MeshSizeMin = ${near};`,
     `Mesh.MeshSizeMax = ${far};`,
-    // TET10 promotion adds midpoint interpolation, so 18 curvature elements
-    // retain 36 angular interpolation intervals without doubling the solver DOF.
+    // TET10 promotion adds midpoint interpolation, so 12 curvature elements
+    // retain 24 angular interpolation intervals while keeping the live solve
+    // near 40k DOF on the governed A5 reference part.
     `Mesh.MeshSizeFromCurvature = ${sizing.curvatureElements};`,
     // Production Gmsh 4.8 measurements showed that propagation (=1) spread the
     // bore's fine size through the whole plate. Keep it local by default.
@@ -478,7 +479,7 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
     // the PRIMARY (reparam) mesh clears this, accept it immediately — no need to
     // also run keep-surface. If it does not, run keep-surface too and keep the
     // HIGHER-DOF of the two (never regress below today's keep-surface behaviour).
-    const MIN_RAISER_NODES = 3_000;
+    const MIN_RAISER_NODES = 2_000;
 
     let lastReason: string | undefined;
     let lastCode: string | undefined;
