@@ -1,15 +1,27 @@
 {
-  "shared": 812808,
-  "worstFirstPaint": 2320969,
+  "shared": 800000,
+  "worstFirstPaint": 1700000,
   "routes": {
-    "/[lang]": 77788,
-    "/[lang]/nexyfab/design": 951910,
-    "/[lang]/shape-generator": 7875
+    "/[lang]": 78000,
+    "/[lang]/nexyfab/design": 900000,
+    "/[lang]/nexyfab/hub": 120000,
+    "/[lang]/shape-generator": 8000,
+    "/[lang]/shape-generator/assembly": 20000,
+    "/[lang]/shape-generator/drawing": 320000,
+    "/[lang]/shape-generator/kernel-lab": 10000,
+    "/[lang]/shape-generator/render": 450000,
+    "/[lang]/studio": 850000
   },
   "requiredAppRoutes": [
     "/[lang]",
     "/[lang]/nexyfab/design",
-    "/[lang]/shape-generator"
+    "/[lang]/nexyfab/hub",
+    "/[lang]/shape-generator",
+    "/[lang]/shape-generator/assembly",
+    "/[lang]/shape-generator/drawing",
+    "/[lang]/shape-generator/kernel-lab",
+    "/[lang]/shape-generator/render",
+    "/[lang]/studio"
   ],
-  "note": "10% headroom over the build that created this file. Run `npm run bundle:budget -- --update` after intentional growth."
+  "note": "Commercial CAD first-paint caps fixed after the 2026-08-10 lazy-loading pass; do not auto-update these limits for ordinary growth."
 }

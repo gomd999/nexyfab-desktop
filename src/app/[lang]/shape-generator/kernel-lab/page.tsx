@@ -13,10 +13,13 @@
  * "Thicken" feature (scene-body insertion, profile-from-sketch) builds on this.
  */
 import { useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import dynamic from 'next/dynamic';
 import type { ShapeResult } from '../shapes';
-import { thickenSurfaceKSeries } from '../features/thickenKSeries';
+
+const KernelLabViewer = dynamic(() => import('./KernelLabViewer'), {
+  ssr: false,
+  loading: () => <div aria-busy="true" style={{ padding: 24 }}>Loading 3D preview…</div>,
+});
 
 // A 10×10 demo square sheet; thicken by 2 → a 10×10×2 slab (volume 200 mm³).
 const DEMO_SQUARE = [
@@ -38,6 +41,7 @@ export default function KernelLabPage() {
     setPhase('running');
     setMessage('Booting OCCT worker + thickening…');
     setResult(null);
+    const { thickenSurfaceKSeries } = await import('../features/thickenKSeries');
     const out = await thickenSurfaceKSeries({ loop: DEMO_SQUARE, thickness });
     if (out.ok) {
       setResult(out.result);
@@ -101,17 +105,7 @@ export default function KernelLabPage() {
 
       {result && (
         <div style={{ width: '100%', height: 360, border: '1px solid #e2e8f0', borderRadius: 8, background: '#0b1220' }}>
-          <Canvas camera={{ position: [25, 20, 25], fov: 45 }}>
-            <ambientLight intensity={0.6} />
-            <directionalLight position={[10, 20, 10]} intensity={1.2} />
-            <mesh geometry={result.geometry}>
-              <meshStandardMaterial color="#58a6ff" roughness={0.4} metalness={0.1} />
-            </mesh>
-            <lineSegments geometry={result.edgeGeometry}>
-              <lineBasicMaterial color="#cbd5e1" />
-            </lineSegments>
-            <OrbitControls />
-          </Canvas>
+          <KernelLabViewer result={result} />
         </div>
       )}
     </div>

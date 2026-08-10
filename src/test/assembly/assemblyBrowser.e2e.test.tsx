@@ -54,8 +54,9 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
 
   // ── 1. sample dropdown renders + loads state + featureTrees ────────────
 
-  it('renders the sample picker with all 3 presets + blank', () => {
+  it('renders the sample picker with all 3 presets + blank', async () => {
     render(<AssemblyBrowserPageContent lang="en" />);
+    await screen.findByTestId('solver-assembly-modal');
     const sel = screen.getByTestId(
       'solver-assembly-sample-select',
     ) as HTMLSelectElement;
@@ -66,8 +67,9 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
     expect(values).toContain('hinge-pair');
   });
 
-  it('loading the two-cubes-concentric sample populates parts + mate rows', () => {
+  it('loading the two-cubes-concentric sample populates parts + mate rows', async () => {
     render(<AssemblyBrowserPageContent lang="en" />);
+    await screen.findByTestId('solver-assembly-modal');
     fireEvent.change(screen.getByTestId('solver-assembly-sample-select'), {
       target: { value: 'two-cubes-concentric' },
     });
@@ -93,6 +95,7 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
       }),
     );
     render(<AssemblyBrowserPageContent lang="en" />);
+    await screen.findByTestId('solver-assembly-modal');
     fireEvent.change(screen.getByTestId('solver-assembly-sample-select'), {
       target: { value: 'two-cubes-concentric' },
     });
@@ -129,6 +132,7 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
       }),
     );
     render(<AssemblyBrowserPageContent lang="en" />);
+    await screen.findByTestId('solver-assembly-modal');
     fireEvent.change(screen.getByTestId('solver-assembly-sample-select'), {
       target: { value: 'two-cubes-concentric' },
     });
@@ -157,6 +161,7 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
     );
     // Start from blank — that triggers the stub path (no featureTrees sent).
     render(<AssemblyBrowserPageContent lang="en" />);
+    await screen.findByTestId('solver-assembly-modal');
     // Bare blank has no parts, so add one so the modal becomes solvable.
     fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
     fireEvent.click(screen.getByTestId('solver-assembly-solve'));
@@ -185,6 +190,7 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
       ),
     );
     render(<AssemblyBrowserPageContent lang="en" />);
+    await screen.findByTestId('solver-assembly-modal');
     fireEvent.change(screen.getByTestId('solver-assembly-sample-select'), {
       target: { value: 'hinge-pair' },
     });
@@ -199,8 +205,9 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
 
   // ── 6. changing sample resets previous state (modal remount) ───────────
 
-  it('switching to a different sample resets the modal (no stale parts)', () => {
+  it('switching to a different sample resets the modal (no stale parts)', async () => {
     render(<AssemblyBrowserPageContent lang="en" />);
+    await screen.findByTestId('solver-assembly-modal');
     // Load the 3-cube chain first.
     fireEvent.change(screen.getByTestId('solver-assembly-sample-select'), {
       target: { value: 'three-cubes-chain' },
@@ -217,8 +224,9 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
 
   // ── 7. switching back to blank clears the loaded preset ───────────────
 
-  it('switching back to blank resets the modal to the empty placeholder state', () => {
+  it('switching back to blank resets the modal to the empty placeholder state', async () => {
     render(<AssemblyBrowserPageContent lang="en" />);
+    await screen.findByTestId('solver-assembly-modal');
     fireEvent.change(screen.getByTestId('solver-assembly-sample-select'), {
       target: { value: 'two-cubes-concentric' },
     });
@@ -245,6 +253,7 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
       }),
     );
     render(<AssemblyBrowserPageContent lang="en" />);
+    await screen.findByTestId('solver-assembly-modal');
     fireEvent.change(screen.getByTestId('solver-assembly-sample-select'), {
       target: { value: 'hinge-pair' },
     });
@@ -273,6 +282,7 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
       }),
     );
     render(<AssemblyBrowserPageContent lang="en" />);
+    await screen.findByTestId('solver-assembly-modal');
     fireEvent.change(screen.getByTestId('solver-assembly-sample-select'), {
       target: { value: 'three-cubes-chain' },
     });
@@ -306,6 +316,7 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
       }),
     );
     render(<AssemblyBrowserPageContent lang="en" />);
+    await screen.findByTestId('solver-assembly-modal');
     fireEvent.change(screen.getByTestId('solver-assembly-sample-select'), {
       target: { value: 'hinge-pair' },
     });

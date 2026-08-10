@@ -18,11 +18,12 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import AssemblyBrowserModal, {
-  type AssemblyBrowserLang,
-  type AssemblyBrowserOnSolve,
-  type AssemblyBrowserSolveResult,
-  type AssemblySolverSelection,
+import dynamic from 'next/dynamic';
+import type {
+  AssemblyBrowserLang,
+  AssemblyBrowserOnSolve,
+  AssemblyBrowserSolveResult,
+  AssemblySolverSelection,
 } from './AssemblyBrowserModal';
 import type { AssemblyState } from '@/lib/assembly/assemblyState';
 import type { FeatureTree } from '@/lib/cad/featureTree';
@@ -31,6 +32,28 @@ import {
   getSampleAssembly,
   type SampleAssemblyName,
 } from '@/lib/assembly/sampleAssemblies';
+
+// The assembly editor pulls in the 3D viewer, constraint solvers and the
+// optional expert tooling. Keep that graph out of the route's hydration
+// bundle and fetch it only after the lightweight page shell is interactive.
+const AssemblyBrowserModal = dynamic(() => import('./AssemblyBrowserModal'), {
+  ssr: false,
+  loading: () => (
+    <div
+      aria-busy="true"
+      aria-live="polite"
+      data-testid="assembly-browser-loading"
+      style={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        color: 'var(--nx-text-2)',
+      }}
+    >
+      Loading assembly workspace…
+    </div>
+  ),
+});
 
 function normalizeLang(raw: string): AssemblyBrowserLang {
   if (

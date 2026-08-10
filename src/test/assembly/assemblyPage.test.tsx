@@ -15,40 +15,44 @@ import { IDENTITY_QUAT, type AssemblyState } from '@/lib/assembly/assemblyState'
 import type { FeatureTree } from '@/lib/cad/featureTree';
 
 describe('AssemblyBrowserPageContent', () => {
-  it('mounts the modal inside a page wrapper', () => {
+  it('mounts the modal inside a page wrapper', async () => {
     render(<AssemblyBrowserPageContent lang="en" onSolve={vi.fn()} />);
     expect(screen.getByTestId('solver-assembly-page')).toBeInTheDocument();
-    expect(screen.getByTestId('solver-assembly-modal')).toBeInTheDocument();
+    expect(await screen.findByTestId('solver-assembly-modal')).toBeInTheDocument();
   });
 
-  it('default initial state has no parts and no mates', () => {
+  it('default initial state has no parts and no mates', async () => {
     render(<AssemblyBrowserPageContent lang="en" onSolve={vi.fn()} />);
+    await screen.findByTestId('solver-assembly-modal');
     expect(screen.getByTestId('solver-assembly-parts-empty')).toBeInTheDocument();
     expect(screen.getByTestId('solver-assembly-mates-empty')).toBeInTheDocument();
   });
 
-  it('respects the lang prop (en → English title)', () => {
+  it('respects the lang prop (en → English title)', async () => {
     render(<AssemblyBrowserPageContent lang="en" onSolve={vi.fn()} />);
+    await screen.findByTestId('solver-assembly-modal');
     expect(screen.getByTestId('solver-assembly-title').textContent).toMatch(
       /Assembly Browser/i,
     );
   });
 
-  it('respects the lang prop (ko → Korean title)', () => {
+  it('respects the lang prop (ko → Korean title)', async () => {
     render(<AssemblyBrowserPageContent lang="ko" onSolve={vi.fn()} />);
+    await screen.findByTestId('solver-assembly-modal');
     expect(screen.getByTestId('solver-assembly-title').textContent).toMatch(
       /어셈블리 브라우저/,
     );
   });
 
-  it('normalizes unknown lang codes to English', () => {
+  it('normalizes unknown lang codes to English', async () => {
     render(<AssemblyBrowserPageContent lang="xx" onSolve={vi.fn()} />);
+    await screen.findByTestId('solver-assembly-modal');
     expect(screen.getByTestId('solver-assembly-title').textContent).toMatch(
       /Assembly Browser/i,
     );
   });
 
-  it('renders a seeded initialState', () => {
+  it('renders a seeded initialState', async () => {
     const seeded: AssemblyState = {
       parts: [
         {
@@ -63,6 +67,7 @@ describe('AssemblyBrowserPageContent', () => {
       mates: [],
     };
     render(<AssemblyBrowserPageContent lang="en" initialState={seeded} onSolve={vi.fn()} />);
+    await screen.findByTestId('solver-assembly-modal');
     expect(screen.getByTestId('solver-assembly-part-row-p1')).toBeInTheDocument();
   });
 
@@ -116,6 +121,7 @@ describe('AssemblyBrowserPageContent', () => {
         ),
       );
       render(<AssemblyBrowserPageContent lang="en" initialState={seedOnePart} />);
+      await screen.findByTestId('solver-assembly-modal');
       fireEvent.click(screen.getByTestId('solver-assembly-solve'));
       await waitFor(() => expect(fetchMock).toHaveBeenCalled());
       const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -153,6 +159,7 @@ describe('AssemblyBrowserPageContent', () => {
           initialFeatureTrees={{ p1: TINY_TREE }}
         />,
       );
+      await screen.findByTestId('solver-assembly-modal');
       fireEvent.click(screen.getByTestId('solver-assembly-solve'));
       await waitFor(() => expect(fetchMock).toHaveBeenCalled());
       const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -178,6 +185,7 @@ describe('AssemblyBrowserPageContent', () => {
         ),
       );
       render(<AssemblyBrowserPageContent lang="en" initialState={seedOnePart} />);
+      await screen.findByTestId('solver-assembly-modal');
       fireEvent.click(screen.getByTestId('solver-assembly-solve'));
       await waitFor(() =>
         expect(screen.getByTestId('solver-assembly-solve-error')).toBeInTheDocument(),
