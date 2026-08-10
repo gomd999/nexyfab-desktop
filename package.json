@@ -105,6 +105,7 @@
     "evidence:ground-truth-priority": "tsx scripts/reference/build-ground-truth-review-priority.ts",
     "evidence:ground-truth-validate": "tsx scripts/reference/validate-ground-truth-approvals.ts",
     "evidence:holdout-shortfall": "tsx scripts/reference/build-holdout-shortfall-acquisition.ts",
+    "evidence:holdout-acquisitions:validate": "node scripts/reference/validate-holdout-acquisitions.mjs",
     "evidence:native-worker-routing": "tsx scripts/reference/build-native-worker-routing-manifest.ts",
     "evidence:native-worker-execute": "tsx scripts/reference/run-native-worker-routing-jobs.ts",
     "evidence:native-worker-preflight": "tsx scripts/reference/build-native-worker-host-preflight.ts",
