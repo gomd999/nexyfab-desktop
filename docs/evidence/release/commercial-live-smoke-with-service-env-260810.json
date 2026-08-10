@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.deployment-ai-cad-smoke.v1",
-  "generatedAt": "2026-08-10T07:10:24.823Z",
+  "generatedAt": "2026-08-10T07:29:29.642Z",
   "target": "https://nexyfab.com",
   "status": "pass",
   "credentials": {
@@ -13,11 +13,11 @@
       "status": "pass",
       "httpStatus": 200,
       "redirected": true,
-      "latencyMs": 818,
+      "latencyMs": 770,
       "contentType": "application/json",
       "summary": {
         "status": "ok",
-        "build": "20260810070414",
+        "build": "20260810072250",
         "code": null,
         "error": null,
         "dbStatus": null,
@@ -29,7 +29,7 @@
       "status": "pass",
       "httpStatus": 200,
       "redirected": true,
-      "latencyMs": 424,
+      "latencyMs": 427,
       "contentType": "application/json",
       "summary": {
         "status": "ok",
@@ -45,7 +45,7 @@
       "status": "pass",
       "httpStatus": 200,
       "redirected": true,
-      "latencyMs": 431,
+      "latencyMs": 420,
       "contentType": "application/json",
       "summary": {
         "status": null,
@@ -61,7 +61,7 @@
       "status": "pass",
       "httpStatus": 405,
       "redirected": true,
-      "latencyMs": 452,
+      "latencyMs": 439,
       "contentType": "",
       "summary": null
     },
@@ -70,7 +70,7 @@
       "status": "pass",
       "httpStatus": 200,
       "redirected": true,
-      "latencyMs": 876,
+      "latencyMs": 819,
       "contentType": "application/json",
       "summary": {
         "status": "ok",
@@ -81,19 +81,19 @@
         "checks": {
           "binary": {
             "ok": true,
-            "ms": 273,
+            "ms": 259,
             "detail": "verified by isolated BOSL2 render",
             "error": null
           },
           "bosl2": {
             "ok": true,
-            "ms": 273,
+            "ms": 259,
             "detail": "verified by isolated BOSL2 render",
             "error": null
           },
           "render": {
             "ok": true,
-            "ms": 273,
+            "ms": 259,
             "detail": "1719 bytes via isolated Redis worker",
             "error": null
           }
@@ -101,5 +101,5 @@
       }
     }
   ],
-  "sha256": "25e6de15c968277cca508674dbeac57a9c27a3ed1c33e00e1a6762be0c951d5f"
+  "sha256": "18e97a414de5c1702a182977eb4a92a6ddf97f211c1f26c735b910ae18982f1a"
 }

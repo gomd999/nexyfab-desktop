@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.production-protected-state-compare.v1",
-  "generatedAt": "2026-08-10T07:15:48.673Z",
+  "generatedAt": "2026-08-10T07:30:31.416Z",
   "ok": true,
   "policy": "Every pre-release protected row and stable field must remain present and unchanged; volatile login/session telemetry is excluded while credential hashes remain protected.",
   "protectedTableCount": 23,
