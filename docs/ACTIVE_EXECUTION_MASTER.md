@@ -455,3 +455,11 @@ WP11~WP20의 세부 입력·구현·검증·수치 기준은 [성능·보안·5�
 - 성능: Railway 6시간 실측은 memory average 420.0MB/max 488.8MB/current 159.7MB, CPU average 0.00074 vCPU/max 0.0607 vCPU, HTTP p95 157ms다. 현재 web runtime은 메모리 과다로 판정하지 않으며 7일 증거는 아직 필요하다.
 - 보안/빌드: route 544/handler 753 gap 0, CAD API 58/58 issue 0, secret scan 6,664파일 findings 0, dependency vulnerabilities 0이다. 추가 테스트 17개가 통과했고 Next 16.3 production build 635/635 page, bundle budget(shared 721.6KB, worst first-paint 2,060.5KB)을 통과했다. postbuild Closed Beta는 17테이블/13행, 15파일/15,429,420 bytes에서 차이 0이다.
 - 통합 판정: `npm run commercialization:gate`는 Private Beta를 미커밋 release, production smoke, migration receipt, backup restore receipt 때문에 BLOCKED한다. GA에는 5분야 독립 holdout, 7일 운영, 전문가 검토가 추가 차단기다. 외부 영수증 없이 PASS를 생성하지 않는다.
+
+#### WP21 중단 복구 및 현재 판정 — 2026-08-10
+
+- 중단 직전 작업은 `release/2026-08-10` 브랜치의 P0 커밋 3건으로 보존됐다: 정밀 FEA의 격리 worker queue 전환(`5540ed98`), 협업·리뷰·공유의 프로젝트 소유권 강제(`0f5353b5`), 승인 없는 제조 산출물 내보내기 차단(`a12cabaa`). 복구 시 작업 트리는 깨끗했다.
+- 현재 `npm run commercialization:gate` 재실행 결과 Private Beta는 `eligible=true`, blocker 0이다. 따라서 위의 미커밋 release·production smoke·migration·restore 차단 판정은 이후 커밋과 영수증 반영으로 해소된 과거 시점 기록이다.
+- Commercial GA는 계속 `eligible=false`다. 기계·건축·토목·조경·인테리어 5개 분야의 승인된 독립 holdout, 7일 운영 영수증, 전문가 검토 영수증이 없으므로 총 7개 blocker를 유지한다.
+- 중단 직전 P0 범위의 Vitest 10파일/91테스트와 전체 TypeScript typecheck가 통과했다. 외부 증거가 필요한 GA blocker는 임의로 승격하지 않았다.
+- 현재 판정: `private_beta_eligible_commercial_ga_blocked`. 다음 단계는 실제 운영 7일 수집과 신뢰 가능한 외부 검토자·holdout 입력 확보이며, 해당 외부 입력 전에는 GA 판정을 변경하지 않는다.
