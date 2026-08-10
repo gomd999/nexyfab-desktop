@@ -1,31 +1,3 @@
-# ---- Official Radiance 6.0 headless build ----
-FROM debian:bookworm-slim AS radiance-builder
-ARG RADIANCE_SOURCE_URL=https://radsite.lbl.gov/radiance/dist/rad6R0P1.tar.gz
-ARG RADIANCE_SOURCE_SHA256=b720d39e43fcf2ea09ab1699b62418836dfad8316743727761d29e85f82585cf
-RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates curl cmake build-essential \
-      libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxext-dev \
- && rm -rf /var/lib/apt/lists/* \
- && curl --fail --location --proto '=https' --tlsv1.2 \
-      "$RADIANCE_SOURCE_URL" --output /tmp/radiance.tar.gz \
- && echo "$RADIANCE_SOURCE_SHA256  /tmp/radiance.tar.gz" | sha256sum --check --strict \
- && mkdir -p /src /build /opt/radiance \
- && tar -xzf /tmp/radiance.tar.gz -C /src \
- && cmake -S /src/ray -B /build \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX=/opt/radiance \
-      -DBUILD_HEADLESS=ON \
-      -DBUILD_QT=OFF \
-      -DBUILD_LIBTIFF=OFF \
-      -DBUILD_TESTING=OFF \
- && cmake --build /build --parallel "$(nproc)" \
- && cmake --install /build \
- && for tool in oconv rtrace rfluxmtx gendaymtx dctimestep rmtxop; do \
-      test -x "/opt/radiance/bin/$tool" || exit 1; \
-    done \
- && /opt/radiance/bin/rtrace -features \
- && rm -rf /tmp/radiance.tar.gz /src /build
-
 # ---- Build stage ----
 FROM node:22-slim AS builder
 WORKDIR /app
@@ -33,13 +5,10 @@ WORKDIR /app
 # Native module build tools (better-sqlite3 needs python3 + build-essential)
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies.
-# `npm install` (not `npm ci`): the lock drifts on platform-specific optional
-# wasm deps (@emnapi/*, generated on a Windows dev box), which makes the strict
-# `npm ci` fail on Linux. `npm install` reconciles the lock at build time and
-# still installs the full tree (webpack, replicad-opencascadejs, etc.).
+# Install exactly the committed dependency graph. Ubuntu CI already exercises
+# this lockfile; production must fail on drift rather than mutate it.
 COPY package.json package-lock.json* ./
-RUN npm install --legacy-peer-deps --no-audit --no-fund
+RUN npm ci --legacy-peer-deps --no-audit --no-fund
 
 # Copy source.
 # Cache-bust: buildkit occasionally reuses a stale `COPY . .` layer on Railway
@@ -79,6 +48,10 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS=--max-old-space-size=8192
 RUN npm run build
+# Next's standalone tracer can duplicate public assets and dynamically loaded
+# CAD scripts. The runner copies the authoritative directories explicitly;
+# prune only their generated duplicates before creating the runtime layer.
+RUN node scripts/prune-standalone-artifacts.mjs --strip-docker-duplicates
 
 # ---- Runner stage ----
 FROM node:22-slim AS runner
@@ -97,42 +70,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# OpenSCAD CLI + BOSL2 library for the deterministic intent→SCAD pipeline
-# (intentToScad emits BOSL2 calls for gear/threadedRod/roundedBox/screw).
-# `git` is needed for the BOSL2 clone step only; pruned in the same RUN to
-# keep the image lean.
-# gmsh (FEA precise-path tet mesher) links OpenGL/GLU + OpenCASCADE even for
-# batch `-3` runs; with --no-install-recommends the GL/GLU runtime libs are
-# NOT pulled automatically, so gmsh can fail to LOAD (loader error) at runtime
-# and the FEA path silently falls back to octree. Install them explicitly and
-# then run `gmsh --version` so a broken/unloadable binary FAILS THE BUILD here
-# instead of degrading silently in production. `command -v gmsh` also confirms
-# the binary is on PATH at /usr/bin/gmsh (must match ENV GMSH_BIN below).
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-      openscad gmsh git ca-certificates fonts-dejavu-core \
-      libglu1-mesa libgl1 libgomp1 \
- && git clone --depth 1 https://github.com/BelfrySCAD/BOSL2.git /opt/openscad-libs/BOSL2 \
- && apt-get purge -y --auto-remove git \
- && rm -rf /var/lib/apt/lists/* \
- && command -v gmsh \
- && gmsh --version
-ENV OPENSCAD_BIN=/usr/bin/openscad
-ENV OPENSCADPATH=/opt/openscad-libs
-# gmsh: out-of-process boundary-conforming tet mesher for the FEA precise path
-# (server-only, execFile shell-out like the openscad CLI; GPL-as-subprocess).
-ENV GMSH_BIN=/usr/bin/gmsh
-
-# Official, checksum-pinned Radiance 6.0 daylight engine. Only the installed
-# runtime is copied; source and compiler toolchains remain in radiance-builder.
-COPY --from=radiance-builder /opt/radiance /opt/radiance
-ENV RAYPATH=.:/opt/radiance/lib \
-    RADIANCE_OCONV_PATH=/opt/radiance/bin/oconv \
-    RADIANCE_RTRACE_PATH=/opt/radiance/bin/rtrace \
-    RADIANCE_RFLUXMTX_PATH=/opt/radiance/bin/rfluxmtx \
-    RADIANCE_GENDAYMTX_PATH=/opt/radiance/bin/gendaymtx \
-    RADIANCE_DCTIMESTEP_PATH=/opt/radiance/bin/dctimestep \
-    RADIANCE_RMTXOP_PATH=/opt/radiance/bin/rmtxop
+# Native CAD executables are deliberately absent from the public web image.
+# OpenSCAD, Gmsh and Radiance execute only in the isolated Redis worker.
+ENV OPENSCAD_EXTERNAL_WORKER=1 \
+    CAD_RUNTIME_EXTERNAL_WORKER=1
 
 # Copy only what's needed
 COPY --from=builder /app/public ./public
@@ -147,7 +88,6 @@ COPY --from=builder /app/node_modules/file-uri-to-path ./node_modules/file-uri-t
 # tracer can't see them — copy explicitly. NOT scripts/knowledge-crawler (323MB data).
 COPY --from=builder /app/scripts/drawing-to-3d ./scripts/drawing-to-3d
 COPY --from=builder /app/scripts/engineering-core ./scripts/engineering-core
-COPY --from=builder /app/services/openscad-worker ./services/openscad-worker
 # export_step(to-step.mjs) uses replicad/OCCT via DYNAMIC import (occtEngine also
 # dynamic-imports it), so the tracer omits the whole subtree — copy the closure
 # (computed from package.json deps: replicad→flatbush/flatqueue/opentype.js/…).
@@ -174,7 +114,7 @@ COPY --from=builder /app/node_modules/flatqueue ./node_modules/flatqueue
 COPY --from=builder /app/node_modules/opentype.js ./node_modules/opentype.js
 COPY --from=builder /app/node_modules/string.prototype.codepointat ./node_modules/string.prototype.codepointat
 COPY --from=builder /app/node_modules/tiny-inflate ./node_modules/tiny-inflate
-# Isolated OpenSCAD worker uses Redis directly and starts from the same image.
+# Redis is also used by the web runtime for rate limiting and CAD job queues.
 COPY --from=builder /app/node_modules/ioredis ./node_modules/ioredis
 COPY --from=builder /app/node_modules/@ioredis ./node_modules/@ioredis
 COPY --from=builder /app/node_modules/cluster-key-slot ./node_modules/cluster-key-slot

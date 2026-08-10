@@ -50,6 +50,20 @@ async function runProcess(path: string, args: readonly string[], cwd: string, st
 }
 
 export async function inspectRadianceReadiness(executablePaths: RadianceExecutablePaths): Promise<RadianceReadinessResult> {
+  if (process.env.CAD_RUNTIME_EXTERNAL_WORKER === '1') {
+    const { runCadRuntimeJob } = await import('@/lib/cad-runtime/redisCadRuntimeJobs');
+    const result = await runCadRuntimeJob({ kind: 'tool-readiness', tool: 'radiance' }, 20_000);
+    if (result.kind !== 'tool-readiness' || result.tool !== 'radiance') throw new Error('CAD_RUNTIME_RESULT_MISMATCH');
+    const executables = Object.fromEntries(RADIANCE_EXECUTABLES.map(name => [name, result.ready])) as Record<RadianceExecutable, boolean>;
+    return {
+      status: result.ready ? 'pass' : 'fail',
+      ready: result.ready,
+      executables,
+      version: result.detail?.slice(0, 2048),
+      features: result.detail?.slice(0, 16 * 1024),
+      errors: result.ready ? [] : [result.error ?? 'radiance_worker_not_ready'],
+    };
+  }
   const executables = Object.fromEntries(RADIANCE_EXECUTABLES.map(name => [name, false])) as Record<RadianceExecutable, boolean>;
   const resolved = new Map<RadianceExecutable, string>(), errors: string[] = [];
   for (const executable of RADIANCE_EXECUTABLES) {
@@ -74,6 +88,24 @@ export async function inspectRadianceReadiness(executablePaths: RadianceExecutab
 export async function executeRadianceLocally(input: RadianceLocalExecutionInput): Promise<RadianceLocalExecutionResult> {
   const timeoutMs = input.timeoutMs ?? 120_000, maxOutputBytes = input.maxOutputBytes ?? 64 * 1024 * 1024;
   if (!Number.isFinite(timeoutMs) || timeoutMs < 100 || timeoutMs > 600_000 || !Number.isFinite(maxOutputBytes) || maxOutputBytes < 1024 || maxOutputBytes > 512 * 1024 * 1024) throw new Error('invalid_radiance_resource_limit');
+  if (process.env.CAD_RUNTIME_EXTERNAL_WORKER === '1') {
+    for (const name of Object.keys(input.artifacts)) safeArtifact(name);
+    const artifacts = Object.fromEntries(Object.entries(input.artifacts).map(([name, value]) => {
+      if (typeof value === 'string') {
+        validateTextArtifact(name, value);
+        return [name, { encoding: 'utf8' as const, data: value }];
+      }
+      return [name, { encoding: 'base64' as const, data: Buffer.from(value).toString('base64') }];
+    }));
+    const { runCadRuntimeJob } = await import('@/lib/cad-runtime/redisCadRuntimeJobs');
+    const result = await runCadRuntimeJob({ kind: 'radiance', plan: input.plan, artifacts, timeoutMs, maxOutputBytes }, timeoutMs + 30_000);
+    if (result.kind !== 'radiance') throw new Error('CAD_RUNTIME_RESULT_MISMATCH');
+    return {
+      status: result.status,
+      outputs: Object.fromEntries(Object.entries(result.outputs).map(([name, value]) => [name, Uint8Array.from(Buffer.from(value, 'base64'))])),
+      errors: result.errors,
+    };
+  }
   const paths = new Map<RadianceExecutable, string>(), missing: string[] = [];
   for (const executable of input.plan.requiredExecutables) {
     const configured = input.executablePaths[executable];

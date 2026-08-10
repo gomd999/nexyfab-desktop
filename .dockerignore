@@ -7,9 +7,15 @@ README.md
 .env*.local
 .env
 data/
+# Local/volume SQLite state must never enter the image build context. The
+# production service uses PostgreSQL (or a mounted DATA_ROOT in fallback
+# environments); copying a developer database would leak data and invalidate
+# the closed-beta immutability boundary.
+nexyfab.db*
 # knowledge-crawler holds ~323MB of RAG corpus/index data and is NOT needed in
 # the image (the runner only copies scripts/drawing-to-3d + engineering-core).
 scripts/knowledge-crawler/
+services/openscad-worker/
 adminlink/
 playwright-report/
 e2e/

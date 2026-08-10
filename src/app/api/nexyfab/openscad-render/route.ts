@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const job = await enqueueOpenScadJob({ userId: userId, scad, format });
+  const job = await enqueueOpenScadJob({ userId: userId, scad, format, ...(importStl ? { importStl } : {}) });
   if (job.status === 'failed') {
     return NextResponse.json(
       { error: job.errorMessage ?? 'OpenSCAD worker unavailable', code: 'OPENSCAD_WORKER_UNAVAILABLE' },

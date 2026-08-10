@@ -77,8 +77,8 @@ export async function verifyStlBuffer(buf: Buffer): Promise<GeometryStats> {
  * memory only for the duration of the render — no disk persistence.
  */
 export const serverRenderAdapter: RenderAdapter = async (scad) => {
-  const { runOpenScadCli } = await import('../../openscad-render/runOpenScadCli');
-  const out = await runOpenScadCli({ scadSource: scad, format: 'stl' });
+  const { executeOpenScad } = await import('../../openscad-render/executeOpenScad');
+  const out = await executeOpenScad({ scadSource: scad, format: 'stl' });
   if (!out.ok) {
     const parsed = parseScadStderr(out.stderr || out.message || 'unknown error');
     return {

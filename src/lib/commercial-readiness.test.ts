@@ -7,6 +7,8 @@ const base = {
   UPSTASH_REDIS_REST_URL: 'https://redis.example.com',
   UPSTASH_REDIS_REST_TOKEN: 'redis-rest-token',
   NEXYFAB_CAD_INDEPENDENT_MODE: '1',
+  OPENSCAD_EXTERNAL_WORKER: '1',
+  CAD_RUNTIME_EXTERNAL_WORKER: '1',
   S3_BUCKET: 'cad-private',
   S3_ACCESS_KEY_ID: 'key',
   S3_SECRET_ACCESS_KEY: 'secret',
@@ -46,6 +48,18 @@ describe('commercialReadinessIssues', () => {
     expect(issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
       'rate_limit.redis_required',
       'cad_mode.independent_required',
+    ]));
+  });
+
+  it('requires every native CAD executable to stay outside the web service', () => {
+    const issues = commercialReadinessIssues({
+      ...base,
+      OPENSCAD_EXTERNAL_WORKER: '0',
+      CAD_RUNTIME_EXTERNAL_WORKER: '',
+    });
+    expect(issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
+      'cad_runtime.openscad_isolation_required',
+      'cad_runtime.native_isolation_required',
     ]));
   });
 

@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan } from '@/lib/plan-guard';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
-import { runOpenScadCli } from '@/lib/openscad-render/runOpenScadCli';
+import { executeOpenScad } from '@/lib/openscad-render/executeOpenScad';
 import { verifyStlBuffer } from '@/lib/ai/scad-agent/serverAdapters';
 import {
   verifyAgainstSpec,
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ErrorResponse
 
   // Render synchronously — the verify use-case is a single-shot, panel-bound
   // interaction. Long-running renders should use the async pipeline.
-  const render = await runOpenScadCli({ scadSource: scad, format: 'stl' });
+  const render = await executeOpenScad({ scadSource: scad, format: 'stl', userId: planCheck.userId });
   if (!render.ok) {
     const stderr = 'stderr' in render && render.stderr ? `\n${render.stderr}` : '';
     return err(`OpenSCAD render failed: ${render.message}${stderr}`, 502, render.code);

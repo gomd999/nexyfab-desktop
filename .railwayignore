@@ -34,6 +34,7 @@ out
 # while preserving the build/runtime scripts and the separate local MCP tools.
 docs
 scripts/knowledge-crawler
+services/openscad-worker
 validation-reports
 test-results
 

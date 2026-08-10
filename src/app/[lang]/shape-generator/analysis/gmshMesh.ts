@@ -242,7 +242,18 @@ export interface GmshMeshOptions {
 /** Probe whether the gmsh binary resolves. Returns the resolved path, or null
  *  if absent (ENOENT) / not runnable. Used by tests to skip the gmsh-only case
  *  with a clear message on hosts where gmsh is not installed. */
-export function resolveGmshBinary(timeoutMs = 10_000): Promise<string | null> {
+export async function resolveGmshBinary(timeoutMs = 10_000): Promise<string | null> {
+  if (process.env.CAD_RUNTIME_EXTERNAL_WORKER === '1') {
+    try {
+      const { runCadRuntimeJob } = await import('@/lib/cad-runtime/redisCadRuntimeJobs');
+      const result = await runCadRuntimeJob({ kind: 'tool-readiness', tool: 'gmsh' }, timeoutMs + 5000);
+      return result.kind === 'tool-readiness' && result.tool === 'gmsh' && result.ready
+        ? 'isolated-cad-runtime-worker'
+        : null;
+    } catch {
+      return null;
+    }
+  }
   const bin = gmshBinary();
   return new Promise((resolve) => {
     execFile(bin, ['--version'], { timeout: timeoutMs, windowsHide: true }, (err) => {
@@ -356,6 +367,28 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
     ranOk: boolean; log: string; errCode?: string; exitCode: number | null; killed: boolean; signal?: string;
   }> => {
     await writeFile(geoPath, geoText, 'utf8');
+    if (process.env.CAD_RUNTIME_EXTERNAL_WORKER === '1') {
+      try {
+        const { runCadRuntimeJob } = await import('@/lib/cad-runtime/redisCadRuntimeJobs');
+        const result = await runCadRuntimeJob({
+          kind: 'gmsh',
+          stlBase64: Buffer.from(stl.buffer, stl.byteOffset, stl.byteLength).toString('base64'),
+          geoText,
+          timeoutMs,
+          maxOutputBytes: 64 * 1024 * 1024,
+        }, timeoutMs + 20_000);
+        if (result.kind !== 'gmsh') {
+          return { ranOk: false, log: 'CAD runtime returned the wrong result type', errCode: 'WORKER_RESULT', exitCode: null, killed: false };
+        }
+        if (result.exitCode !== 0 || !result.mshBase64) {
+          return { ranOk: false, log: result.log, errCode: result.error ?? 'WORKER_EXIT', exitCode: result.exitCode, killed: result.error === 'execution_timeout' };
+        }
+        await writeFile(mshPath, Buffer.from(result.mshBase64, 'base64'));
+        return { ranOk: true, log: result.log, exitCode: 0, killed: false };
+      } catch (error) {
+        return { ranOk: false, log: error instanceof Error ? error.message : String(error), errCode: 'WORKER_UNAVAILABLE', exitCode: null, killed: false };
+      }
+    }
     return new Promise((resolve) => {
       // `-nopopup` suppresses any GUI/error dialog in batch mode; `-v 3` keeps
       // Error+Warning lines in the stream so extractGmshError can surface the

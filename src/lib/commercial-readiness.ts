@@ -27,6 +27,12 @@ export function commercialReadinessIssues(env: Env): CommercialReadinessIssue[] 
 
   requireKey('DATABASE_URL', 'database.postgres_required', 'commercial traffic requires PostgreSQL');
   requireKey('REDIS_URL', 'rate_limit.redis_required', 'distributed rate limits and job state must be shared');
+  if (env.OPENSCAD_EXTERNAL_WORKER !== '1') {
+    issues.push({ code: 'cad_runtime.openscad_isolation_required', message: 'OPENSCAD_EXTERNAL_WORKER must be 1 so the web service never executes OpenSCAD directly' });
+  }
+  if (env.CAD_RUNTIME_EXTERNAL_WORKER !== '1') {
+    issues.push({ code: 'cad_runtime.native_isolation_required', message: 'CAD_RUNTIME_EXTERNAL_WORKER must be 1 so Gmsh and Radiance execute only in the isolated worker' });
+  }
   const hasUpstashUrl = has(env, 'UPSTASH_REDIS_REST_URL');
   const hasUpstashToken = has(env, 'UPSTASH_REDIS_REST_TOKEN');
   if (hasUpstashUrl !== hasUpstashToken) {
