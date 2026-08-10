@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, request as requestFactory, test } from '@playwright/test';
+import { assertStagingMutationSafety } from './helpers/staging-safety';
 
 type Credentials = { email: string; password: string };
 
@@ -23,6 +24,12 @@ test('authenticated project → CAD verify → reconnect → expert workspace �
     : null;
   if (receiptPath && fs.existsSync(receiptPath)) fs.unlinkSync(receiptPath);
   const account = credentials();
+  assertStagingMutationSafety({
+    baseURL,
+    confirmation: process.env.E2E_STAGING_MUTATION_CONFIRM,
+    accountEmails: [account.email],
+    tenantMarker: process.env.E2E_STAGING_TENANT_MARKER ?? 'e2e',
+  });
   const api = await requestFactory.newContext({
     baseURL,
     extraHTTPHeaders: { origin: baseURL, 'user-agent': 'NexyFab-Commercial-E2E/1.0' },

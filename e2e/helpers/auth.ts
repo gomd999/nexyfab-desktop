@@ -1,4 +1,5 @@
 import type { APIRequestContext, BrowserContext, Page } from '@playwright/test';
+import { assertStagingMutationSafety } from './staging-safety';
 
 /**
  * E2E auth helper: signs up a fresh test user and returns the cookies that
@@ -87,7 +88,14 @@ export async function authenticatedRequest(
   request: APIRequestContext,
   baseURL: string,
 ): Promise<{ context: APIRequestContext; user: TestUser } | null> {
-  const { user, ok, cookieHeader } = await signupViaApi(request);
+  const user = makeTestUser();
+  assertStagingMutationSafety({
+    baseURL,
+    confirmation: process.env.E2E_STAGING_MUTATION_CONFIRM,
+    accountEmails: [user.email],
+    tenantMarker: 'e2e',
+  });
+  const { ok, cookieHeader } = await signupViaApi(request, user);
   if (!ok || !cookieHeader) return null;
 
   // Build storage state from the Set-Cookie header so the new context
@@ -159,6 +167,12 @@ function parseSetCookies(header: string, baseURL: string): ParsedCookie[] {
 /** UI helper: signup via the page, optionally seeding tutorial state first. */
 export async function signupViaUi(page: Page, user: TestUser = makeTestUser()): Promise<TestUser> {
   await page.goto('/en/?auth=signup');
+  assertStagingMutationSafety({
+    baseURL: new URL(page.url()).origin,
+    confirmation: process.env.E2E_STAGING_MUTATION_CONFIRM,
+    accountEmails: [user.email],
+    tenantMarker: 'e2e',
+  });
   const emailInput = page.locator('input[type="email"]').first();
   const passwordInput = page.locator('input[type="password"]').first();
   if (await emailInput.isVisible({ timeout: 5000 }).catch(() => false)) {
