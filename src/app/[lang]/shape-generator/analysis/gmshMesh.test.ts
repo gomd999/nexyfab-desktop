@@ -68,7 +68,7 @@ describe('gmshMesh — MSH 2.2 parser (A: runs locally, no binary)', () => {
     const sizing = gmshSizingForBBox({ dx: 8, dy: 120, dz: 200 });
     expect(sizing.nearMm).toBeCloseTo(0.4, 8);
     expect(sizing.farMm).toBeCloseTo(6, 8);
-    expect(sizing.curvatureElements).toBe(12);
+    expect(sizing.curvatureElements).toBe(16);
     expect(sizing.extendFromBoundary).toBe(false);
   });
 
