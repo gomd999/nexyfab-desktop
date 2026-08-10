@@ -33,6 +33,8 @@ export interface OpenScadJobRecord {
 interface PendingPayload {
   scad: string;
   format: OpenScadMeshFormat;
+  importStl?: Uint8Array;
+  renderArgs?: string[];
 }
 
 const jobs = new Map<string, OpenScadJobRecord>();
@@ -48,7 +50,7 @@ function externalWorkerEnabled(): boolean {
   return process.env.OPENSCAD_EXTERNAL_WORKER === '1';
 }
 
-function toSerialized(job: OpenScadJobRecord, scad?: string): SerializedOpenScadJob {
+function toSerialized(job: OpenScadJobRecord, scad?: string, importStl?: Uint8Array, renderArgs?: string[]): SerializedOpenScadJob {
   return {
     id: job.id,
     userId: job.userId,
@@ -57,6 +59,8 @@ function toSerialized(job: OpenScadJobRecord, scad?: string): SerializedOpenScad
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
     ...(scad !== undefined ? { scad } : {}),
+    ...(importStl?.byteLength ? { importStlBase64: Buffer.from(importStl).toString('base64') } : {}),
+    ...(renderArgs?.length ? { renderArgs } : {}),
     resultBase64: job.resultBase64,
     artifactKey: job.artifactKey,
     artifactUrl: job.artifactUrl,
@@ -113,7 +117,12 @@ async function resolveJobAndPayload(
   const ser = await redisOpenscadLoadJob(id);
   if (!ser?.scad) return null;
   const j = fromSerialized(ser);
-  const pl: PendingPayload = { scad: ser.scad, format: ser.format };
+  const pl: PendingPayload = {
+    scad: ser.scad,
+    format: ser.format,
+    ...(ser.importStlBase64 ? { importStl: Uint8Array.from(Buffer.from(ser.importStlBase64, 'base64')) } : {}),
+    ...(ser.renderArgs?.length ? { renderArgs: ser.renderArgs } : {}),
+  };
   jobs.set(id, j);
   payloads.set(id, pl);
   return { job: j, payload: pl };
@@ -133,11 +142,13 @@ async function runWorkerLoop(): Promise<void> {
 
       job.status = 'processing';
       job.updatedAt = Date.now();
-      await redisOpenscadSaveJob(toSerialized(job, payload.scad));
+      await redisOpenscadSaveJob(toSerialized(job, payload.scad, payload.importStl, payload.renderArgs));
 
       const r = await runOpenScadCli({
         scadSource: payload.scad,
         format: payload.format,
+        importStl: payload.importStl,
+        renderArgs: payload.renderArgs,
       });
 
       payloads.delete(id);
@@ -189,6 +200,8 @@ export async function enqueueOpenScadJob(input: {
   userId: string;
   scad: string;
   format: OpenScadMeshFormat;
+  importStl?: Uint8Array;
+  renderArgs?: string[];
 }): Promise<OpenScadJobRecord> {
   pruneJobs();
   const id = `oscad-${randomBytes(12).toString('hex')}`;
@@ -202,10 +215,15 @@ export async function enqueueOpenScadJob(input: {
     updatedAt: now,
   };
   jobs.set(id, job);
-  payloads.set(id, { scad: input.scad, format: input.format });
+  payloads.set(id, {
+    scad: input.scad,
+    format: input.format,
+    ...(input.importStl ? { importStl: input.importStl } : {}),
+    ...(input.renderArgs?.length ? { renderArgs: input.renderArgs } : {}),
+  });
 
   if (redisQueueEnabled()) {
-    const saved = await redisOpenscadSaveJob(toSerialized(job, input.scad));
+    const saved = await redisOpenscadSaveJob(toSerialized(job, input.scad, input.importStl, input.renderArgs));
     if (saved) {
       const queued = await redisOpenscadQueuePush(id);
       if (!queued && externalWorkerEnabled()) {

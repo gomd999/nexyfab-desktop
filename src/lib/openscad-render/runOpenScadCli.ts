@@ -12,7 +12,7 @@ import { OPENSCAD_DEFAULT_TIMEOUT_MS, OPENSCAD_MAX_SCAD_BYTES } from './constant
 import { resolveOpenScadExecutable } from './resolveOpenScadExecutable';
 import { validateScadExecutionSource } from './sourceSecurity';
 
-export type OpenScadMeshFormat = 'stl' | 'off' | '3mf';
+export type OpenScadMeshFormat = 'stl' | 'off' | '3mf' | 'dxf' | 'png';
 
 /**
  * Runs OpenSCAD CLI in an isolated temp directory.
@@ -26,6 +26,8 @@ export async function runOpenScadCli(opts: {
   /** Optional STL bytes written to the work dir as `model.stl` so the source
    *  can `import("model.stl")` — lets users attach an STL and modify it. */
   importStl?: Uint8Array;
+  /** Internal, allow-listed renderer flags (camera/image size/binary STL). */
+  renderArgs?: string[];
 }): Promise<
   | { ok: true; buffer: Buffer; stderr: string }
   | { ok: false; code: 'ENOENT' | 'TIMEOUT' | 'EXIT' | 'TOO_LARGE' | 'MISSING_OUTPUT'; message: string; stderr?: string }
@@ -59,7 +61,7 @@ export async function runOpenScadCli(opts: {
   const id = randomBytes(12).toString('hex');
   const workDir = join(tmpdir(), `nf-openscad-${id}`);
   const scadPath = join(workDir, 'model.scad');
-  const ext = opts.format === 'stl' ? 'stl' : opts.format === '3mf' ? '3mf' : 'off';
+  const ext = opts.format;
   const outPath = join(workDir, `out.${ext}`);
   const bin = resolveOpenScadExecutable();
 
@@ -90,6 +92,7 @@ export async function runOpenScadCli(opts: {
             '/work/model.scad',
             '-o',
             `/work/out.${ext}`,
+            ...(opts.renderArgs ?? []),
           ],
           {
             cwd: workDir,
@@ -99,7 +102,7 @@ export async function runOpenScadCli(opts: {
             env: process.env,
           },
         )
-      : await execFileAsync(bin, [scadPath, '-o', outPath], {
+      : await execFileAsync(bin, [scadPath, '-o', outPath, ...(opts.renderArgs ?? [])], {
           cwd: workDir,
           timeout: timeoutMs,
           windowsHide: true,

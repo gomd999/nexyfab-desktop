@@ -42,6 +42,9 @@ export interface SerializedOpenScadJob {
   updatedAt: number;
   /** Present while queued/processing; stripped after completion. */
   scad?: string;
+  /** Optional, bounded STL attachment available to SCAD only as model.stl. */
+  importStlBase64?: string;
+  renderArgs?: string[];
   resultBase64?: string;
   artifactKey?: string;
   artifactUrl?: string;

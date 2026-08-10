@@ -22,6 +22,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OPENSCAD_MAX_SCAD_BYTES } from './constants';
 import { resolveOpenScadExecutable } from './resolveOpenScadExecutable';
+import { executeOpenScad } from './executeOpenScad';
 
 export interface CameraView {
   /** Short label shown to the vision model (e.g. "Isometric"). */
@@ -64,6 +65,23 @@ export async function renderScadToPng(opts: {
 
   if (Buffer.byteLength(opts.scadSource, 'utf8') > OPENSCAD_MAX_SCAD_BYTES) {
     return { ok: false, code: 'TOO_LARGE', message: `OpenSCAD source exceeds ${OPENSCAD_MAX_SCAD_BYTES} bytes` };
+  }
+
+  if (process.env.OPENSCAD_EXTERNAL_WORKER === '1') {
+    const rendered: { label: string; bytes: Buffer }[] = [];
+    for (const view of views) {
+      const result = await executeOpenScad({
+        scadSource: opts.scadSource,
+        format: 'png',
+        timeoutMs,
+        renderArgs: [`--imgsize=${w},${h}`, `--camera=${view.camera}`, `--colorscheme=${colorScheme}`],
+      });
+      if (!result.ok) {
+        return { ok: false, code: result.code, message: result.message, ...(result.stderr ? { stderr: result.stderr } : {}) };
+      }
+      rendered.push({ label: view.label, bytes: result.buffer });
+    }
+    return { ok: true, views: rendered };
   }
 
   const id = randomBytes(8).toString('hex');

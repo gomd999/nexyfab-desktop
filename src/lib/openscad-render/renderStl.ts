@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OPENSCAD_MAX_SCAD_BYTES } from './constants';
 import { resolveOpenScadExecutable } from './resolveOpenScadExecutable';
+import { executeOpenScad } from './executeOpenScad';
 
 export interface StlRenderOk {
   ok: true;
@@ -39,6 +40,18 @@ export async function renderScadToStl(opts: {
 
   if (Buffer.byteLength(opts.scadSource, 'utf8') > OPENSCAD_MAX_SCAD_BYTES) {
     return { ok: false, code: 'TOO_LARGE', message: `OpenSCAD source exceeds ${OPENSCAD_MAX_SCAD_BYTES} bytes` };
+  }
+
+  if (process.env.OPENSCAD_EXTERNAL_WORKER === '1') {
+    const result = await executeOpenScad({
+      scadSource: opts.scadSource,
+      format: 'stl',
+      timeoutMs,
+      renderArgs: ['--export-format=binstl'],
+    });
+    return result.ok
+      ? { ok: true, bytes: result.buffer }
+      : { ok: false, code: result.code, message: result.message, ...(result.stderr ? { stderr: result.stderr } : {}) };
   }
 
   const id = randomBytes(8).toString('hex');

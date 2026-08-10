@@ -27,7 +27,7 @@ export async function maybeUploadOpenScadArtifact(opts: {
 
   try {
     const storage = getStorage();
-    const ext = opts.format === 'off' ? 'off' : 'stl';
+    const ext = opts.format;
     const fname = `${opts.jobId}.${ext}`;
     const dir = `openscad-artifacts/${opts.userId}`;
     const { key, url } = await storage.upload(opts.buffer, fname, dir);
