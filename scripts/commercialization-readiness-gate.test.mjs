@@ -4,7 +4,8 @@ import { evaluateCommercializationReadiness } from './commercialization-readines
 
 const domains = Object.fromEntries(['mechanical', 'building', 'civil', 'landscape', 'interior'].map(domain => [domain, { releaseEligible: true }]));
 const passing = {
-  releaseBaseline: { release: { branch: 'release/test', baselineStatus: 'committed', workingTreeChanges: 0, deploymentId: 'd', buildId: 'b', rollbackDeploymentId: 'r', dockerImageDigest: 'sha256:x', railwayIgnore: { missing: [] } } },
+  currentRelease: { branch: 'release/test', head: 'head-1' },
+  releaseBaseline: { release: { branch: 'release/test', head: 'head-1', baselineStatus: 'committed', workingTreeChanges: 0, deploymentId: 'd', buildId: 'b', rollbackDeploymentId: 'r', dockerImageDigest: 'sha256:x', railwayIgnore: { missing: [] } } },
   closedBeta: { ok: true, differences: [] }, liveSmoke: { status: 'pass' },
   productionProtectedState: { ok: true }, openscadHttpSmoke: { ok: true }, authenticatedE2E: { ok: true },
   resourceBaseline: { assessment: { currentMaxWithinTarget: true } },
@@ -29,4 +30,13 @@ test('keeps private beta and GA fail-closed independently', () => {
   assert.equal(result.privateBeta.eligible, false);
   assert.ok(result.privateBeta.blockers.includes('production_smoke_not_passed'));
   assert.ok(result.commercialGa.blockers.includes('independent_holdout_not_eligible:mechanical'));
+});
+
+test('blocks a committed baseline that does not describe the current release head', () => {
+  const input = structuredClone(passing);
+  input.currentRelease.head = 'head-2';
+  const result = evaluateCommercializationReadiness(input);
+  assert.equal(result.privateBeta.eligible, false);
+  assert.ok(result.privateBeta.blockers.includes('release_baseline_head_mismatch'));
+  assert.ok(result.commercialGa.blockers.includes('release_baseline_head_mismatch'));
 });

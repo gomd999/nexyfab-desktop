@@ -1,12 +1,15 @@
 {
   "schema": "nexyfab.commercialization-readiness.v1",
   "privateBeta": {
-    "eligible": true,
-    "blockers": []
+    "eligible": false,
+    "blockers": [
+      "release_baseline_head_mismatch"
+    ]
   },
   "commercialGa": {
     "eligible": false,
     "blockers": [
+      "release_baseline_head_mismatch",
       "independent_holdout_not_eligible:mechanical",
       "independent_holdout_not_eligible:building",
       "independent_holdout_not_eligible:civil",
@@ -16,7 +19,7 @@
       "expert_review_receipt_missing"
     ]
   },
-  "generatedAt": "2026-08-10T12:05:19.541Z",
+  "generatedAt": "2026-08-10T12:56:38.045Z",
   "evidence": {
     "routeSecurityMatrix": "pass",
     "cadApiControls": "pass",

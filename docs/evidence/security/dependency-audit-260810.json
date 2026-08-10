@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab-dependency-audit-v1",
-  "generatedAt": "2026-08-10T07:09:39.465Z",
+  "generatedAt": "2026-08-10T12:29:58.452Z",
   "command": "npm audit --audit-level=low --json",
   "packageLockSha256": "12fd26ea7736e4fe7d693239cfedc14f145c97a82d34293c0f02907fc5046032",
   "status": "pass",

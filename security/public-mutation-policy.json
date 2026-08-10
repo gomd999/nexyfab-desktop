@@ -56,7 +56,6 @@
         "/api/nexyfab/drawing/fab",
         "/api/nexyfab/drawing/face-drag",
         "/api/nexyfab/drawing/face-map",
-        "/api/nexyfab/drawing/fea-quick",
         "/api/nexyfab/drawing/flow",
         "/api/nexyfab/drawing/hlr",
         "/api/nexyfab/drawing/import-contours",

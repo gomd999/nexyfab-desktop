@@ -463,3 +463,14 @@ WP11~WP20의 세부 입력·구현·검증·수치 기준은 [성능·보안·5�
 - Commercial GA는 계속 `eligible=false`다. 기계·건축·토목·조경·인테리어 5개 분야의 승인된 독립 holdout, 7일 운영 영수증, 전문가 검토 영수증이 없으므로 총 7개 blocker를 유지한다.
 - 중단 직전 P0 범위의 Vitest 10파일/91테스트와 전체 TypeScript typecheck가 통과했다. 외부 증거가 필요한 GA blocker는 임의로 승격하지 않았다.
 - 현재 판정: `private_beta_eligible_commercial_ga_blocked`. 다음 단계는 실제 운영 7일 수집과 신뢰 가능한 외부 검토자·holdout 입력 확보이며, 해당 외부 입력 전에는 GA 판정을 변경하지 않는다.
+
+#### WP21 상세 릴리스 재감사 — 2026-08-10
+
+- 재감사에서 기존 `commercialization:gate`가 release baseline 내부의 `committed` 표지만 검사하고 현재 Git HEAD를 비교하지 않는 fail-open을 발견했다. 배포 baseline은 `07d83a8f1904827322beb5125c66d238b84bf793`, 현재 release HEAD는 `ae6c3194199f641db46f4ba51f0ffa44eaa4efa6`여서 직전 P0 변경이 배포 증거에 포함되지 않았다.
+- 게이트가 현재 `.git/HEAD`와 loose/packed ref를 직접 읽어 branch와 full SHA를 baseline에 대조하도록 수정했다. 불일치 시 Private Beta와 GA 모두 `release_baseline_head_mismatch`로 차단한다. 회귀 테스트 3/3이 통과했고 현재 Private Beta 판정은 이전 기록을 정정해 `eligible=false`다.
+- stale 증거를 재결속했다. kernel identity는 제조 패키지 승인 게이트의 최신 SHA-256을 반영했고, CAD API는 59 route/59 handler/issues 0, route security matrix는 547 route file/759 handler/unknown 0/gap 0이다. 인증 필수로 바뀐 `drawing/fea-quick`을 public mutation 예외에서 제거했다. secret scan은 findings 0, dependency audit은 취약점 0, SBOM은 1,005 components/1,006 dependencies, license check는 684 package를 통과했다.
+- 검증: P0 회귀 10파일/91개, 최종 Node 270/270, 공통·5분야 정확도 448개, commercialization gate 회귀 3개, 전체 TypeScript와 ESLint가 통과했다. 전체 단일 Vitest는 10분 제한 내 종료되지 않아 완료 판정에 사용하지 않았고, 핵심 묶음을 분할 실행했다.
+- production build: stale `.next` 상태에서 webpack 내부 `undefined.length`가 발생했으나 생성물 경로를 검증해 삭제한 뒤 clean build가 성공했다. Next 16.3.0 compile 3.4분, TypeScript 2.1분, static 291/291, standalone/postbuild 완료, shared 721.7KB/781.3KB와 worst first-paint 1,580.1KB/1,660.2KB로 예산을 통과했다.
+- 절차 차단기: 직전 P0 3건의 전용 ADR, 24시간 자기검토 완료, 새 HEAD 기준 staging smoke와 production canary 영수증을 확인하지 못했다. 기존 배포·복원·smoke 영수증을 새 HEAD에 재사용하지 않는다. 운영 Redis 미설정 로컬 경고도 production 환경에서 별도 확인한다.
+- 최종 판정: `local_build_and_core_regression_pass_release_blocked`. 새 HEAD를 실제 staging에서 검증하고 P0 절차·배포·rollback/canary 증거를 새 baseline에 결속하기 전에는 Private Beta 승격 또는 운영 배포를 진행하지 않는다. GA는 여기에 5개 분야 독립 holdout, 7일 운영, 전문가 검토 증거가 추가로 필요하다.
+- 이번 게이트 수정의 결정과 롤백 조건은 [ADR-018](./adr/018-bind-release-evidence-to-current-head.md)에 기록했다. 이 ADR은 이번 수정만 다루며 직전 P0 3건의 사전 ADR 및 24시간 자기검토 누락을 소급 해소하지 않는다.

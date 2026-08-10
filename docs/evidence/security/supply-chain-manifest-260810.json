@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab-supply-chain-manifest-v1",
-  "generatedAt": "2026-08-10T07:09:51.590Z",
+  "generatedAt": "2026-08-10T12:30:09.820Z",
   "status": "pass",
   "sbom": {
     "format": "CycloneDX",
@@ -30,12 +30,12 @@
     {
       "path": "docs/evidence/security/dependency-audit-260810.json",
       "bytes": 514,
-      "sha256": "4d99652f7fc7c5c16bb64bb111357b2f6eff428b2ad737580482a1547c2da89f"
+      "sha256": "3f111dfffa1fe6b75c98f05f9d1fa43541cb03f2c30b3276d2103e702fd283ca"
     },
     {
       "path": "docs/evidence/cad-independent/kernel-stack-identity.json",
       "bytes": 12299,
-      "sha256": "7dbea1449618e93708511fda84f021137cdc50c96067c4619e5bbc12aba1d60c"
+      "sha256": "91627f848ee6bcdd4694fa61297eb20829503afe3e99164d2d006cc96feae765"
     },
     {
       "path": "src/content/third-party-notices.generated.json",

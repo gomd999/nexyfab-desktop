@@ -5,6 +5,36 @@ import { pathToFileURL } from 'node:url';
 
 const DOMAINS = ['mechanical', 'building', 'civil', 'landscape', 'interior'];
 
+export function readGitIdentity(root = process.cwd()) {
+  const dotGit = path.join(root, '.git');
+  let gitDir = dotGit;
+  if (fs.existsSync(dotGit) && fs.statSync(dotGit).isFile()) {
+    const pointer = fs.readFileSync(dotGit, 'utf8').trim();
+    if (!pointer.startsWith('gitdir:')) return { branch: null, head: null };
+    gitDir = path.resolve(root, pointer.slice('gitdir:'.length).trim());
+  }
+  if (!fs.existsSync(gitDir)) return { branch: null, head: null };
+
+  const headValue = fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim();
+  if (!headValue.startsWith('ref:')) return { branch: null, head: headValue || null };
+  const ref = headValue.slice('ref:'.length).trim();
+  const looseRef = path.join(gitDir, ...ref.split('/'));
+  let head = fs.existsSync(looseRef) ? fs.readFileSync(looseRef, 'utf8').trim() : '';
+  if (!head) {
+    const packedRefs = path.join(gitDir, 'packed-refs');
+    if (fs.existsSync(packedRefs)) {
+      const row = fs.readFileSync(packedRefs, 'utf8')
+        .split(/\r?\n/)
+        .find(line => !line.startsWith('#') && !line.startsWith('^') && line.endsWith(` ${ref}`));
+      head = row?.split(' ')[0] ?? '';
+    }
+  }
+  return {
+    branch: ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : ref,
+    head: head || null,
+  };
+}
+
 export function evaluateCommercializationReadiness(input) {
   const privateBetaBlockers = [];
   const gaBlockers = [];
@@ -12,7 +42,13 @@ export function evaluateCommercializationReadiness(input) {
   const blockGa = value => gaBlockers.push(value);
 
   const release = input.releaseBaseline?.release ?? {};
+  const currentRelease = input.currentRelease ?? {};
   if (!String(release.branch ?? '').startsWith('release/')) blockPrivate('release_branch_not_fixed');
+  if (!currentRelease.branch || !currentRelease.head) blockPrivate('current_release_identity_unavailable');
+  else {
+    if (release.branch !== currentRelease.branch) blockPrivate('release_baseline_branch_mismatch');
+    if (release.head !== currentRelease.head) blockPrivate('release_baseline_head_mismatch');
+  }
   if (release.baselineStatus !== 'committed' || release.workingTreeChanges !== 0) blockPrivate('release_candidate_not_committed');
   for (const field of ['deploymentId', 'buildId', 'rollbackDeploymentId', 'dockerImageDigest']) {
     if (!release[field]) blockPrivate(`release_identity_missing:${field}`);
@@ -63,6 +99,7 @@ async function main() {
   const secretScan = readJson(process.env.SECRET_SCAN_EVIDENCE ?? 'docs/evidence/security/secret-scan-260810.json');
   const dependencyAudit = readJson(process.env.DEPENDENCY_AUDIT_EVIDENCE ?? 'docs/evidence/security/dependency-audit-260810.json');
   const result = evaluateCommercializationReadiness({
+    currentRelease: readGitIdentity(),
     releaseBaseline: readJson(process.env.RELEASE_BASELINE ?? 'docs/evidence/release/commercial-release-baseline-current.json'),
     closedBeta: readJson(process.env.CLOSED_BETA_COMPARISON ?? 'docs/evidence/release/closed-beta-integrity-commercial-release-260810.json'),
     productionProtectedState: optionalJson(process.env.PRODUCTION_PROTECTED_STATE_RECEIPT ?? 'docs/evidence/release/production-protected-state-receipt.json'),

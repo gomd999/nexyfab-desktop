@@ -118,8 +118,8 @@
     {
       "path": "src/app/[lang]/shape-generator/io/manufacturingPackage.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 10866,
-      "sha256": "19bc2af938ff2b6d4dae5005fa22ff9e5ad091dc555930d53df9271b40d05a05"
+      "bytes": 11966,
+      "sha256": "54c75612e3b3d5fc1a3c9e746f1da7db71237915ef714fa71e56fb4f7dcc9762"
     },
     {
       "path": "src/lib/ai/robot/robotPostIntegrationEvidence.ts",
@@ -338,5 +338,5 @@
       "sha256": "50d0f0cd4bacadf24b337c8e36784d834a14cdeee175fc6b1850df12fe017c9f"
     }
   ],
-  "identitySha256": "74f8df6b08da8d28a50b81fcc1950caa004ceb3e69dde97e78c67ca5c3771743"
+  "identitySha256": "422d8a296f15d731fd9b3212aa942c086f72cfa22aab44a21f152fb6558e951f"
 }
