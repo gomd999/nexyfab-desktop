@@ -17,6 +17,7 @@ import { PaidBetaBanner } from '@/components/PaidBetaBanner';
 import WebVitalsReporter from '@/components/WebVitalsReporter';
 import Script from 'next/script';
 import { getAdminSettings } from '@/lib/adminSettings';
+import { resolvePrerenderLocales } from '@/lib/prerenderLocales';
 
 const inter = Inter({
     subsets: ['latin'],
@@ -60,8 +61,15 @@ export const viewport: import('next').Viewport = {
 };
 
 export async function generateStaticParams() {
-    return [{ lang: 'kr' }, { lang: 'en' }, { lang: 'ja' }, { lang: 'cn' }, { lang: 'es' }, { lang: 'ar' }];
+    return resolvePrerenderLocales(
+        process.env.NEXYFAB_PRERENDER_LOCALES,
+        process.env.TAURI === 'true',
+    ).map(lang => ({ lang }));
 }
+
+// Locales not pre-rendered above remain globally available and are generated
+// on first request, then cached by Next.js. This is the documented subset mode.
+export const dynamicParams = true;
 
 export default async function LangLayout({
     children,

@@ -304,8 +304,8 @@
     {
       "path": "src/lib/commercial-readiness.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 3107,
-      "sha256": "407a3d1aee7778159ad76bf50da4b290f31d9cfa3807a077c1caed04918578a8"
+      "bytes": 3554,
+      "sha256": "1a95ec64690b95367ba4ad2c297545259dabd5e1a6f6517a022850c0d82aeb75"
     },
     {
       "path": "src/app/api/docs/openapi/route.ts",
@@ -338,5 +338,5 @@
       "sha256": "50d0f0cd4bacadf24b337c8e36784d834a14cdeee175fc6b1850df12fe017c9f"
     }
   ],
-  "identitySha256": "f2762da2db12575a13dfa85c733f9c900ae43629886c5290131d6e713da36a1a"
+  "identitySha256": "74f8df6b08da8d28a50b81fcc1950caa004ceb3e69dde97e78c67ca5c3771743"
 }

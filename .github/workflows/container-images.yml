@@ -1,0 +1,80 @@
+name: Immutable web and CAD runtime images
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [release/2026-08-10, main, master]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'scripts/drawing-to-3d/**'
+      - 'scripts/engineering-core/**'
+      - 'services/openscad-worker/**'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'next.config.ts'
+      - 'railway.json'
+      - 'railway.toml'
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: container-images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: names
+        name: Normalize registry names
+        shell: bash
+        run: |
+          echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          echo "repo=${repo_name,,}" >> "$GITHUB_OUTPUT"
+      - name: Build and push immutable web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ steps.names.outputs.owner }}/${{ steps.names.outputs.repo }}-web:${{ github.sha }}
+            ghcr.io/${{ steps.names.outputs.owner }}/${{ steps.names.outputs.repo }}-web:release-candidate
+          cache-from: type=gha,scope=nexyfab-web
+          cache-to: type=gha,mode=max,scope=nexyfab-web
+      - name: Build and push pinned native CAD base
+        uses: docker/build-push-action@v6
+        with:
+          context: services/openscad-worker
+          file: services/openscad-worker/Dockerfile
+          target: cad-runtime-base
+          push: true
+          tags: ghcr.io/${{ steps.names.outputs.owner }}/${{ steps.names.outputs.repo }}-cad-runtime-base:${{ github.sha }}
+          cache-from: type=gha,scope=nexyfab-cad-runtime-base
+          cache-to: type=gha,mode=max,scope=nexyfab-cad-runtime-base
+      - name: Build and push worker on the pinned base
+        uses: docker/build-push-action@v6
+        with:
+          context: services/openscad-worker
+          file: services/openscad-worker/Dockerfile.prebuilt
+          push: true
+          build-args: CAD_RUNTIME_BASE_IMAGE=ghcr.io/${{ steps.names.outputs.owner }}/${{ steps.names.outputs.repo }}-cad-runtime-base:${{ github.sha }}
+          tags: |
+            ghcr.io/${{ steps.names.outputs.owner }}/${{ steps.names.outputs.repo }}-cad-runtime:${{ github.sha }}
+            ghcr.io/${{ steps.names.outputs.owner }}/${{ steps.names.outputs.repo }}-cad-runtime:release-candidate
+          cache-from: type=gha,scope=nexyfab-cad-runtime-app
+          cache-to: type=gha,mode=max,scope=nexyfab-cad-runtime-app

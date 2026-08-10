@@ -58,6 +58,13 @@ const nextConfig: NextConfig = {
       './test-results/**/*',
       './playwright-report/**/*',
       './validation-reports/**/*',
+      // Mutable local/volume state is never a deploy artifact. These files
+      // may exist while a local build is running, and broad fs/path calls can
+      // otherwise make Next's standalone tracer copy hundreds of MB (or a
+      // developer database) into the server image.
+      './data/**/*',
+      './nexyfab.db',
+      './nexyfab.db-*',
     ],
   },
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
