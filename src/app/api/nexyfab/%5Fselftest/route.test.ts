@@ -19,7 +19,9 @@ vi.mock('./fixtures', () => ({
     holeRadiusMm: 10,
     lengthMm: 200,
     totalLoadN: 100_000,
-    nominalMPa: () => 125, // 100000 / ((120 - 20) * 8)
+    grossNominalMPa: () => 100,
+    netNominalMPa: () => 125,
+    howlandKtNet: () => 2.5,
   },
 }));
 
@@ -69,7 +71,7 @@ describe('_selftest route — security contract', () => {
 describe('_selftest route — fea response shape (mocked FEA, no gmsh)', () => {
   const cannedGmsh = {
     result: {
-      maxStress: 375, // / nominal 125 => Kt 3.0 exactly
+      maxStress: 300, // / gross nominal 100 => Kirsch Kt 3.0 exactly
       minStress: 0,
       maxDisplacement: 0.42,
       safetyFactor: 235 / 375,
@@ -113,15 +115,21 @@ describe('_selftest route — fea response shape (mocked FEA, no gmsh)', () => {
     expect(body.grade).toBe('certification-candidate');
     expect(body.gmshUsed).toBe(true);
     expect(body.kt).toBe(3);
+    expect(body.ktBasis).toBe('gross-section');
     expect(body.ktRefKirsch).toBe(3.0);
     expect(body.errPctVsKirsch).toBe(0);
+    expect(body.ktNet).toBe(2.4);
+    expect(body.ktRefHowlandNet).toBe(2.5);
+    expect(body.errPctVsHowlandNet).toBe(4);
     expect(body.dofCount).toBe(68000);
     expect(body.wallMs).toBe(24000);
     expect(body.converged).toBe(true);
     expect(body.raiserDetected).toBe(true);
     expect(body.raiserApplied).toBe(true);
-    expect(body.maxStressMPa).toBe(375);
-    expect(body.nominalMPa).toBe(125);
+    expect(body.maxStressMPa).toBe(300);
+    expect(body.nominalMPa).toBe(100);
+    expect(body.grossNominalMPa).toBe(100);
+    expect(body.netNominalMPa).toBe(125);
     expect(typeof body.totalWallMs).toBe('number');
   });
 

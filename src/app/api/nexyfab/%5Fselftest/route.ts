@@ -91,7 +91,9 @@ async function handleFea(): Promise<Record<string, unknown>> {
   const t0 = Date.now();
   // Render the A5 plate-with-hole via the production OpenSCAD path (container binary).
   const stl = await renderFixtureStl('plateHole');
-  const nominal = PLATE_HOLE_A5.nominalMPa();
+  const grossNominal = PLATE_HOLE_A5.grossNominalMPa();
+  const netNominal = PLATE_HOLE_A5.netNominalMPa();
+  const howlandKtNet = PLATE_HOLE_A5.howlandKtNet();
   // Run the PRODUCTION precise path: it PREFERS an out-of-process gmsh
   // boundary-conforming mesh (certification-candidate) and falls back to the
   // in-repo octree-snap engineering mesh only when gmsh is absent/unusable.
@@ -103,7 +105,8 @@ async function handleFea(): Promise<Record<string, unknown>> {
     loadNote: 'self-test A5 Kirsch plate-with-hole (uniaxial tension across the net section)',
   });
   const r = out.result;
-  const kt = nominal > 0 ? r.maxStress / nominal : NaN;
+  const ktGross = grossNominal > 0 ? r.maxStress / grossNominal : NaN;
+  const ktNet = netNominal > 0 ? r.maxStress / netNominal : NaN;
   const meshMode = out.raiser?.meshMode ?? 'screening';
   const gmshUsed = meshMode === 'gmsh-conforming';
   return {
@@ -111,16 +114,24 @@ async function handleFea(): Promise<Record<string, unknown>> {
     meshMode,
     grade: out.raiser?.grade ?? 'screening',
     gmshUsed,
-    kt: Number.isFinite(kt) ? +kt.toFixed(4) : null,
+    kt: Number.isFinite(ktGross) ? +ktGross.toFixed(4) : null,
+    ktBasis: 'gross-section',
     ktRefKirsch: 3.0,
-    errPctVsKirsch: Number.isFinite(kt) ? +(Math.abs(kt - 3.0) / 3.0 * 100).toFixed(2) : null,
+    errPctVsKirsch: Number.isFinite(ktGross) ? +(Math.abs(ktGross - 3.0) / 3.0 * 100).toFixed(2) : null,
+    ktNet: Number.isFinite(ktNet) ? +ktNet.toFixed(4) : null,
+    ktRefHowlandNet: +howlandKtNet.toFixed(4),
+    errPctVsHowlandNet: Number.isFinite(ktNet)
+      ? +(Math.abs(ktNet - howlandKtNet) / howlandKtNet * 100).toFixed(2)
+      : null,
     dofCount: out.raiser?.dofCount ?? r.dofCount,
     wallMs: out.raiser?.wallMs ?? (Date.now() - t0),
     converged: r.converged,
     raiserDetected: out.raiser?.detected ?? false,
     raiserApplied: out.raiser?.applied ?? false,
     maxStressMPa: Number.isFinite(r.maxStress) ? +r.maxStress.toFixed(3) : null,
-    nominalMPa: +nominal.toFixed(3),
+    nominalMPa: +grossNominal.toFixed(3),
+    grossNominalMPa: +grossNominal.toFixed(3),
+    netNominalMPa: +netNominal.toFixed(3),
     method: r.method,
     note: out.raiser?.note ?? 'no curved stress-raiser detected on the plate-with-hole (unexpected)',
     totalWallMs: Date.now() - t0,

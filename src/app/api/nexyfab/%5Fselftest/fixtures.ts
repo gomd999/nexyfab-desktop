@@ -12,7 +12,8 @@
  *   - `plateHole` — the A5 Kirsch geometry (200x120x8 plate, central r=10 hole
  *     through the 8 mm thickness), oriented with its LONG axis along +Z so the
  *     production FEA auto-BC (fix z-min plane, load z-max plane) applies uniaxial
- *     tension across the hole — the setup whose peak/nominal gives Kt~3.
+ *     tension across the hole — reported against both gross-section Kirsch and
+ *     net-section finite-width Howland references.
  *   - `box` / `cylinder` / `plateHole` / `lBracket` — a tiny reconstruction fleet
  *     sample (primitives the fleet should mostly land, plus one holed part).
  */
@@ -24,7 +25,8 @@ export type FixtureName = 'plateHole' | 'box' | 'cylinder' | 'lBracket';
  * A5 Kirsch plate-with-hole. Length (200) along Z, width (120) along Y,
  * thickness (8) along X; the hole (r=10) runs through the thickness (X axis).
  * Under the FEA auto-BC (z-min fixed, z-max -Z load) this is uniaxial tension
- * across the net section (W-2r)*T, so maxStress/nominal recovers the Kt raiser.
+ * across the plate. Kirsch Kt=3 uses gross-section nominal stress F/(W*T);
+ * finite-width Howland uses net-section nominal stress F/((W-d)*T).
  */
 const PLATE_HOLE_SCAD = `$fn=64;
 difference() {
@@ -48,9 +50,18 @@ export const PLATE_HOLE_A5 = {
   holeRadiusMm: 10,
   lengthMm: 200, // Z (tension axis)
   totalLoadN: 100_000,
-  /** Net-section nominal stress sigma = F / ((W - 2r)*T) - the Kirsch denominator. */
-  nominalMPa(): number {
+  /** Gross-section nominal stress used by the infinite-plate Kirsch Kt=3 reference. */
+  grossNominalMPa(): number {
+    return this.totalLoadN / (this.widthMm * this.thicknessMm);
+  },
+  /** Net-section nominal stress used by the finite-width Howland polynomial. */
+  netNominalMPa(): number {
     return this.totalLoadN / ((this.widthMm - 2 * this.holeRadiusMm) * this.thicknessMm);
+  },
+  /** Finite-width circular-hole Kt on a net-section basis (Howland fit). */
+  howlandKtNet(): number {
+    const dW = (2 * this.holeRadiusMm) / this.widthMm;
+    return 3 - 3.13 * dW + 3.66 * dW ** 2 - 1.53 * dW ** 3;
   },
 } as const;
 
