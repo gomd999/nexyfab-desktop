@@ -75,13 +75,16 @@ const before = await list();
 const beforeIds = new Set(before.map(deploymentId).filter(Boolean));
 
 if (!verifyOnly) {
-  const upArgs = ['up', sourcePath, '--detach', '--json', '--service', service, '--environment', environment, '--message', `verified deploy ${new Date().toISOString()}`];
-  if (pathAsRoot) upArgs.splice(2, 0, '--path-as-root');
+  const upArgs = ['up'];
+  if (sourcePath && sourcePath !== '.') upArgs.push(sourcePath);
+  if (pathAsRoot) upArgs.push('--path-as-root');
+  upArgs.push('--detach', '--json', '--service', service, '--environment', environment, '--message', `verified deploy ${new Date().toISOString()}`);
   await runRailway(upArgs, { stream: true });
 }
 
 const deadline = Date.now() + timeoutMs;
 let targetId = verifyOnly ? deploymentId(before[0]) : null;
+let verified = false;
 while (Date.now() < deadline) {
   const rows = await list();
   if (!targetId) targetId = deploymentId(rows.find(row => !beforeIds.has(deploymentId(row))));
@@ -95,8 +98,11 @@ while (Date.now() < deadline) {
   if (['SUCCESS', 'ACTIVE'].includes(status)) {
     await healthCheck();
     console.log(JSON.stringify({ event: 'deployment-verified', service, deploymentId: targetId, status }));
-    process.exit(0);
+    verified = true;
+    break;
   }
   await new Promise(resolve => setTimeout(resolve, 10_000));
 }
-throw new Error(`deployment verification timed out after ${timeoutMs}ms (deployment=${targetId ?? 'unknown'})`);
+if (!verified) {
+  throw new Error(`deployment verification timed out after ${timeoutMs}ms (deployment=${targetId ?? 'unknown'})`);
+}
