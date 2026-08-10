@@ -70,7 +70,7 @@ function readGitPaths(args) {
     .sort();
 }
 
-function readReleaseWorkingTreeChanges() {
+export function readReleaseWorkingTreeChanges() {
   const exclusions = [
     ':(exclude).tmp/**', ':(exclude).runtime-wp20/**', ':(exclude).next/**',
     ':(exclude)node_modules/**', ':(exclude)out/**', ':(exclude)out2/**',

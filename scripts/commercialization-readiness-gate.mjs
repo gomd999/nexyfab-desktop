@@ -2,8 +2,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { readReleaseWorkingTreeChanges } from './build-release-baseline.mjs';
 
 const DOMAINS = ['mechanical', 'building', 'civil', 'landscape', 'interior'];
+const COMPLEX_FAMILIES = ['robot', 'gearbox', 'pressure_vessel', 'turbomachinery', 'factory_equipment', 'interior'];
 
 export function readGitIdentity(root = process.cwd()) {
   const dotGit = path.join(root, '.git');
@@ -50,6 +52,7 @@ export function evaluateCommercializationReadiness(input) {
     if (release.head !== currentRelease.head) blockPrivate('release_baseline_head_mismatch');
   }
   if (release.baselineStatus !== 'committed' || release.workingTreeChanges !== 0) blockPrivate('release_candidate_not_committed');
+  if (currentRelease.workingTreeChanges !== 0) blockPrivate('current_release_working_tree_dirty');
   for (const field of ['deploymentId', 'buildId', 'rollbackDeploymentId', 'dockerImageDigest']) {
     if (!release[field]) blockPrivate(`release_identity_missing:${field}`);
   }
@@ -73,6 +76,46 @@ export function evaluateCommercializationReadiness(input) {
   if (corpus?.reference?.sourceReadOnly !== true) blockPrivate('reference_corpus_not_read_only');
   if (input.syntheticCampaignReceipt?.ok !== true || input.syntheticCampaignReceipt?.totalGatePasses !== 1500) {
     blockPrivate('synthetic_domain_campaign_incomplete');
+  }
+
+  const complexCases = Array.isArray(input.complexHoldoutCases) ? input.complexHoldoutCases : [];
+  const complexCaseIds = new Set(complexCases.map(item => item?.caseId).filter(Boolean));
+  const complexHashes = new Set(complexCases.map(item => String(item?.sourceHash ?? '').toLowerCase()).filter(Boolean));
+  const complexLineages = new Set(complexCases.map(item => String(item?.holdoutGroup ?? '').toLowerCase()).filter(Boolean));
+  const complexStructureValid = complexCases.length === 120
+    && complexCaseIds.size === complexCases.length
+    && complexHashes.size === complexCases.length
+    && complexLineages.size === complexCases.length
+    && complexCases.every(item => item?.schema === 'nexyfab.complex-benchmark-case.v2'
+      && item?.split === 'holdout'
+      && COMPLEX_FAMILIES.includes(item?.family)
+      && Array.isArray(item?.assertions)
+      && item.assertions.length > 0);
+  if (!complexStructureValid) blockGa('complex_holdout_integrity_incomplete');
+  for (const family of COMPLEX_FAMILIES) {
+    const count = complexCases.filter(item => item?.family === family).length;
+    if (count !== 20) blockGa(`complex_holdout_family_incomplete:${family}:${count}/20`);
+  }
+
+  const complexApproval = input.complexGroundTruthValidation;
+  const approvalSummary = complexApproval?.summary ?? {};
+  const complexApprovalsComplete = complexApproval?.schema === 'nexyfab.complex-ground-truth-approval-validation.v1'
+    && approvalSummary.cases === 120
+    && approvalSummary.records === 120
+    && approvalSummary.approved === 120
+    && approvalSummary.pending === 0
+    && approvalSummary.invalid === 0
+    && approvalSummary.rejected === 0
+    && approvalSummary.changesRequested === 0
+    && COMPLEX_FAMILIES.every(family => complexApproval?.byFamily?.[family]?.cases === 20
+      && complexApproval?.byFamily?.[family]?.approved === 20);
+  if (!complexApprovalsComplete) blockGa('complex_ground_truth_dual_approval_incomplete');
+
+  if (input.complexProductScope?.decision?.broadComplexProductSelfServiceEligible !== true) {
+    blockGa('complex_product_self_service_not_eligible');
+  }
+  if (input.complexProductScope?.decision?.manufacturingReleaseGuaranteed !== true) {
+    blockGa('complex_manufacturing_release_not_verified');
   }
   if (input.security?.routeMatrixOk !== true) blockPrivate('route_security_matrix_failed');
   if (input.security?.cadApiControlsOk !== true) blockPrivate('cad_api_controls_failed');
@@ -98,13 +141,19 @@ async function main() {
   const cadApiControls = readJson(process.env.CAD_API_CONTROL_EVIDENCE ?? 'docs/evidence/cad-independent/cad-api-control-evidence.json');
   const secretScan = readJson(process.env.SECRET_SCAN_EVIDENCE ?? 'docs/evidence/security/secret-scan-260810.json');
   const dependencyAudit = readJson(process.env.DEPENDENCY_AUDIT_EVIDENCE ?? 'docs/evidence/security/dependency-audit-260810.json');
+  const complexHoldoutCases = readJson(process.env.COMPLEX_HOLDOUT_CASES ?? 'docs/evidence/complex-corpus-v2-lineage-v2-260807/cases.json');
+  const complexGroundTruthValidation = readJson(process.env.COMPLEX_GROUND_TRUTH_VALIDATION ?? 'docs/evidence/complex-holdout-lineage-v2-260807/ground-truth-approval-validation.json');
+  const complexProductScope = readJson(process.env.COMPLEX_PRODUCT_SCOPE_ASSESSMENT ?? 'docs/evidence/cad-independent/complex-product-scope-assessment.json');
   const result = evaluateCommercializationReadiness({
-    currentRelease: readGitIdentity(),
+    currentRelease: { ...readGitIdentity(), workingTreeChanges: readReleaseWorkingTreeChanges().length },
     releaseBaseline: readJson(process.env.RELEASE_BASELINE ?? 'docs/evidence/release/commercial-release-baseline-current.json'),
     closedBeta: readJson(process.env.CLOSED_BETA_COMPARISON ?? 'docs/evidence/release/closed-beta-integrity-commercial-release-260810.json'),
     productionProtectedState: optionalJson(process.env.PRODUCTION_PROTECTED_STATE_RECEIPT ?? 'docs/evidence/release/production-protected-state-receipt.json'),
     validationCorpus: readJson(process.env.COMMERCIAL_VALIDATION_CORPUS ?? 'docs/evidence/release/commercial-validation-corpus-260810.json'),
     syntheticCampaignReceipt: readJson(process.env.SYNTHETIC_CAMPAIGN_RECEIPT ?? 'docs/evidence/release/commercial-synthetic-campaign-receipt-260810.json'),
+    complexHoldoutCases,
+    complexGroundTruthValidation,
+    complexProductScope,
     liveSmoke: readJson(process.env.COMMERCIAL_LIVE_SMOKE ?? 'docs/evidence/release/commercial-live-smoke-with-service-env-260810.json'),
     openscadHttpSmoke: optionalJson(process.env.OPENSCAD_HTTP_SMOKE ?? 'docs/evidence/release/openscad-http-smoke-260810.json'),
     authenticatedE2E: optionalJson(process.env.AUTHENTICATED_E2E_RECEIPT ?? 'docs/evidence/release/authenticated-commercial-e2e-260810.json'),
@@ -132,6 +181,10 @@ async function main() {
       cadApiControls: cadApiControls.status,
       secretFindings: secretScan.findingCount,
       dependencyVulnerabilities: dependencyAudit.vulnerabilities?.total,
+      complexHoldoutCases: Array.isArray(complexHoldoutCases) ? complexHoldoutCases.length : null,
+      complexGroundTruthApproved: complexGroundTruthValidation?.summary?.approved ?? null,
+      complexProductSelfServiceEligible: complexProductScope?.decision?.broadComplexProductSelfServiceEligible === true,
+      complexManufacturingReleaseVerified: complexProductScope?.decision?.manufacturingReleaseGuaranteed === true,
     },
   };
   const outputPath = path.resolve(process.env.COMMERCIALIZATION_GATE_OUTPUT ?? 'docs/evidence/release/commercialization-readiness-current.json');
