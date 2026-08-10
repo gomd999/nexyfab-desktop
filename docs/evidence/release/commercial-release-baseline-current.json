@@ -1,15 +1,15 @@
 {
   "schema": "nexyfab.commercial-release-baseline.v1",
-  "generatedAt": "2026-08-10T07:19:34.458Z",
+  "generatedAt": "2026-08-10T07:31:44.494Z",
   "release": {
     "branch": "release/2026-08-10",
-    "head": "732656747abc27f06fcd59cdb1e77e984f75a718",
+    "head": "07d83a8f1904827322beb5125c66d238b84bf793",
     "baselineStatus": "committed",
     "workingTreeChanges": 0,
-    "deploymentId": "65dbad76-0b19-4a25-99c7-bc92ecfb22ff",
-    "buildId": "20260810070414",
-    "rollbackDeploymentId": "1ada6e61-6a1c-4a50-a968-a940291951a0",
-    "dockerImageDigest": "sha256:5d550b879d30a0fc36521b84f8ea1da15d79e8b3fd82b075a1959033501bb87f",
+    "deploymentId": "ac250325-ef80-437d-93b3-583c5e090474",
+    "buildId": "20260810072250",
+    "rollbackDeploymentId": "65dbad76-0b19-4a25-99c7-bc92ecfb22ff",
+    "dockerImageDigest": "sha256:2d0f1511e91c67cc5972c9196b42fe68864cbf798971d754369c08d2fc16e821",
     "dbSchemaVersion": "2026081001",
     "railwayIgnore": {
       "path": ".railwayignore",
@@ -50,8 +50,8 @@
     },
     "evidence": {
       "files": 470,
-      "bytes": 213943770,
-      "sha256": "45d4f2ad43213d0b03b113f9bb5335d4a84a1961cebe25c55a8006673c2815d8"
+      "bytes": 213869503,
+      "sha256": "1c7093a102aae1a76a30c2571fc53d74ead4be7e24f019649da413e1b28cf938"
     },
     "protected": {
       "files": 5,
@@ -37783,7 +37783,7 @@
       {
         "path": "docs/evidence/release/authenticated-commercial-e2e-260810.json",
         "bytes": 428,
-        "sha256": "84e9b9edf3a37c28525a62fc1f465b19ada78ff435796f6fbd1f5cdbf706dc89"
+        "sha256": "66d2832daa3bb1ecc279545740a3bafaa53973506f4b9eb189ecb2316e471a13"
       },
       {
         "path": "docs/evidence/release/backup-restore-receipt.json",
@@ -37808,7 +37808,7 @@
       {
         "path": "docs/evidence/release/commercial-live-smoke-with-service-env-260810.json",
         "bytes": 2433,
-        "sha256": "afaf1ca3b312814cec79e90d3ecbcf0678b61fba683a1948d099c724d0c02fdd"
+        "sha256": "1942bba51fabdfcf5ca31c89f1645d48590fe0c3d3f2a56d2f2893a5c4186666"
       },
       {
         "path": "docs/evidence/release/commercial-release-baseline-260810.json",
@@ -37817,8 +37817,8 @@
       },
       {
         "path": "docs/evidence/release/commercial-release-baseline-current.json",
-        "bytes": 1571413,
-        "sha256": "d4ab5610b0a50dcbbf6bfa61a8c49ae53cb21a0ef66b3035c923696e298bf8c5"
+        "bytes": 1497233,
+        "sha256": "9c00300d99eb66ce90b5ed67d1d90218bbb498d955b860ace540b75585de6e38"
       },
       {
         "path": "docs/evidence/release/commercial-synthetic-campaign-receipt-260810.json",
@@ -37832,8 +37832,8 @@
       },
       {
         "path": "docs/evidence/release/commercialization-readiness-current.json",
-        "bytes": 811,
-        "sha256": "850f9ac2d3cea041a90d4d16de280fff6e6c419eda3be51980b748ee88552d30"
+        "bytes": 724,
+        "sha256": "d205e7c6c78ec0b93c7694359e917fcf0670bf1619ec21364f9a89c1878984a7"
       },
       {
         "path": "docs/evidence/release/dependency-security-audit-260810.json",
@@ -37848,7 +37848,7 @@
       {
         "path": "docs/evidence/release/openscad-http-smoke-260810.json",
         "bytes": 354,
-        "sha256": "25af329b1ce02f2b878782642d05d180049597b5f72f4c53673a281043709af0"
+        "sha256": "739bba112da4d120d75cfd21be5bea5f343dd54c31b02605cb9ce5c9c1b33225"
       },
       {
         "path": "docs/evidence/release/production-migration-receipt.json",
@@ -37858,7 +37858,7 @@
       {
         "path": "docs/evidence/release/production-protected-state-receipt.json",
         "bytes": 8286,
-        "sha256": "3858639d9a74bc5c422bd48f6d467fddc14e6dc1ec7e7f9d225cfaa17ca92883"
+        "sha256": "541411d92c9e4c86290866d1861238f1f34055c70355c3a0a2561a2a80b6c06b"
       },
       {
         "path": "docs/evidence/release/railway-resource-baseline-260810.json",
