@@ -20,6 +20,7 @@ const volatileColumns = new Set([
   'updated_at', 'last_login', 'last_login_at', 'last_seen_at', 'last_active_at',
   'accessed_at', 'last_used_at', 'expires_at', 'revoked_at', 'failed_login_attempts',
   'locked_until', 'session_version', 'login_count', 'last_login_fingerprint',
+  'last_login_ip',
 ]);
 
 async function describe(client) {
@@ -45,7 +46,7 @@ async function describe(client) {
   return result;
 }
 
-function stableColumns(table, columns) {
+export function stableColumns(table, columns) {
   return columns.filter(column => {
     if (volatileColumns.has(column)) return false;
     if (/sessions?$/.test(table) && /(token|secret|nonce)/i.test(column)) return false;
