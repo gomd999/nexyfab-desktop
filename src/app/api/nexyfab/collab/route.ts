@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
+import { resolveProjectAccess } from '@/lib/nfProjectAccess';
 
 const collabSchema = z.object({
   projectId: z.string().min(1).max(100),
@@ -82,6 +83,8 @@ export async function GET(req: NextRequest) {
   }
 
   const db = getDbAdapter();
+  const access = await resolveProjectAccess(db, projectId, authUser.userId);
+  if (!access) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
   if (Date.now() - lastCleanup > CLEANUP_THROTTLE) {
     lastCleanup = Date.now();
@@ -121,15 +124,16 @@ export async function POST(req: NextRequest) {
   const { projectId, sessionId, cursor, action } = parsed.data;
   const userId = authUser.userId;
   const userName = authUser.email;
+  const db = getDbAdapter();
+  const access = await resolveProjectAccess(db, projectId, userId);
+  if (!access) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
   await purgeExpired(projectId);
 
-  const db = getDbAdapter();
-
   if (action === 'leave') {
     await db.execute(
-      'DELETE FROM nf_collab_sessions WHERE session_id = ? AND project_id = ?',
-      sessionId, projectId,
+      'DELETE FROM nf_collab_sessions WHERE session_id = ? AND project_id = ? AND user_id = ?',
+      sessionId, projectId, userId,
     );
     return NextResponse.json({ ok: true, action: 'leave' });
   }
@@ -139,6 +143,12 @@ export async function POST(req: NextRequest) {
     'SELECT * FROM nf_collab_sessions WHERE session_id = ?',
     sessionId,
   );
+
+  if (existing && (existing.project_id !== projectId || existing.user_id !== userId)) {
+    // A session id is an opaque capability owned by one user and one project.
+    // Never let another member refresh, move, or terminate it.
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+  }
 
   const now = Date.now();
 

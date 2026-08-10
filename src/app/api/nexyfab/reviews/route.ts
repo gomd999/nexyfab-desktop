@@ -2,7 +2,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
-import { saveReview, listReviews } from '@/lib/design-reviews';
+import { deleteReview, saveReview, listReviews } from '@/lib/design-reviews';
+import { checkOrigin } from '@/lib/csrf';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const user = await getAuthUser(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = (await req.json().catch(() => null)) as {
@@ -44,4 +46,16 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     return NextResponse.json({ error: (e as Error)?.message ?? 'save failed' }, { status: 500 });
   }
+}
+
+export async function DELETE(req: NextRequest) {
+  if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const user = await getAuthUser(req);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const id = req.nextUrl.searchParams.get('id')?.trim();
+  if (!id || id.length > 128) return NextResponse.json({ error: 'valid id required' }, { status: 400 });
+  const deleted = await deleteReview(user.userId, id);
+  return deleted > 0
+    ? NextResponse.json({ ok: true, deleted })
+    : NextResponse.json({ error: 'Not found' }, { status: 404 });
 }

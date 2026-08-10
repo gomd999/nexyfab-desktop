@@ -60,3 +60,14 @@ export async function listReviews(userId: string, limit = 20): Promise<SavedRevi
     userId, limit,
   );
 }
+
+/** Delete only a review owned by the authenticated user. */
+export async function deleteReview(userId: string, id: string): Promise<number> {
+  const db = getDbAdapter();
+  await ensureTable(db);
+  const result = await db.execute(
+    'DELETE FROM nf_design_reviews WHERE id = ? AND user_id = ?',
+    id, userId,
+  );
+  return result.changes;
+}

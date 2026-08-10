@@ -155,3 +155,23 @@ export async function GET(req: NextRequest) {
     versions,
   });
 }
+
+// DELETE /api/nexyfab/share?token=xxx — revoke an owned share link.
+export async function DELETE(req: NextRequest) {
+  if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const authUser = await getAuthUser(req);
+  if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const token = req.nextUrl.searchParams.get('token');
+  if (!token || !/^[a-f0-9]{32}$/.test(token)) {
+    return NextResponse.json({ error: 'valid token required' }, { status: 400 });
+  }
+  const db = getDbAdapter();
+  const result = await db.execute(
+    'DELETE FROM nf_shares WHERE token = ? AND user_id = ?',
+    token, authUser.userId,
+  );
+  if (result.changes === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const ip = getTrustedClientIp(req.headers);
+  logAudit({ userId: authUser.userId, action: 'share.revoke', resourceId: token, ip });
+  return NextResponse.json({ ok: true, deleted: result.changes });
+}
