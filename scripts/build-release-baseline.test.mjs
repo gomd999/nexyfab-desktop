@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { buildReleaseBaseline, classifyReleasePath } from './build-release-baseline.mjs';
 
 test('classifies protected and runtime-excluded release paths fail-closed', () => {
@@ -31,6 +33,37 @@ test('builds deterministic category hashes without exposing file contents', () =
     assert.equal(baseline.summary.documentation.files, 1);
     assert.equal(baseline.groups.protected[0].path, '.env.local');
     assert.equal('content' in baseline.groups.protected[0], false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('current receipts are excluded from cleanliness and their own baseline hash', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-release-receipts-'));
+  const script = fileURLToPath(new URL('./build-release-baseline.mjs', import.meta.url));
+  try {
+    fs.mkdirSync(path.join(root, 'docs/evidence/release'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.railwayignore'), [
+      'node_modules', '.next', '.git', '.env.local', '.env', '*.log', '*.db', '*.zip',
+      'data', 'docs', 'scripts/knowledge-crawler', 'validation-reports', 'test-results',
+      '.tmp', 'src-tauri', 'occt-collab-worker', 'occt-worker', 'out', 'out2', '.claude',
+    ].join('\n'), 'utf8');
+    fs.writeFileSync(path.join(root, 'app.js'), 'release-code', 'utf8');
+    for (const name of ['commercial-release-baseline-current.json', 'commercialization-readiness-current.json']) {
+      fs.writeFileSync(path.join(root, 'docs/evidence/release', name), '{"old":true}\n', 'utf8');
+    }
+    execFileSync('git', ['init'], { cwd: root, stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.email', 'release-test@nexyfab.invalid'], { cwd: root });
+    execFileSync('git', ['config', 'user.name', 'NexyFab Release Test'], { cwd: root });
+    execFileSync('git', ['add', '.'], { cwd: root });
+    execFileSync('git', ['commit', '-m', 'fixture'], { cwd: root, stdio: 'ignore' });
+    fs.writeFileSync(path.join(root, 'docs/evidence/release/commercialization-readiness-current.json'), '{"new":true}\n', 'utf8');
+
+    execFileSync(process.execPath, [script], { cwd: root, stdio: 'ignore' });
+    const receipt = JSON.parse(fs.readFileSync(path.join(root, 'docs/evidence/release/commercial-release-baseline-current.json'), 'utf8'));
+    assert.equal(receipt.release.baselineStatus, 'committed');
+    assert.equal(receipt.release.workingTreeChanges, 0);
+    assert.equal(receipt.groups.evidence.some(row => row.path.endsWith('-current.json')), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

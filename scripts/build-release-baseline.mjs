@@ -6,6 +6,10 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 const DEFAULT_OUTPUT = 'docs/evidence/release/commercial-release-baseline-current.json';
+const MUTABLE_CURRENT_RECEIPTS = [
+  'docs/evidence/release/commercial-release-baseline-current.json',
+  'docs/evidence/release/commercialization-readiness-current.json',
+];
 
 const normalize = value => value.replaceAll('\\', '/').replace(/^\.\//, '');
 const sha256 = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -53,6 +57,7 @@ function readGitFiles() {
     ':(exclude)src-tauri/target/**', ':(exclude)src-tauri/gen/**',
     ':(exclude).claude/**', ':(exclude)playwright-report/**',
     ':(exclude)test-results/**', ':(exclude)coverage/**',
+    ...MUTABLE_CURRENT_RECEIPTS.map(value => `:(exclude)${value}`),
   ]);
 }
 
@@ -72,6 +77,7 @@ function readReleaseWorkingTreeChanges() {
     ':(exclude)src-tauri/target/**', ':(exclude)src-tauri/gen/**',
     ':(exclude).claude/**', ':(exclude)playwright-report/**',
     ':(exclude)test-results/**', ':(exclude)coverage/**',
+    ...MUTABLE_CURRENT_RECEIPTS.map(value => `:(exclude)${value}`),
   ];
   return [...new Set([
     ...readGitPaths(['diff', '--name-only', '-z', '--', '.', ...exclusions]),
