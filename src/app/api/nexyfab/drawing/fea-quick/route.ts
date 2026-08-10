@@ -14,6 +14,10 @@ import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { feaFromStlAsync, feaReportHtml, FEA_MATERIALS } from '@/app/[lang]/shape-generator/analysis/feaPackage';
+import { getAuthUser } from '@/lib/auth-middleware';
+import { checkOrigin } from '@/lib/csrf';
+import { enqueueFeaJob } from '@/lib/fea-jobs/redisFeaJobs';
+import { publicFeaJob } from '@/lib/fea-jobs/contracts';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -48,6 +52,40 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // 하중 날조 금지 — 사용자가 명시해야 실행(자중 자동은 어셈블리 패키지 경로가 담당)
   if (!Number.isFinite(loadKg) || loadKg <= 0 || loadKg > 1_000_000) {
     return NextResponse.json({ ok: false, error: '상면 등가 하중(kg)을 입력하세요(0 초과, 1,000t 이하).' }, { status: 400 });
+  }
+
+  // Precision work is never executed in the web request process. Keep the
+  // fast screening path below for backwards compatibility, but authenticated
+  // precision requests are durable Redis jobs handled by nexyfab-fea-worker.
+  if (precise) {
+    if (!checkOrigin(req)) return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+    const user = await getAuthUser(req);
+    if (!user) return NextResponse.json({ ok: false, error: '정밀 FEA는 로그인이 필요합니다.', code: 'AUTH_REQUIRED' }, { status: 401 });
+    if (user.apiKey && !user.apiKey.scopes.includes('write:projects')) {
+      return NextResponse.json({ ok: false, error: 'Insufficient API key scope', requiredScope: 'write:projects' }, { status: 403 });
+    }
+    try {
+      const submitted = await enqueueFeaJob({
+        ownerUserId: user.userId,
+        scopeId: `user:${user.userId}`,
+        idempotencyKey: req.headers.get('idempotency-key') ?? undefined,
+        request: {
+          source: { kind: 'scad', source: scad }, materialKey, loadN: loadKg * 9.81, precise: true,
+          loadNote: `사용자 지정 ${loadKg} kg × g — 상면 등가(선형등방·스크리닝 한계는 리포트에 명시)`,
+        },
+      });
+      if (!submitted.ok) {
+        const status = submitted.code === 'FEA_PENDING_LIMIT' || submitted.code === 'FEA_IDEMPOTENCY_PAYLOAD_CONFLICT' ? 409 : 400;
+        return NextResponse.json({ ok: false, error: submitted.message, code: submitted.code }, { status });
+      }
+      const pollUrl = `/api/nexyfab/fea/jobs/${submitted.job.id}`;
+      return NextResponse.json(
+        { ok: true, async: true, jobId: submitted.job.id, status: submitted.job.status, progress: submitted.job.progress, pollUrl, job: publicFeaJob(submitted.job) },
+        { status: submitted.reused ? 200 : 202, headers: { Location: pollUrl, 'Retry-After': '2' } },
+      );
+    } catch {
+      return NextResponse.json({ ok: false, error: '정밀 FEA 작업 큐를 사용할 수 없습니다.', code: 'FEA_QUEUE_UNAVAILABLE' }, { status: 503 });
+    }
   }
 
   try {

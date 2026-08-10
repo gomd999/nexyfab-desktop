@@ -1,14 +1,15 @@
 /**
  * _selftest route — SECURITY CONTRACT + FEA response SHAPE.
  *
- * These tests deliberately require NEITHER gmsh, OpenSCAD, NOR an LLM: the STL
- * fixture render and `feaFromStlAsync` are both mocked. We assert two things:
+ * These tests deliberately require NEITHER Redis, gmsh, OpenSCAD, NOR an LLM:
+ * the STL fixture render and durable FEA worker queue are mocked. We assert:
  *   1) the endpoint is invisible (404) whenever SELFTEST_TOKEN is unset or the
  *      supplied token is wrong — the token IS the auth;
  *   2) the `?what=fea` handler shapes the (mocked) production FEA output into the
  *      exact ops-probe JSON we depend on (meshMode/grade/gmshUsed/kt/err/...).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { FeaJobResult } from '@/lib/fea-jobs/contracts';
 
 // Mock the fixture generator so no OpenSCAD binary is needed.
 vi.mock('./fixtures', () => ({
@@ -25,10 +26,12 @@ vi.mock('./fixtures', () => ({
   },
 }));
 
-// Mock the production precise FEA path so no gmsh / solver run is needed.
-const feaMock = vi.fn();
-vi.mock('@/app/[lang]/shape-generator/analysis/feaPackage', () => ({
-  feaFromStlAsync: (...args: unknown[]) => feaMock(...args),
+// Mock the durable worker queue so no Redis, gmsh, or solver process is needed.
+const enqueueMock = vi.fn();
+const getJobMock = vi.fn();
+vi.mock('@/lib/fea-jobs/redisFeaJobs', () => ({
+  enqueueFeaJob: (...args: unknown[]) => enqueueMock(...args),
+  getFeaJobForOwner: (...args: unknown[]) => getJobMock(...args),
 }));
 
 import { GET } from './route';
@@ -39,7 +42,8 @@ function makeReq(query: string, headers?: Record<string, string>): Request {
 
 const SAVED = process.env.SELFTEST_TOKEN;
 beforeEach(() => {
-  feaMock.mockReset();
+  enqueueMock.mockReset();
+  getJobMock.mockReset();
   delete process.env.SELFTEST_TOKEN;
 });
 afterEach(() => {
@@ -51,14 +55,14 @@ describe('_selftest route — security contract', () => {
   it('returns 404 when SELFTEST_TOKEN is unset (endpoint hidden, even with a token)', async () => {
     const res = await GET(makeReq('?token=anything&what=fea') as never);
     expect(res.status).toBe(404);
-    expect(feaMock).not.toHaveBeenCalled();
+    expect(enqueueMock).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the token is wrong', async () => {
     process.env.SELFTEST_TOKEN = 'secret-value';
     const res = await GET(makeReq('?token=nope&what=fea') as never);
     expect(res.status).toBe(404);
-    expect(feaMock).not.toHaveBeenCalled();
+    expect(enqueueMock).not.toHaveBeenCalled();
   });
 
   it('returns 404 when no token is supplied at all', async () => {
@@ -69,21 +73,17 @@ describe('_selftest route — security contract', () => {
 });
 
 describe('_selftest route — fea response shape (mocked FEA, no gmsh)', () => {
-  const cannedGmsh = {
-    result: {
-      maxStress: 300, // / gross nominal 100 => Kirsch Kt 3.0 exactly
-      minStress: 0,
-      maxDisplacement: 0.42,
-      safetyFactor: 235 / 375,
-      method: 'linear-fem-tet' as const,
-      elementCount: 41000,
-      dofCount: 68000,
-      converged: true,
-    },
-    material: { label: '일반구조강(SS275급)', yieldStrength: 235 },
-    materialKey: 'steel',
-    loadN: 100_000,
-    loadNote: 'self-test',
+  const cannedGmsh: FeaJobResult = {
+    method: 'linear-fem-tet' as const,
+    grade: 'certification-candidate' as const,
+    maxStressMPa: 300, // / gross nominal 100 => Kirsch Kt 3.0 exactly
+    minStressMPa: 0,
+    maxDisplacementMm: 0.42,
+    safetyFactor: 235 / 375,
+    elementCount: 41000,
+    dofCount: 68000,
+    converged: true,
+    material: { key: 'steel', label: '일반구조강(SS275급)', yieldMPa: 235 },
     mesh: { triangles: 1234, fixedTris: 40, loadTris: 40 },
     refined: null,
     raiser: {
@@ -96,18 +96,30 @@ describe('_selftest route — fea response shape (mocked FEA, no gmsh)', () => {
       wallMs: 24000,
       note: 'gmsh boundary-conforming mesh',
     },
+    reportHtml: '<html></html>', expertApproval: null, manufacturingReady: false as const, completedAt: 2,
   };
+
+  const queued = {
+    id: 'fea-0123456789abcdef01234567', ownerUserId: 'ops:selftest:fea', scopeId: 'ops:selftest',
+    status: 'queued' as const, progress: { percent: 0, stage: 'queued' as const }, createdAt: 1, updatedAt: 1,
+    attempts: 0, maxAttempts: 3, requestHash: 'r', idempotencyHash: 'i',
+  };
+
+  function mockCompleted(result = cannedGmsh) {
+    enqueueMock.mockResolvedValueOnce({ ok: true, reused: false, job: queued });
+    getJobMock.mockResolvedValueOnce({ ...queued, status: 'complete', result });
+  }
 
   it('accepts a valid token and shapes the gmsh cert-grade result correctly', async () => {
     process.env.SELFTEST_TOKEN = 'secret-value';
-    feaMock.mockResolvedValueOnce(cannedGmsh);
+    mockCompleted();
     const res = await GET(makeReq('?token=secret-value&what=fea') as never);
     expect(res.status).toBe(200);
     const body = await res.json();
 
     // the production precise path was invoked with precise:true
-    expect(feaMock).toHaveBeenCalledTimes(1);
-    expect(feaMock.mock.calls[0]![0]).toMatchObject({ precise: true, materialKey: 'steel', loadN: 100_000 });
+    expect(enqueueMock).toHaveBeenCalledTimes(1);
+    expect(enqueueMock.mock.calls[0]![0]).toMatchObject({ request: { precise: true, materialKey: 'steel', loadN: 100_000 } });
 
     // exact ops-probe shape
     expect(body.what).toBe('fea');
@@ -135,10 +147,7 @@ describe('_selftest route — fea response shape (mocked FEA, no gmsh)', () => {
 
   it('reports gmshUsed=false when the octree fallback (engineering grade) ran', async () => {
     process.env.SELFTEST_TOKEN = 'secret-value';
-    feaMock.mockResolvedValueOnce({
-      ...cannedGmsh,
-      raiser: { ...cannedGmsh.raiser, grade: 'engineering', meshMode: 'refined' },
-    });
+    mockCompleted({ ...cannedGmsh, grade: 'engineering', raiser: { ...cannedGmsh.raiser!, grade: 'engineering', meshMode: 'refined' } });
     const res = await GET(makeReq('?token=secret-value&what=fea') as never);
     const body = await res.json();
     expect(res.status).toBe(200);

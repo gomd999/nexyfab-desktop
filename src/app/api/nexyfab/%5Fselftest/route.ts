@@ -28,8 +28,8 @@
  * fully inert (404 on every request) unless SELFTEST_TOKEN is set.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { feaFromStlAsync } from '@/app/[lang]/shape-generator/analysis/feaPackage';
 import { renderFixtureStl, PLATE_HOLE_A5, type FixtureName } from './fixtures';
+import { enqueueFeaJob, getFeaJobForOwner } from '@/lib/fea-jobs/redisFeaJobs';
 import {
   GEN_FIXTURES,
   builtSignatureFromSession,
@@ -94,25 +94,45 @@ async function handleFea(): Promise<Record<string, unknown>> {
   const grossNominal = PLATE_HOLE_A5.grossNominalMPa();
   const netNominal = PLATE_HOLE_A5.netNominalMPa();
   const howlandKtNet = PLATE_HOLE_A5.howlandKtNet();
-  // Run the PRODUCTION precise path: it PREFERS an out-of-process gmsh
-  // boundary-conforming mesh (certification-candidate) and falls back to the
-  // in-repo octree-snap engineering mesh only when gmsh is absent/unusable.
-  const out = await feaFromStlAsync({
-    stl,
-    materialKey: 'steel',
-    loadN: PLATE_HOLE_A5.totalLoadN,
-    precise: true,
-    loadNote: 'self-test A5 Kirsch plate-with-hole (uniaxial tension across the net section)',
+  // The production probe also crosses the durable worker boundary. Running
+  // the solver directly here would make an ops diagnostic capable of blocking
+  // or exhausting the web service it is supposed to observe.
+  const ownerUserId = 'ops:selftest:fea';
+  const submitted = await enqueueFeaJob({
+    ownerUserId,
+    scopeId: 'ops:selftest',
+    idempotencyKey: `a5-${Date.now()}-${crypto.randomUUID()}`,
+    request: {
+      source: { kind: 'stl', dataBase64: Buffer.from(stl).toString('base64') },
+      materialKey: 'steel',
+      loadN: PLATE_HOLE_A5.totalLoadN,
+      precise: true,
+      loadNote: 'self-test A5 Kirsch plate-with-hole (uniaxial tension across the net section)',
+      limits: { timeoutMs: 180_000, maxDof: 90_000 },
+    },
   });
-  const r = out.result;
-  const ktGross = grossNominal > 0 ? r.maxStress / grossNominal : NaN;
-  const ktNet = netNominal > 0 ? r.maxStress / netNominal : NaN;
-  const meshMode = out.raiser?.meshMode ?? 'screening';
+  if (!submitted.ok) throw new Error(`${submitted.code}:${submitted.message}`);
+  const deadline = Date.now() + 240_000;
+  let job = submitted.job;
+  while (Date.now() < deadline) {
+    const current = await getFeaJobForOwner(job.id, ownerUserId);
+    if (!current) throw new Error('FEA_SELFTEST_JOB_EXPIRED');
+    job = current;
+    if (job.status === 'complete' || job.status === 'failed' || job.status === 'cancelled') break;
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  if (job.status !== 'complete' || !job.result) {
+    throw new Error(job.errorCode ? `${job.errorCode}:${job.errorMessage ?? ''}` : `FEA_SELFTEST_${job.status.toUpperCase()}`);
+  }
+  const r = job.result;
+  const ktGross = grossNominal > 0 ? r.maxStressMPa / grossNominal : NaN;
+  const ktNet = netNominal > 0 ? r.maxStressMPa / netNominal : NaN;
+  const meshMode = r.raiser?.meshMode ?? 'screening';
   const gmshUsed = meshMode === 'gmsh-conforming';
   return {
     what: 'fea',
     meshMode,
-    grade: out.raiser?.grade ?? 'screening',
+    grade: r.grade,
     gmshUsed,
     kt: Number.isFinite(ktGross) ? +ktGross.toFixed(4) : null,
     ktBasis: 'gross-section',
@@ -123,17 +143,18 @@ async function handleFea(): Promise<Record<string, unknown>> {
     errPctVsHowlandNet: Number.isFinite(ktNet)
       ? +(Math.abs(ktNet - howlandKtNet) / howlandKtNet * 100).toFixed(2)
       : null,
-    dofCount: out.raiser?.dofCount ?? r.dofCount,
-    wallMs: out.raiser?.wallMs ?? (Date.now() - t0),
+    dofCount: r.raiser?.dofCount ?? r.dofCount,
+    wallMs: r.raiser?.wallMs ?? (Date.now() - t0),
     converged: r.converged,
-    raiserDetected: out.raiser?.detected ?? false,
-    raiserApplied: out.raiser?.applied ?? false,
-    maxStressMPa: Number.isFinite(r.maxStress) ? +r.maxStress.toFixed(3) : null,
+    raiserDetected: r.raiser?.detected ?? false,
+    raiserApplied: r.raiser?.applied ?? false,
+    maxStressMPa: Number.isFinite(r.maxStressMPa) ? +r.maxStressMPa.toFixed(3) : null,
     nominalMPa: +grossNominal.toFixed(3),
     grossNominalMPa: +grossNominal.toFixed(3),
     netNominalMPa: +netNominal.toFixed(3),
     method: r.method,
-    note: out.raiser?.note ?? 'no curved stress-raiser detected on the plate-with-hole (unexpected)',
+    note: r.raiser?.note ?? 'no curved stress-raiser detected on the plate-with-hole (unexpected)',
+    workerJobId: job.id,
     totalWallMs: Date.now() - t0,
   };
 }

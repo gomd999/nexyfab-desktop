@@ -1101,28 +1101,95 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const [visRes, setVisRes] = useState<{ faithful: boolean; issues: string[] } | { error: string } | null>(null);
   const [visBusy, setVisBusy] = useState(false);
   // 그물 ⑥ 간이 FEA(29축 V) — 하중은 사용자 명시 입력(날조 금지)
-  interface FeaRes { ok: true; method: string; maxStressMPa: number; safetyFactor: number | null; maxDispMm: number | null; material: string; yieldMPa: number; refined?: unknown; reportHtml?: string; note?: string }
+  interface FeaRes { ok: true; method: string; maxStressMPa: number; safetyFactor: number | null; maxDispMm: number | null; material: string; yieldMPa: number; refined?: unknown; reportHtml?: string; note?: string; grade?: string }
+  interface FeaAsyncResult {
+    method: string; grade: string; maxStressMPa: number; safetyFactor: number | null; maxDisplacementMm: number;
+    material: { label: string; yieldMPa: number }; refined?: unknown; reportHtml?: string;
+    raiser?: { note?: string } | null;
+  }
+  interface FeaAsyncJob {
+    id: string; status: string; progress?: { percent?: number; stage?: string; message?: string };
+    result?: FeaAsyncResult; errorMessage?: string;
+  }
   const [feaRes, setFeaRes] = useState<FeaRes | { ok: false; error: string } | null>(null);
   const [feaBusy, setFeaBusy] = useState(false);
   const [feaLoad, setFeaLoad] = useState('');
   const [feaMat, setFeaMat] = useState('steel');
+  const [feaPrecise, setFeaPrecise] = useState(false);
+  const [feaJob, setFeaJob] = useState<{ id: string; pollUrl: string; percent: number; stage: string } | null>(null);
+  const feaPollAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => feaPollAbortRef.current?.abort(), []);
   const runFeaQuick = useCallback(async () => {
     const loadKg = Number(feaLoad);
     if (!scad || !Number.isFinite(loadKg) || loadKg <= 0) return;
     setFeaBusy(true);
     setFeaRes(null);
+    setFeaJob(null);
+    feaPollAbortRef.current?.abort();
+    const pollAbort = new AbortController();
+    feaPollAbortRef.current = pollAbort;
     try {
       const r = await fetch('/api/nexyfab/drawing/fea-quick/', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scad, materialKey: feaMat, loadKg }),
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify({ scad, materialKey: feaMat, loadKg, precise: feaPrecise }),
+        signal: pollAbort.signal,
       });
-      setFeaRes((await r.json()) as FeaRes | { ok: false; error: string });
+      const submitted = await r.json() as (FeaRes | { ok: false; error: string }) & { async?: boolean; jobId?: string; pollUrl?: string };
+      if (!r.ok || !submitted.ok || !submitted.async || !submitted.jobId || !submitted.pollUrl) {
+        setFeaRes(submitted as FeaRes | { ok: false; error: string });
+        return;
+      }
+      setFeaJob({ id: submitted.jobId, pollUrl: submitted.pollUrl, percent: 0, stage: 'queued' });
+      const pollStarted = Date.now();
+      for (;;) {
+        if (Date.now() - pollStarted > 5 * 60_000) throw new Error('정밀 FEA 상태 확인 시간이 초과되었습니다. 작업 ID로 다시 확인해 주세요.');
+        await new Promise<void>((resolve, reject) => {
+          const onAbort = () => { window.clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); };
+          const timer = window.setTimeout(() => { pollAbort.signal.removeEventListener('abort', onAbort); resolve(); }, 1500);
+          pollAbort.signal.addEventListener('abort', onAbort, { once: true });
+        });
+        const statusResponse = await fetch(submitted.pollUrl, { cache: 'no-store', signal: pollAbort.signal });
+        const statusBody = await statusResponse.json() as { ok?: boolean; job?: FeaAsyncJob; error?: string };
+        if (!statusResponse.ok || !statusBody.job) throw new Error(statusBody.error ?? '정밀 FEA 상태 확인 실패');
+        const job = statusBody.job;
+        setFeaJob({ id: job.id, pollUrl: submitted.pollUrl, percent: job.progress?.percent ?? 0, stage: job.progress?.stage ?? job.status });
+        if (job.status === 'complete' && job.result) {
+          setFeaRes({
+            ok: true, method: job.result.method, maxStressMPa: +job.result.maxStressMPa.toFixed(2),
+            safetyFactor: job.result.safetyFactor == null ? null : +job.result.safetyFactor.toFixed(2),
+            maxDispMm: Number.isFinite(job.result.maxDisplacementMm) ? +job.result.maxDisplacementMm.toFixed(3) : null,
+            material: job.result.material.label, yieldMPa: job.result.material.yieldMPa,
+            refined: job.result.refined, reportHtml: job.result.reportHtml,
+            note: job.result.raiser?.note ?? `비동기 정밀 FEA · ${job.result.grade}`,
+            grade: job.result.grade,
+          });
+          setFeaJob(null);
+          break;
+        }
+        if (job.status === 'failed' || job.status === 'cancelled') {
+          setFeaRes({ ok: false, error: job.errorMessage ?? (job.status === 'cancelled' ? '정밀 FEA가 취소되었습니다.' : '정밀 FEA 실행 실패') });
+          setFeaJob(null);
+          break;
+        }
+      }
     } catch (e) {
-      setFeaRes({ ok: false, error: e instanceof Error ? e.message : String(e) });
+      if (!(e instanceof DOMException && e.name === 'AbortError')) {
+        setFeaRes({ ok: false, error: e instanceof Error ? e.message : String(e) });
+      }
     } finally {
+      if (feaPollAbortRef.current === pollAbort) feaPollAbortRef.current = null;
       setFeaBusy(false);
     }
-  }, [scad, feaLoad, feaMat]);
+  }, [scad, feaLoad, feaMat, feaPrecise]);
+  const cancelFeaJob = useCallback(async () => {
+    const current = feaJob;
+    if (!current) return;
+    feaPollAbortRef.current?.abort();
+    try { await fetch(current.pollUrl, { method: 'DELETE' }); } catch { /* lease recovery remains the safety net */ }
+    setFeaJob(null);
+    setFeaBusy(false);
+    setFeaRes({ ok: false, error: ko ? '정밀 FEA 취소를 요청했습니다.' : 'Precision FEA cancellation requested.' });
+  }, [feaJob, ko]);
   // P0-b(260719b) 정밀 검증 — A1 라운드트립+B1 의심쌍 메시 부울 온디맨드(어셈블리 경로)
   interface PrecRes {
     ok: boolean; error?: string; gateErrors?: string[];
@@ -1845,11 +1912,25 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                     style={{ padding: '7px 8px', borderRadius: 7, fontSize: 11.5, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }}>
                     {[['steel', ko ? '강(SS275)' : 'Steel'], ['STS304', 'STS304'], ['aluminum', 'AL6061'], ['concrete', ko ? '콘크리트' : 'Concrete'], ['timber', ko ? '목재' : 'Timber']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                    <input type="checkbox" checked={feaPrecise} onChange={(e) => setFeaPrecise(e.target.checked)} disabled={feaBusy} />
+                    {ko ? '정밀(비동기)' : 'Precise async'}
+                  </label>
                   <button type="button" onClick={() => void runFeaQuick()} disabled={feaBusy || !Number(feaLoad)}
                     style={{ padding: '0 12px', borderRadius: 7, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', border: '1px solid var(--nx-accent, #2563eb)', background: 'transparent', color: 'var(--nx-accent, #2563eb)', opacity: feaBusy || !Number(feaLoad) ? 0.5 : 1 }}>
                     {feaBusy ? '…' : ko ? '🧮 FEA' : '🧮 FEA'}
                   </button>
                 </div>
+                {feaJob && (
+                  <div style={{ marginTop: 5, display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)' }}>
+                    <progress value={feaJob.percent} max={100} style={{ flex: 1, height: 7 }} />
+                    <span>{feaJob.stage} · {feaJob.percent}%</span>
+                    <button type="button" onClick={() => void cancelFeaJob()}
+                      style={{ padding: '2px 7px', borderRadius: 5, border: '1px solid #dc2626', background: 'transparent', color: '#dc2626', cursor: 'pointer', fontSize: 10 }}>
+                      {ko ? '취소' : 'Cancel'}
+                    </button>
+                  </div>
+                )}
                 {feaRes && !feaRes.ok && <div style={{ marginTop: 4, fontSize: 11, color: '#991b1b' }}>{feaRes.error}</div>}
                 {feaRes?.ok && (
                   <div style={{ marginTop: 6, padding: 9, borderRadius: 8, border: `1px solid ${(feaRes.safetyFactor ?? 0) >= 1 ? 'rgba(22,163,74,0.4)' : 'rgba(220,38,38,0.4)'}`, background: 'var(--nx-panel, #fff)', fontSize: 11, lineHeight: 1.7 }}>
