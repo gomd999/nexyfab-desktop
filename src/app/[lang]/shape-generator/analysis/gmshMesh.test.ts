@@ -18,7 +18,13 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
-import { parseMshTets, gmshTetMeshFromStl, resolveGmshBinary } from './gmshMesh';
+import {
+  parseMshTets,
+  gmshTetMeshFromStl,
+  resolveGmshBinary,
+  estimateTet10Dof,
+  gmshSizingForBBox,
+} from './gmshMesh';
 import { feaFromStlAsync } from './feaPackage';
 
 /** Non-indexed BufferGeometry → binary STL bytes (what the FEA path parses). */
@@ -58,6 +64,23 @@ const signedVol6 = (n: Float32Array, [a, b, c, d]: [number, number, number, numb
 };
 
 describe('gmshMesh — MSH 2.2 parser (A: runs locally, no binary)', () => {
+  it('sizes the A5 plate inside the measured live TET10 envelope', () => {
+    const sizing = gmshSizingForBBox({ dx: 8, dy: 120, dz: 200 });
+    expect(sizing.nearMm).toBeCloseTo(0.4, 8);
+    expect(sizing.farMm).toBeCloseTo(6, 8);
+    expect(sizing.curvatureElements).toBe(18);
+    expect(sizing.extendFromBoundary).toBe(false);
+  });
+
+  it('counts exact TET10 degrees of freedom across shared edges', () => {
+    const tets = [
+      { nodes: [0, 1, 2, 3] as [number, number, number, number], volume: 1 },
+      { nodes: [0, 1, 2, 4] as [number, number, number, number], volume: 1 },
+    ];
+    // 5 corners + 9 unique edges = 14 quadratic nodes * 3 DOF.
+    expect(estimateTet10Dof(tets, 5)).toBe(42);
+  });
+
   it('parses one tet, filters non-tets, compacts unused nodes, remaps non-contiguous ids', () => {
     // Node 99 is surface-only (unused by any tet); ids are non-contiguous (10);
     // element 1 is a triangle (etype 2) → must be filtered out.

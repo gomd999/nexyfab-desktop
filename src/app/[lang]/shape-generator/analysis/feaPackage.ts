@@ -232,6 +232,8 @@ const GMSH_MESH_TIMEOUT_MS = 10_000;
  *  ~12k corners lands near the octree envelope (~68k DOF / ~24s). A finer gmsh mesh
  *  is REJECTED (oversize => null) and the proven octree path runs instead. */
 const GMSH_MAX_CORNER_NODES = 12_000;
+/** Exact post-promotion TET10 DOF cap; this is the real sparse-solver cost. */
+const GMSH_MAX_TET10_DOF = 90_000;
 /** gmsh solve must finish this far into the precise path; if it overruns or the mesh
  *  is unusable we still have budget left to run the octree fallback. */
 const GMSH_SOLVE_DEADLINE_MS = 16_000;
@@ -265,14 +267,11 @@ export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, 
     let gmshMesh: { nodes: Float32Array; tets: Tet[] } | null = null;
     let gmshError: string | undefined;
     try {
-      const bb = new THREE.Box3().setFromBufferAttribute(pos);
-      const size = new THREE.Vector3(); bb.getSize(size);
-      const minDim = Math.max(1e-6, Math.min(size.x, size.y, size.z));
       const { gmshTetMeshFromStl } = await import('./gmshMesh');
       const diag: { reason?: string } = {};
       const g = await gmshTetMeshFromStl(stl, {
-        targetSizeMm: Math.max(0.5, minDim / 4),
         maxNodes: GMSH_MAX_CORNER_NODES, // keep the resulting TET10 solve within the wall budget
+        maxTet10Dof: GMSH_MAX_TET10_DOF,
         timeoutMs: GMSH_MESH_TIMEOUT_MS, // meshing alone must not consume the budget
         diag,
       });

@@ -63,6 +63,8 @@ export interface GmshMeshResult {
   source: 'gmsh';
   nodeCount: number;
   tetCount: number;
+  /** Exact quadratic TET10 degrees of freedom after unique edge-midpoint promotion. */
+  tet10DofCount: number;
 }
 
 /** Signed 6·volume of a tet from a flat coord array (for orientation + volume). */
@@ -235,8 +237,56 @@ export interface GmshMeshOptions {
   /** Reject (return null → fall back) above this node count, so a runaway mesh
    *  never hangs a live request. Default 200_000. */
   maxNodes?: number;
+  /** Reject above the exact TET10 DOF count, which is the real FEM memory/CPU cost. */
+  maxTet10Dof?: number;
+  /** Curvature elements per full circle. Default 18; clamped to a governed range. */
+  curvatureElements?: number;
+  /** Whether fine boundary sizing propagates into the volume. Default false. */
+  extendFromBoundary?: boolean;
   /** Optional diagnostics sink — receives the concrete failure reason on null. */
   diag?: GmshDiag;
+}
+
+export interface GmshSizing {
+  nearMm: number;
+  farMm: number;
+  curvatureElements: number;
+  extendFromBoundary: boolean;
+}
+
+/** Derive bounded controls while keeping local curvature from refining the full volume. */
+export function gmshSizingForBBox(
+  bb: { dx: number; dy: number; dz: number },
+  opts: Pick<GmshMeshOptions, 'targetSizeMm' | 'curvatureElements' | 'extendFromBoundary'> = {},
+): GmshSizing {
+  const dims = [bb.dx, bb.dy, bb.dz].filter(v => Number.isFinite(v) && v > 1e-6);
+  const maxDim = Math.max(...dims, 1e-6);
+  const minDim = Math.min(...dims, maxDim);
+  const requestedSize = opts.targetSizeMm && opts.targetSizeMm > 0
+    ? opts.targetSizeMm
+    : Math.min(maxDim / 28, minDim * 0.75);
+  return {
+    nearMm: maxDim / 500,
+    farMm: Math.max(maxDim / 10_000, Math.min(maxDim, requestedSize)),
+    curvatureElements: Math.max(8, Math.min(48, Math.round(opts.curvatureElements ?? 18))),
+    extendFromBoundary: opts.extendFromBoundary ?? false,
+  };
+}
+
+/** Exact DOF after TET4 -> TET10 promotion (corners + one node per unique edge). */
+export function estimateTet10Dof(tets: Tet[], cornerNodeCount: number): number {
+  const edges = new Set<number>();
+  const pairs = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]] as const;
+  for (const tet of tets) {
+    for (const [i, j] of pairs) {
+      const x = tet.nodes[i];
+      const y = tet.nodes[j];
+      const a = x < y ? x : y;
+      const b = x < y ? y : x;
+      edges.add(a * cornerNodeCount + b);
+    }
+  }
+  return (cornerNodeCount + edges.size) * 3;
 }
 
 /** Probe whether the gmsh binary resolves. Returns the resolved path, or null
@@ -283,6 +333,7 @@ function logTail(log: string, n = 6): string {
 export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions = {}): Promise<GmshMeshResult | null> {
   const timeoutMs = opts.timeoutMs ?? 120_000;
   const maxNodes = opts.maxNodes ?? 200_000;
+  const maxTet10Dof = opts.maxTet10Dof ?? 1_500_000;
   const bin = gmshBinary();
   const setDiag = (d: Partial<GmshDiag>) => { if (opts.diag) Object.assign(opts.diag, d); };
   setDiag({ bin });
@@ -294,18 +345,16 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
   const mshPath = join(workDir, 'out.msh');
 
   const bb = stlBBox(stl);
-  const maxDim = Math.max(bb.dx, bb.dy, bb.dz, 1e-6);
   // MeshSizeMax is the INTERIOR ceiling; MeshSizeMin is the floor that lets the
   // curvature-driven refinement (below) shrink elements right at a stress-raiser
   // (a bore / fillet) without a hard clamp. The Kt stress peak lives ON the
   // curved boundary, so we pour the DOF budget into the curved boundary via
   // Mesh.MeshSizeFromCurvature rather than into a globally fine interior (which
-  // would multiply the node count for no accuracy gain). The interior stays only
-  // slightly finer than before (maxDim/28 vs the old maxDim/24); the boundary
-  // refinement does the work, and MeshSizeExtendFromBoundary grades it back up.
-  const size = opts.targetSizeMm && opts.targetSizeMm > 0 ? opts.targetSizeMm : maxDim / 28;
-  const near = (maxDim / 500).toFixed(6);   // MeshSizeMin — floor at the bore
-  const far = size.toFixed(6);              // MeshSizeMax — interior ceiling
+  // would multiply the node count for no accuracy gain). The interior ceiling
+  // also respects the thinnest envelope dimension.
+  const sizing = gmshSizingForBBox(bb, opts);
+  const near = sizing.nearMm.toFixed(6);   // MeshSizeMin — floor at the bore
+  const far = sizing.farMm.toFixed(6);     // MeshSizeMax — interior ceiling
 
   // STL-conditioning options MUST precede `Merge` (they are consulted while the
   // STL is read): weld duplicate facets, and tolerate small facet overlaps so a
@@ -319,16 +368,12 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
     `Mesh.Algorithm3D = 1;`,          // Delaunay — robust for arbitrary closed surfaces
     `Mesh.MeshSizeMin = ${near};`,
     `Mesh.MeshSizeMax = ${far};`,
-    // Curvature-adaptive sizing is the PRIMARY stress-raiser refinement lever:
-    // 36 = target number of elements per 2*pi of boundary curvature, so a bore /
-    // fillet is auto-wrapped in ~36 quadratic (TET10) elements around its arc —
-    // enough to resolve the Kirsch Kt peak, versus the old 12 which left the hole
-    // edge grossly under-resolved (Kt ~1.4 vs 3.0). This drives most of the DOF.
-    `Mesh.MeshSizeFromCurvature = 36;`,
-    // Grade the fine boundary size smoothly back up to MeshSizeMax over distance,
-    // so the refinement stays LOCAL to the curved edge and the total node count
-    // stays bounded (interior does not inherit the tiny boundary size).
-    `Mesh.MeshSizeExtendFromBoundary = 1;`,
+    // TET10 promotion adds midpoint interpolation, so 18 curvature elements
+    // retain 36 angular interpolation intervals without doubling the solver DOF.
+    `Mesh.MeshSizeFromCurvature = ${sizing.curvatureElements};`,
+    // Production Gmsh 4.8 measurements showed that propagation (=1) spread the
+    // bore's fine size through the whole plate. Keep it local by default.
+    `Mesh.MeshSizeExtendFromBoundary = ${sizing.extendFromBoundary ? 1 : 0};`,
     `Mesh.Optimize = 1;`,
     // Mesh.OptimizeNetgen omitted: Debian's gmsh package is built WITHOUT the Netgen
     // optimizer ("Netgen optimizer is not compiled in this version of Gmsh" -> exit 1).
@@ -433,7 +478,7 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
     // the PRIMARY (reparam) mesh clears this, accept it immediately — no need to
     // also run keep-surface. If it does not, run keep-surface too and keep the
     // HIGHER-DOF of the two (never regress below today's keep-surface behaviour).
-    const MIN_RAISER_NODES = 8_000;
+    const MIN_RAISER_NODES = 3_000;
 
     let lastReason: string | undefined;
     let lastCode: string | undefined;
@@ -494,9 +539,15 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
         setDiag({ reason: `gmsh [${attempt.tag}] mesh too large (${nodeCount} nodes > cap ${maxNodes}) — rejected to protect the live request` });
         return null; // oversize → fall back, don't hang
       }
+      const tet10DofCount = estimateTet10Dof(parsed.tets, nodeCount);
+      if (tet10DofCount > maxTet10Dof) {
+        setDiag({ reason: `gmsh [${attempt.tag}] TET10 solve too large (${tet10DofCount} DOF > cap ${maxTet10Dof}) — rejected to protect the live request` });
+        return null;
+      }
 
       const candidate: GmshMeshResult = {
-        nodes: parsed.nodes, tets: parsed.tets, source: 'gmsh', nodeCount, tetCount: parsed.tets.length,
+        nodes: parsed.nodes, tets: parsed.tets, source: 'gmsh', nodeCount,
+        tetCount: parsed.tets.length, tet10DofCount,
       };
       if (!best || candidate.nodeCount > best.nodeCount) best = candidate;
 
