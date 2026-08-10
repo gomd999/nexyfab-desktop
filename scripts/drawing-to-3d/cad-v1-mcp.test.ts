@@ -22,6 +22,7 @@ describe("CAD v1 MCP tools", () => {
     expect(names).toContain("verify_egress_routes");
     expect(names).toContain("verify_mep_interference");
     expect(names).toContain("verify_manufacturing_evidence");
+    expect(names).toContain("decide_cad_release");
     expect(names).toContain("verify_ai_generation");
     expect(names).toContain("transition_ai_generation_state");
     expect(names).toContain("advance_ai_generation");
@@ -453,6 +454,38 @@ describe("CAD v1 MCP tools", () => {
     });
     expect(String(fetchSpy.mock.calls[0]?.[0])).toContain(
       "/api/cad/v1/manufacturing/verify",
+    );
+  });
+
+  it("routes the hash-bound release decision through CAD v1", async () => {
+    process.env.NEXYFAB_API_KEY = "nf_test";
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          decision: { status: "blocked", blockers: ["roundtrip_missing"] },
+        }),
+        { status: 409 },
+      ),
+    );
+    const request = {
+      workflowStatus: "expert_review_required",
+      purpose: "manufacturing_or_construction",
+      domain: "mechanical",
+      revisionId: "rev-1",
+      revisionSha256: "a".repeat(64),
+      roundtrips: [],
+    };
+    const result = await callTool("decide_cad_release", request);
+    expect(result).toMatchObject({
+      ok: false,
+      decision: { status: "blocked" },
+    });
+    expect(String(fetchSpy.mock.calls[0]?.[0])).toContain(
+      "/api/cad/v1/release/decision",
+    );
+    expect(JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body))).toEqual(
+      request,
     );
   });
 

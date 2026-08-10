@@ -573,6 +573,32 @@ export const tools = [
     inputSchema: { type: "object", additionalProperties: true, properties: {} },
   },
   {
+    name: "decide_cad_release",
+    description:
+      "Fail-closed release decision bound to revision hashes, STEP/IFC/BOM/drawing roundtrips, workflow status, purpose, domain and two independent trusted reviewer signatures. Read-only and creates no quote or RFQ.",
+    inputSchema: {
+      type: "object",
+      required: [
+        "workflowStatus",
+        "purpose",
+        "domain",
+        "revisionId",
+        "revisionSha256",
+        "roundtrips",
+      ],
+      additionalProperties: true,
+      properties: {
+        workflowStatus: { type: "string" },
+        purpose: { type: "string" },
+        domain: { type: "string" },
+        revisionId: { type: "string", minLength: 1 },
+        revisionSha256: { type: "string", minLength: 1 },
+        roundtrips: { type: "array", items: { type: "object" } },
+        signoffs: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  {
     name: "evaluate_assembly_animation",
     description:
       "Evaluate a multi-part assembly animation at one frame using the shared deterministic pose/keyframe contract.",
@@ -2192,6 +2218,9 @@ async function callToolInner(name, args = {}) {
     );
   if (name === "verify_manufacturing_evidence") {
     return remoteCall("/api/cad/v1/manufacturing/verify", args, name);
+  }
+  if (name === "decide_cad_release") {
+    return remoteCall("/api/cad/v1/release/decision", args, name);
   }
   if (name === "evaluate_assembly_animation")
     return remoteCall("/api/cad/v1/assembly/animation/evaluate", args, name);

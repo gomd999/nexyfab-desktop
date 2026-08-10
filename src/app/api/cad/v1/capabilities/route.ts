@@ -41,6 +41,23 @@ export async function GET() {
         manufacturingGates: true,
       },
       {
+        id: "release-decision",
+        method: "POST",
+        path: "/api/cad/v1/release/decision",
+        cli: "release decision",
+        mcp: "decide_cad_release",
+        checks: [
+          "workflow-status",
+          "step-roundtrip",
+          "ifc-roundtrip",
+          "bom-roundtrip",
+          "drawing-roundtrip",
+          "distinct-trusted-reviewer-signatures",
+        ],
+        sideEffects: false,
+        failClosed: true,
+      },
+      {
         id: "reference-analyze",
         method: "POST",
         path: "/api/cad/v1/reference/analyze",

@@ -5,6 +5,7 @@ import { buildBinaryStl } from './stlEncode';
 import { buildBomCSVString } from './bomExport';
 import type { BomRow } from './bomExport';
 import { cadExportBlockers, type CadReleaseStatus } from '@/lib/cad-release-status';
+import type { CadDeliverableReleaseDecision } from '@/lib/cad-deliverable-release';
 
 /** Metadata shipped beside .step for shops / RFQ (machine + human readable). */
 export interface ManufacturingSidecarMeta {
@@ -25,6 +26,8 @@ export interface ManufacturingSidecarMeta {
     drawingStatus: 'pass' | 'limited' | 'not-run';
     pmiStatus: 'limited' | 'verified';
     workflowStatus: CadReleaseStatus;
+    /** Exact decision returned by /api/cad/v1/release/decision. */
+    deliverableDecision: CadDeliverableReleaseDecision;
   };
 }
 
@@ -239,7 +242,18 @@ export async function exportManufacturingZipBundle(
     ...(evidence?.drawingStatus !== 'pass' ? ['exact-drawing-not-passed'] : []),
     ...(evidence?.pmiStatus !== 'verified' ? ['ap242-pmi-limited'] : []),
     ...cadExportBlockers(evidence?.workflowStatus ?? 'ai_draft', 'manufacturing_or_construction'),
+    ...(evidence?.deliverableDecision?.status !== 'pass'
+      || evidence.deliverableDecision.purpose !== 'manufacturing_or_construction'
+      || evidence.deliverableDecision.workflowStatus !== evidence.workflowStatus
+      || evidence.deliverableDecision.blockers.length > 0
+      ? ['deliverable-roundtrip-review-decision-missing-or-blocked'] : []),
   ];
+  // A blocked manufacturing package must never reach the browser as a ZIP.
+  // Previously the manifest said `blocked` but downloadBlob still ran, which
+  // made the policy informational rather than an export gate.
+  if (blockers.length > 0) {
+    throw new Error(`MANUFACTURING_EXPORT_BLOCKED:${blockers.join(',')}`);
+  }
   const packageContentSha256 = await contentSha256(strToU8(JSON.stringify(artifacts)));
   const manifest = {
     ...buildManifest(geometry, baseFilename, meta, { zipArchiveName: zipName, hasBom: !!bomRows }),
@@ -273,6 +287,10 @@ export async function exportManufacturingSidecars(
   baseFilename: string,
   meta: ManufacturingSidecarMeta,
 ): Promise<void> {
+  const blockers = cadExportBlockers(meta.releaseEvidence?.workflowStatus ?? 'ai_draft', 'design_review');
+  if (blockers.length > 0) {
+    throw new Error(`CAD_SIDECAR_EXPORT_BLOCKED:${blockers.join(',')}`);
+  }
   const tri = Math.round(triangleCount(geometry));
   const lenUnit = meta.unitSystem === 'inch' ? 'in' : 'mm';
   const manifest = buildManifest(geometry, baseFilename, meta, { zipArchiveName: null });

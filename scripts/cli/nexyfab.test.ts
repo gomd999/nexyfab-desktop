@@ -571,6 +571,49 @@ describe("CAD v1 commands", () => {
     stdout.mockRestore();
   });
 
+  it("release decision returns a nonzero code and preserves blocked evidence", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          decision: { status: "blocked", blockers: ["roundtrip_missing"] },
+        }),
+        { status: 409 },
+      ),
+    );
+    const stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+    const fs = await import("node:fs");
+    const payload = resolve(
+      process.cwd(),
+      "src/lib/ai/fixtures-release-decision-cli.json",
+    );
+    fs.writeFileSync(
+      payload,
+      JSON.stringify({
+        workflowStatus: "expert_review_required",
+        purpose: "manufacturing_or_construction",
+        domain: "mechanical",
+        revisionId: "rev-1",
+        revisionSha256: "a".repeat(64),
+        roundtrips: [],
+      }),
+    );
+    try {
+      expect(
+        await run(["release", "decision", "--file", payload]),
+      ).toBe(codes.server);
+      expect(String(fetchSpy.mock.calls[0]?.[0])).toContain(
+        "/api/cad/v1/release/decision",
+      );
+      expect(stdout.mock.calls.map((call) => String(call[0])).join(""))
+        .toContain('"status": "blocked"');
+    } finally {
+      fs.unlinkSync(payload);
+      fetchSpy.mockRestore();
+      stdout.mockRestore();
+    }
+  });
+
   it("project verify routes the shared mechanical/interior evidence and strict verdict", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")

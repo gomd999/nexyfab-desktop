@@ -294,6 +294,35 @@ async function cmdCapabilities(argv) {
   return EXIT.ok;
 }
 
+async function cmdRelease(argv) {
+  const sub = argv._[1];
+  const file = argv.file ?? argv._[2];
+  if (sub !== "decision" || !file) {
+    process.stderr.write(
+      "usage: nexyfab release decision --file evidence.json [--out result.json]\n",
+    );
+    return EXIT.usage;
+  }
+  const parsed = readJsonFile(file, "CAD release evidence");
+  if (!parsed.ok) {
+    process.stderr.write(parsed.error + "\n");
+    return EXIT.usage;
+  }
+  const r = await call("/api/cad/v1/release/decision", {
+    method: "POST",
+    body: parsed.value,
+    key: apiKey(argv),
+    verbose: argv.verbose,
+  });
+  if (r.kind === "http" && r.status === 409 && r.json?.decision) {
+    writeJsonResult(r.json, argv.out);
+    return EXIT.server;
+  }
+  if (r.kind !== "ok") return reportFailure(r);
+  writeJsonResult(r.json, argv.out);
+  return EXIT.ok;
+}
+
 /** Deterministic topology/reference reconciliation for automation and CI. */
 async function cmdTopology(argv) {
   const sub = argv._[1];
@@ -1180,6 +1209,7 @@ const USAGE = `nexyfab ${VERSION}
   nexyfab assemble "<설명>" [--out f]   자연어 → 어셈블리 JSON
   nexyfab design "<product>" [--out f]  AI 다중 부품 제품 → 검증된 어셈블리 JSON
   nexyfab capabilities                 공통 CAD v1·legacy 호환 기능 조회
+  nexyfab release decision --file f    STEP·IFC·BOM·도면·전문가 승인 릴리스 판정
   nexyfab part "<request>" [--current f] 선택 가능한 정밀 Feature Program 생성·수정
   nexyfab mesh --file tree.json --out m.stl  FeatureTree → STL
   nexyfab step --file program.json --out m.step  Feature Program → 검증된 STEP
@@ -1223,6 +1253,8 @@ export async function main(args = process.argv.slice(2)) {
       return cmdDesign(argv);
     case "capabilities":
       return cmdCapabilities(argv);
+    case "release":
+      return cmdRelease(argv);
     case "part":
       return cmdPart(argv);
     case "mesh":
