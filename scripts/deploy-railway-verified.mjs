@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 function arg(name, fallback) {
   const prefix = `--${name}=`;
@@ -15,6 +17,11 @@ const timeoutMs = Number(arg('timeout-ms', '1200000'));
 const sourcePath = arg('source', '.');
 const pathAsRoot = process.argv.includes('--path-as-root');
 const verifyOnly = process.argv.includes('--verify-only');
+const windowsRailwayCli = process.platform === 'win32' && process.env.APPDATA
+  ? path.join(process.env.APPDATA, 'npm', 'node_modules', '@railway', 'cli', 'bin', 'railway.js')
+  : '';
+const railwayCommand = windowsRailwayCli && existsSync(windowsRailwayCli) ? process.execPath : 'railway';
+const railwayPrefixArgs = windowsRailwayCli && existsSync(windowsRailwayCli) ? [windowsRailwayCli] : [];
 
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -25,6 +32,10 @@ function run(command, args, options = {}) {
     child.on('error', reject);
     child.on('close', code => code === 0 ? resolve({ stdout, stderr }) : reject(new Error(`${command} ${args.join(' ')} exited ${code}\n${stderr || stdout}`)));
   });
+}
+
+function runRailway(args, options = {}) {
+  return run(railwayCommand, [...railwayPrefixArgs, ...args], options);
 }
 
 function deploymentRows(value) {
@@ -42,7 +53,7 @@ function deploymentStatus(row) {
 }
 
 async function list() {
-  const result = await run('railway', ['deployment', 'list', '--service', service, '--environment', environment, '--limit', '20', '--json']);
+  const result = await runRailway(['deployment', 'list', '--service', service, '--environment', environment, '--limit', '20', '--json']);
   return deploymentRows(JSON.parse(result.stdout));
 }
 
@@ -66,7 +77,7 @@ const beforeIds = new Set(before.map(deploymentId).filter(Boolean));
 if (!verifyOnly) {
   const upArgs = ['up', sourcePath, '--detach', '--json', '--service', service, '--environment', environment, '--message', `verified deploy ${new Date().toISOString()}`];
   if (pathAsRoot) upArgs.splice(2, 0, '--path-as-root');
-  await run('railway', upArgs, { stream: true });
+  await runRailway(upArgs, { stream: true });
 }
 
 const deadline = Date.now() + timeoutMs;
@@ -78,7 +89,7 @@ while (Date.now() < deadline) {
   const status = deploymentStatus(target);
   console.log(JSON.stringify({ event: 'deployment-status', service, deploymentId: targetId, status: status || 'PENDING' }));
   if (['FAILED', 'CRASHED', 'REMOVED'].includes(status)) {
-    if (targetId) await run('railway', ['logs', targetId, '--service', service, '--environment', environment, '--lines', '200']).then(result => process.stderr.write(result.stdout)).catch(() => undefined);
+    if (targetId) await runRailway(['logs', targetId, '--service', service, '--environment', environment, '--lines', '200']).then(result => process.stderr.write(result.stdout)).catch(() => undefined);
     throw new Error(`deployment ${targetId ?? '(unknown)'} ended in ${status}`);
   }
   if (['SUCCESS', 'ACTIVE'].includes(status)) {
