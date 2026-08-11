@@ -2,11 +2,12 @@
  * motionStudy — parameter sweep tests.
  */
 import { describe, it, expect } from 'vitest';
-import { runMotionSweep, MotionStudyError } from './motionStudy';
+import { runHingeTrajectory, runMotionSweep, MotionStudyError } from './motionStudy';
 import { partInstance, IDENTITY_QUAT, type AssemblyState, type PartInstance } from './assemblyState';
 import type { Mate, MateRef } from './mate';
 import type { GeometryResolver, ResolvedGeometry } from './iterativeSolver';
 import { vec3 } from '@/lib/sketch/sketchPlane';
+import { rotateVec } from './mateSolver';
 
 function makePart(id: string, position = vec3(0, 0, 0), fixed = false): PartInstance {
   return partInstance({
@@ -130,5 +131,51 @@ describe('runMotionSweep', () => {
     // verify we get the firstFailureFrame field populated correctly.
     if (r.allConverged) expect(r.firstFailureFrame).toBe(-1);
     else expect(r.firstFailureFrame).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('runHingeTrajectory', () => {
+  const signedHinge = (id: string, a: string, b: string): Mate => ({
+    id,
+    kind: 'hinge',
+    a: ref(a, 'axis', 'axis'),
+    b: ref(b, 'axis', 'axis'),
+    zeroAngleRef: { a: vec3(1, 0, 0), b: vec3(1, 0, 0), axisA: vec3(0, 0, 1), axisB: vec3(0, 0, 1) },
+    limit: { minAngleDeg: -90, maxAngleDeg: 90 },
+  });
+  const resolver: GeometryResolver = (mateRef, part) => mateRef.refId === 'axis' ? {
+    kind: 'axis',
+    world: { origin: part.position, direction: rotateVec(vec3(0, 0, 1), part.orientation) },
+  } : null;
+  const state = (): AssemblyState => ({
+    parts: [makePart('base', vec3(0, 0, 0), true), makePart('link1'), makePart('link2')],
+    mates: [signedHinge('J1', 'base', 'link1'), signedHinge('J2', 'link1', 'link2')],
+  });
+
+  it('interpolates a coordinated absolute path without duplicate segment boundaries', () => {
+    const result = runHingeTrajectory(state(), resolver, {
+      mateIds: ['J1', 'J2'],
+      keyframes: [[0, 0], [40, -30], [-20, 25]],
+      stepsPerSegment: 2,
+    });
+    expect(result.frames).toHaveLength(5);
+    expect(result.frames.map(frame => frame.parameterValues)).toEqual([
+      { J1: 0, J2: 0 },
+      { J1: 20, J2: -15 },
+      { J1: 40, J2: -30 },
+      { J1: 10, J2: -2.5 },
+      { J1: -20, J2: 25 },
+    ]);
+    expect(result.allConverged).toBe(true);
+    expect(result.firstFailureFrame).toBe(-1);
+  });
+
+  it('fails closed on duplicate axes, unsigned hinges, out-of-range angles, and frame-budget overflow', () => {
+    expect(() => runHingeTrajectory(state(), resolver, { mateIds: ['J1', 'J1'], keyframes: [[0, 0], [1, 1]], stepsPerSegment: 1 })).toThrow(/unique/);
+    const unsigned = state();
+    unsigned.mates = unsigned.mates.map(mate => mate.id === 'J2' ? { ...mate, zeroAngleRef: undefined } as Mate : mate);
+    expect(() => runHingeTrajectory(unsigned, resolver, { mateIds: ['J1', 'J2'], keyframes: [[0, 0], [1, 1]], stepsPerSegment: 1 })).toThrow(/signed hinge/);
+    expect(() => runHingeTrajectory(state(), resolver, { mateIds: ['J1', 'J2'], keyframes: [[0, 0], [91, 0]], stepsPerSegment: 1 })).toThrow(/outside J1 limit/);
+    expect(() => runHingeTrajectory(state(), resolver, { mateIds: ['J1', 'J2'], keyframes: Array.from({ length: 5 }, () => [0, 0]), stepsPerSegment: 120 })).toThrow(/frame budget/);
   });
 });

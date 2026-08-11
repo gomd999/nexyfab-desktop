@@ -11,7 +11,12 @@ import {
   type FeatureTreeCollisionGeometry,
   type RefinedInterference,
 } from '@/lib/assembly/featureTreePreciseInterference';
-import { runMotionSweep, type MotionSweepRequest } from '@/lib/assembly/motionStudy';
+import {
+  runHingeTrajectory,
+  runMotionSweep,
+  type HingeTrajectoryRequest,
+  type MotionSweepRequest,
+} from '@/lib/assembly/motionStudy';
 import type { FeatureTree } from '@/lib/cad/featureTree';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
@@ -33,6 +38,7 @@ type VerifyBody = {
   intendedContacts?: Array<{ partA: string; partB: string; justification: string }>;
   allowedDoF?: number;
   motion?: MotionSweepRequest;
+  motionTrajectory?: HingeTrajectoryRequest;
   jointEvidence?: JointEvidenceClaim;
   preciseInterference?: boolean;
 };
@@ -44,6 +50,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, code: 'RATE_LIMIT', message: 'Too many assembly verification requests' }, { status: 429 });
   }
   const body = (await req.json().catch(() => ({}))) as VerifyBody;
+  const motionRequested = Boolean(body.motion || body.motionTrajectory);
+  if (body.motion && body.motionTrajectory) {
+    return NextResponse.json({ ok: false, code: 'INVALID_MOTION', message: 'motion and motionTrajectory are mutually exclusive' }, { status: 422 });
+  }
+  if (body.motionTrajectory) {
+    const trajectory = body.motionTrajectory;
+    const validMateIds = Array.isArray(trajectory.mateIds)
+      && trajectory.mateIds.length >= 2
+      && trajectory.mateIds.length <= 24
+      && trajectory.mateIds.every(id => typeof id === 'string' && id.trim().length > 0)
+      && new Set(trajectory.mateIds).size === trajectory.mateIds.length;
+    const validKeyframes = Array.isArray(trajectory.keyframes)
+      && trajectory.keyframes.length >= 2
+      && trajectory.keyframes.length <= 30
+      && validMateIds
+      && trajectory.keyframes.every(frame => Array.isArray(frame)
+        && frame.length === trajectory.mateIds.length
+        && frame.every(Number.isFinite));
+    const totalFrames = Array.isArray(trajectory.keyframes) && Number.isInteger(trajectory.stepsPerSegment)
+      ? (trajectory.keyframes.length - 1) * trajectory.stepsPerSegment + 1
+      : Number.POSITIVE_INFINITY;
+    if (!validMateIds || !validKeyframes
+      || !Number.isInteger(trajectory.stepsPerSegment) || trajectory.stepsPerSegment < 1 || trajectory.stepsPerSegment > 120
+      || totalFrames > 360) {
+      return NextResponse.json({ ok: false, code: 'INVALID_MOTION', message: 'motionTrajectory exceeds the governed mate, keyframe, step, or 360-frame budget' }, { status: 422 });
+    }
+  }
   const documentedContacts = (body.intendedContacts ?? []).filter(contact => contact.justification.trim().length > 0);
   const interferenceExclusions = new Set([
     ...(body.interferenceWhitelist ?? []),
@@ -96,21 +129,20 @@ export async function POST(req: NextRequest) {
   let motion: unknown = null;
   let motionInterference: unknown = null;
   const motionRefinements: RefinedInterference[] = [];
-  if (body.motion) {
+  if (motionRequested) {
     if (!solvedState || !body.featureTrees) {
       return NextResponse.json({ ok: false, code: 'MOTION_REQUIRES_GEOMETRY', message: 'motion requires solved state and featureTrees' }, { status: 422 });
     }
-    if (!Number.isInteger(body.motion.steps) || body.motion.steps < 1 || body.motion.steps > 360) {
+    if (body.motion && (!Number.isInteger(body.motion.steps) || body.motion.steps < 1 || body.motion.steps > 360)) {
       return NextResponse.json({ ok: false, code: 'INVALID_MOTION', message: 'motion.steps must be an integer from 1 to 360' }, { status: 422 });
     }
     try {
-      motion = runMotionSweep(
-        solvedState,
-        featureTreeGeometryResolver(new Map(Object.entries(body.featureTrees))),
-        body.motion,
-      );
+      const resolver = featureTreeGeometryResolver(new Map(Object.entries(body.featureTrees)));
+      motion = body.motion
+        ? runMotionSweep(solvedState, resolver, body.motion)
+        : runHingeTrajectory(solvedState, resolver, body.motionTrajectory!);
       if (boxes) {
-        const frameResults = (motion as ReturnType<typeof runMotionSweep>).frames.map(frame => {
+        const frameResults = (motion as ReturnType<typeof runMotionSweep> | ReturnType<typeof runHingeTrajectory>).frames.map(frame => {
           const rawPairs = assemblyInterferencesSpatial(
             frame.solve.state.parts,
             boxes,
@@ -123,7 +155,13 @@ export async function POST(req: NextRequest) {
           const pairs = body.preciseInterference
             ? refinement.filter(result => !result.available || result.intersects).map(result => result.pair)
             : rawPairs;
-          return { frame: frame.index, parameterValue: frame.parameterValue, rawPairs, pairs, refinement };
+          return {
+            frame: frame.index,
+            ...('parameterValue' in frame ? { parameterValue: frame.parameterValue } : { parameterValues: frame.parameterValues }),
+            rawPairs,
+            pairs,
+            refinement,
+          };
         });
         const collisionFrames = frameResults.filter(frame => frame.pairs.length > 0);
         motionInterference = {
@@ -197,7 +235,7 @@ export async function POST(req: NextRequest) {
   const verificationInputHash = hashNativeCadVerificationInput({
     state: body.state ?? null,
     featureTrees: body.featureTrees ?? null,
-    motion: body.motion ?? null,
+    motion: body.motion ?? body.motionTrajectory ?? null,
     allowedDoF,
     intendedContacts: documentedContacts,
   });
@@ -226,7 +264,7 @@ export async function POST(req: NextRequest) {
     dofAccepted: constraintRank?.authoritative === true && constraintRank.dof >= 0 && constraintRank.dof <= allowedDoF,
     interference: preciseComplete ? 'precise' : interferenceChecked ? 'conservative' : 'not_run',
     intendedContactsDocumented: !legacyWhitelistUsed && documentedContacts.length === (body.intendedContacts?.length ?? 0),
-    motion: body.motion ? (motionOk ? 'pass' : 'fail') : motionRequired ? 'not_run' : 'not_required',
+    motion: motionRequested ? (motionOk ? 'pass' : 'fail') : motionRequired ? 'not_run' : 'not_required',
     motionRequired,
     jointEvidence: motionRequired ? (jointEvidenceGate.manufacturingReleaseEligible ? 'pass' : 'fail') : 'not_required',
     exactCad: !body.preciseInterference ? 'not_run' : exactCadFailures.length === 0 ? 'pass' : 'fail',
@@ -246,6 +284,7 @@ export async function POST(req: NextRequest) {
     interferenceMethod: exactBoxes ? 'occt-derived-aabb-plus-precise-mesh'
       : boxes ? 'aabb-spatial-conservative' : 'not-run-no-local-boxes',
     motion,
+    motionMode: body.motionTrajectory ? 'coordinated-hinge-trajectory' : body.motion ? 'single-parameter-sweep' : 'not-run',
     motionInterference,
     preciseInterference,
     exactCadEvidence,
@@ -254,7 +293,7 @@ export async function POST(req: NextRequest) {
     verificationUnavailable: [
       ...(interferenceChecked ? [] : ['interference: localBoxes were not supplied']),
       ...exactCadFailures,
-      ...(motionRequired && !body.motion ? ['motion: allowedDoF > 0 requires a governed motion sweep'] : []),
+      ...(motionRequired && !motionRequested ? ['motion: allowedDoF > 0 requires a governed motion sweep'] : []),
       ...(motionRequired && !jointEvidenceGate.manufacturingReleaseEligible ? [`joint evidence: ${jointEvidenceGate.errors.join(', ')}`] : []),
     ],
     previewOk,

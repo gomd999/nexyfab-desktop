@@ -11,8 +11,10 @@
  *   - Sweep a distance mate to verify clearance through travel
  *   - Animate an exploded view by sweeping a synthetic distance
  *
- * Scope (Phase 3.6 minimal):
+ * Scope:
  *   - Single mate parameter sweep (linear interpolation between from/to).
+ *   - Coordinated, absolute multi-hinge trajectories through governed
+ *     keyframes (serial robots and other open-chain mechanisms).
  *   - N+1 frames (inclusive endpoints).
  *   - Re-uses iterativeSolve for each frame (warm-starts from prev frame's
  *     solution for faster convergence).
@@ -20,7 +22,9 @@
  *     follow-up pass can run assemblyInterferences on each frame).
  *
  * Out of scope (Phase 3.6.2+):
- *   - Multi-parameter studies (sweep 2+ params on a grid)
+ *   - Cartesian path planning / inverse kinematics.
+ *   - Multi-parameter exhaustive grids (coordinated keyframes are paths,
+ *     not a proof over the full joint-space volume).
  *   - Time-based animation (constant velocity vs ease-in/out)
  *   - Failure-frame detection (which frame first violates a constraint)
  *   - Export to video / GIF
@@ -61,6 +65,29 @@ export interface MotionStudyResult {
   /** True if every frame converged within tolerance. */
   allConverged: boolean;
   /** Index of first frame that failed to converge, or -1 if all succeeded. */
+  firstFailureFrame: number;
+}
+
+export interface HingeTrajectoryRequest {
+  /** Ordered, unique hinge mate IDs. Drive order is deterministic. */
+  mateIds: string[];
+  /** Absolute hinge angles in degrees. Every row matches mateIds. */
+  keyframes: number[][];
+  /** Linear interpolation steps per keyframe segment. */
+  stepsPerSegment: number;
+  solverOptions?: IterativeSolverOptions;
+}
+
+export interface HingeTrajectoryFrame {
+  index: number;
+  segmentIndex: number;
+  parameterValues: Readonly<Record<string, number>>;
+  solve: IterativeSolveResult;
+}
+
+export interface HingeTrajectoryResult {
+  frames: ReadonlyArray<HingeTrajectoryFrame>;
+  allConverged: boolean;
   firstFailureFrame: number;
 }
 
@@ -168,6 +195,87 @@ export function runMotionSweep(
     allConverged: firstFailure < 0,
     firstFailureFrame: firstFailure,
   };
+}
+
+/**
+ * Follow a coordinated path through absolute hinge-angle keyframes.
+ *
+ * This deliberately supports signed hinges only. Gear/rack drives are
+ * incremental and cannot be mixed into an absolute joint-vector path without
+ * an explicit transmission-coordinate model. Each interpolated frame applies
+ * every hinge target, re-solves the assembly, and warm-starts the next frame.
+ */
+export function runHingeTrajectory(
+  initialState: AssemblyState,
+  resolve: GeometryResolver,
+  request: HingeTrajectoryRequest,
+): HingeTrajectoryResult {
+  if (!Number.isInteger(request.stepsPerSegment) || request.stepsPerSegment < 1 || request.stepsPerSegment > 120) {
+    throw new MotionStudyError(`stepsPerSegment must be an integer from 1 to 120, got ${request.stepsPerSegment}`);
+  }
+  if (!Array.isArray(request.mateIds) || request.mateIds.length < 2 || request.mateIds.length > 24) {
+    throw new MotionStudyError('mateIds must contain 2 to 24 governed hinge IDs');
+  }
+  if (new Set(request.mateIds).size !== request.mateIds.length || request.mateIds.some(id => typeof id !== 'string' || !id.trim())) {
+    throw new MotionStudyError('mateIds must be non-empty and unique');
+  }
+  if (!Array.isArray(request.keyframes) || request.keyframes.length < 2 || request.keyframes.length > 30) {
+    throw new MotionStudyError('keyframes must contain 2 to 30 joint vectors');
+  }
+  const totalFrames = (request.keyframes.length - 1) * request.stepsPerSegment + 1;
+  if (totalFrames > 360) throw new MotionStudyError(`trajectory frame budget exceeded: ${totalFrames}/360`);
+
+  const hinges = request.mateIds.map(mateId => {
+    const mate = initialState.mates.find(candidate => candidate.id === mateId);
+    if (!mate) throw new MotionStudyError(`mate ${mateId} not found`);
+    if (mate.kind !== 'hinge' || mate.suppressed || !mate.zeroAngleRef) {
+      throw new MotionStudyError(`mate ${mateId} must be an active signed hinge with zeroAngleRef`);
+    }
+    return mate;
+  });
+  for (const [frameIndex, keyframe] of request.keyframes.entries()) {
+    if (!Array.isArray(keyframe) || keyframe.length !== hinges.length) {
+      throw new MotionStudyError(`keyframes[${frameIndex}] must contain ${hinges.length} angles`);
+    }
+    for (const [axisIndex, value] of keyframe.entries()) {
+      if (!Number.isFinite(value)) throw new MotionStudyError(`keyframes[${frameIndex}][${axisIndex}] must be finite`);
+      const limit = hinges[axisIndex]!.limit;
+      if (limit && (value < limit.minAngleDeg || value > limit.maxAngleDeg)) {
+        throw new MotionStudyError(
+          `keyframes[${frameIndex}] target ${value}° is outside ${hinges[axisIndex]!.id} limit ` +
+          `[${limit.minAngleDeg}°, ${limit.maxAngleDeg}°]`,
+        );
+      }
+    }
+  }
+
+  let currentState = iterativeSolve(initialState, resolve, request.solverOptions).state;
+  const frames: HingeTrajectoryFrame[] = [];
+  let firstFailureFrame = -1;
+  for (let segmentIndex = 0; segmentIndex < request.keyframes.length - 1; segmentIndex += 1) {
+    const from = request.keyframes[segmentIndex]!;
+    const to = request.keyframes[segmentIndex + 1]!;
+    const firstStep = segmentIndex === 0 ? 0 : 1;
+    for (let step = firstStep; step <= request.stepsPerSegment; step += 1) {
+      const t = step / request.stepsPerSegment;
+      const values = from.map((value, index) => value + (to[index]! - value) * t);
+      const driven = applyDrives(currentState, resolve, request.mateIds.map((mateId, index) => ({
+        mateId,
+        angleDeg: values[index]!,
+      })));
+      const solve = iterativeSolve(driven.state, resolve, request.solverOptions);
+      const index = frames.length;
+      if (!solve.success && firstFailureFrame < 0) firstFailureFrame = index;
+      frames.push({
+        index,
+        segmentIndex,
+        parameterValues: Object.fromEntries(request.mateIds.map((mateId, axisIndex) => [mateId, values[axisIndex]!])),
+        solve,
+      });
+      currentState = solve.state;
+    }
+  }
+  return { frames, allConverged: firstFailureFrame < 0, firstFailureFrame };
 }
 
 /**

@@ -28,6 +28,7 @@ export interface NodeOcctLoadResult {
 }
 
 let cached: OcctModule | null = null;
+let pending: Promise<NodeOcctLoadResult> | null = null;
 
 /**
  * Load (and cache) the real OCCT module in Node. Returns `{ ok:false }` with a
@@ -38,7 +39,18 @@ export async function loadOcctNode(opts: { distDir?: string } = {}): Promise<Nod
   if (cached) return { ok: true, oc: cached, loadMs: 0 };
   const isNode = typeof process === 'object' && !!process.versions?.node;
   if (!isNode) return { ok: false, reason: 'not a Node runtime (use the worker bridge in the browser)' };
+  // Exact assembly verification builds every part in parallel. Without an
+  // in-flight cache, the first request instantiated one ~65 MB Emscripten
+  // runtime per part before any caller could populate `cached`, leaking
+  // process listeners and wasting memory. All concurrent first loads must
+  // share the same factory promise.
+  if (pending) return pending;
+  pending = loadOcctNodeUncached(opts);
+  try { return await pending; }
+  finally { pending = null; }
+}
 
+async function loadOcctNodeUncached(opts: { distDir?: string }): Promise<NodeOcctLoadResult> {
   const t0 = Date.now();
   try {
     // Do not use createRequire(...).resolve here. Next's production optimizer
@@ -90,4 +102,5 @@ export async function loadOcctNode(opts: { distDir?: string } = {}): Promise<Nod
 /** Test seam: drop the cached module so a test can force a fresh load. */
 export function __resetOcctNodeCache(): void {
   cached = null;
+  pending = null;
 }

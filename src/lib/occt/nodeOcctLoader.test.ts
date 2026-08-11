@@ -5,7 +5,7 @@
  * (so CI without the 65 MB asset stays green) rather than failing.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { loadOcctNode, type OcctModule } from './nodeOcctLoader';
+import { __resetOcctNodeCache, loadOcctNode, type OcctModule } from './nodeOcctLoader';
 
 let load: Awaited<ReturnType<typeof loadOcctNode>>;
 let oc: OcctModule;
@@ -48,4 +48,16 @@ describe('loadOcctNode (real OCCT headless)', () => {
     expect(again.ok).toBe(true);
     expect(again.loadMs).toBe(0);
   });
+
+  it('coalesces concurrent first loads into one Emscripten runtime', async () => {
+    if (!load.ok) return;
+    const beforeUncaught = process.listenerCount('uncaughtException');
+    const beforeRejection = process.listenerCount('unhandledRejection');
+    __resetOcctNodeCache();
+    const results = await Promise.all(Array.from({ length: 8 }, () => loadOcctNode()));
+    expect(results.every(result => result.ok && result.oc)).toBe(true);
+    expect(new Set(results.map(result => result.oc)).size).toBe(1);
+    expect(process.listenerCount('uncaughtException') - beforeUncaught).toBeLessThanOrEqual(1);
+    expect(process.listenerCount('unhandledRejection') - beforeRejection).toBeLessThanOrEqual(1);
+  }, 60_000);
 });

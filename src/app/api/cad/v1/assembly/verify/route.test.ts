@@ -15,6 +15,28 @@ const extrudeTree = (id: string, loop: Array<{ x: number; y: number }>, depth = 
 });
 
 describe('CAD v1 assembly verify', () => {
+  it('rejects ambiguous or over-budget coordinated motion before geometry work', async () => {
+    const request = (body: unknown) => new NextRequest('http://localhost/api/cad/v1/assembly/verify', {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': `invalid-trajectory-${Math.random()}` }, body: JSON.stringify(body),
+    });
+    const ambiguous = await POST(request({
+      motion: { mateId: 'J1', fromValue: 0, toValue: 1, steps: 1 },
+      motionTrajectory: { mateIds: ['J1', 'J2'], keyframes: [[0, 0], [1, 1]], stepsPerSegment: 1 },
+    }));
+    expect(ambiguous.status).toBe(422);
+    expect(await ambiguous.json()).toMatchObject({ code: 'INVALID_MOTION', message: expect.stringContaining('mutually exclusive') });
+    const overBudget = await POST(request({
+      motionTrajectory: { mateIds: ['J1', 'J2'], keyframes: Array.from({ length: 5 }, () => [0, 0]), stepsPerSegment: 120 },
+    }));
+    expect(overBudget.status).toBe(422);
+    expect(await overBudget.json()).toMatchObject({ code: 'INVALID_MOTION', message: expect.stringContaining('360-frame') });
+    const malformed = await POST(request({
+      motionTrajectory: { mateIds: ['J1', 'J1'], keyframes: [[0, 0], [1]], stepsPerSegment: 1 },
+    }));
+    expect(malformed.status).toBe(422);
+    expect(await malformed.json()).toMatchObject({ code: 'INVALID_MOTION' });
+  });
+
   it('combines solver DoF and conservative interference in one verdict', async () => {
     const req = new NextRequest('http://localhost/api/cad/v1/assembly/verify', {
       method: 'POST', headers: { 'content-type': 'application/json' },
