@@ -80,7 +80,9 @@ export async function verifyRobotEvidenceBundle(reportBytes: Uint8Array, program
   const catalog = object(report.catalogSelection, 'catalogSelection');
   const housing = object(report.housingFit, 'housingFit');
   const assembly = object(report.assembly, 'assembly');
-  if (assembly.preciseInterferenceStatus !== 'completed') throw new Error('precise interference verification must be completed');
+  if (assembly.preciseInterferenceStatus !== 'completed' && assembly.preciseInterferenceStatus !== 'not-needed-no-candidates') {
+    throw new Error('precise interference verification must be completed or candidate-free');
+  }
   const certificate = object(assembly.certificate, 'assembly.certificate');
   const motion = object(report.motionStudy, 'motionStudy');
   const expectedProgramHash = string(product.programSha256, 'product.programSha256');

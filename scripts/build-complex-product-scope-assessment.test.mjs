@@ -33,7 +33,14 @@ test('complex-product scope evidence stays fail-closed and CAD-independent', () 
   assert.equal(result.decision.manufacturingReleaseGuaranteed, false);
   assert.equal(result.internalRobot.editableParts, 25);
   assert.equal(result.internalRobot.mates, 60);
+  assert.equal(result.internalRobot.revision, 2);
+  assert.equal(result.internalRobot.driveTopology, 'coaxial_parent_drive_output_link');
   assert.equal(result.internalRobot.rankDoF, 6);
+  assert.equal(result.internalRobot.intendedContacts, 24);
+  assert.equal(result.internalRobot.preciseInterferences, 0);
+  assert.equal(result.internalRobot.exploratoryMotionFrames, 13);
+  assert.equal(result.internalRobot.exploratoryCollisionFrames, 0);
+  assert.equal(result.internalRobot.unresolvedCatalogComponents, 22);
   assert.equal(result.internalRobot.releaseReady, false);
   assert.ok(result.referencePilot.families.filter(item => item.scope === 'partially_validated').every(item => item.unresolvedAssertions.length > 0));
 });

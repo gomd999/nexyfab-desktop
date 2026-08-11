@@ -5,7 +5,11 @@ import type { RobotEngineeringSpec } from './robotEngineering';
 import type { JointSelection } from './componentSelector';
 import { validateCatalog } from './componentCatalog';
 
-export type GeneratedRobot = { program: AiAssemblyProgram; pendingCatalogComponents: string[] };
+export type GeneratedRobot = {
+  program: AiAssemblyProgram;
+  pendingCatalogComponents: string[];
+  intendedContacts: Array<{ partA: string; partB: string; justification: string }>;
+};
 
 export function generateRobot6Axis(spec: RobotEngineeringSpec, name = 'NexyFab 6-axis robot', selections: readonly JointSelection[] = []): GeneratedRobot {
   if (spec.joints.length !== 6) throw new Error('A 6-axis robot requires exactly six joints.');
@@ -25,21 +29,22 @@ export function generateRobot6Axis(spec: RobotEngineeringSpec, name = 'NexyFab 6
   }
   const ids = ['base', 'shoulder', 'upper-arm', 'forearm', 'wrist-1', 'wrist-2', 'tool-flange'];
   const linkLengths = ids.map((id, index) => index === 0 ? 160 : Math.max(80, spec.joints[index - 1]!.aMm || spec.joints[index - 1]!.dMm));
+  const componentsByJoint = spec.joints.map((_, index) => {
+    const selection = selections.find(item => item.joint === index + 1);
+    return selection ? [selection.motor, selection.reducer, selection.bearing] : placeholderDriveComponents(index + 1);
+  });
+  const structuralZ = [0];
+  for (let joint = 1; joint <= 6; joint += 1) {
+    const driveStackMm = componentsByJoint[joint - 1]!.reduce((sum, component) => sum + component.envelopeMm.z, 0);
+    structuralZ.push(structuralZ[joint - 1]! + linkLengths[joint - 1]! + driveStackMm);
+  }
   const assemblyParts = ids.map((id, index) => ({
     id, name: id, partTemplateId: `robot:${id}`,
-    position: { x: 0, y: 0, z: linkLengths.slice(0, index).reduce((sum, length) => sum + length, 0) },
+    position: { x: 0, y: 0, z: structuralZ[index]! },
     orientation: { x: 0, y: 0, z: 0, w: 1 }, fixed: index === 0,
   }));
-  const mates: Mate[] = ids.slice(1).map((id, index) => ({
-    id: `J${index + 1}`, kind: 'hinge' as const,
-    a: { partId: ids[index]!, refId: 'bbox_axis_z_max', refKind: 'axis' as const },
-    b: { partId: id, refId: 'bbox_axis_z_min', refKind: 'axis' as const },
-    limit: { minAngleDeg: spec.joints[index]!.minDeg, maxAngleDeg: spec.joints[index]!.maxDeg },
-    zeroAngleRef: {
-      a: { x: 1, y: 0, z: 0 }, b: { x: 1, y: 0, z: 0 },
-      axisA: { x: 0, y: 0, z: 1 }, axisB: { x: 0, y: 0, z: 1 },
-    },
-  }));
+  const mates: Mate[] = [];
+  const intendedContacts: GeneratedRobot['intendedContacts'] = [];
   const pendingCatalogComponents = spec.joints.flatMap((_, index) => selectionJoints.has(index + 1) ? [] : [`motor_j${index + 1}`, `reducer_j${index + 1}`, `bearing_set_j${index + 1}`]).concat(['brake', 'encoder', 'internal_harness', 'tool_connector']);
   const parts: AiAssemblyPart[] = ids.map((id, index) => ({
     instanceId: id, definitionId: `robot:${id}`, featureTree: linkTree(id, linkLengths[index]!),
@@ -47,7 +52,7 @@ export function generateRobot6Axis(spec: RobotEngineeringSpec, name = 'NexyFab 6
   }));
   for (let joint = 1; joint <= 6; joint += 1) {
     const selection = selections.find(item => item.joint === joint);
-    const components = selection ? [selection.motor, selection.reducer, selection.bearing] : placeholderDriveComponents(joint);
+    const components = componentsByJoint[joint - 1]!;
     const parentId = ids[joint - 1]!, parentPosition = assemblyParts[joint - 1]!.position;
     let anchorPartId = parentId;
     let anchorAxisRef = 'bbox_axis_z_max';
@@ -63,11 +68,35 @@ export function generateRobot6Axis(spec: RobotEngineeringSpec, name = 'NexyFab 6
         { id: `${instanceId}:mount`, kind: 'coincident', a: { partId: anchorPartId, refId: anchorPlaneRef, refKind: 'plane' }, b: { partId: instanceId, refId: 'f.cap.bottom', refKind: 'plane' } },
         { id: `${instanceId}:clocking`, kind: 'angle', a: { partId: anchorPartId, refId: 'x_axis', refKind: 'axis' }, b: { partId: instanceId, refId: 'x_axis', refKind: 'axis' }, value: 0 },
       );
+      intendedContacts.push({
+        partA: anchorPartId,
+        partB: instanceId,
+        justification: `J${joint} ${component.kind} axial mounting faces are coincident by design; volumetric interference is not permitted.`,
+      });
       anchorPartId = instanceId;
       anchorAxisRef = 'bbox_axis_z_max';
       anchorPlaneRef = 'f.cap.top';
       nextZ += component.envelopeMm.z;
     }
+    // The output link is driven from the top of the complete coaxial drive
+    // stack. Mating it directly to the parent link placed the link and all
+    // three drive envelopes in the same volume, creating deterministic false
+    // geometry rather than a usable robot concept.
+    mates.push({
+      id: `J${joint}`, kind: 'hinge',
+      a: { partId: anchorPartId, refId: 'bbox_axis_z_max', refKind: 'axis' },
+      b: { partId: ids[joint]!, refId: 'bbox_axis_z_min', refKind: 'axis' },
+      limit: { minAngleDeg: spec.joints[joint - 1]!.minDeg, maxAngleDeg: spec.joints[joint - 1]!.maxDeg },
+      zeroAngleRef: {
+        a: { x: 1, y: 0, z: 0 }, b: { x: 1, y: 0, z: 0 },
+        axisA: { x: 0, y: 0, z: 1 }, axisB: { x: 0, y: 0, z: 1 },
+      },
+    });
+    intendedContacts.push({
+      partA: anchorPartId,
+      partB: ids[joint]!,
+      justification: `J${joint} bearing output face supports the driven link; volumetric interference is not permitted.`,
+    });
   }
   const quantityByDefinition = new Map<string, number>();
   for (const item of parts) if (item.definitionId) quantityByDefinition.set(item.definitionId, (quantityByDefinition.get(item.definitionId) ?? 0) + 1);
@@ -77,7 +106,7 @@ export function generateRobot6Axis(spec: RobotEngineeringSpec, name = 'NexyFab 6
     assembly: { parts: assemblyParts, mates }, parts,
     structure: [{ id: 'robot-arm', name: 'Robot arm kinematic chain', instanceIds: [...ids], rigid: false }, ...spec.joints.map((_, index) => ({ id: `drive-J${index + 1}`, name: `Joint ${index + 1} drive`, instanceIds: assemblyParts.filter(part => part.id.startsWith(`J${index + 1}:`)).map(part => part.id), rigid: true }))],
     unresolved: pendingCatalogComponents.map(id => `${id}: catalog model and mounting interface must be selected`),
-  }, pendingCatalogComponents };
+  }, pendingCatalogComponents, intendedContacts };
 }
 
 function placeholderDriveComponents(joint: number) {

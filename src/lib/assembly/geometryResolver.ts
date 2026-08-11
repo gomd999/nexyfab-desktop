@@ -144,7 +144,7 @@ export function buildPartRefRegistry(
       registry.set(`bbox_point_x${x}_y${y}_z${z}`, { kind: 'point', origin: vec3(bounds.x[x === 'min' ? 0 : 1], bounds.y[y === 'min' ? 0 : 1], bounds.z[z === 'min' ? 0 : 1]) });
     }
     const baseZ=base.profileOffsetZ??0,topZ=baseZ+base.depth;
-    registry.set('f.cap.bottom', { kind:'plane', origin:vec3(0,0,baseZ), normal:vec3(0,0,1) });
+    registry.set('f.cap.bottom', { kind:'plane', origin:vec3(0,0,baseZ), normal:vec3(0,0,-1) });
     registry.set('f.cap.top', { kind:'plane', origin:vec3(0,0,topZ), normal:vec3(0,0,1) });
     registry.set('bbox_axis_z_min', { kind:'axis', origin:vec3(0,0,baseZ), direction:vec3(0,0,1) });
     registry.set('bbox_axis_z_max', { kind:'axis', origin:vec3(0,0,topZ), direction:vec3(0,0,1) });

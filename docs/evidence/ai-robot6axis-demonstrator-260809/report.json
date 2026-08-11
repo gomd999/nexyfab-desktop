@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.ai-complex-product-demonstrator.v1",
-  "generatedAt": "2026-08-09T01:01:26.697Z",
+  "generatedAt": "2026-08-11T03:31:55.595Z",
   "scoreEligible": false,
   "releaseReady": false,
   "policy": {
@@ -13,15 +13,16 @@
     "family": "robot",
     "axes": 6,
     "lineageId": "nexyfab-robot6axis-demonstrator",
-    "revision": 1,
+    "revision": 2,
+    "driveTopology": "coaxial_parent_drive_output_link",
     "editableParts": 25,
     "editableFeatureTrees": 25,
     "mates": 60,
     "structureGroups": 7,
     "unresolvedCatalogComponents": 22,
     "classification": "concept_only",
-    "programSha256": "fb66d10f560747198180790d15f8280cb60a57484fa96549b99ab6a8209c497e",
-    "programArtifact": "editable-program-fb66d10f560747198180790d15f8280cb60a57484fa96549b99ab6a8209c497e.json"
+    "programSha256": "5e4aea439f245447be3d6295b7be9d57183ccae1adf36b2d0491039b65a9f242",
+    "programArtifact": "editable-program-5e4aea439f245447be3d6295b7be9d57183ccae1adf36b2d0491039b65a9f242.json"
   },
   "engineering": {
     "designOk": true,
@@ -125,7 +126,8 @@
         "errorCodes": [],
         "metrics": {
           "parts": 25,
-          "availableParts": 25
+          "availableParts": 25,
+          "diagnosticOnly": 1
         }
       },
       "topology": {
@@ -141,7 +143,7 @@
           "ASSEMBLY_NOT_RELEASE_READY"
         ],
         "metrics": {
-          "flaggedInterferences": 22
+          "flaggedInterferences": 0
         }
       },
       "motion": {
@@ -169,6 +171,129 @@
   "assembly": {
     "verifierReturned": true,
     "releaseReady": false,
+    "intendedContacts": [
+      {
+        "partA": "base",
+        "partB": "J1:motor:motor-j1-unselected",
+        "justification": "J1 motor axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J1:motor:motor-j1-unselected",
+        "partB": "J1:reducer:reducer-j1-unselected",
+        "justification": "J1 reducer axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J1:reducer:reducer-j1-unselected",
+        "partB": "J1:bearing:bearing-j1-unselected",
+        "justification": "J1 bearing axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J1:bearing:bearing-j1-unselected",
+        "partB": "shoulder",
+        "justification": "J1 bearing output face supports the driven link; volumetric interference is not permitted."
+      },
+      {
+        "partA": "shoulder",
+        "partB": "J2:motor:motor-j2-unselected",
+        "justification": "J2 motor axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J2:motor:motor-j2-unselected",
+        "partB": "J2:reducer:reducer-j2-unselected",
+        "justification": "J2 reducer axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J2:reducer:reducer-j2-unselected",
+        "partB": "J2:bearing:bearing-j2-unselected",
+        "justification": "J2 bearing axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J2:bearing:bearing-j2-unselected",
+        "partB": "upper-arm",
+        "justification": "J2 bearing output face supports the driven link; volumetric interference is not permitted."
+      },
+      {
+        "partA": "upper-arm",
+        "partB": "J3:motor:motor-j3-unselected",
+        "justification": "J3 motor axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J3:motor:motor-j3-unselected",
+        "partB": "J3:reducer:reducer-j3-unselected",
+        "justification": "J3 reducer axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J3:reducer:reducer-j3-unselected",
+        "partB": "J3:bearing:bearing-j3-unselected",
+        "justification": "J3 bearing axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J3:bearing:bearing-j3-unselected",
+        "partB": "forearm",
+        "justification": "J3 bearing output face supports the driven link; volumetric interference is not permitted."
+      },
+      {
+        "partA": "forearm",
+        "partB": "J4:motor:motor-j4-unselected",
+        "justification": "J4 motor axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J4:motor:motor-j4-unselected",
+        "partB": "J4:reducer:reducer-j4-unselected",
+        "justification": "J4 reducer axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J4:reducer:reducer-j4-unselected",
+        "partB": "J4:bearing:bearing-j4-unselected",
+        "justification": "J4 bearing axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J4:bearing:bearing-j4-unselected",
+        "partB": "wrist-1",
+        "justification": "J4 bearing output face supports the driven link; volumetric interference is not permitted."
+      },
+      {
+        "partA": "wrist-1",
+        "partB": "J5:motor:motor-j5-unselected",
+        "justification": "J5 motor axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J5:motor:motor-j5-unselected",
+        "partB": "J5:reducer:reducer-j5-unselected",
+        "justification": "J5 reducer axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J5:reducer:reducer-j5-unselected",
+        "partB": "J5:bearing:bearing-j5-unselected",
+        "justification": "J5 bearing axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J5:bearing:bearing-j5-unselected",
+        "partB": "wrist-2",
+        "justification": "J5 bearing output face supports the driven link; volumetric interference is not permitted."
+      },
+      {
+        "partA": "wrist-2",
+        "partB": "J6:motor:motor-j6-unselected",
+        "justification": "J6 motor axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J6:motor:motor-j6-unselected",
+        "partB": "J6:reducer:reducer-j6-unselected",
+        "justification": "J6 reducer axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J6:reducer:reducer-j6-unselected",
+        "partB": "J6:bearing:bearing-j6-unselected",
+        "justification": "J6 bearing axial mounting faces are coincident by design; volumetric interference is not permitted."
+      },
+      {
+        "partA": "J6:bearing:bearing-j6-unselected",
+        "partB": "tool-flange",
+        "justification": "J6 bearing output face supports the driven link; volumetric interference is not permitted."
+      }
+    ],
+    "releaseContactCount": 24,
     "certificate": {
       "solver": "pass",
       "converged": true,
@@ -191,10 +316,13 @@
       "dofAccepted": true,
       "interference": "precise",
       "intendedContactsDocumented": true,
-      "motion": "not_required"
+      "motion": "not_run",
+      "motionRequired": true,
+      "jointEvidence": "fail",
+      "exactCad": "pass"
     },
-    "preciseInterferenceStatus": "completed",
-    "flaggedInterferences": 22,
+    "preciseInterferenceStatus": "not-needed-no-candidates",
+    "flaggedInterferences": 0,
     "code": null,
     "message": null,
     "verdict": "solver convergence alone is insufficient; degrees of freedom and every non-whitelisted precise interference must pass"
@@ -202,143 +330,10 @@
   "interferenceAnalysis": {
     "categories": {
       "structural-structural": 0,
-      "drive-structural": 18,
-      "drive-drive": 4
+      "drive-structural": 0,
+      "drive-drive": 0
     },
-    "pairs": [
-      {
-        "partA": "J1:motor:motor-j1-unselected",
-        "partB": "shoulder",
-        "penetrationMm": 60,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J1:reducer:reducer-j1-unselected",
-        "partB": "shoulder",
-        "penetrationMm": 60,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J1:bearing:bearing-j1-unselected",
-        "partB": "shoulder",
-        "penetrationMm": 16,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J2:motor:motor-j2-unselected",
-        "partB": "upper-arm",
-        "penetrationMm": 60,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J2:reducer:reducer-j2-unselected",
-        "partB": "upper-arm",
-        "penetrationMm": 60,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J2:bearing:bearing-j2-unselected",
-        "partB": "upper-arm",
-        "penetrationMm": 16,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J3:motor:motor-j3-unselected",
-        "partB": "forearm",
-        "penetrationMm": 60,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J3:reducer:reducer-j3-unselected",
-        "partB": "forearm",
-        "penetrationMm": 60,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J3:bearing:bearing-j3-unselected",
-        "partB": "forearm",
-        "penetrationMm": 16,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J4:motor:motor-j4-unselected",
-        "partB": "wrist-1",
-        "penetrationMm": 60,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J4:reducer:reducer-j4-unselected",
-        "partB": "wrist-1",
-        "penetrationMm": 40,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J4:reducer:reducer-j4-unselected",
-        "partB": "wrist-2",
-        "penetrationMm": 20,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J4:bearing:bearing-j4-unselected",
-        "partB": "wrist-2",
-        "penetrationMm": 16,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J5:motor:motor-j5-unselected",
-        "partB": "wrist-2",
-        "penetrationMm": 60,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J4:reducer:reducer-j4-unselected",
-        "partB": "J5:motor:motor-j5-unselected",
-        "penetrationMm": 20,
-        "category": "drive-drive"
-      },
-      {
-        "partA": "J4:bearing:bearing-j4-unselected",
-        "partB": "J5:motor:motor-j5-unselected",
-        "penetrationMm": 16,
-        "category": "drive-drive"
-      },
-      {
-        "partA": "J5:reducer:reducer-j5-unselected",
-        "partB": "wrist-2",
-        "penetrationMm": 10,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J5:reducer:reducer-j5-unselected",
-        "partB": "tool-flange",
-        "penetrationMm": 50,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J5:bearing:bearing-j5-unselected",
-        "partB": "tool-flange",
-        "penetrationMm": 16,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J6:motor:motor-j6-unselected",
-        "partB": "tool-flange",
-        "penetrationMm": 60,
-        "category": "drive-structural"
-      },
-      {
-        "partA": "J5:reducer:reducer-j5-unselected",
-        "partB": "J6:motor:motor-j6-unselected",
-        "penetrationMm": 50,
-        "category": "drive-drive"
-      },
-      {
-        "partA": "J5:bearing:bearing-j5-unselected",
-        "partB": "J6:motor:motor-j6-unselected",
-        "penetrationMm": 16,
-        "category": "drive-drive"
-      }
-    ]
+    "pairs": []
   },
   "motionStudy": {
     "exploratoryOnly": true,
@@ -460,9 +455,9 @@
       }
     ],
     "checkedFrames": 13,
-    "collisionFrameCount": 13,
-    "firstCollisionFrame": 0,
-    "maxPenetrationMm": 60.00000000000006,
+    "collisionFrameCount": 0,
+    "firstCollisionFrame": -1,
+    "maxPenetrationMm": 0,
     "code": null,
     "message": null
   },
@@ -489,7 +484,7 @@
     "encoder",
     "internal_harness",
     "tool_connector",
-    "motion_study_not_run",
+    "governed_full_range_motion_release_evidence_required",
     "manufacturing_not_run",
     "step_roundtrip_not_run",
     "expert_review_not_run"

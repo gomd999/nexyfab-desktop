@@ -37,9 +37,8 @@ describe('robot evidence bundle trust boundary', () => {
     const parsed = JSON.parse(new TextDecoder().decode(reportBytes)) as { product: { programArtifact: string } };
     const programBytes = new Uint8Array(readFileSync(path.join(root, parsed.product.programArtifact)));
     const result = await verifyRobotEvidenceBundle(reportBytes, programBytes);
-    expect(result).toMatchObject({ editableParts: 25, mates: 60, rankDoF: 6, allowedDoF: 6, flaggedInterferences: 22, collisionFrames: 13, motionFrames: 13, effectiveReleaseReady: false });
-    expect(result.interferenceQueue).toHaveLength(22);
-    expect(result.interferenceQueue[0]).toMatchObject({ priority: 'high', recommendedAction: 'resize_or_reselect_drive' });
+    expect(result).toMatchObject({ editableParts: 25, mates: 60, rankDoF: 6, allowedDoF: 6, flaggedInterferences: 0, collisionFrames: 0, motionFrames: 13, effectiveReleaseReady: false });
+    expect(result.interferenceQueue).toHaveLength(0);
   });
 
   it('binds exact program bytes but keeps unapproved evidence out of release', async () => {

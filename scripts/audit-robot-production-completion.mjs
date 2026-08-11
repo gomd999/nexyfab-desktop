@@ -16,6 +16,7 @@ const sha256File = relativePath => crypto.createHash('sha256').update(fs.readFil
 const outputPath = path.resolve(root, valueAfter('--out', `validation-reports/robot-production-completion-audit-v2-${Date.now()}.json`));
 const integrityPath = valueAfter('--integrity', 'validation-reports/closed-beta-integrity-260809-cad-independent-core.json');
 const scopePath = 'docs/evidence/cad-independent/complex-product-scope-assessment.json';
+const conceptReportPath = 'docs/evidence/ai-robot6axis-demonstrator-260809/report.json';
 const manifestPath = '.next/server/app-paths-manifest.json';
 const requiredSources = [
   'src/lib/ai/robot/robotReleaseEvidenceAuditV2.ts',
@@ -25,12 +26,14 @@ const requiredSources = [
   'src/app/api/cad/v1/robot/release/audit/route.ts',
   'src/app/api/cad/v1/robot/release/final-review/route.ts',
 ];
-for (const requiredPath of [integrityPath, scopePath, manifestPath, ...requiredSources]) {
+for (const requiredPath of [integrityPath, scopePath, conceptReportPath, manifestPath, ...requiredSources]) {
   if (!fs.existsSync(path.join(root, requiredPath))) throw new Error(`Required evidence missing: ${requiredPath}`);
 }
 
 const integrity = readJson(integrityPath);
 const scope = readJson(scopePath);
+const concept = readJson(conceptReportPath);
+const conceptArtifactPath = path.join(path.dirname(conceptReportPath), String(concept.product?.programArtifact ?? ''));
 const routes = Object.keys(readJson(manifestPath));
 const requiredRoutes = [
   '/api/cad/v1/robot/release/work-packet/route',
@@ -66,6 +69,30 @@ for (const searchRoot of ['validation-reports', 'docs/evidence']) {
 const exactCadEvidencePresent = evidenceFiles.some(file => file.schema === 'nexyfab.robot-exact-cad-evidence.v1');
 const manufacturingEvidencePresent = evidenceFiles.some(file => file.schema === 'nexyfab.robot-manufacturing-validation.v1');
 const finalReviewPresent = evidenceFiles.some(file => file.schema === 'nexyfab.robot-final-release-review.v1');
+const conceptDiagnosticVerified = fs.existsSync(path.join(root, conceptArtifactPath))
+  && concept.schema === 'nexyfab.ai-complex-product-demonstrator.v1'
+  && concept.product?.family === 'robot'
+  && concept.product?.revision === 2
+  && concept.product?.driveTopology === 'coaxial_parent_drive_output_link'
+  && concept.product?.editableParts === 25
+  && concept.product?.mates === 60
+  && concept.product?.unresolvedCatalogComponents === 22
+  && concept.product?.classification === 'concept_only'
+  && /^[a-f0-9]{64}$/.test(concept.product?.programSha256 ?? '')
+  && sha256File(conceptArtifactPath) === concept.product.programSha256
+  && concept.assembly?.releaseReady === false
+  && concept.assembly?.releaseContactCount === 24
+  && concept.assembly?.flaggedInterferences === 0
+  && concept.assembly?.certificate?.rankDoF === 6
+  && concept.assembly?.certificate?.dofAccepted === true
+  && concept.assembly?.certificate?.intendedContactsDocumented === true
+  && concept.motionStudy?.apiOk === true
+  && concept.motionStudy?.allConverged === true
+  && concept.motionStudy?.frameCount === 13
+  && concept.motionStudy?.collisionFrameCount === 0
+  && concept.releaseReady === false
+  && concept.policy?.placeholdersAreManufacturingEvidence === false
+  && concept.policy?.expertApprovalGranted === false;
 const closedBetaIntact = integrity.summary?.protectedTableCount === 17
   && integrity.summary?.protectedRowCount === 13
   && integrity.summary?.fileCount === 15
@@ -74,6 +101,7 @@ const closedBetaIntact = integrity.summary?.protectedTableCount === 17
 const internalPipelineVerified = Object.values(routeChecks).every(Boolean)
   && requiredSources.every(file => fs.statSync(path.join(root, file)).size > 0)
   && scope.externalCadInstallationRequired === false
+  && conceptDiagnosticVerified
   && closedBetaIntact;
 const exactReleaseEvidenceComplete = exactCadEvidencePresent && manufacturingEvidencePresent && finalReviewPresent;
 const objectiveComplete = internalPipelineVerified && exactReleaseEvidenceComplete;
@@ -93,6 +121,22 @@ const report = {
     pipelineVerified: internalPipelineVerified,
     releaseRoutes: routeChecks,
     complexScopeAssessment: { path: scopePath, sha256: sha256File(scopePath), broadSelfServiceEligible: scope.decision?.broadComplexProductSelfServiceEligible === true },
+    conceptDiagnostic: {
+      verified: conceptDiagnosticVerified,
+      path: conceptReportPath,
+      sha256: sha256File(conceptReportPath),
+      revision: concept.product?.revision ?? null,
+      programSha256: concept.product?.programSha256 ?? null,
+      driveTopology: concept.product?.driveTopology ?? null,
+      unresolvedCatalogComponents: concept.product?.unresolvedCatalogComponents ?? null,
+      rankDoF: concept.assembly?.certificate?.rankDoF ?? null,
+      documentedContacts: concept.assembly?.releaseContactCount ?? null,
+      preciseInterferences: concept.assembly?.flaggedInterferences ?? null,
+      exploratoryMotionFrames: concept.motionStudy?.frameCount ?? null,
+      exploratoryCollisionFrames: concept.motionStudy?.collisionFrameCount ?? null,
+      classification: concept.product?.classification ?? null,
+      releaseReady: concept.releaseReady === true,
+    },
   },
   closedBeta: {
     intact: closedBetaIntact,
@@ -111,12 +155,16 @@ const report = {
     discoveredEvidenceFiles: evidenceFiles,
   },
   blockers: objectiveComplete ? [] : [
+    ...(concept.product?.unresolvedCatalogComponents > 0 ? ['traceable_robot_component_catalog_required'] : []),
+    ...(concept.housingFit?.status !== 'passed' ? ['traceable_housing_fit_evidence_required'] : []),
+    ...(concept.blockers?.includes('governed_full_range_motion_release_evidence_required') ? ['governed_full_range_motion_release_evidence_required'] : []),
     ...(!exactCadEvidencePresent ? ['nexyfab_exact_cad_signed_evidence_required'] : []),
     ...(!manufacturingEvidencePresent ? ['signed_manufacturing_validation_required'] : []),
     ...(!finalReviewPresent ? ['independent_final_dual_signoff_required'] : []),
   ],
   nextActions: objectiveComplete ? [] : [
-    'Resolve the traceable catalog, housing, motion, and interference blockers for the exact robot revision.',
+    'Supply the traceable motor, reducer, bearing, brake, encoder, harness, and tool-connector catalog artifacts for the exact revision.',
+    'Validate the selected drive envelopes against traceable housing capacities and run governed full-range six-axis collision checks.',
     'Run the integrated NexyFab exact-CAD checks and sign the evidence for the exact release target.',
     'Obtain signed manufacturing validation for the exact selected drive occurrences.',
     'Obtain distinct domain and independent reviewer signatures for the exact release target.',

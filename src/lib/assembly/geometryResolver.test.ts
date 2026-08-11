@@ -355,4 +355,13 @@ describe('geometryResolver — registry sanity', () => {
     expect(bottom?.kind === 'axis' ? bottom.world.origin : null).toEqual({ x: 1, y: 2, z: 3 });
     expect(top?.kind === 'axis' ? top.world.origin : null).toEqual({ x: 1, y: 2, z: 28 });
   });
+
+  it('uses outward, opposite normals for bottom and top cap planes', () => {
+    const tree: FeatureTree = { nodes: [{ id: 'body', name: 'body', dependencies: [], payload: { kind: 'extrude', loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], depth: 25, direction: 'one_sided', mode: 'add' } }] };
+    const resolver = featureTreeGeometryResolver(new Map([['p', tree]]));
+    const bottom = resolver(ref('p', 'f.cap.bottom', 'plane'), part('p'));
+    const top = resolver(ref('p', 'f.cap.top', 'plane'), part('p'));
+    expect(bottom?.kind === 'plane' ? bottom.world.normal : null).toEqual({ x: 0, y: 0, z: -1 });
+    expect(top?.kind === 'plane' ? top.world.normal : null).toEqual({ x: 0, y: 0, z: 1 });
+  });
 });
