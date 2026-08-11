@@ -6,7 +6,7 @@
  * opencascade.js@1.1.1's dist glue is an ESM module that nonetheless references
  * the CJS globals `__dirname` / `require`, and its default loader tries to
  * `fetch` the wasm. Three fixes make it run under Node:
- *   1. shim `globalThis.__dirname` (dist dir) + `globalThis.require`,
+ *   1. shim `globalThis.__dirname` to the packaged dist directory,
  *   2. pass the wasm bytes via `wasmBinary` (bypasses locateFile/fetch),
  *   3. runtime `import()` (not static) so bundlers don't choke on the 330 KB
  *      glue (same trick as planegcs — see feedback_webpack_emscripten_wasm).
@@ -15,7 +15,6 @@
  */
 
 import fs from 'node:fs';
-import { createRequire } from 'node:module';
 import path from 'node:path';
 
 /** Minimal surface we touch; the real embind module has thousands of symbols. */
@@ -42,19 +41,28 @@ export async function loadOcctNode(opts: { distDir?: string } = {}): Promise<Nod
 
   const t0 = Date.now();
   try {
-    // `import.meta.url` is rewritten when this module is bundled into a Next
-    // standalone chunk. Anchor createRequire to the deployed application root
-    // so bare package resolution is identical in source, tests, and Docker.
-    const req = createRequire(path.join(process.cwd(), 'package.json'));
-    // Resolve the dist dir from the installed package (or an override).
+    // Do not use createRequire(...).resolve here. Next's production optimizer
+    // removed the createRequire call while retaining `req.resolve`, producing
+    // an undefined receiver only in the standalone server chunk. The runtime
+    // package is deliberately copied to this fixed application-root location
+    // by Dockerfile, which is also where npm installs it for local/CI runs.
     const distDir =
       opts.distDir ??
-      path.dirname(req.resolve('opencascade.js/dist/opencascade.wasm.js'));
+      path.join(process.cwd(), 'node_modules', 'opencascade.js', 'dist');
 
-    // Shim the CJS globals the ESM glue references at instantiation time.
-    const g = globalThis as unknown as { __dirname?: string; require?: unknown };
+    const gluePath = path.join(distDir, 'opencascade.wasm.js');
+    const wasmPath = path.join(distDir, 'opencascade.wasm.wasm');
+    if (!fs.existsSync(gluePath) || !fs.existsSync(wasmPath)) {
+      return {
+        ok: false,
+        reason: `opencascade.js runtime is incomplete at ${distDir}`,
+      };
+    }
+
+    // The old Emscripten glue reads __dirname during module initialization.
+    // `require` is not needed because wasmBinary bypasses its Node fs loader.
+    const g = globalThis as unknown as { __dirname?: string };
     if (g.__dirname === undefined) g.__dirname = distDir;
-    if (g.require === undefined) g.require = req;
 
     // Dynamic import (server-only module — never bundled for the browser, which
     // uses the worker bridge). A plain import() works under both Node and the
@@ -70,7 +78,7 @@ export async function loadOcctNode(opts: { distDir?: string } = {}): Promise<Nod
     const glue = mod.default;
     if (typeof glue !== 'function') return { ok: false, reason: 'opencascade.js dist glue has no default factory' };
 
-    const wasmBinary = fs.readFileSync(path.join(distDir, 'opencascade.wasm.wasm'));
+    const wasmBinary = fs.readFileSync(wasmPath);
     const oc = await glue({ wasmBinary, locateFile: (p: string) => p });
     cached = oc;
     return { ok: true, oc, loadMs: Date.now() - t0 };
