@@ -8,6 +8,14 @@ import { runPostgresMigration } from './run-postgres-migrations.mjs';
 const quoteIdentifier = value => `"${String(value).replaceAll('"', '""')}"`;
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
+export function changedBusinessRowCounts(beforeBusinessRows, afterBusinessRows) {
+  const beforeRows = new Map(beforeBusinessRows);
+  const afterRows = new Map(afterBusinessRows);
+  return [...new Set([...beforeRows.keys(), ...afterRows.keys()])]
+    .filter(table => (beforeRows.get(table) ?? 0) !== (afterRows.get(table) ?? 0))
+    .sort();
+}
+
 async function snapshotRows(databaseUrl) {
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
@@ -36,11 +44,7 @@ export async function migrateWithReceipt({ databaseUrl, sqlPath, outputPath, tar
   const before = await snapshotRows(databaseUrl);
   const migration = await runPostgresMigration({ databaseUrl, sqlPath });
   const after = await snapshotRows(databaseUrl);
-  const beforeRows = new Map(before.businessRows);
-  const afterRows = new Map(after.businessRows);
-  const changedBusinessTables = [...new Set([...beforeRows.keys(), ...afterRows.keys()])]
-    .filter(table => beforeRows.get(table) !== afterRows.get(table))
-    .sort();
+  const changedBusinessTables = changedBusinessRowCounts(before.businessRows, after.businessRows);
   const receipt = {
     schema: 'nexyfab.postgres-migration-receipt.v1',
     generatedAt: new Date().toISOString(),
