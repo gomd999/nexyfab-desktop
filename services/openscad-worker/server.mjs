@@ -27,6 +27,10 @@ const OPENSCAD_CONCURRENCY = Math.min(4, Math.max(1, Number(process.env.OPENSCAD
 const CAD_CONCURRENCY = Math.min(2, Math.max(1, Number(process.env.CAD_RUNTIME_WORKER_CONCURRENCY ?? 1)));
 const PORT = Number(process.env.PORT ?? 8080);
 
+export function workerBuildId(env = process.env) {
+  return env.NEXYFAB_WORKER_BUILD_ID?.trim() || 'unknown';
+}
+
 const state = {
   startedAt: Date.now(),
   active: 0,
@@ -411,7 +415,7 @@ export async function main() {
     ]);
     const ok = openScadQueue >= 0 && cadQueue >= 0;
     response.writeHead(ok ? 200 : 503, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-    response.end(JSON.stringify({ ok, queue: openScadQueue, cadQueue, ...state, uptimeMs: Date.now() - state.startedAt }));
+    response.end(JSON.stringify({ ok, buildId: workerBuildId(), queue: openScadQueue, cadQueue, ...state, uptimeMs: Date.now() - state.startedAt }));
   });
   server.listen(PORT, '0.0.0.0');
   const stop = () => { shuttingDown = true; server.close(); };

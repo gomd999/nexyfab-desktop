@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { validateGmshGeo, validateOpenScadRenderArgs, validateRadianceRequest, validateScadSource } from './server.mjs';
+import { validateGmshGeo, validateOpenScadRenderArgs, validateRadianceRequest, validateScadSource, workerBuildId } from './server.mjs';
+
+test('worker build identity fails closed when no commit is supplied', () => {
+  assert.equal(workerBuildId({}), 'unknown');
+  assert.equal(workerBuildId({ NEXYFAB_WORKER_BUILD_ID: ' abc123 ' }), 'abc123');
+});
 
 test('accepts deterministic geometry and trusted BOSL2 includes', () => {
   assert.equal(validateScadSource('include <BOSL2/std.scad>\ncube([1,2,3]);').ok, true);
