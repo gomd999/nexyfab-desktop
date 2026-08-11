@@ -10,6 +10,7 @@ import {
   buildExactCadCspHeaders,
   buildSecurityHeaders,
 } from './src/lib/security/cspHeaders';
+import { resolveBuildIdentity } from './src/lib/buildIdentity';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -30,11 +31,7 @@ const CSP_INCLUDE_UPGRADE_INSECURE = process.env.CSP_OMIT_UPGRADE_INSECURE !== '
 
 // Tauri 빌드 시 static export, 웹 배포 시 standalone
 const isTauri = process.env.TAURI === 'true';
-const buildId =
-  process.env.NEXYFAB_BUILD_ID ||
-  (process.env.RAILWAY_GIT_COMMIT_SHA ?? '').slice(0, 12) ||
-  process.env.RAILWAY_DEPLOYMENT_ID ||
-  new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
+const buildIdentity = resolveBuildIdentity(process.env, isDev);
 
 const nextConfig: NextConfig = {
   // Lets CI/diagnostics build in an isolated cache while a deployed
@@ -77,11 +74,8 @@ const nextConfig: NextConfig = {
   env: {
     // Compiled into the server bundle, including local Railway uploads where
     // no Git commit SHA is available.
-    NEXYFAB_BUILD_ID: buildId,
-    NEXT_PUBLIC_RELEASE:
-      (process.env.RAILWAY_GIT_COMMIT_SHA ?? '').slice(0, 8) ||
-      process.env.NEXT_PUBLIC_RELEASE ||
-      'dev',
+    NEXYFAB_BUILD_ID: buildIdentity.buildId,
+    NEXT_PUBLIC_RELEASE: buildIdentity.publicRelease,
   },
   async redirects() {
     return [
