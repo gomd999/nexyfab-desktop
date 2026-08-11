@@ -1,9 +1,9 @@
 {
   "schema": "nexyfab.staging-authenticated-lifecycle.v2",
-  "generatedAt": "2026-08-11T03:10:12.803Z",
+  "generatedAt": "2026-08-11T05:17:44.816Z",
   "ok": true,
   "target": "https://nexyfabcom-staging.up.railway.app",
-  "runId": "e2e-1786417773328-b59hdp",
+  "runId": "e2e-1786425427671-0j75vh",
   "checks": [
     "live_ai_intake_structured",
     "ai_output_gate_checked_design",

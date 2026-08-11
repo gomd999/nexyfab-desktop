@@ -1,0 +1,27 @@
+{
+  "schema": "nexyfab.staging-release-binding.v1",
+  "generatedAt": "2026-08-11T05:15:25.625Z",
+  "environment": "staging",
+  "buildId": "728cb67a2fd78d2dc86b5f331776140917f666a2",
+  "qualifyingFrom": "2026-08-11T05:15:25.625Z",
+  "services": {
+    "web": {
+      "sourceService": "nexyfab.com",
+      "deploymentId": "1ef26c83-e651-4e41-ac08-6a3c74ef050d",
+      "imageDigest": "sha256:601065c02d67d3fa48bc307e78e865645582245c1f1117e3cc8830595a2fb85c"
+    },
+    "openscad-worker": {
+      "sourceService": "nexyfab-openscad-worker",
+      "deploymentId": "7b8acee8-8246-4b6d-9ed8-b00b2e6abb9d",
+      "imageDigest": "sha256:8bd506b5d8d2e33f150d92656c11094f570ec207fcc5000706dfffb307a4a629"
+    },
+    "fea-worker": {
+      "sourceService": "nexyfab-fea-worker",
+      "deploymentId": "c4e2336f-7d84-46f0-8231-1bf5f68c378f",
+      "imageDigest": "sha256:65293c6e02e434d11fab6f8151765b2afb669cf401b363c2427ac3cd8a37b3ea"
+    }
+  },
+  "failedPredecessorDeploymentId": "02a0a1ef-6a95-42c8-8c25-e71b8805f611",
+  "rollbackDeploymentId": "415e9c7f-1cfa-4a7b-b152-8f423442cc28",
+  "productionMutated": false
+}

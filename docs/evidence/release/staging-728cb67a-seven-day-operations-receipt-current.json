@@ -1,0 +1,123 @@
+{
+  "schema": "nexyfab.seven-day-operations-receipt.v3",
+  "generatedAt": "2026-08-11T05:16:13.574Z",
+  "ok": false,
+  "services": {
+    "web": {
+      "samples": 0,
+      "observedSamples": 1,
+      "excludedSamples": 1,
+      "exclusionReasons": [
+        "window_before_qualifying_from"
+      ],
+      "coverageHours": 0,
+      "spanHours": 0,
+      "invalidWindows": 0,
+      "uniqueWindows": 0,
+      "overlaps": 0,
+      "gaps": 0,
+      "durationMismatches": 0,
+      "maxMemoryMb": 0,
+      "memoryLimitMb": 1536,
+      "minimumRuntimeMemoryLimitMb": null,
+      "totalRequests": 0,
+      "total5xx": 0,
+      "errorRatePercent": 0
+    },
+    "openscad-worker": {
+      "samples": 0,
+      "observedSamples": 1,
+      "excludedSamples": 1,
+      "exclusionReasons": [
+        "window_before_qualifying_from"
+      ],
+      "coverageHours": 0,
+      "spanHours": 0,
+      "invalidWindows": 0,
+      "uniqueWindows": 0,
+      "overlaps": 0,
+      "gaps": 0,
+      "durationMismatches": 0,
+      "maxMemoryMb": 0,
+      "memoryLimitMb": 512,
+      "minimumRuntimeMemoryLimitMb": null,
+      "totalRequests": 0,
+      "total5xx": 0,
+      "errorRatePercent": 0
+    },
+    "fea-worker": {
+      "samples": 0,
+      "observedSamples": 1,
+      "excludedSamples": 1,
+      "exclusionReasons": [
+        "window_before_qualifying_from"
+      ],
+      "coverageHours": 0,
+      "spanHours": 0,
+      "invalidWindows": 0,
+      "uniqueWindows": 0,
+      "overlaps": 0,
+      "gaps": 0,
+      "durationMismatches": 0,
+      "maxMemoryMb": 0,
+      "memoryLimitMb": 2048,
+      "minimumRuntimeMemoryLimitMb": null,
+      "totalRequests": 0,
+      "total5xx": 0,
+      "errorRatePercent": 0
+    }
+  },
+  "cost": {
+    "ok": false,
+    "blockers": [
+      "cost_samples_short"
+    ],
+    "samples": 1
+  },
+  "policy": {
+    "requiredCoverageHours": 168,
+    "requiredSampleCount": 28,
+    "expectedWindowHours": 6,
+    "http5xxMaxPercent": 1,
+    "memoryLimitsMb": {
+      "web": 1536,
+      "openscad-worker": 512,
+      "fea-worker": 2048
+    },
+    "requireRuntimeMemoryLimitEvidence": true,
+    "monthlyCostBudgetUsd": 50
+  },
+  "release": {
+    "buildId": "728cb67a2fd78d2dc86b5f331776140917f666a2",
+    "qualifyingFrom": "2026-08-11T05:15:25.625Z",
+    "environment": "staging",
+    "deployments": {
+      "web": "1ef26c83-e651-4e41-ac08-6a3c74ef050d",
+      "openscad-worker": "7b8acee8-8246-4b6d-9ed8-b00b2e6abb9d",
+      "fea-worker": "c4e2336f-7d84-46f0-8231-1bf5f68c378f"
+    }
+  },
+  "blockers": [
+    "coverage_short:web:0.0h",
+    "sample_count_short:web:0",
+    "unique_window_count_short:web:0",
+    "http_evidence_missing:web",
+    "coverage_short:openscad-worker:0.0h",
+    "sample_count_short:openscad-worker:0",
+    "unique_window_count_short:openscad-worker:0",
+    "coverage_short:fea-worker:0.0h",
+    "sample_count_short:fea-worker:0",
+    "unique_window_count_short:fea-worker:0",
+    "cost_samples_short"
+  ],
+  "evidenceBindings": {
+    "release": {
+      "file": "docs/evidence/release/staging-release-binding-728cb67a.json",
+      "sha256": "57cf0f37fb4aa51222cb4848a0bf4cae9de3eac2f80b1051ff33247418093ab8"
+    },
+    "policy": {
+      "file": "docs/operations/commercial-operations-policy.v1.json",
+      "sha256": "bf971179f662eb41f01717fa607380819e8007ae248833e99e96160c3df4ccc7"
+    }
+  }
+}
