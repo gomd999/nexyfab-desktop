@@ -1,24 +1,55 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const REQUIRED_DISTINCT_VALUES = [
+const REQUIRED_DISTINCT_ENDPOINTS = [
   'DATABASE_URL',
   'REDIS_URL',
+];
+
+const REQUIRED_DISTINCT_VALUES = [
   'JWT_SECRET',
+  'ADMIN_SECRET',
+  'AUTH_SYNC_SECRET',
+  'CRON_SECRET',
+  'DEV_SEED_KEY',
+  'NEXT_SERVER_ACTIONS_ENCRYPTION_KEY',
+  'SELFTEST_TOKEN',
+  'ADMIN_PASSWORD_HASH',
 ];
 
 const DISTINCT_IF_PRESENT = [
-  'DODO_API_KEY',
-  'DODO_WEBHOOK_SECRET',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
-  'TOSS_SECRET_KEY',
-  'TOSS_WEBHOOK_SECRET',
-  'NEXT_PUBLIC_TOSS_CLIENT_KEY',
+  'S3_ACCESS_KEY_ID',
+  'S3_SECRET_ACCESS_KEY',
+  'GOOGLE_CLIENT_SECRET',
+  'SMTP_PASS',
+];
+
+const PAYMENT_PROVIDERS = [
+  {
+    id: 'dodo',
+    credentials: ['DODO_API_KEY', 'DODO_WEBHOOK_SECRET'],
+    sandbox(variables) { return variables.DODO_MODE === 'test'; },
+    sandboxDetail: 'DODO_MODE must be test when Dodo is enabled in staging.',
+  },
+  {
+    id: 'toss',
+    credentials: ['TOSS_SECRET_KEY', 'TOSS_WEBHOOK_SECRET', 'NEXT_PUBLIC_TOSS_CLIENT_KEY'],
+    sandbox(variables) {
+      return /^test_/i.test(variables.TOSS_SECRET_KEY ?? '')
+        && /^test_/i.test(variables.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? '');
+    },
+    sandboxDetail: 'Toss staging credentials must use the test_ prefix.',
+  },
+  {
+    id: 'stripe',
+    credentials: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'],
+    sandbox(variables) { return /^sk_test_/i.test(variables.STRIPE_SECRET_KEY ?? ''); },
+    sandboxDetail: 'Stripe staging secret must use the sk_test_ prefix.',
+  },
 ];
 
 function arg(name, fallback) {
@@ -40,12 +71,29 @@ function comparableEndpoint(value) {
   }
 }
 
+function endpointHostname(value) {
+  try {
+    return new URL(value).hostname.toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
 function addCheck(checks, id, pass, detail) {
   checks.push({ id, pass: Boolean(pass), detail });
 }
 
 function providerConfigured(variables, names) {
   return names.some(name => present(variables[name]));
+}
+
+function railwayInternalEndpointIsEnvironmentScoped(productionValue, stagingValue, production, staging, productionEnvironment, stagingEnvironment) {
+  if (comparableEndpoint(productionValue) !== comparableEndpoint(stagingValue)) return false;
+  if (!endpointHostname(stagingValue).endsWith('.railway.internal')) return false;
+  if (productionEnvironment === stagingEnvironment) return false;
+  return present(production.RAILWAY_ENVIRONMENT_ID)
+    && present(staging.RAILWAY_ENVIRONMENT_ID)
+    && production.RAILWAY_ENVIRONMENT_ID !== staging.RAILWAY_ENVIRONMENT_ID;
 }
 
 /**
@@ -63,14 +111,43 @@ export function auditRailwayEnvironmentIsolation(production, staging, options = 
     productionEnvironment === stagingEnvironment ? 'Production and staging names are identical.' : 'Environment names are distinct.',
   );
 
-  for (const name of REQUIRED_DISTINCT_VALUES) {
+  for (const name of REQUIRED_DISTINCT_ENDPOINTS) {
     const productionValue = production[name];
     const stagingValue = staging[name];
     addCheck(checks, `${name.toLowerCase()}_present`, present(stagingValue), present(stagingValue) ? 'Present in staging.' : 'Missing in staging.');
-    const distinct = present(productionValue)
+    const endpointDistinct = present(productionValue)
       && present(stagingValue)
       && comparableEndpoint(productionValue) !== comparableEndpoint(stagingValue);
-    addCheck(checks, `${name.toLowerCase()}_isolated`, distinct, distinct ? 'Staging value is isolated.' : 'Missing or shared with production.');
+    const environmentScoped = present(productionValue)
+      && present(stagingValue)
+      && railwayInternalEndpointIsEnvironmentScoped(
+        productionValue,
+        stagingValue,
+        production,
+        staging,
+        productionEnvironment,
+        stagingEnvironment,
+      );
+    const isolated = endpointDistinct || environmentScoped;
+    addCheck(
+      checks,
+      `${name.toLowerCase()}_isolated`,
+      isolated,
+      environmentScoped
+        ? 'Railway internal endpoint is isolated by distinct environment IDs.'
+        : isolated
+          ? 'Staging endpoint differs from production.'
+          : 'Missing or shared with production.',
+    );
+  }
+
+  for (const name of REQUIRED_DISTINCT_VALUES) {
+    const productionValue = production[name];
+    const stagingValue = staging[name];
+    const required = present(productionValue);
+    const isolated = present(stagingValue) && (!required || productionValue !== stagingValue);
+    addCheck(checks, `${name.toLowerCase()}_present`, present(stagingValue), present(stagingValue) ? 'Present in staging.' : 'Missing in staging.');
+    addCheck(checks, `${name.toLowerCase()}_isolated`, isolated, isolated ? 'Staging secret differs from production.' : 'Missing or shared with production.');
   }
 
   const productionSite = production.NEXT_PUBLIC_SITE_URL;
@@ -103,37 +180,38 @@ export function auditRailwayEnvironmentIsolation(production, staging, options = 
 
   for (const name of DISTINCT_IF_PRESENT) {
     if (!present(production[name])) continue;
-    const isolated = present(staging[name]) && production[name] !== staging[name];
-    addCheck(checks, `${name.toLowerCase()}_isolated`, isolated, isolated ? 'Staging credential differs from production.' : 'Staging credential is missing or shared with production.');
+    const disabled = !present(staging[name]);
+    const isolated = disabled || production[name] !== staging[name];
+    addCheck(
+      checks,
+      `${name.toLowerCase()}_isolated_or_disabled`,
+      isolated,
+      disabled ? 'Integration credential is disabled in staging.' : isolated ? 'Staging credential differs from production.' : 'Shared with production.',
+    );
   }
 
-  if (providerConfigured(production, ['DODO_API_KEY', 'DODO_WEBHOOK_SECRET'])) {
-    addCheck(checks, 'dodo_sandbox_mode', staging.DODO_MODE === 'test', staging.DODO_MODE === 'test' ? 'Dodo test mode is enabled.' : 'DODO_MODE must be test in staging.');
-    const productionProductKeys = Object.keys(production).filter(name => name.startsWith('DODO_PRODUCT_') && present(production[name]));
-    for (const name of productionProductKeys) {
-      const isolated = present(staging[name]) && production[name] !== staging[name];
-      addCheck(checks, `${name.toLowerCase()}_isolated`, isolated, isolated ? 'Staging product ID differs from production.' : 'Staging product ID is missing or shared with production.');
+  for (const provider of PAYMENT_PROVIDERS) {
+    if (!providerConfigured(production, provider.credentials) && !providerConfigured(staging, provider.credentials)) continue;
+    const stagingEnabled = providerConfigured(staging, provider.credentials);
+    if (!stagingEnabled) {
+      addCheck(checks, `${provider.id}_staging_disabled`, true, `${provider.id} payment is fail-closed in staging.`);
+      continue;
     }
+    const complete = provider.credentials.every(name => present(staging[name]));
+    addCheck(checks, `${provider.id}_credentials_complete`, complete, complete ? 'Staging payment credentials are complete.' : 'Staging payment credentials are incomplete.');
+    for (const name of provider.credentials) {
+      const isolated = present(staging[name]) && (!present(production[name]) || production[name] !== staging[name]);
+      addCheck(checks, `${name.toLowerCase()}_isolated`, isolated, isolated ? 'Staging credential differs from production.' : 'Missing or shared with production.');
+    }
+    addCheck(checks, `${provider.id}_sandbox_mode`, provider.sandbox(staging), provider.sandbox(staging) ? `${provider.id} sandbox mode is enabled.` : provider.sandboxDetail);
   }
 
-  if (providerConfigured(production, ['TOSS_SECRET_KEY', 'NEXT_PUBLIC_TOSS_CLIENT_KEY'])) {
-    addCheck(
-      checks,
-      'toss_sandbox_mode',
-      /^test_/i.test(staging.TOSS_SECRET_KEY ?? '') && /^test_/i.test(staging.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? ''),
-      /^test_/i.test(staging.TOSS_SECRET_KEY ?? '') && /^test_/i.test(staging.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? '')
-        ? 'Toss test credentials are configured.'
-        : 'Toss staging credentials must use the test_ prefix.',
-    );
-  }
-
-  if (providerConfigured(production, ['STRIPE_SECRET_KEY'])) {
-    addCheck(
-      checks,
-      'stripe_sandbox_mode',
-      /^sk_test_/i.test(staging.STRIPE_SECRET_KEY ?? ''),
-      /^sk_test_/i.test(staging.STRIPE_SECRET_KEY ?? '') ? 'Stripe test credential is configured.' : 'Stripe staging secret must use the sk_test_ prefix.',
-    );
+  const dodoEnabled = providerConfigured(staging, ['DODO_API_KEY', 'DODO_WEBHOOK_SECRET']);
+  const productionProductKeys = Object.keys(production).filter(name => name.startsWith('DODO_PRODUCT_') && present(production[name]));
+  for (const name of productionProductKeys) {
+    const disabled = !dodoEnabled && !present(staging[name]);
+    const isolated = disabled || (present(staging[name]) && production[name] !== staging[name]);
+    addCheck(checks, `${name.toLowerCase()}_isolated_or_disabled`, isolated, disabled ? 'Dodo product is disabled in staging.' : isolated ? 'Staging product ID differs from production.' : 'Missing or shared with production.');
   }
 
   const blockers = checks.filter(check => !check.pass).map(check => check.id);
@@ -175,11 +253,18 @@ async function main() {
   const service = arg('service', 'nexyfab.com');
   const productionEnvironment = arg('production', 'production');
   const stagingEnvironment = arg('staging', 'staging');
+  const outputFile = arg('out', '');
   if (productionEnvironment === stagingEnvironment) throw new Error('Production and staging environments must be distinct.');
   const production = variables(service, productionEnvironment);
   const staging = variables(service, stagingEnvironment);
   const receipt = auditRailwayEnvironmentIsolation(production, staging, { productionEnvironment, stagingEnvironment });
-  process.stdout.write(`${JSON.stringify(receipt, null, 2)}\n`);
+  const serialized = `${JSON.stringify(receipt, null, 2)}\n`;
+  if (outputFile) {
+    const resolvedOutput = path.resolve(outputFile);
+    mkdirSync(path.dirname(resolvedOutput), { recursive: true });
+    writeFileSync(resolvedOutput, serialized, 'utf8');
+  }
+  process.stdout.write(serialized);
   if (!receipt.ok) process.exitCode = 1;
 }
 

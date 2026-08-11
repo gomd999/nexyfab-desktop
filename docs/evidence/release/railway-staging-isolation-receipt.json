@@ -1,0 +1,167 @@
+{
+  "schema": "nexyfab.railway-environment-isolation.v1",
+  "generatedAt": "2026-08-11T00:45:59.949Z",
+  "productionEnvironment": "production",
+  "stagingEnvironment": "staging",
+  "configurationFingerprint": "d5db1ac0dee5c96e55ec6b5028f2ee980da788e835783cb625adc85c7a981d84",
+  "ok": true,
+  "summary": {
+    "checks": 30,
+    "passed": 30,
+    "failed": 0
+  },
+  "checks": [
+    {
+      "id": "environment_names_distinct",
+      "pass": true,
+      "detail": "Environment names are distinct."
+    },
+    {
+      "id": "database_url_present",
+      "pass": true,
+      "detail": "Present in staging."
+    },
+    {
+      "id": "database_url_isolated",
+      "pass": true,
+      "detail": "Railway internal endpoint is isolated by distinct environment IDs."
+    },
+    {
+      "id": "redis_url_present",
+      "pass": true,
+      "detail": "Present in staging."
+    },
+    {
+      "id": "redis_url_isolated",
+      "pass": true,
+      "detail": "Railway internal endpoint is isolated by distinct environment IDs."
+    },
+    {
+      "id": "jwt_secret_present",
+      "pass": true,
+      "detail": "Present in staging."
+    },
+    {
+      "id": "jwt_secret_isolated",
+      "pass": true,
+      "detail": "Staging secret differs from production."
+    },
+    {
+      "id": "admin_secret_present",
+      "pass": true,
+      "detail": "Present in staging."
+    },
+    {
+      "id": "admin_secret_isolated",
+      "pass": true,
+      "detail": "Staging secret differs from production."
+    },
+    {
+      "id": "auth_sync_secret_present",
+      "pass": true,
+      "detail": "Present in staging."
+    },
+    {
+      "id": "auth_sync_secret_isolated",
+      "pass": true,
+      "detail": "Staging secret differs from production."
+    },
+    {
+      "id": "cron_secret_present",
+      "pass": true,
+      "detail": "Present in staging."
+    },
+    {
+      "id": "cron_secret_isolated",
+      "pass": true,
+      "detail": "Staging secret differs from production."
+    },
+    {
+      "id": "dev_seed_key_present",
+      "pass": true,
+      "detail": "Present in staging."
+    },
+    {
+      "id": "dev_seed_key_isolated",
+      "pass": true,
+      "detail": "Staging secret differs from production."
+    },
+    {
+      "id": "next_server_actions_encryption_key_present",
+      "pass": true,
+      "detail": "Present in staging."
+    },
+    {
+      "id": "next_server_actions_encryption_key_isolated",
+      "pass": true,
+      "detail": "Staging secret differs from production."
+    },
+    {
+      "id": "selftest_token_present",
+      "pass": true,
+      "detail": "Present in staging."
+    },
+    {
+      "id": "selftest_token_isolated",
+      "pass": true,
+      "detail": "Staging secret differs from production."
+    },
+    {
+      "id": "admin_password_hash_present",
+      "pass": true,
+      "detail": "Present in staging."
+    },
+    {
+      "id": "admin_password_hash_isolated",
+      "pass": true,
+      "detail": "Staging secret differs from production."
+    },
+    {
+      "id": "site_url_https",
+      "pass": true,
+      "detail": "Staging site URL uses HTTPS."
+    },
+    {
+      "id": "site_url_isolated",
+      "pass": true,
+      "detail": "Staging hostname differs from production."
+    },
+    {
+      "id": "cad_quota_fail_closed",
+      "pass": true,
+      "detail": "Independent CAD mode is enabled."
+    },
+    {
+      "id": "s3_bucket_isolated",
+      "pass": true,
+      "detail": "Staging bucket differs from production."
+    },
+    {
+      "id": "s3_access_key_id_isolated_or_disabled",
+      "pass": true,
+      "detail": "Staging credential differs from production."
+    },
+    {
+      "id": "s3_secret_access_key_isolated_or_disabled",
+      "pass": true,
+      "detail": "Staging credential differs from production."
+    },
+    {
+      "id": "google_client_secret_isolated_or_disabled",
+      "pass": true,
+      "detail": "Integration credential is disabled in staging."
+    },
+    {
+      "id": "smtp_pass_isolated_or_disabled",
+      "pass": true,
+      "detail": "Integration credential is disabled in staging."
+    },
+    {
+      "id": "dodo_staging_disabled",
+      "pass": true,
+      "detail": "dodo payment is fail-closed in staging."
+    }
+  ],
+  "blockers": [],
+  "redaction": "Variable values are compared in memory and are never included in this receipt."
+}
