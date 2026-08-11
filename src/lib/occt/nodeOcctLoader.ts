@@ -14,6 +14,10 @@
  * Proven: loads + builds real B-rep in ~700 ms (probe, 2026-06-04).
  */
 
+import fs from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+
 /** Minimal surface we touch; the real embind module has thousands of symbols. */
 export type OcctModule = Record<string, unknown>;
 
@@ -38,12 +42,10 @@ export async function loadOcctNode(opts: { distDir?: string } = {}): Promise<Nod
 
   const t0 = Date.now();
   try {
-    const [{ createRequire }, path, fs] = await Promise.all([
-      import('node:module'),
-      import('node:path'),
-      import('node:fs'),
-    ]);
-    const req = createRequire(import.meta.url);
+    // `import.meta.url` is rewritten when this module is bundled into a Next
+    // standalone chunk. Anchor createRequire to the deployed application root
+    // so bare package resolution is identical in source, tests, and Docker.
+    const req = createRequire(path.join(process.cwd(), 'package.json'));
     // Resolve the dist dir from the installed package (or an override).
     const distDir =
       opts.distDir ??

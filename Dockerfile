@@ -95,6 +95,10 @@ COPY --from=builder /app/scripts/engineering-core ./scripts/engineering-core
 # (computed from package.json deps: replicad→flatbush/flatqueue/opentype.js/…).
 # The OCCT wasm itself is served from public/replicad_single.wasm (to-step wasmPath).
 COPY --from=builder /app/node_modules/replicad ./node_modules/replicad
+# Server-side design verification uses the independent opencascade.js binding
+# for exact B-rep construction, STEP round-trip, and topology inspection. Its
+# webpack-ignored loader cannot be discovered by Next's standalone tracer.
+COPY --from=builder /app/node_modules/opencascade.js ./node_modules/opencascade.js
 # ★260802 — `three` 누락으로 GA_3D.html 이 **라이브에서만** 실패하고 있었다.
 #   실측 사유: `Cannot find module 'three'` (/app/scripts/drawing-to-3d/html-render.mjs).
 #   `html-render.mjs` 가 three.js 를 **data: URL 로 인라인**해 뷰어를 오프라인 자립시키는데

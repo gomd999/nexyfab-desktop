@@ -23,6 +23,12 @@ test('production dependencies are lockfile-exact', () => {
   assert.doesNotMatch(rootDockerfile, /RUN npm install/);
 });
 
+test('standalone web image includes webpack-ignored exact CAD runtimes', () => {
+  assert.match(rootDockerfile, /node_modules\/replicad-opencascadejs/);
+  assert.match(rootDockerfile, /node_modules\/opencascade\.js/);
+  assert.match(rootDockerfile, /node_modules\/replicad/);
+});
+
 test('native CAD tools live in the isolated worker image', () => {
   assert.match(workerDockerfile, /AS radiance-builder/);
   assert.match(workerDockerfile, /openscad gmsh/);
