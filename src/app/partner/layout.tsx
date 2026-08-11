@@ -1,19 +1,11 @@
 import { Suspense } from 'react';
-import { Noto_Sans_KR } from 'next/font/google';
 import ToastProvider from '@/components/ToastProvider';
 import PartnerNav from './PartnerNav';
 import LegacyMigrationBanner from './LegacyMigrationBanner';
 
-const notoSansKR = Noto_Sans_KR({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800', '900'],
-  display: 'swap',
-  variable: '--font-noto-sans-kr',
-});
-
 export default function PartnerLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko" className={notoSansKR.variable}>
+    <html lang="ko">
       <head>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </head>

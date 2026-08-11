@@ -1,18 +1,10 @@
-import { Noto_Sans_KR } from 'next/font/google';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ToastProvider from '@/components/ToastProvider';
 
-const notoSansKR = Noto_Sans_KR({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800', '900'],
-  display: 'swap',
-  variable: '--font-noto-sans-kr',
-});
-
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko" className={notoSansKR.variable}>
+    <html lang="ko">
       <head>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </head>

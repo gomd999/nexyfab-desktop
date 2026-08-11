@@ -125,8 +125,15 @@
   --color-text-faint:     #9ca3af;
 
   /* ── 타이포 토큰 ── */
-  --font-sans: 'Pretendard', 'Noto Sans KR', 'Geist', Arial, sans-serif;
-  --font-mono: var(--font-geist-mono);
+  /* Keep production builds independent from remote font CDNs. These stacks
+     prefer matching local faces and degrade to native UI fonts without a
+     layout-blocking network request. */
+  --font-inter: 'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-noto-sans-kr: 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', sans-serif;
+  --font-jetbrains-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  --font-geist-mono: var(--font-jetbrains-mono);
+  --font-sans: var(--font-noto-sans-kr);
+  --font-mono: var(--font-jetbrains-mono);
 
   /* ── 간격 토큰 ── */
   --radius-sm:  8px;

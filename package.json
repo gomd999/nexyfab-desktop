@@ -176,7 +176,7 @@
     "licenses:check": "node scripts/generate-third-party-notices.mjs --check",
     "occt:copy": "node scripts/copy-occt.js",
     "build:solvespace-wasm": "bash scripts/build-solvespace-wasm.sh",
-    "ci:replicate-build": "cross-env CSP_OMIT_UPGRADE_INSECURE=1 NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe RECAPTCHA_SECRET_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe JWT_SECRET=ci-test-secret-at-least-32-chars npm run build",
+    "ci:replicate-build": "node scripts/clean-next-build.mjs && cross-env CSP_OMIT_UPGRADE_INSECURE=1 NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe RECAPTCHA_SECRET_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe JWT_SECRET=ci-test-secret-at-least-32-chars npm run build",
     "security:smoke": "node scripts/security-smoke.mjs",
     "test:tauri-unit": "cargo test --manifest-path src-tauri/Cargo.toml -- --test-threads=1",
     "test:step-roundtrip": "cross-env RUN_STEP_IMPORT=1 vitest run src/test/m1/stepRoundtrip.guarded.test.ts",
