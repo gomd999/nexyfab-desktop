@@ -5,7 +5,7 @@ import { summarizeTrustedReviewerRegistry } from '@/lib/reference/nativeCadExper
 import type { TrustedRobotExactCadKeys } from './robotReleaseEvidenceAuditV2';
 
 const sha = z.string().regex(/^[a-f0-9]{64}$/);
-const postSchema = z.object({ schema: z.literal('nexyfab.robot-post-integration-evidence.v1'), postIntegrationStatus: z.literal('passed'), programHash: sha, targetHash: sha, catalogManifestSha256: sha, releaseReady: z.literal(false), errors: z.array(z.string()).length(0), counts: z.object({ selectedOccurrences: z.literal(18), motionFrames: z.literal(156), checkedMotionFrames: z.literal(156), collisionFrames: z.literal(0), preciseInterferences: z.literal(0) }).passthrough() }).passthrough();
+const postSchema = z.object({ schema: z.literal('nexyfab.robot-post-integration-evidence.v1'), postIntegrationStatus: z.literal('passed'), programHash: sha, targetHash: sha, catalogManifestSha256: sha, releaseReady: z.literal(false), errors: z.array(z.string()).length(0), counts: z.object({ selectedOccurrences: z.literal(18), motionFrames: z.literal(156), checkedMotionFrames: z.literal(156), collisionFrames: z.literal(0), coordinatedMotionFrames: z.literal(49), checkedCoordinatedMotionFrames: z.literal(49), coordinatedCollisionFrames: z.literal(0), preciseInterferences: z.literal(0) }).passthrough() }).passthrough();
 
 export type RobotReleaseWorkPacketV2 = {
   schema: 'nexyfab.robot-release-evidence-work-packet.v2'; packetHash: string; programHash: string;

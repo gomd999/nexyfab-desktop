@@ -9,6 +9,11 @@ import type { AiAssemblyRevisionPackage } from '@/lib/ai/aiAssemblyRevision';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimitAsync } from '@/lib/rate-limit';
 import type { HingeMate } from '@/lib/assembly/mate';
+import {
+  buildRobotCoordinatedMotionTrajectory,
+  ROBOT_COORDINATED_MOTION_FRAMES,
+  ROBOT_COORDINATED_MOTION_STRATEGY,
+} from '@/lib/ai/robot/robotCoordinatedMotion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,9 +21,10 @@ const SHA256 = /^[a-f0-9]{64}$/;
 
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
-  // One accepted package fans out to 12 governed motion sweeps. Keep the
+  // One accepted package fans out to 12 axis sweeps plus one coordinated
+  // trajectory. Keep the
   // outer budget aligned with the assembly verifier's 60 requests/minute.
-  if (!(await rateLimitAsync(`cad-v1-robot-reverify:${ip}`, 5, 60_000)).allowed) return NextResponse.json({ ok: false, code: 'RATE_LIMIT' }, { status: 429 });
+  if (!(await rateLimitAsync(`cad-v1-robot-reverify:${ip}`, 4, 60_000)).allowed) return NextResponse.json({ ok: false, code: 'RATE_LIMIT' }, { status: 429 });
   const form = await req.formData().catch(() => null);
   const programFile = form?.get('program'); const manifestFile = form?.get('manifest');
   if (!(programFile instanceof File) || !(manifestFile instanceof File)) return NextResponse.json({ ok: false, code: 'BAD_REQUEST', message: 'program and manifest files are required' }, { status: 400 });
@@ -32,6 +38,7 @@ export async function POST(req: NextRequest) {
     const issues = validateAiAssemblyProgram(program);
     if (issues.length) throw new Error(`invalid program: ${issues[0]!.path}: ${issues[0]!.message}`);
     const governedHinges = validateSixAxisRobot(program);
+    const coordinatedTrajectory = buildRobotCoordinatedMotionTrajectory(governedHinges);
     const motionRanges = Object.fromEntries(governedHinges.map(mate => [mate.id, { min: mate.limit!.minAngleDeg, max: mate.limit!.maxAngleDeg }]));
     const motionSweeps = governedHinges.flatMap(mate => [
       { mateId: mate.id, direction: 'toward-min' as const, fromValue: 0, toValue: mate.limit!.minAngleDeg },
@@ -53,6 +60,11 @@ export async function POST(req: NextRequest) {
       const response = await verifyAssemblyPost(new NextRequest('http://localhost/api/cad/v1/assembly/verify', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': ip }, body: JSON.stringify({ ...assemblyInput, allowedDoF: 6, intendedContacts: [], interferenceWhitelist: [], motion: { ...sweep, steps: 12 } }) }));
       motionVerifications.push(await response.json() as Verification);
     }
+    let coordinatedVerification: Verification | null = null;
+    if (assemblyInput) {
+      const response = await verifyAssemblyPost(new NextRequest('http://localhost/api/cad/v1/assembly/verify', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': ip }, body: JSON.stringify({ ...assemblyInput, allowedDoF: 6, intendedContacts: [], interferenceWhitelist: [], motionTrajectory: coordinatedTrajectory }) }));
+      coordinatedVerification = await response.json() as Verification;
+    }
     const motionAxes = governedHinges.map((mate, axisIndex) => {
       const items = motionVerifications.slice(axisIndex * 2, axisIndex * 2 + 2);
       const segments = items.map((item, segmentIndex) => ({
@@ -67,6 +79,8 @@ export async function POST(req: NextRequest) {
     });
     const motionComplete = motionVerifications.length === 12 && motionAxes.every(axis => axis.apiOk && axis.allConverged && axis.frameCount === 26 && axis.checkedFrames === axis.frameCount);
     const motionCollisionFrames = motionAxes.reduce((sum, axis) => sum + axis.collisionFrameCount, 0);
+    const coordinatedMotion = summarizeCoordinatedMotion(coordinatedVerification, coordinatedTrajectory);
+    const coordinatedComplete = coordinatedMotion.apiOk && coordinatedMotion.allConverged && coordinatedMotion.frameCount === ROBOT_COORDINATED_MOTION_FRAMES && coordinatedMotion.checkedFrames === ROBOT_COORDINATED_MOTION_FRAMES;
     const pairs = (verification?.flaggedInterferences ?? []).flatMap((raw) => {
       const pair = raw as { partA?: unknown; partB?: unknown; penetration?: unknown };
       return typeof pair.partA === 'string' && typeof pair.partB === 'string' ? [{ partA: pair.partA, partB: pair.partB, penetrationMm: typeof pair.penetration === 'number' ? pair.penetration : null, category: category(pair.partA, pair.partB) }] : [];
@@ -81,7 +95,8 @@ export async function POST(req: NextRequest) {
       assembly: { verifierReturned: Boolean(verification), releaseReady: false, certificate: verification?.assemblyCertificate ?? null, preciseInterferenceStatus: verification?.preciseInterference?.status ?? null, flaggedInterferences: pairs.length, code: verification?.code ?? null, message: verification?.message ?? null },
       interferenceAnalysis: { categories: Object.fromEntries(['structural-structural', 'drive-structural', 'drive-drive'].map(kind => [kind, pairs.filter(pair => pair.category === kind).length])), pairs },
       motionStudy: { exploratoryOnly: true, releaseEvidence: false, rangeSource: 'governed-hinge-limits', sweepStrategy: 'zero-to-each-limit', stepsPerSegment: 12, axisCount: motionAxes.length, allConverged: motionAxes.length === 6 && motionAxes.every(axis => axis.allConverged), frameCount: motionAxes.reduce((sum, axis) => sum + axis.frameCount, 0), checkedFrames: motionAxes.reduce((sum, axis) => sum + axis.checkedFrames, 0), collisionFrameCount: motionCollisionFrames, axes: motionAxes, code: motionComplete ? null : 'MOTION_REVERIFY_INCOMPLETE', message: motionComplete ? null : 'Every governed J1..J6 zero-to-limit segment must return 13 checked, converged frames.' },
-      blockers: [...program.unresolved, 'catalog_rebind_required', 'housing_reverify_required', ...(motionComplete ? [] : ['motion_reverify_incomplete']), ...(motionCollisionFrames > 0 ? ['precise_motion_collisions_present'] : []), 'manufacturing_not_run', 'step_roundtrip_not_run', 'expert_review_not_run'],
+      coordinatedMotionStudy: coordinatedMotion,
+      blockers: [...program.unresolved, 'catalog_rebind_required', 'housing_reverify_required', ...(motionComplete ? [] : ['motion_reverify_incomplete']), ...(motionCollisionFrames > 0 ? ['precise_motion_collisions_present'] : []), ...(coordinatedComplete ? [] : ['coordinated_motion_reverify_incomplete']), ...(coordinatedMotion.collisionFrameCount > 0 ? ['precise_coordinated_motion_collisions_present'] : []), 'manufacturing_not_run', 'step_roundtrip_not_run', 'expert_review_not_run'],
       revisionBinding: { baseProgramHash: manifest.baseProgramHash, manifestSha256: sha256(manifestBytes) }, quoteOrRfqSideEffects: false,
     };
     return NextResponse.json({ ok: true, report, releaseReady: false, quoteOrRfqSideEffects: false });
@@ -103,7 +118,12 @@ function validateRevisionManifest(manifest: AiAssemblyRevisionPackage, programBy
 function validateSixAxisRobot(program: AiAssemblyProgram) {
   const hinges = program.assembly.mates.filter((mate): mate is HingeMate => mate.kind === 'hinge' && /^J[1-6]$/.test(mate.id));
   if (hinges.length !== 6 || new Set(hinges.map(mate => mate.id)).size !== 6) throw new Error('robot revision requires governed J1..J6 hinge mates');
-  for (const mate of hinges) if (!mate.limit || !Number.isFinite(mate.limit.minAngleDeg) || !Number.isFinite(mate.limit.maxAngleDeg) || mate.limit.minAngleDeg >= mate.limit.maxAngleDeg) throw new Error(`robot revision requires a finite increasing angular limit for ${mate.id}`);
+  for (const mate of hinges) if (!mate.limit || !Number.isFinite(mate.limit.minAngleDeg) || !Number.isFinite(mate.limit.maxAngleDeg) || mate.limit.minAngleDeg >= mate.limit.maxAngleDeg || mate.limit.minAngleDeg > 0 || mate.limit.maxAngleDeg < 0) throw new Error(`robot revision requires a finite increasing angular limit containing zero for ${mate.id}`);
   return hinges.sort((a, b) => a.id.localeCompare(b.id));
+}
+function summarizeCoordinatedMotion(verification: { ok?: boolean; motion?: { allConverged?: boolean; firstFailureFrame?: number; frames?: unknown[] }; motionInterference?: { checkedFrames?: number; collisionFrameCount?: number; firstCollisionFrame?: number; maxPenetrationMm?: number } } | null, trajectory: ReturnType<typeof buildRobotCoordinatedMotionTrajectory>) {
+  const firstFailureFrame = typeof verification?.motion?.firstFailureFrame === 'number' && verification.motion.firstFailureFrame >= 0 ? verification.motion.firstFailureFrame : null;
+  const firstCollisionFrame = typeof verification?.motionInterference?.firstCollisionFrame === 'number' && verification.motionInterference.firstCollisionFrame >= 0 ? verification.motionInterference.firstCollisionFrame : null;
+  return { exploratoryOnly: true, releaseEvidence: false, strategy: ROBOT_COORDINATED_MOTION_STRATEGY, mateIds: trajectory.mateIds, keyframesDeg: trajectory.keyframes, stepsPerSegment: trajectory.stepsPerSegment, apiOk: verification?.ok === true, allConverged: verification?.motion?.allConverged === true, frameCount: verification?.motion?.frames?.length ?? 0, checkedFrames: verification?.motionInterference?.checkedFrames ?? 0, collisionFrameCount: verification?.motionInterference?.collisionFrameCount ?? 0, firstFailureFrame, firstCollisionFrame, maxPenetrationMm: verification?.motionInterference?.maxPenetrationMm ?? null };
 }
 function category(a: string, b: string) { const driveA = a.startsWith('J'), driveB = b.startsWith('J'); return driveA && driveB ? 'drive-drive' : driveA || driveB ? 'drive-structural' : 'structural-structural'; }

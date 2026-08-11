@@ -1,5 +1,11 @@
 import { validateAiAssemblyProgram, type AiAssemblyProgram } from '../aiAssemblyProgram';
 import type { HingeMate } from '../../assembly/mate';
+import {
+  buildRobotCoordinatedMotionTrajectory,
+  ROBOT_COORDINATED_MOTION_FRAMES,
+  ROBOT_COORDINATED_MOTION_STEPS,
+  ROBOT_COORDINATED_MOTION_STRATEGY,
+} from './robotCoordinatedMotion';
 
 const SHA256 = /^[a-f0-9]{64}$/;
 
@@ -19,6 +25,10 @@ export type RobotEvidenceSummary = {
   checkedMotionFrames?: number;
   motionConverged?: boolean;
   motionAxes?: RobotMotionAxisSummary[];
+  coordinatedMotionFrames?: number;
+  checkedCoordinatedMotionFrames?: number;
+  coordinatedCollisionFrames?: number;
+  coordinatedMotionConverged?: boolean;
   catalogStatus: string;
   housingStatus: string;
   claimedReleaseReady: boolean;
@@ -183,6 +193,31 @@ export async function verifyRobotEvidenceBundle(reportBytes: Uint8Array, program
     if (motion.axisCount !== 6 || axes.reduce((sum, axis) => sum + axis.frameCount, 0) !== motionFrames || axes.reduce((sum, axis) => sum + axis.checkedFrames, 0) !== checkedMotionFrames || axes.reduce((sum, axis) => sum + axis.collisionFrameCount, 0) !== collisionFrames || axes.every(axis => axis.allConverged) !== motionConverged) throw new Error('motionStudy axis aggregates do not match report totals');
     return axes;
   })();
+  const coordinated = report.coordinatedMotionStudy === undefined ? null : object(report.coordinatedMotionStudy, 'coordinatedMotionStudy');
+  if (revision >= 2 && !coordinated) throw new Error('coordinatedMotionStudy is required for robot revision 2 and later');
+  const coordinatedSummary = coordinated ? (() => {
+    if (string(coordinated.strategy, 'coordinatedMotionStudy.strategy') !== ROBOT_COORDINATED_MOTION_STRATEGY) throw new Error('coordinated motion strategy is unsupported');
+    if (!Array.isArray(coordinated.mateIds) || coordinated.mateIds.some(item => typeof item !== 'string')) throw new Error('coordinatedMotionStudy.mateIds must be an array');
+    const hinges = validatedProgram.assembly.mates
+      .filter((mate): mate is HingeMate => mate.kind === 'hinge' && /^J[1-6]$/.test(mate.id))
+      .sort((left, right) => left.id.localeCompare(right.id));
+    const expected = buildRobotCoordinatedMotionTrajectory(hinges);
+    if (JSON.stringify(coordinated.mateIds) !== JSON.stringify(expected.mateIds)) throw new Error('coordinated motion mate IDs do not match governed J1..J6');
+    if (!Array.isArray(coordinated.keyframesDeg) || JSON.stringify(coordinated.keyframesDeg) !== JSON.stringify(expected.keyframes)) throw new Error('coordinated motion keyframes do not match the governed robot trajectory');
+    if (coordinated.stepsPerSegment !== ROBOT_COORDINATED_MOTION_STEPS) throw new Error('coordinated motion step count does not match policy');
+    const frameCount = nonnegativeInteger(coordinated.frameCount, 'coordinatedMotionStudy.frameCount');
+    const checkedFrames = nonnegativeInteger(coordinated.checkedFrames, 'coordinatedMotionStudy.checkedFrames');
+    const collisionFrameCount = nonnegativeInteger(coordinated.collisionFrameCount, 'coordinatedMotionStudy.collisionFrameCount');
+    if (frameCount !== ROBOT_COORDINATED_MOTION_FRAMES || checkedFrames > frameCount || collisionFrameCount > frameCount) throw new Error('coordinated motion frame counts are invalid');
+    const allConverged = boolean(coordinated.allConverged, 'coordinatedMotionStudy.allConverged');
+    const apiOk = boolean(coordinated.apiOk, 'coordinatedMotionStudy.apiOk');
+    const firstFailureFrame = coordinated.firstFailureFrame === null ? null : nonnegativeInteger(coordinated.firstFailureFrame, 'coordinatedMotionStudy.firstFailureFrame');
+    const firstCollisionFrame = coordinated.firstCollisionFrame === null ? null : nonnegativeInteger(coordinated.firstCollisionFrame, 'coordinatedMotionStudy.firstCollisionFrame');
+    if ((firstFailureFrame !== null && firstFailureFrame >= frameCount) || (firstCollisionFrame !== null && firstCollisionFrame >= frameCount)) throw new Error('coordinated motion diagnostic frame is outside the trajectory');
+    if ((allConverged && firstFailureFrame !== null) || (!allConverged && firstFailureFrame === null) || (collisionFrameCount === 0 && firstCollisionFrame !== null) || (collisionFrameCount > 0 && firstCollisionFrame === null)) throw new Error('coordinated motion diagnostics contradict trajectory status');
+    if (boolean(coordinated.releaseEvidence, 'coordinatedMotionStudy.releaseEvidence') !== false) throw new Error('coordinated concept motion cannot claim release evidence');
+    return { frameCount, checkedFrames, collisionFrameCount, allConverged, apiOk };
+  })() : null;
   const claimedReleaseReady = boolean(report.releaseReady, 'releaseReady');
   const expertApproval = boolean(policy.expertApprovalGranted, 'policy.expertApprovalGranted');
   const corpusModified = boolean(policy.referenceCorpusModified, 'policy.referenceCorpusModified');
@@ -196,6 +231,7 @@ export async function verifyRobotEvidenceBundle(reportBytes: Uint8Array, program
     ...(!catalogVerified ? ['catalog_artifact_bytes_not_verified'] : []),
     ...(!assemblyRelease ? ['assembly_not_release_ready'] : []),
     ...(!motionRelease || collisionFrames > 0 ? ['motion_not_release_ready'] : []),
+    ...(revision >= 2 && (!coordinatedSummary?.apiOk || !coordinatedSummary.allConverged || coordinatedSummary.checkedFrames !== ROBOT_COORDINATED_MOTION_FRAMES || coordinatedSummary.collisionFrameCount > 0) ? ['coordinated_motion_not_release_ready'] : []),
     ...(flaggedInterferences > 0 ? ['precise_interferences_present'] : []),
   ];
   const effectiveReleaseReady = claimedReleaseReady && invariantBlockers.length === 0 && blockers.length === 0;
@@ -207,6 +243,10 @@ export async function verifyRobotEvidenceBundle(reportBytes: Uint8Array, program
     rankDoF: typeof certificate.rankDoF === 'number' && Number.isFinite(certificate.rankDoF) ? certificate.rankDoF : null,
     allowedDoF: typeof certificate.allowedDoF === 'number' && Number.isFinite(certificate.allowedDoF) ? certificate.allowedDoF : null,
     flaggedInterferences, collisionFrames, motionFrames, checkedMotionFrames, motionConverged, motionAxes,
+    coordinatedMotionFrames: coordinatedSummary?.frameCount,
+    checkedCoordinatedMotionFrames: coordinatedSummary?.checkedFrames,
+    coordinatedCollisionFrames: coordinatedSummary?.collisionFrameCount,
+    coordinatedMotionConverged: coordinatedSummary?.allConverged,
     catalogStatus: string(catalog.selectionStatus, 'catalogSelection.selectionStatus'),
     housingStatus: string(housing.status, 'housingFit.status'),
     claimedReleaseReady, effectiveReleaseReady,
