@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.staging-authenticated-lifecycle.v2",
+  "generatedAt": "2026-08-11T02:43:46.312Z",
+  "ok": true,
+  "target": "https://nexyfabcom-staging.up.railway.app",
+  "runId": "e2e-1786416192370-bmvws9",
+  "checks": [
+    "live_ai_intake_structured",
+    "ai_output_gate_checked_design",
+    "project_created",
+    "manual_cad_saved",
+    "duplicate_stale_write_rejected",
+    "concurrent_collaboration_sessions",
+    "precise_cad_async_job_complete",
+    "tenant_acl_project_collab_job",
+    "network_retry_recovered",
+    "save_reconnect_exact_scene",
+    "step_export",
+    "share_create_read_acl",
+    "expert_review_packet_and_acl"
+  ],
+  "workerRecovery": "pending_external_hook",
+  "expertApproval": "not_claimed_test_packet_only",
+  "credentialsPersisted": false,
+  "transientRecordsRetained": false
+}

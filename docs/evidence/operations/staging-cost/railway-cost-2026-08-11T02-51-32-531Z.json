@@ -1,0 +1,66 @@
+{
+  "schema": "nexyfab.railway-cost-snapshot.v1",
+  "capturedAt": "2026-08-11T02:51:32.531Z",
+  "billingPeriod": {
+    "end": "2026-09-06T03:30:25+00:00",
+    "start": "2026-08-06T03:30:25+00:00"
+  },
+  "project": {
+    "deletedAt": null,
+    "id": "eaf82c54-1a51-449a-8e60-f3bd29a089e4",
+    "name": "nexyfab.com"
+  },
+  "scope": {
+    "services": [
+      "nexyfab.com",
+      "Postgres-KN2x",
+      "Redis-IrVt",
+      "nexyfab-openscad-worker"
+    ],
+    "missingServices": [],
+    "complete": true,
+    "totalDollars": 1.1852106850183963,
+    "breakdown": [
+      {
+        "backupDollars": 0,
+        "cpuDollars": 0.005354995810185185,
+        "egressDollars": 0.037567186700000005,
+        "id": "eefc9d8c-fe11-45cc-bf68-ba45a10273b3",
+        "memoryDollars": 0.5268664157606813,
+        "name": "nexyfab.com",
+        "totalDollars": 0.5776919241843288,
+        "volumeDollars": 0.007903325913462364
+      },
+      {
+        "backupDollars": 0,
+        "cpuDollars": 0.001468914552469136,
+        "egressDollars": 0.00220295875,
+        "id": "eb794e44-114e-4109-a346-27d783ca9669",
+        "memoryDollars": 0.5479746204579959,
+        "name": "Postgres-KN2x",
+        "totalDollars": 0.5630995644901027,
+        "volumeDollars": 0.011453070729637652
+      },
+      {
+        "backupDollars": 0,
+        "cpuDollars": 0.007671210817901235,
+        "egressDollars": 0,
+        "id": "3c5e6bca-b67e-4104-a49c-3a3617400305",
+        "memoryDollars": 0.015918232044150805,
+        "name": "Redis-IrVt",
+        "totalDollars": 0.025736378572100538,
+        "volumeDollars": 0.0021469357100485
+      },
+      {
+        "backupDollars": 0,
+        "cpuDollars": 0.0009109292592592593,
+        "egressDollars": 9.365e-8,
+        "id": "fa1be66e-5140-486e-b25f-f113da0f03fc",
+        "memoryDollars": 0.017771794862605026,
+        "name": "nexyfab-openscad-worker",
+        "totalDollars": 0.018682817771864285,
+        "volumeDollars": 0
+      }
+    ]
+  }
+}

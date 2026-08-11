@@ -1,0 +1,1011 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-11T02:49:06.587Z",
+  "baseUrl": "https://nexyfabcom-staging.up.railway.app",
+  "pass": true,
+  "checks": [
+    {
+      "id": "landing-desktop.http",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "id": "guided-design-desktop.http",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "id": "precision-cad-mobile.http",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "id": "precision-cad-desktop.http",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "id": "landing-desktop.csp",
+      "pass": true,
+      "actual": "present"
+    },
+    {
+      "id": "guided-design-desktop.csp",
+      "pass": true,
+      "actual": "present"
+    },
+    {
+      "id": "precision-cad-mobile.csp",
+      "pass": true,
+      "actual": "present"
+    },
+    {
+      "id": "precision-cad-desktop.csp",
+      "pass": true,
+      "actual": "present"
+    },
+    {
+      "id": "landing-desktop.transferBytes-budget",
+      "pass": true,
+      "actual": 731668,
+      "limit": 734003
+    },
+    {
+      "id": "landing-desktop.decodedBodyBytes-budget",
+      "pass": true,
+      "actual": 2139493,
+      "limit": 2600000
+    },
+    {
+      "id": "guided-design-desktop.transferBytes-budget",
+      "pass": true,
+      "actual": 756502,
+      "limit": 943718
+    },
+    {
+      "id": "guided-design-desktop.decodedBodyBytes-budget",
+      "pass": true,
+      "actual": 2406026,
+      "limit": 3145728
+    },
+    {
+      "id": "precision-cad-mobile.transferBytes-budget",
+      "pass": true,
+      "actual": 1653573,
+      "limit": 2621440
+    },
+    {
+      "id": "precision-cad-mobile.decodedBodyBytes-budget",
+      "pass": true,
+      "actual": 5187560,
+      "limit": 6500000
+    },
+    {
+      "id": "precision-cad-desktop.transferBytes-budget",
+      "pass": true,
+      "actual": 6864568,
+      "limit": 7340032
+    },
+    {
+      "id": "precision-cad-desktop.decodedBodyBytes-budget",
+      "pass": true,
+      "actual": 17953727,
+      "limit": 21000000
+    },
+    {
+      "id": "landing-desktop.recaptcha-lazy",
+      "pass": true,
+      "actual": []
+    },
+    {
+      "id": "guided-design-desktop.recaptcha-lazy",
+      "pass": true,
+      "actual": []
+    },
+    {
+      "id": "precision-cad-mobile.exact-kernel-on-demand",
+      "pass": true,
+      "actual": []
+    },
+    {
+      "id": "precision-cad-desktop.exact-kernel-default",
+      "pass": true,
+      "actual": [
+        "https://nexyfabcom-staging.up.railway.app/replicad_single.wasm",
+        "https://nexyfabcom-staging.up.railway.app/replicad_single.wasm"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "id": "landing-desktop",
+      "requestedPath": "/kr/",
+      "finalUrl": "https://nexyfabcom-staging.up.railway.app/kr/",
+      "status": 200,
+      "elapsedMs": 4468,
+      "headers": {
+        "contentSecurityPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.dicebear.com https://www.facebook.com https://www.google-analytics.com https://www.googletagmanager.com https://www.google.com https://www.google.co.kr; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://www.google.com https://*.sentry.io; worker-src 'self' blob:; frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/; frame-ancestors 'none'; manifest-src 'self'; upgrade-insecure-requests",
+        "xContentTypeOptions": "nosniff",
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      },
+      "resourceCount": 44,
+      "transferBytes": 731668,
+      "encodedBodyBytes": 718468,
+      "decodedBodyBytes": 2139493,
+      "scriptTransferBytes": 366060,
+      "scriptDecodedBodyBytes": 1109417,
+      "domContentLoadedMs": 893.1999999955297,
+      "loadEventMs": 945.2999999970198,
+      "jsHeapBytes": 7624424,
+      "occtStatus": null,
+      "topResources": [
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/css/5180a3a9ae4bad85.css",
+          "initiatorType": "link",
+          "transferBytes": 148352,
+          "decodedBodyBytes": 461485
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/12217-c776f70fe2f18d6c.js",
+          "initiatorType": "script",
+          "transferBytes": 94038,
+          "decodedBodyBytes": 330536
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/4bd1b696-f998cba21de05210.js",
+          "initiatorType": "script",
+          "transferBytes": 63604,
+          "decodedBodyBytes": 201061
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/3670-ec23997bbda60f43.js",
+          "initiatorType": "script",
+          "transferBytes": 61336,
+          "decodedBodyBytes": 174898
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/media/e4af272ccee01ff0-s.p.woff2",
+          "initiatorType": "link",
+          "transferBytes": 48732,
+          "decodedBodyBytes": 48432
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/3730-2192c81146ea18f4.js",
+          "initiatorType": "script",
+          "transferBytes": 43070,
+          "decodedBodyBytes": 120177
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/media/558ca1a6aa3cb55e-s.p.woff2",
+          "initiatorType": "link",
+          "transferBytes": 31640,
+          "decodedBodyBytes": 31340
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/media/d2c1ffb734f61872-s.p.woff2",
+          "initiatorType": "link",
+          "transferBytes": 26384,
+          "decodedBodyBytes": 26084
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/css/620dd9210d521ff9.css",
+          "initiatorType": "link",
+          "transferBytes": 23163,
+          "decodedBodyBytes": 140182
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/app/%5Blang%5D/page-71369bf7ebea5b61.js",
+          "initiatorType": "script",
+          "transferBytes": 22442,
+          "decodedBodyBytes": 66586
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/css/ac79c72863170f34.css",
+          "initiatorType": "link",
+          "transferBytes": 18971,
+          "decodedBodyBytes": 109317
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/webpack-56aa23bee3341a3b.js",
+          "initiatorType": "link",
+          "transferBytes": 15626,
+          "decodedBodyBytes": 28878
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/app/%5Blang%5D/pricing/page-28a793c754111fe8.js",
+          "initiatorType": "script",
+          "transferBytes": 14958,
+          "decodedBodyBytes": 42466
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/80376-db1917ed2f092886.js",
+          "initiatorType": "script",
+          "transferBytes": 10614,
+          "decodedBodyBytes": 30339
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/app/%5Blang%5D/nexyfab/layout-6e7ae51292e1aaf4.js",
+          "initiatorType": "script",
+          "transferBytes": 9481,
+          "decodedBodyBytes": 28796
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/71511-f6fac8c5a88ce910.js",
+          "initiatorType": "script",
+          "transferBytes": 9392,
+          "decodedBodyBytes": 27832
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/kr/?_rsc=FakvOLXDzaUqt-X_",
+          "initiatorType": "fetch",
+          "transferBytes": 7937,
+          "decodedBodyBytes": 20077
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/app/(auth)/login/page-0e79e1a537941b0a.js",
+          "initiatorType": "script",
+          "transferBytes": 7862,
+          "decodedBodyBytes": 23367
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/19394-d47ad9d9761a803a.js",
+          "initiatorType": "script",
+          "transferBytes": 7484,
+          "decodedBodyBytes": 21832
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/app/%5Blang%5D/layout-f8b16f3cbe01b7e2.js",
+          "initiatorType": "script",
+          "transferBytes": 6117,
+          "decodedBodyBytes": 14655
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/kr/nexyfab/ai/?_rsc=LBlTgpqo5rUTjNS3",
+          "initiatorType": "fetch",
+          "transferBytes": 4786,
+          "decodedBodyBytes": 18405
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/95205-a9c729cd6411f2e2.js",
+          "initiatorType": "script",
+          "transferBytes": 2816,
+          "decodedBodyBytes": 6543
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/kr/factories/?_rsc=CyTeck_VkxmE0Hf7",
+          "initiatorType": "fetch",
+          "transferBytes": 2701,
+          "decodedBodyBytes": 9777
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/login/?_rsc=vGUdu6qydTgC84J3",
+          "initiatorType": "fetch",
+          "transferBytes": 2618,
+          "decodedBodyBytes": 7507
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/app/%5Blang%5D/nexyfab/ai/page-b65235f9dcf3b19b.js",
+          "initiatorType": "script",
+          "transferBytes": 2232,
+          "decodedBodyBytes": 5208
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/98500-260eaed6dcf76737.js",
+          "initiatorType": "script",
+          "transferBytes": 2150,
+          "decodedBodyBytes": 4163
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/kr/pricing/?_rsc=9JlWawbK3Gw9Fn5J",
+          "initiatorType": "fetch",
+          "transferBytes": 2126,
+          "decodedBodyBytes": 5032
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/kr/factories/?_rsc=Haw0uC8XVsXw6hGr",
+          "initiatorType": "fetch",
+          "transferBytes": 2073,
+          "decodedBodyBytes": 4570
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/app/not-found-d4feb71aa22a2e18.js",
+          "initiatorType": "script",
+          "transferBytes": 1946,
+          "decodedBodyBytes": 2864
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/main-app-770c23d6699a3cc6.js",
+          "initiatorType": "script",
+          "transferBytes": 1894,
+          "decodedBodyBytes": 3088
+        }
+      ],
+      "budget": {
+        "transferBytes": 734003,
+        "decodedBodyBytes": 2600000
+      },
+      "recaptchaRequests": [],
+      "wasmRequests": [],
+      "exactKernelRequests": [],
+      "failedRequests": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "pageErrors": []
+    },
+    {
+      "id": "guided-design-desktop",
+      "requestedPath": "/kr/nexyfab/design/",
+      "finalUrl": "https://nexyfabcom-staging.up.railway.app/kr/nexyfab/design/",
+      "status": 200,
+      "elapsedMs": 5520,
+      "headers": {
+        "contentSecurityPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.dicebear.com https://www.facebook.com https://www.google-analytics.com https://www.googletagmanager.com https://www.google.com https://www.google.co.kr; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://www.google.com https://*.sentry.io; worker-src 'self' blob:; frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/; frame-ancestors 'none'; manifest-src 'self'; upgrade-insecure-requests",
+        "xContentTypeOptions": "nosniff",
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      },
+      "resourceCount": 48,
+      "transferBytes": 756502,
+      "encodedBodyBytes": 742102,
+      "decodedBodyBytes": 2406026,
+      "scriptTransferBytes": 570402,
+      "scriptDecodedBodyBytes": 1887167,
+      "domContentLoadedMs": 819.6999999955297,
+      "loadEventMs": 819.7999999970198,
+      "jsHeapBytes": 8109594,
+      "occtStatus": null,
+      "topResources": [
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/bd904a5c-5820d944a36906da.js",
+          "initiatorType": "script",
+          "transferBytes": 99998,
+          "decodedBodyBytes": 373615
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/12217-c776f70fe2f18d6c.js",
+          "initiatorType": "script",
+          "transferBytes": 94038,
+          "decodedBodyBytes": 330536
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/b536a0f1-7b40e1097e25f312.js",
+          "initiatorType": "script",
+          "transferBytes": 85988,
+          "decodedBodyBytes": 352912
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/4bd1b696-f998cba21de05210.js",
+          "initiatorType": "script",
+          "transferBytes": 63604,
+          "decodedBodyBytes": 201061
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/3670-ec23997bbda60f43.js",
+          "initiatorType": "script",
+          "transferBytes": 61336,
+          "decodedBodyBytes": 174898
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/media/e4af272ccee01ff0-s.p.woff2",
+          "initiatorType": "link",
+          "transferBytes": 48732,
+          "decodedBodyBytes": 48432
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/app/%5Blang%5D/nexyfab/design/page-5d740b08cf6b4522.js",
+          "initiatorType": "script",
+          "transferBytes": 36013,
+          "decodedBodyBytes": 107501
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/media/558ca1a6aa3cb55e-s.p.woff2",
+          "initiatorType": "link",
+          "transferBytes": 31640,
+          "decodedBodyBytes": 31340
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/60647-7656042f62fbcb43.js",
+          "initiatorType": "script",
+          "transferBytes": 26375,
+          "decodedBodyBytes": 77065
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/css/620dd9210d521ff9.css",
+          "initiatorType": "link",
+          "transferBytes": 23163,
+          "decodedBodyBytes": 140182
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/app/%5Blang%5D/page-71369bf7ebea5b61.js",
+          "initiatorType": "script",
+          "transferBytes": 22442,
+          "decodedBodyBytes": 66586
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/css/ac79c72863170f34.css",
+          "initiatorType": "link",
+          "transferBytes": 18971,
+          "decodedBodyBytes": 109317
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/webpack-56aa23bee3341a3b.js",
+          "initiatorType": "link",
+          "transferBytes": 15626,
+          "decodedBodyBytes": 28878
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/80376-db1917ed2f092886.js",
+          "initiatorType": "script",
+          "transferBytes": 10614,
+          "decodedBodyBytes": 30339
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/app/%5Blang%5D/nexyfab/layout-6e7ae51292e1aaf4.js",
+          "initiatorType": "script",
+          "transferBytes": 9481,
+          "decodedBodyBytes": 28796
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/app/%5Blang%5D/nexyfab/projects/page-53686559e633898e.js",
+          "initiatorType": "script",
+          "transferBytes": 9133,
+          "decodedBodyBytes": 26675
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/kr/?_rsc=llbehelgKxfWfU4c",
+          "initiatorType": "fetch",
+          "transferBytes": 7937,
+          "decodedBodyBytes": 20077
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/19394-d47ad9d9761a803a.js",
+          "initiatorType": "script",
+          "transferBytes": 7484,
+          "decodedBodyBytes": 21832
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/59560-24ac38d3e00aabae.js",
+          "initiatorType": "script",
+          "transferBytes": 7420,
+          "decodedBodyBytes": 16401
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/app/%5Blang%5D/layout-f8b16f3cbe01b7e2.js",
+          "initiatorType": "script",
+          "transferBytes": 6117,
+          "decodedBodyBytes": 14655
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/6398-4aeacef898ca9b0d.js",
+          "initiatorType": "script",
+          "transferBytes": 5121,
+          "decodedBodyBytes": 11807
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/37443-491c7e9ec1c0be68.js",
+          "initiatorType": "script",
+          "transferBytes": 4904,
+          "decodedBodyBytes": 12590
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/59461-62a77ffa33b1a811.js",
+          "initiatorType": "script",
+          "transferBytes": 4637,
+          "decodedBodyBytes": 12421
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/kr/examples/?_rsc=Ntu7YNSWhHsVVY8v",
+          "initiatorType": "fetch",
+          "transferBytes": 4328,
+          "decodedBodyBytes": 27566
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/kr/nexyfab/projects/?_rsc=UUhROAtYDs7dZ3S8",
+          "initiatorType": "fetch",
+          "transferBytes": 3094,
+          "decodedBodyBytes": 8922
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/kr/nexyfab/hub/?_rsc=gyUaoqY6kUo6QS3M",
+          "initiatorType": "fetch",
+          "transferBytes": 2946,
+          "decodedBodyBytes": 7634
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/95205-a9c729cd6411f2e2.js",
+          "initiatorType": "script",
+          "transferBytes": 2816,
+          "decodedBodyBytes": 6543
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/kr/?_rsc=bPkUkal8iTgExcx0",
+          "initiatorType": "fetch",
+          "transferBytes": 2701,
+          "decodedBodyBytes": 9777
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/4742-b2b47dc10e443686.js",
+          "initiatorType": "script",
+          "transferBytes": 2685,
+          "decodedBodyBytes": 6067
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/kr/nexyfab/design/?domain=building&_rsc=QTWFibMT5KhVRDPP",
+          "initiatorType": "fetch",
+          "transferBytes": 2330,
+          "decodedBodyBytes": 4961
+        }
+      ],
+      "budget": {
+        "transferBytes": 943718,
+        "decodedBodyBytes": 3145728
+      },
+      "recaptchaRequests": [],
+      "wasmRequests": [],
+      "exactKernelRequests": [],
+      "failedRequests": [
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/kr/nexyfab/design/?domain=building&_rsc=QTWFibMT5KhVRDPP",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/kr/nexyfab/design/?domain=civil&_rsc=QTWFibMT5KhVRDPP",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "pageErrors": []
+    },
+    {
+      "id": "precision-cad-mobile",
+      "requestedPath": "/kr/shape-generator/?expert=1",
+      "finalUrl": "https://nexyfabcom-staging.up.railway.app/kr/shape-generator/?expert=1",
+      "status": 200,
+      "elapsedMs": 7586,
+      "headers": {
+        "contentSecurityPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.dicebear.com https://www.facebook.com https://www.google-analytics.com https://www.googletagmanager.com https://www.google.com https://www.google.co.kr; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://www.google.com https://*.sentry.io; worker-src 'self' blob:; frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/; frame-ancestors 'none'; manifest-src 'self'; upgrade-insecure-requests",
+        "xContentTypeOptions": "nosniff",
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      },
+      "resourceCount": 75,
+      "transferBytes": 1653573,
+      "encodedBodyBytes": 1631073,
+      "decodedBodyBytes": 5187560,
+      "scriptTransferBytes": 1480268,
+      "scriptDecodedBodyBytes": 4725467,
+      "domContentLoadedMs": 582.6000000014901,
+      "loadEventMs": 685.3000000044703,
+      "jsHeapBytes": 23952163,
+      "occtStatus": null,
+      "topResources": [
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/71683.54fdd6ff887fd429.js",
+          "initiatorType": "script",
+          "transferBytes": 463956,
+          "decodedBodyBytes": 1459847
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/32822-ba63a41681b5c2d4.js",
+          "initiatorType": "script",
+          "transferBytes": 127095,
+          "decodedBodyBytes": 398793
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/bd904a5c-5820d944a36906da.js",
+          "initiatorType": "script",
+          "transferBytes": 99998,
+          "decodedBodyBytes": 373615
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/12217-c776f70fe2f18d6c.js",
+          "initiatorType": "script",
+          "transferBytes": 94038,
+          "decodedBodyBytes": 330536
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/b536a0f1-7b40e1097e25f312.js",
+          "initiatorType": "script",
+          "transferBytes": 85988,
+          "decodedBodyBytes": 352912
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/2955.cb8ad24d832edf90.js",
+          "initiatorType": "script",
+          "transferBytes": 67991,
+          "decodedBodyBytes": 213484
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/4bd1b696-f998cba21de05210.js",
+          "initiatorType": "script",
+          "transferBytes": 63604,
+          "decodedBodyBytes": 201061
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/3670-ec23997bbda60f43.js",
+          "initiatorType": "script",
+          "transferBytes": 61336,
+          "decodedBodyBytes": 174898
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/media/e4af272ccee01ff0-s.p.woff2",
+          "initiatorType": "link",
+          "transferBytes": 48732,
+          "decodedBodyBytes": 48432
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/51749ec1.ba2ae67e2f52579f.js",
+          "initiatorType": "script",
+          "transferBytes": 46307,
+          "decodedBodyBytes": 145389
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/50615.aa2d02c9fb574cec.js",
+          "initiatorType": "script",
+          "transferBytes": 37880,
+          "decodedBodyBytes": 125088
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/media/558ca1a6aa3cb55e-s.p.woff2",
+          "initiatorType": "link",
+          "transferBytes": 31640,
+          "decodedBodyBytes": 31340
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/60647-7656042f62fbcb43.js",
+          "initiatorType": "script",
+          "transferBytes": 26375,
+          "decodedBodyBytes": 77065
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/16427-90f520c124781d28.js",
+          "initiatorType": "script",
+          "transferBytes": 26340,
+          "decodedBodyBytes": 75397
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/47173-5c5d450c4ba937b1.js",
+          "initiatorType": "script",
+          "transferBytes": 25700,
+          "decodedBodyBytes": 97840
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/css/620dd9210d521ff9.css",
+          "initiatorType": "link",
+          "transferBytes": 23163,
+          "decodedBodyBytes": 140182
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/css/ac79c72863170f34.css",
+          "initiatorType": "link",
+          "transferBytes": 18971,
+          "decodedBodyBytes": 109317
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/pipeline-worker.141fbc663aafc86e.js",
+          "initiatorType": "other",
+          "transferBytes": 18525,
+          "decodedBodyBytes": 52078
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/6be7e44c-830e1087df49f0b0.js",
+          "initiatorType": "script",
+          "transferBytes": 17675,
+          "decodedBodyBytes": 60815
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/26066.d74ed99f2165ef0e.js",
+          "initiatorType": "script",
+          "transferBytes": 16290,
+          "decodedBodyBytes": 56342
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/webpack-56aa23bee3341a3b.js",
+          "initiatorType": "link",
+          "transferBytes": 15626,
+          "decodedBodyBytes": 28878
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/88790.e0d49c51df22f0c2.js",
+          "initiatorType": "script",
+          "transferBytes": 14620,
+          "decodedBodyBytes": 45261
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/93402-af60b8f374c7d650.js",
+          "initiatorType": "script",
+          "transferBytes": 13210,
+          "decodedBodyBytes": 52965
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/54447.bbdb54a776d119d3.js",
+          "initiatorType": "script",
+          "transferBytes": 11946,
+          "decodedBodyBytes": 35146
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/80376-db1917ed2f092886.js",
+          "initiatorType": "script",
+          "transferBytes": 10614,
+          "decodedBodyBytes": 30339
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/768.010963860445faaf.js",
+          "initiatorType": "script",
+          "transferBytes": 9216,
+          "decodedBodyBytes": 23571
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/53369-3a4dc43a3dec75b9.js",
+          "initiatorType": "script",
+          "transferBytes": 8183,
+          "decodedBodyBytes": 21685
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/97905.c98a7ecdeb33a11a.js",
+          "initiatorType": "script",
+          "transferBytes": 7617,
+          "decodedBodyBytes": 26899
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/19394-d47ad9d9761a803a.js",
+          "initiatorType": "script",
+          "transferBytes": 7484,
+          "decodedBodyBytes": 21832
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/39829.e86926749d46bdb7.js",
+          "initiatorType": "script",
+          "transferBytes": 7438,
+          "decodedBodyBytes": 20690
+        }
+      ],
+      "budget": {
+        "transferBytes": 2621440,
+        "decodedBodyBytes": 6500000
+      },
+      "recaptchaRequests": [],
+      "wasmRequests": [],
+      "exactKernelRequests": [],
+      "failedRequests": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 400 ()"
+      ],
+      "pageErrors": []
+    },
+    {
+      "id": "precision-cad-desktop",
+      "requestedPath": "/kr/shape-generator/?expert=1",
+      "finalUrl": "https://nexyfabcom-staging.up.railway.app/kr/shape-generator/?expert=1",
+      "status": 200,
+      "elapsedMs": 16113,
+      "headers": {
+        "contentSecurityPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.dicebear.com https://www.facebook.com https://www.google-analytics.com https://www.googletagmanager.com https://www.google.com https://www.google.co.kr; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://www.google.com https://*.sentry.io; worker-src 'self' blob:; frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/; frame-ancestors 'none'; manifest-src 'self'; upgrade-insecure-requests",
+        "xContentTypeOptions": "nosniff",
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      },
+      "resourceCount": 121,
+      "transferBytes": 6864568,
+      "encodedBodyBytes": 6828268,
+      "decodedBodyBytes": 17953727,
+      "scriptTransferBytes": 2112524,
+      "scriptDecodedBodyBytes": 6625852,
+      "domContentLoadedMs": 589,
+      "loadEventMs": 663.9000000059605,
+      "jsHeapBytes": 50678613,
+      "occtStatus": {
+        "text": "OCCT: ON",
+        "title": "OCCT 토폴로지 엔진 (실험)",
+        "disabled": false,
+        "preference": "on"
+      },
+      "topResources": [
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/replicad_single.wasm",
+          "initiatorType": "fetch",
+          "transferBytes": 4572962,
+          "decodedBodyBytes": 10855736
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/71683.54fdd6ff887fd429.js",
+          "initiatorType": "script",
+          "transferBytes": 463956,
+          "decodedBodyBytes": 1459847
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/32822-ba63a41681b5c2d4.js",
+          "initiatorType": "script",
+          "transferBytes": 127095,
+          "decodedBodyBytes": 398793
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/aaea2bcf.f63852774dccb5b0.js",
+          "initiatorType": "script",
+          "transferBytes": 100593,
+          "decodedBodyBytes": 325366
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/bd904a5c-5820d944a36906da.js",
+          "initiatorType": "script",
+          "transferBytes": 99998,
+          "decodedBodyBytes": 373615
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/12217-c776f70fe2f18d6c.js",
+          "initiatorType": "script",
+          "transferBytes": 94038,
+          "decodedBodyBytes": 330536
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/b536a0f1-7b40e1097e25f312.js",
+          "initiatorType": "script",
+          "transferBytes": 85988,
+          "decodedBodyBytes": 352912
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/b2c7d8c1.7389f6b1ed97c2cc.js",
+          "initiatorType": "script",
+          "transferBytes": 84496,
+          "decodedBodyBytes": 288077
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/2955.cb8ad24d832edf90.js",
+          "initiatorType": "script",
+          "transferBytes": 67991,
+          "decodedBodyBytes": 213484
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/f6211eb1.2ca4995b17a194f0.js",
+          "initiatorType": "script",
+          "transferBytes": 66555,
+          "decodedBodyBytes": 87856
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/59912.f7f7fe1615c4044d.js",
+          "initiatorType": "script",
+          "transferBytes": 63890,
+          "decodedBodyBytes": 211409
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/4bd1b696-f998cba21de05210.js",
+          "initiatorType": "script",
+          "transferBytes": 63604,
+          "decodedBodyBytes": 201061
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/3670-ec23997bbda60f43.js",
+          "initiatorType": "script",
+          "transferBytes": 61336,
+          "decodedBodyBytes": 174898
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/media/e4af272ccee01ff0-s.p.woff2",
+          "initiatorType": "link",
+          "transferBytes": 48732,
+          "decodedBodyBytes": 48432
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/51749ec1.ba2ae67e2f52579f.js",
+          "initiatorType": "script",
+          "transferBytes": 46307,
+          "decodedBodyBytes": 145389
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/75192.64e1598665cc8111.js",
+          "initiatorType": "script",
+          "transferBytes": 44038,
+          "decodedBodyBytes": 157633
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/50615.aa2d02c9fb574cec.js",
+          "initiatorType": "script",
+          "transferBytes": 37880,
+          "decodedBodyBytes": 125088
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/media/558ca1a6aa3cb55e-s.p.woff2",
+          "initiatorType": "link",
+          "transferBytes": 31640,
+          "decodedBodyBytes": 31340
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/23755.b8fb4ae739a157f8.js",
+          "initiatorType": "script",
+          "transferBytes": 26528,
+          "decodedBodyBytes": 90841
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/52050.cccdca653acabb3a.js",
+          "initiatorType": "script",
+          "transferBytes": 26379,
+          "decodedBodyBytes": 80885
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/60647-7656042f62fbcb43.js",
+          "initiatorType": "script",
+          "transferBytes": 26375,
+          "decodedBodyBytes": 77065
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/16427-90f520c124781d28.js",
+          "initiatorType": "script",
+          "transferBytes": 26340,
+          "decodedBodyBytes": 75397
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/27269.727726456fb0a5f2.js",
+          "initiatorType": "script",
+          "transferBytes": 25790,
+          "decodedBodyBytes": 88698
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/47173-5c5d450c4ba937b1.js",
+          "initiatorType": "script",
+          "transferBytes": 25700,
+          "decodedBodyBytes": 97840
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/css/620dd9210d521ff9.css",
+          "initiatorType": "link",
+          "transferBytes": 23163,
+          "decodedBodyBytes": 140182
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/63449.ff0f4fe7ea6e336b.js",
+          "initiatorType": "script",
+          "transferBytes": 22196,
+          "decodedBodyBytes": 75656
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/a3cd4a83.26990ce7817a3cbd.js",
+          "initiatorType": "script",
+          "transferBytes": 21090,
+          "decodedBodyBytes": 95707
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/17796.30e9bd6e596ed1a5.js",
+          "initiatorType": "script",
+          "transferBytes": 20551,
+          "decodedBodyBytes": 64421
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/css/ac79c72863170f34.css",
+          "initiatorType": "link",
+          "transferBytes": 18971,
+          "decodedBodyBytes": 109317
+        },
+        {
+          "url": "https://nexyfabcom-staging.up.railway.app/_next/static/chunks/pipeline-worker.141fbc663aafc86e.js",
+          "initiatorType": "other",
+          "transferBytes": 18525,
+          "decodedBodyBytes": 52078
+        }
+      ],
+      "budget": {
+        "transferBytes": 7340032,
+        "decodedBodyBytes": 21000000
+      },
+      "recaptchaRequests": [],
+      "wasmRequests": [
+        "https://nexyfabcom-staging.up.railway.app/replicad_single.wasm",
+        "https://nexyfabcom-staging.up.railway.app/replicad_single.wasm"
+      ],
+      "exactKernelRequests": [
+        "https://nexyfabcom-staging.up.railway.app/replicad_single.wasm",
+        "https://nexyfabcom-staging.up.railway.app/replicad_single.wasm"
+      ],
+      "failedRequests": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 400 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 400 ()"
+      ],
+      "pageErrors": []
+    }
+  ]
+}
