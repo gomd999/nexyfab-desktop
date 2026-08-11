@@ -175,6 +175,7 @@ function main() {
     .split(',').map(value => value.trim()).filter(Boolean);
   const receipt = evaluateSevenDayOperations(samples, {
     costSnapshots,
+    environment: process.env.OPERATIONS_ENVIRONMENT ?? 'production',
     monthlyCostBudgetUsd: Number(process.env.RAILWAY_MONTHLY_COST_BUDGET_USD ?? DEFAULT_MONTHLY_COST_BUDGET_USD),
     requiredCostServices,
   });

@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.railway-operations-sample.v1",
+  "capturedAt": "2026-08-11T03:10:51.739Z",
+  "service": "openscad-worker",
+  "sourceService": "nexyfab-openscad-worker",
+  "environment": "staging",
+  "window": {
+    "since": "2026-08-10T21:10:47.027+00:00",
+    "until": "2026-08-11T03:10:47.027+00:00"
+  },
+  "deploymentIds": [
+    "7b8acee8-8246-4b6d-9ed8-b00b2e6abb9d"
+  ],
+  "cpu": {
+    "average": 0.00003912770083102494,
+    "current": 0.00004456666666666667,
+    "limit": 8,
+    "max": 0.004547833333333333,
+    "unit": "vCPU",
+    "utilization_pct": 0
+  },
+  "memory": {
+    "average_mb": 7.824863334116344,
+    "current_mb": 57.386467328,
+    "limit_mb": 8192,
+    "max_mb": 57.386467328,
+    "utilization_pct": 0.7
+  },
+  "http": null,
+  "volumes": []
+}

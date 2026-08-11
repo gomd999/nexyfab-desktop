@@ -1,0 +1,66 @@
+{
+  "schema": "nexyfab.staging-deployment-receipt.v1",
+  "generatedAt": "2026-08-11T03:14:29.422Z",
+  "ok": true,
+  "project": {
+    "id": "eaf82c54-1a51-449a-8e60-f3bd29a089e4",
+    "name": "nexyfab.com"
+  },
+  "environment": {
+    "id": "82864a12-dcbe-4d89-a749-5e4495ede539",
+    "name": "staging",
+    "publicUrl": "https://nexyfabcom-staging.up.railway.app",
+    "productionMutated": false
+  },
+  "deployments": {
+    "web": {
+      "service": "nexyfab.com",
+      "deploymentId": "61784cec-21e5-4cbc-b6ad-99d10247ece0",
+      "buildId": "44b1a4256eaf0f154113752565888b11aa6dc874",
+      "imageDigest": "sha256:7576e208d7fc3c0765df1a3359635ac49f83ba975020fde7bf6352741fae0abc",
+      "health": "passed"
+    },
+    "openscadWorker": {
+      "service": "nexyfab-openscad-worker",
+      "deploymentId": "7b8acee8-8246-4b6d-9ed8-b00b2e6abb9d",
+      "buildId": "a9932183934a01f8fb9d1f807126700a367a0fc2",
+      "imageDigest": "sha256:8bd506b5d8d2e33f150d92656c11094f570ec207fcc5000706dfffb307a4a629",
+      "health": "passed"
+    },
+    "feaWorker": {
+      "service": "nexyfab-fea-worker",
+      "deploymentId": "c4e2336f-7d84-46f0-8231-1bf5f68c378f",
+      "buildId": "7ebf9c5363c354ff4e18c5702d2136aca23265fd",
+      "imageDigest": "sha256:65293c6e02e434d11fab6f8151765b2afb669cf401b363c2427ac3cd8a37b3ea",
+      "health": "passed",
+      "private": true
+    }
+  },
+  "isolatedDependencies": {
+    "postgres": "Postgres-KN2x",
+    "redis": "Redis-IrVt",
+    "objectStorage": "nexyfab-staging-fhqgxhhul",
+    "isolationReceipt": "docs/evidence/release/railway-staging-isolation-receipt.json",
+    "migrationReceipt": "docs/evidence/release/staging-postgres-migration-verification-receipt.json"
+  },
+  "acceptance": {
+    "authenticatedCadFeaLifecycle": "docs/evidence/release/staging-authenticated-lifecycle-receipt.json",
+    "publicWebSmoke": "docs/evidence/release/staging-web-smoke-receipt.json",
+    "browserSmoke": "docs/evidence/release/staging-browser-smoke-receipt.json",
+    "runtimePerformance": "docs/evidence/performance/staging-runtime-performance-260811.json",
+    "sevenDayCampaign": "docs/evidence/operations/staging-ga-campaign-current.json"
+  },
+  "rollback": {
+    "candidateDeploymentId": "71e0bde9-5c08-4116-bb38-7d666253b358",
+    "candidateBuildId": "f2e3eca3b57bc146ec365c2a90a84ae8d22dfcd9",
+    "candidateImageDigest": "sha256:708613f5e854d7a332a20013f99bcfe697cc45629769ab88f343f4a77d25930d",
+    "rehearsal": "pending"
+  },
+  "openGates": [
+    "seven_day_observation_in_progress_until_2026-08-18T03:11:02.645Z",
+    "web_memory_peak_883.2mb_above_768mb_target",
+    "worker_restart_recovery_hook_pending",
+    "isolated_restore_drill_target_pending",
+    "independent_expert_approval_not_claimed"
+  ]
+}

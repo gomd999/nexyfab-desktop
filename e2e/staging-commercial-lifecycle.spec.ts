@@ -37,6 +37,23 @@ async function pollCadJob(api: APIRequestContext, pollUrl: string, timeoutMs = 1
   throw new Error(`CAD job timeout; last status=${String(last.status ?? 'unknown')}`);
 }
 
+async function pollFeaJob(api: APIRequestContext, pollUrl: string, timeoutMs = 240_000) {
+  const deadline = Date.now() + timeoutMs;
+  let last: Record<string, unknown> = {};
+  while (Date.now() < deadline) {
+    const response = await api.get(pollUrl);
+    expect(response.status(), await response.text()).toBe(200);
+    const payload = await response.json() as { job?: Record<string, unknown> };
+    last = payload.job ?? {};
+    if (last.status === 'complete') return last;
+    if (last.status === 'failed' || last.status === 'cancelled') {
+      throw new Error(`FEA job ${String(last.status)}: ${String(last.errorCode ?? 'unknown')}`);
+    }
+    await new Promise(resolve => setTimeout(resolve, 1_000));
+  }
+  throw new Error(`FEA job timeout; last status=${String(last.status ?? 'unknown')}`);
+}
+
 async function retryAfterInjectedNetworkDrop(api: APIRequestContext, url: string) {
   let attempts = 0;
   for (;;) {
@@ -56,9 +73,9 @@ async function retryAfterInjectedNetworkDrop(api: APIRequestContext, url: string
 test.describe('staging-only authenticated commercial lifecycle', () => {
   test.describe.configure({ mode: 'serial' });
 
-  test('AI → manual edit → precise CAD job → reconnect → export/share/review → ACL and cleanup', async ({ baseURL }) => {
+  test('AI → manual edit → precise CAD/FEA jobs → reconnect → export/share/review → ACL and cleanup', async ({ baseURL }) => {
     test.skip(process.env.E2E_STAGING_LIFECYCLE !== '1', 'requires isolated staging credentials and services');
-    test.setTimeout(300_000);
+    test.setTimeout(480_000);
     if (!baseURL) throw new Error('E2E baseURL is required');
 
     const ownerAccount = requiredAccount('OWNER');
@@ -182,6 +199,29 @@ test.describe('staging-only authenticated commercial lifecycle', () => {
       checks.push('precise_cad_async_job_complete');
       if (workerRecovery === 'passed') checks.push('worker_restart_recovery');
 
+      const feaResponse = await owner.post('/api/nexyfab/fea/jobs', {
+        headers: { 'idempotency-key': `${runId}-fea` },
+        data: {
+          projectId: cleanup.projectId,
+          source: { kind: 'scad', source: scad },
+          materialKey: 'steel',
+          loadN: 1_000,
+          loadNote: 'Staging commercial lifecycle bounded static load.',
+          precise: true,
+          limits: { maxDof: 90_000, timeoutMs: 180_000 },
+        },
+      });
+      expect(feaResponse.status(), await feaResponse.text()).toBe(202);
+      const feaQueued = await feaResponse.json() as { pollUrl: string };
+      const feaJob = await pollFeaJob(owner, feaQueued.pollUrl);
+      const feaResult = feaJob.result as Record<string, unknown>;
+      expect(['linear-fem-tet', 'beam-theory']).toContain(feaResult.method);
+      expect(['certification-candidate', 'engineering', 'screening']).toContain(feaResult.grade);
+      expect(Number(feaResult.dofCount)).toBeGreaterThan(0);
+      expect(feaResult.expertApproval).toBeNull();
+      expect(feaResult.manufacturingReady).toBe(false);
+      checks.push('precise_fea_async_job_complete');
+
       const unauthorizedProject = await outsider.get(`/api/nexyfab/projects/${encodeURIComponent(cleanup.projectId)}`);
       expect(unauthorizedProject.status()).toBe(404);
       const unauthorizedCollab = await outsider.post('/api/nexyfab/collab', {
@@ -190,7 +230,9 @@ test.describe('staging-only authenticated commercial lifecycle', () => {
       expect(unauthorizedCollab.status()).toBe(404);
       const unauthorizedJob = await outsider.get(queued.pollUrl);
       expect(unauthorizedJob.status()).toBe(404);
-      checks.push('tenant_acl_project_collab_job');
+      const unauthorizedFeaJob = await outsider.get(feaQueued.pollUrl);
+      expect(unauthorizedFeaJob.status()).toBe(404);
+      checks.push('tenant_acl_project_collab_cad_fea_jobs');
 
       const retried = await retryAfterInjectedNetworkDrop(
         owner,
@@ -291,8 +333,20 @@ test.describe('staging-only authenticated commercial lifecycle', () => {
         expect(remaining.status(), await remaining.text()).toBe(200);
         expect((await remaining.json()).reviews.some((item: { id: string }) => item.id === cleanup.reviewId)).toBe(false);
       }
+      const [ownerErasure, outsiderErasure] = await Promise.all([
+        owner.delete('/api/auth/account', {
+          data: { password: ownerAccount.password, confirm: 'DELETE MY ACCOUNT' },
+        }),
+        outsider.delete('/api/auth/account', {
+          data: { password: outsiderAccount.password, confirm: 'DELETE MY ACCOUNT' },
+        }),
+      ]);
+      expect(ownerErasure.status(), await ownerErasure.text()).toBe(200);
+      expect(outsiderErasure.status(), await outsiderErasure.text()).toBe(200);
+      expect((await owner.get('/api/auth/account')).status()).toBe(401);
+      expect((await outsider.get('/api/auth/account')).status()).toBe(401);
+      checks.push('disposable_accounts_erased');
       cleanupVerified = true;
-      await Promise.allSettled([owner.post('/api/auth/logout'), outsider.post('/api/auth/logout')]);
       await owner.dispose();
       await outsider.dispose();
     }

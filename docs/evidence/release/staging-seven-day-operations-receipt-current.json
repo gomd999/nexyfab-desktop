@@ -1,0 +1,72 @@
+{
+  "schema": "nexyfab.seven-day-operations-receipt.v2",
+  "generatedAt": "2026-08-11T03:11:09.811Z",
+  "ok": false,
+  "services": {
+    "web": {
+      "samples": 1,
+      "coverageHours": 6,
+      "spanHours": 6,
+      "invalidWindows": 0,
+      "uniqueWindows": 1,
+      "overlaps": 0,
+      "gaps": 0,
+      "durationMismatches": 0,
+      "maxMemoryMb": 883.232342016,
+      "memoryLimitMb": 768,
+      "totalRequests": 1018,
+      "total5xx": 4,
+      "errorRatePercent": 0.3929273084479371
+    },
+    "openscad-worker": {
+      "samples": 1,
+      "coverageHours": 6,
+      "spanHours": 6,
+      "invalidWindows": 0,
+      "uniqueWindows": 1,
+      "overlaps": 0,
+      "gaps": 0,
+      "durationMismatches": 0,
+      "maxMemoryMb": 57.386467328,
+      "memoryLimitMb": 512,
+      "totalRequests": 0,
+      "total5xx": 0,
+      "errorRatePercent": 0
+    },
+    "fea-worker": {
+      "samples": 1,
+      "coverageHours": 6,
+      "spanHours": 6,
+      "invalidWindows": 0,
+      "uniqueWindows": 1,
+      "overlaps": 0,
+      "gaps": 0,
+      "durationMismatches": 0,
+      "maxMemoryMb": 18.815647744,
+      "memoryLimitMb": 2048,
+      "totalRequests": 0,
+      "total5xx": 0,
+      "errorRatePercent": 0
+    }
+  },
+  "cost": {
+    "ok": false,
+    "blockers": [
+      "cost_samples_short"
+    ],
+    "samples": 1
+  },
+  "blockers": [
+    "coverage_short:web:6.0h",
+    "sample_count_short:web:1",
+    "unique_window_count_short:web:1",
+    "memory_target_failed:web:883.2mb",
+    "coverage_short:openscad-worker:6.0h",
+    "sample_count_short:openscad-worker:1",
+    "unique_window_count_short:openscad-worker:1",
+    "coverage_short:fea-worker:6.0h",
+    "sample_count_short:fea-worker:1",
+    "unique_window_count_short:fea-worker:1",
+    "cost_samples_short"
+  ]
+}
