@@ -32,9 +32,11 @@ function rowToProject(row: Record<string, unknown>): NexyfabProject {
     materialId: (row.material_id as string) || undefined,
     sceneData: (row.scene_data as string) || undefined,
     tags: row.tags ? JSON.parse(row.tags as string) : undefined,
-    createdAt: row.created_at as number,
-    updatedAt: row.updated_at as number,
-    archivedAt: (row.archived_at as number) || undefined,
+    // PostgreSQL BIGINT values arrive as decimal strings; the public project
+    // contract uses numeric millisecond revision tokens.
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+    archivedAt: row.archived_at == null ? undefined : Number(row.archived_at),
     role: 'owner',
     canEdit: true,
   };

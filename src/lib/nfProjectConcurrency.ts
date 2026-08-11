@@ -3,8 +3,8 @@
  */
 
 export function assertIfMatchUpdatedAt(
-  serverUpdatedAt: number,
-  ifMatchUpdatedAt: number | undefined,
+  serverUpdatedAt: number | string,
+  ifMatchUpdatedAt: number | string | undefined,
 ):
   | { ok: true }
   | {
@@ -16,7 +16,17 @@ export function assertIfMatchUpdatedAt(
   if (ifMatchUpdatedAt === undefined) return { ok: true };
   const a = Number(serverUpdatedAt);
   const b = Number(ifMatchUpdatedAt);
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return { ok: true };
+  // The Postgres adapter returns BIGINT columns as decimal strings. Treat
+  // those as valid revision tokens, but never silently bypass the guard for
+  // malformed or unsafe values.
+  if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b)) {
+    return {
+      ok: false,
+      message: 'Conflict: the project revision token is invalid. Reload the project, then save again.',
+      serverUpdatedAt: Number.isSafeInteger(a) ? a : -1,
+      clientExpected: Number.isSafeInteger(b) ? b : -1,
+    };
+  }
   if (a !== b) {
     return {
       ok: false,

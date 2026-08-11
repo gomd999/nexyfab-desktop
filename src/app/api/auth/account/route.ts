@@ -6,6 +6,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { clearAuthCookies } from '@/lib/cookie-config';
+import { deleteNexyfabAccountData } from '@/lib/deleteAccountData';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,13 +50,10 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Incorrect password' }, { status: 401 });
   }
 
-  // Cascade delete (FK ON DELETE CASCADE 가 설정되어 있지만 명시적으로도 처리)
-  await db.execute('DELETE FROM nf_refresh_tokens WHERE user_id = ?', user.id);
-  await db.execute('DELETE FROM nf_verification_codes WHERE user_id = ?', user.id);
-  await db.execute('DELETE FROM nf_password_reset_tokens WHERE user_id = ?', user.id);
-  await db.execute('DELETE FROM nf_collab_sessions WHERE user_id = ?', user.id);
-  // 프로젝트와 RFQ는 CASCADE로 처리
-  await db.execute('DELETE FROM nf_users WHERE id = ?', user.id);
+  // Apply the same transactional erasure policy as /api/auth/delete-account.
+  await db.transaction(async transaction => {
+    await deleteNexyfabAccountData(transaction, user.id);
+  });
 
   const response = NextResponse.json({ ok: true, message: 'Account deleted' });
   // 쿠키 삭제

@@ -21,9 +21,11 @@ function rowToProject(row: Record<string, unknown>, access?: Pick<ProjectAccess,
     materialId: (row.material_id as string) || undefined,
     sceneData: (row.scene_data as string) || undefined,
     tags: row.tags ? JSON.parse(row.tags as string) : undefined,
-    createdAt: row.created_at as number,
-    updatedAt: row.updated_at as number,
-    archivedAt: (row.archived_at as number) || undefined,
+    // pg intentionally returns BIGINT as strings. Normalize the public API so
+    // clients can round-trip these millisecond revision tokens as numbers.
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+    archivedAt: row.archived_at == null ? undefined : Number(row.archived_at),
     role: access?.role ?? 'owner',
     canEdit: access?.canEdit ?? true,
   };
@@ -134,7 +136,7 @@ export async function PATCH(
     restoreVersionId?: string;
     archived?: boolean;
     /** Optional — when set, must equal row `updated_at` or 409 (optimistic concurrency). */
-    ifMatchUpdatedAt?: number;
+    ifMatchUpdatedAt?: number | string;
   }) | null;
   if (!body) return NextResponse.json({ error: 'Invalid or empty request body' }, { status: 400 });
 
@@ -234,8 +236,9 @@ export async function PATCH(
 
   const current = access.row;
 
-  if (typeof body.ifMatchUpdatedAt === 'number') {
-    const m = assertIfMatchUpdatedAt(current.updated_at as number, body.ifMatchUpdatedAt);
+  let expectedUpdatedAt: number | undefined;
+  if (body.ifMatchUpdatedAt !== undefined) {
+    const m = assertIfMatchUpdatedAt(current.updated_at as number | string, body.ifMatchUpdatedAt);
     if (!m.ok) {
       const ip = getTrustedClientIpOrUndefined(req.headers);
       logAudit({
@@ -255,6 +258,7 @@ export async function PATCH(
         { status: 409 },
       );
     }
+    expectedUpdatedAt = Number(body.ifMatchUpdatedAt);
   }
 
   if (body.sceneData !== undefined) {
@@ -272,8 +276,12 @@ export async function PATCH(
     void saveSnapshot(id, access.ownerUserId, current);
   }
 
-  const result = await db.execute(
-    `UPDATE nf_projects SET
+  // A compare performed only in application code is racy: two writers can
+  // both read the same revision and then overwrite each other. Include the
+  // expected revision in the UPDATE predicate to make this a real CAS.
+  const currentUpdatedAt = Number(current.updated_at);
+  const nextUpdatedAt = Math.max(now, Number.isSafeInteger(currentUpdatedAt) ? currentUpdatedAt + 1 : now);
+  const updateSql = `UPDATE nf_projects SET
        name       = COALESCE(?, name),
        shape_id   = COALESCE(?, shape_id),
        material_id= COALESCE(?, material_id),
@@ -281,18 +289,53 @@ export async function PATCH(
        thumbnail  = COALESCE(?, thumbnail),
        tags       = COALESCE(?, tags),
        updated_at = ?
-     WHERE id = ?`,
+     WHERE id = ?${expectedUpdatedAt === undefined ? '' : ' AND updated_at = ?'}`;
+  const updateArgs = [
     body.name ?? null,
     body.shapeId ?? null,
     body.materialId ?? null,
     body.sceneData ?? null,
     body.thumbnail ?? null,
     body.tags !== undefined ? JSON.stringify(body.tags) : null,
-    now,
+    nextUpdatedAt,
     id,
+    ...(expectedUpdatedAt === undefined ? [] : [expectedUpdatedAt]),
+  ];
+  const result = await db.execute(
+    updateSql,
+    ...updateArgs,
   );
 
   if (result.changes === 0) {
+    if (expectedUpdatedAt !== undefined) {
+      const latest = await db.queryOne<{ updated_at: number | string }>(
+        'SELECT updated_at FROM nf_projects WHERE id = ?',
+        id,
+      );
+      if (latest) {
+        const conflict = assertIfMatchUpdatedAt(latest.updated_at, expectedUpdatedAt);
+        const serverUpdatedAt = conflict.ok ? Number(latest.updated_at) : conflict.serverUpdatedAt;
+        const ip = getTrustedClientIpOrUndefined(req.headers);
+        logAudit({
+          userId: authUser.userId,
+          action: 'project.update_conflict',
+          resourceId: id,
+          ip,
+          metadata: { clientExpected: expectedUpdatedAt, serverActual: latest.updated_at, atomic: true },
+        });
+        return NextResponse.json(
+          {
+            error: conflict.ok
+              ? 'Conflict: the project changed during this save. Reload the project, then save again.'
+              : conflict.message,
+            code: 'PROJECT_VERSION_CONFLICT',
+            serverUpdatedAt,
+            clientExpected: expectedUpdatedAt,
+          },
+          { status: 409 },
+        );
+      }
+    }
     return NextResponse.json({ error: 'Not found or access denied' }, { status: 404 });
   }
 
@@ -340,12 +383,22 @@ export async function DELETE(
     );
   }
 
-  const result = await db.execute(
-    'DELETE FROM nf_projects WHERE id = ?',
-    id,
-  );
+  await ensureVersionsTable();
+  let deletedChanges = 0;
+  await db.transaction(async transaction => {
+    // These legacy auxiliary tables do not all carry FK cascades. Remove them
+    // with the project so collaboration presence, snapshots, invites, and
+    // comments cannot become orphaned personal data.
+    await transaction.execute('DELETE FROM nf_collab_sessions WHERE project_id = ?', id);
+    await transaction.execute('DELETE FROM nf_project_versions WHERE project_id = ?', id);
+    await transaction.execute('DELETE FROM nf_comments WHERE project_id = ?', id);
+    await transaction.execute('DELETE FROM nf_project_invites WHERE project_id = ?', id);
+    await transaction.execute('DELETE FROM nf_project_members WHERE project_id = ?', id);
+    const deleted = await transaction.execute('DELETE FROM nf_projects WHERE id = ?', id);
+    deletedChanges = deleted.changes;
+  });
 
-  if (result.changes === 0) {
+  if (deletedChanges === 0) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 

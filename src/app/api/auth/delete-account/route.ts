@@ -4,6 +4,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { logAudit } from '@/lib/audit';
 import { clearAuthCookies } from '@/lib/cookie-config';
+import { deleteNexyfabAccountData } from '@/lib/deleteAccountData';
 
 /**
  * DELETE /api/auth/delete-account
@@ -61,15 +62,7 @@ export async function DELETE(req: NextRequest) {
   // Perform deletion in a transaction
   try {
     await db.transaction(async (db) => {
-      // Manual cleanup for tables without FK cascade
-      await db.execute('DELETE FROM nf_orders WHERE user_id = ?', userId);
-      await db.execute('DELETE FROM nf_collab_sessions WHERE user_id = ?', userId);
-      await db.execute('DELETE FROM nf_audit_log WHERE user_id = ?', userId);
-
-      // This triggers FK cascades for:
-      // nf_projects, nf_rfqs, nf_shares, nf_comments,
-      // nf_refresh_tokens, nf_password_reset_tokens
-      await db.execute('DELETE FROM nf_users WHERE id = ?', userId);
+      await deleteNexyfabAccountData(db, userId);
     });
   } catch (err) {
     console.error('[delete-account] DB deletion failed:', err);
