@@ -118,15 +118,45 @@ export function scopeCostSnapshot(usage, serviceNames, capturedAt = new Date().t
   };
 }
 
+export function resolveRailwayExecutable({
+  platform = process.platform,
+  pathValue = process.env.PATH,
+} = {}) {
+  if (platform !== 'win32') return 'railway';
+
+  const where = spawnSync('where.exe', ['railway.cmd'], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: pathValue },
+  });
+  const shim = where.status === 0
+    ? String(where.stdout).split(/\r?\n/).map(value => value.trim()).find(Boolean)
+    : null;
+  const npmBinary = shim
+    ? path.join(path.dirname(shim), 'node_modules', '@railway', 'cli', 'bin', 'railway.exe')
+    : null;
+  if (npmBinary && fs.existsSync(npmBinary)) return npmBinary;
+
+  const standalone = spawnSync('where.exe', ['railway.exe'], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: pathValue },
+  });
+  const executable = standalone.status === 0
+    ? String(standalone.stdout).split(/\r?\n/).map(value => value.trim()).find(Boolean)
+    : null;
+  if (executable) return executable;
+  throw new Error('Railway CLI executable not found (checked npm shim and standalone binary)');
+}
+
 function railwayJson(args) {
-  const executable = process.platform === 'win32' ? 'railway.exe' : 'railway';
+  const executable = resolveRailwayExecutable();
   const result = spawnSync(executable, args, {
     encoding: 'utf8',
     maxBuffer: 16 * 1024 * 1024,
     env: process.env,
   });
   if (result.status !== 0) {
-    throw new Error(`railway ${args[0]} failed: ${(result.stderr || result.stdout || '').trim()}`);
+    const detail = result.error?.message || result.stderr || result.stdout || `exit ${result.status}`;
+    throw new Error(`railway ${args[0]} failed: ${String(detail).trim()}`);
   }
   return JSON.parse(result.stdout);
 }

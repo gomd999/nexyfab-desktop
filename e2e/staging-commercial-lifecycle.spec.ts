@@ -215,7 +215,12 @@ test.describe('staging-only authenticated commercial lifecycle', () => {
       checks.push('save_reconnect_exact_scene');
 
       const exported = await owner.post('/api/nexyfab/drawing/export-step', {
-        data: { intent: { kind: 'box', width: 30, depth: 20, height: 10 } },
+        data: {
+          intent: {
+            name: `${runId}-step-box`,
+            features: [{ id: 'base', kind: 'box', size: [30, 20, 10], op: 'add' }],
+          },
+        },
       });
       expect(exported.status(), await exported.text()).toBe(200);
       const step = await exported.json() as { ok: boolean; step: string; bytes: number };

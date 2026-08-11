@@ -5,6 +5,7 @@ import {
   normalizeMetricsSample,
   parseServiceMap,
   projectReference,
+  resolveRailwayExecutable,
   scopeCostSnapshot,
 } from './collect-railway-operations-campaign.mjs';
 
@@ -17,6 +18,7 @@ test('builds contiguous six-hour windows and safe service mappings', () => {
   assert.equal(windows[0].until, windows[1].since);
   assert.equal(windows[1].until, '2026-08-08T00:00:00.000Z');
   assert.equal(projectReference(undefined, { id: 'project-id', name: 'project' }), 'project-id');
+  assert.equal(resolveRailwayExecutable({ platform: 'linux' }), 'railway');
   assert.throws(() => parseServiceMap('web:a,web:b'), /unique/);
 });
 

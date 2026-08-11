@@ -23,6 +23,12 @@ const HEARTBEAT_MS = Math.max(1_000, Math.floor(LEASE_MS / 4));
 const RESULT_MAX_BYTES = 4 * 1024 * 1024;
 const SOLVER_PATH = join(dirname(fileURLToPath(import.meta.url)), 'solver.mjs');
 
+export function feaWorkerBuildId(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): string {
+  return env.NEXYFAB_WORKER_BUILD_ID?.trim() || 'unknown';
+}
+
 const state = {
   startedAt: Date.now(), active: 0, completed: 0, failed: 0, cancelled: 0,
   retried: 0, recovered: 0, timedOut: 0, memoryKilled: 0,
@@ -331,7 +337,13 @@ async function start(): Promise<void> {
       try {
         const pong = await redis.ping();
         res.writeHead(pong === 'PONG' ? 200 : 503, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ ok: pong === 'PONG', service: 'nexyfab-fea-worker', active: state.active, uptimeMs: Date.now() - state.startedAt }));
+        res.end(JSON.stringify({
+          ok: pong === 'PONG',
+          service: 'nexyfab-fea-worker',
+          buildId: feaWorkerBuildId(),
+          active: state.active,
+          uptimeMs: Date.now() - state.startedAt,
+        }));
       } catch {
         res.writeHead(503, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ ok: false, service: 'nexyfab-fea-worker' }));
@@ -341,7 +353,14 @@ async function start(): Promise<void> {
     if (req.url === '/metrics') {
       const [queued, processing] = await Promise.all([redis.llen(FEA_QUEUE_KEY), redis.llen(FEA_PROCESSING_KEY)]);
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-      res.end(JSON.stringify({ service: 'nexyfab-fea-worker', ...state, queued, processing, uptimeMs: Date.now() - state.startedAt }));
+      res.end(JSON.stringify({
+        service: 'nexyfab-fea-worker',
+        buildId: feaWorkerBuildId(),
+        ...state,
+        queued,
+        processing,
+        uptimeMs: Date.now() - state.startedAt,
+      }));
       return;
     }
     res.writeHead(404).end();
