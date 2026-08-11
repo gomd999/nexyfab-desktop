@@ -1,0 +1,77 @@
+{
+  "schema": "nexyfab.railway-operations-sample.v1",
+  "capturedAt": "2026-08-11T06:57:00.277Z",
+  "service": "web",
+  "sourceService": "nexyfab.com",
+  "environment": "staging",
+  "window": {
+    "since": "2026-08-11T00:56:57.163+00:00",
+    "until": "2026-08-11T06:56:57.163+00:00"
+  },
+  "deploymentIds": [
+    "2f91c7f8-2ea5-41c5-9fee-78c900818fb3",
+    "1ef26c83-e651-4e41-ac08-6a3c74ef050d",
+    "02a0a1ef-6a95-42c8-8c25-e71b8805f611",
+    "415e9c7f-1cfa-4a7b-b152-8f423442cc28",
+    "61784cec-21e5-4cbc-b6ad-99d10247ece0"
+  ],
+  "deploymentStatuses": [
+    {
+      "id": "2f91c7f8-2ea5-41c5-9fee-78c900818fb3",
+      "status": "SUCCESS"
+    },
+    {
+      "id": "1ef26c83-e651-4e41-ac08-6a3c74ef050d",
+      "status": "REMOVED"
+    },
+    {
+      "id": "02a0a1ef-6a95-42c8-8c25-e71b8805f611",
+      "status": "FAILED"
+    },
+    {
+      "id": "415e9c7f-1cfa-4a7b-b152-8f423442cc28",
+      "status": "REMOVED"
+    },
+    {
+      "id": "61784cec-21e5-4cbc-b6ad-99d10247ece0",
+      "status": "REMOVED"
+    }
+  ],
+  "cpu": {
+    "average": 0.0035178543859649115,
+    "current": 0.000017883333333333332,
+    "limit": 8,
+    "max": 0.15918416666666663,
+    "unit": "vCPU",
+    "utilization_pct": 0
+  },
+  "memory": {
+    "average_mb": 620.893632199979,
+    "current_mb": 812.650594304,
+    "limit_mb": 8192,
+    "max_mb": 1037.37720832,
+    "utilization_pct": 9.9
+  },
+  "http": {
+    "2xx": 1199,
+    "3xx": 362,
+    "4xx": 105,
+    "5xx": 6,
+    "error_rate": 0.3588516746411483,
+    "p50_ms": 5,
+    "p90_ms": 12,
+    "p95_ms": 23,
+    "p99_ms": 23,
+    "total": 1672
+  },
+  "volumes": [
+    {
+      "average_mb": 79.10628136988306,
+      "current_mb": 84.565557248,
+      "limit_mb": 5000,
+      "max_mb": 84.565557248,
+      "mount_path": "/app/data",
+      "name": "nexyfab.com-volume"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "schema": "nexyfab.railway-operations-campaign.v1",
+  "startedAt": "2026-08-11T06:57:05.087Z",
+  "targetEndsAt": "2026-08-18T06:57:05.087Z",
+  "lastCapturedAt": "2026-08-11T06:57:05.087Z",
+  "project": "eaf82c54-1a51-449a-8e60-f3bd29a089e4",
+  "environment": "staging",
+  "windowHours": 6,
+  "requiredServices": [
+    {
+      "alias": "web",
+      "source": "nexyfab.com"
+    },
+    {
+      "alias": "openscad-worker",
+      "source": "nexyfab-openscad-worker"
+    },
+    {
+      "alias": "fea-worker",
+      "source": "nexyfab-fea-worker"
+    }
+  ],
+  "costServices": [
+    "nexyfab.com",
+    "nexyfab-openscad-worker",
+    "nexyfab-fea-worker",
+    "Postgres-KN2x",
+    "Redis-IrVt"
+  ],
+  "releaseBinding": {
+    "file": "docs/evidence/release/staging-release-binding-a687007b.json",
+    "sha256": "b63098823bb3b0cf02d06d0d528086dd2da314e281e22278ceca9c0f896b6569",
+    "buildId": "a687007b657a3948f3ad0c01a45cfcf744baee29",
+    "qualifyingFrom": "2026-08-11T06:50:09.996Z"
+  },
+  "written": [
+    "docs/evidence/operations/staging-a687007b-samples/web-2026-08-11T06-56-57-163Z.json",
+    "docs/evidence/operations/staging-a687007b-samples/openscad-worker-2026-08-11T06-56-57-163Z.json",
+    "docs/evidence/operations/staging-a687007b-samples/fea-worker-2026-08-11T06-56-57-163Z.json",
+    "docs/evidence/operations/staging-a687007b-cost/railway-cost-2026-08-11T06-57-05-086Z.json"
+  ],
+  "failures": [],
+  "status": "collecting"
+}

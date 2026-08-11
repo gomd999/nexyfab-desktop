@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.staging-deployment-receipt.v1",
-  "generatedAt": "2026-08-11T05:19:51.482Z",
+  "generatedAt": "2026-08-11T06:57:25.108Z",
   "ok": true,
   "project": {
     "id": "eaf82c54-1a51-449a-8e60-f3bd29a089e4",
@@ -15,9 +15,9 @@
   "deployments": {
     "web": {
       "service": "nexyfab.com",
-      "deploymentId": "1ef26c83-e651-4e41-ac08-6a3c74ef050d",
-      "buildId": "728cb67a2fd78d2dc86b5f331776140917f666a2",
-      "imageDigest": "sha256:601065c02d67d3fa48bc307e78e865645582245c1f1117e3cc8830595a2fb85c",
+      "deploymentId": "2f91c7f8-2ea5-41c5-9fee-78c900818fb3",
+      "buildId": "a687007b657a3948f3ad0c01a45cfcf744baee29",
+      "imageDigest": "sha256:fa40099b2317ef4a6195c62e0b221f1820d0a304bfa574356932438b72fa64db",
       "health": "passed"
     },
     "openscadWorker": {
@@ -48,21 +48,21 @@
     "publicWebSmoke": "docs/evidence/release/staging-web-smoke-receipt.json",
     "browserSmoke": "docs/evidence/release/staging-browser-smoke-receipt.json",
     "runtimePerformance": "docs/evidence/performance/staging-runtime-performance-260811.json",
-    "sevenDayCampaign": "docs/evidence/operations/staging-728cb67a-campaign-current.json",
-    "sevenDayReceipt": "docs/evidence/release/staging-728cb67a-seven-day-operations-receipt-current.json",
-    "releaseBinding": "docs/evidence/release/staging-release-binding-728cb67a.json",
+    "sevenDayCampaign": "docs/evidence/operations/staging-a687007b-campaign-current.json",
+    "sevenDayReceipt": "docs/evidence/release/staging-a687007b-seven-day-operations-receipt-current.json",
+    "releaseBinding": "docs/evidence/release/staging-release-binding-a687007b.json",
     "operationsPolicy": "docs/operations/commercial-operations-policy.v1.json"
   },
   "rollback": {
-    "candidateDeploymentId": "415e9c7f-1cfa-4a7b-b152-8f423442cc28",
-    "candidateBuildId": "d9b2bb70b023515f1e3ed30392deec73e1a55141",
-    "candidateImageDigest": "sha256:35245ab64b148020d6107bf246463dff91360a716197bd2c1f94d4714c6980ab",
+    "candidateDeploymentId": "1ef26c83-e651-4e41-ac08-6a3c74ef050d",
+    "candidateBuildId": "728cb67a2fd78d2dc86b5f331776140917f666a2",
+    "candidateImageDigest": "sha256:601065c02d67d3fa48bc307e78e865645582245c1f1117e3cc8830595a2fb85c",
     "failedDeploymentId": "02a0a1ef-6a95-42c8-8c25-e71b8805f611",
     "rehearsal": "pending"
   },
   "openGates": [
-    "release_bound_seven_day_observation_in_progress_until_2026-08-18T05:16:04.559Z",
-    "first_release_qualified_six_hour_window_available_after_2026-08-11T11:15:25.625Z",
+    "release_bound_seven_day_observation_in_progress_until_2026-08-18T06:57:05.087Z",
+    "first_release_qualified_six_hour_window_available_after_2026-08-11T12:50:09.996Z",
     "worker_restart_recovery_hook_pending",
     "isolated_restore_drill_target_pending",
     "independent_expert_approval_not_claimed"
