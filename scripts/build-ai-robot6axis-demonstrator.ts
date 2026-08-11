@@ -34,14 +34,45 @@ const advanced = await advanceGenerationRun(state, generated.program, async inpu
   return await response.json() as Record<string, unknown>;
 }, 6, undefined, { diagnosticOnly: true });
 
-const motionResponse = assemblyInput
-  ? await verifyAssemblyPost(new NextRequest('http://localhost/api/cad/v1/assembly/verify', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-forwarded-for': 'ai-robot6axis-demonstrator-motion' },
-      body: JSON.stringify({ ...assemblyInput, intendedContacts: generated.intendedContacts, interferenceWhitelist: [], allowedDoF: 6, motion: { mateId: 'J1', fromValue: -45, toValue: 45, steps: 12 } }),
-    }))
-  : undefined;
-const motionVerification = motionResponse ? await motionResponse.json() as Record<string, unknown> : undefined;
+const governedAxes = generated.program.assembly.mates.flatMap(mate => (
+  /^J[1-6]$/.test(mate.id) && mate.kind === 'hinge' && mate.limit
+    ? [{ mateId: mate.id, rangeDeg: [mate.limit.minAngleDeg, mate.limit.maxAngleDeg] as [number, number] }]
+    : []
+)).sort((left, right) => left.mateId.localeCompare(right.mateId));
+const motionAxes = [] as Array<{
+  mateId: string;
+  rangeDeg: [number, number];
+  allConverged: boolean;
+  frameCount: number;
+  checkedFrames: number;
+  collisionFrameCount: number;
+  segments: Array<ReturnType<typeof summarizeMotionSegment>>;
+}>;
+if (assemblyInput) {
+  for (const axis of governedAxes) {
+    const segments = [] as Array<ReturnType<typeof summarizeMotionSegment>>;
+    for (const segment of [
+      { direction: 'toward-min' as const, toValue: axis.rangeDeg[0] },
+      { direction: 'toward-max' as const, toValue: axis.rangeDeg[1] },
+    ]) {
+      const response = await verifyAssemblyPost(new NextRequest('http://localhost/api/cad/v1/assembly/verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': `ai-robot6axis-demonstrator-motion-${axis.mateId}` },
+        body: JSON.stringify({ ...assemblyInput, intendedContacts: generated.intendedContacts, interferenceWhitelist: [], allowedDoF: 6, motion: { mateId: axis.mateId, fromValue: 0, toValue: segment.toValue, steps: 12 } }),
+      }));
+      segments.push(summarizeMotionSegment(segment.direction, await response.json() as Record<string, unknown>));
+    }
+    motionAxes.push({
+      mateId: axis.mateId,
+      rangeDeg: axis.rangeDeg,
+      allConverged: segments.every(segment => segment.apiOk && segment.allConverged),
+      frameCount: segments.reduce((sum, segment) => sum + segment.frameCount, 0),
+      checkedFrames: segments.reduce((sum, segment) => sum + segment.checkedFrames, 0),
+      collisionFrameCount: segments.reduce((sum, segment) => sum + segment.collisionFrameCount, 0),
+      segments,
+    });
+  }
+}
 
 const programBytes = Buffer.from(`${JSON.stringify(generated.program, null, 2)}\n`);
 const programSha256 = createHash('sha256').update(programBytes).digest('hex');
@@ -53,8 +84,9 @@ const flaggedPairs = (verification?.flaggedInterferences ?? []).flatMap(item => 
     ? [{ partA: pair.partA, partB: pair.partB, penetrationMm: typeof pair.penetration === 'number' ? pair.penetration : null, category: interferenceCategory(pair.partA, pair.partB) }]
     : [];
 });
-const motion = motionVerification?.motion as { allConverged?: boolean; firstFailureFrame?: number; frames?: Array<{ index?: number; parameterValue?: number; solve?: { success?: boolean; iterations?: number; finalMaxResidual?: number; residuals?: Array<{ mateId?: string; supported?: boolean; value?: number }> } }> } | undefined;
-const motionInterference = motionVerification?.motionInterference as { checkedFrames?: number; collisionFrameCount?: number; firstCollisionFrame?: number; maxPenetrationMm?: number } | undefined;
+const totalMotionFrames = motionAxes.reduce((sum, axis) => sum + axis.frameCount, 0);
+const totalCheckedMotionFrames = motionAxes.reduce((sum, axis) => sum + axis.checkedFrames, 0);
+const totalCollisionFrames = motionAxes.reduce((sum, axis) => sum + axis.collisionFrameCount, 0);
 const report = {
   schema: 'nexyfab.ai-complex-product-demonstrator.v1',
   generatedAt: new Date().toISOString(),
@@ -85,29 +117,16 @@ const report = {
   motionStudy: {
     exploratoryOnly: true,
     releaseEvidence: false,
-    mateId: 'J1',
-    rangeDeg: [-45, 45],
-    steps: 12,
-    apiOk: motionVerification?.ok === true,
-    allConverged: motion?.allConverged === true,
-    firstFailureFrame: motion?.firstFailureFrame ?? null,
-    frameCount: motion?.frames?.length ?? 0,
-    frames: (motion?.frames ?? []).map(frame => ({
-      index: frame.index ?? null,
-      parameterValue: frame.parameterValue ?? null,
-      success: frame.solve?.success === true,
-      iterations: frame.solve?.iterations ?? null,
-      finalMaxResidual: frame.solve?.finalMaxResidual ?? null,
-      unsupportedMateIds: (frame.solve?.residuals ?? []).filter(residual => residual.supported === false).map(residual => residual.mateId).filter((id): id is string => typeof id === 'string'),
-    })),
-    checkedFrames: motionInterference?.checkedFrames ?? 0,
-    collisionFrameCount: motionInterference?.collisionFrameCount ?? 0,
-    firstCollisionFrame: motionInterference?.firstCollisionFrame ?? null,
-    maxPenetrationMm: motionInterference?.maxPenetrationMm ?? null,
-    code: motionVerification?.code ?? null,
-    message: motionVerification?.message ?? null,
+    diagnosticScope: 'all_governed_axes_zero_to_each_limit',
+    axisCount: motionAxes.length,
+    stepsPerSegment: 12,
+    allConverged: motionAxes.length === 6 && motionAxes.every(axis => axis.allConverged),
+    frameCount: totalMotionFrames,
+    checkedFrames: totalCheckedMotionFrames,
+    collisionFrameCount: totalCollisionFrames,
+    axes: motionAxes,
   },
-  blockers: [...generated.pendingCatalogComponents, 'governed_full_range_motion_release_evidence_required', 'manufacturing_not_run', 'step_roundtrip_not_run', 'expert_review_not_run'],
+  blockers: [...generated.pendingCatalogComponents, 'signed_governed_motion_release_evidence_required', 'manufacturing_not_run', 'step_roundtrip_not_run', 'expert_review_not_run'],
 };
 const invariantChecks = {
   editable_parts_25: report.product.editableParts === 25,
@@ -120,9 +139,10 @@ const invariantChecks = {
   intended_contacts_documented: verification?.assemblyCertificate?.intendedContactsDocumented === true && report.assembly.releaseContactCount === 24,
   no_static_interference: flaggedPairs.length === 0,
   no_structural_interference: report.interferenceAnalysis.categories['structural-structural'] === 0,
-  exploratory_motion_converged: report.motionStudy.allConverged === true,
-  exploratory_motion_frames_13: report.motionStudy.frameCount === 13,
-  exploratory_motion_collision_free: report.motionStudy.collisionFrameCount === 0,
+  governed_motion_axes_6: report.motionStudy.axisCount === 6 && report.motionStudy.axes.map(axis => axis.mateId).join(',') === 'J1,J2,J3,J4,J5,J6',
+  governed_motion_converged: report.motionStudy.allConverged === true,
+  governed_motion_frames_156: report.motionStudy.frameCount === 156 && report.motionStudy.checkedFrames === 156,
+  governed_motion_collision_free: report.motionStudy.collisionFrameCount === 0,
   catalog_requirements_ready: report.catalogSelection.requirementsReady === true && report.catalogSelection.requirements.length === 6,
   catalog_selection_not_run: report.catalogSelection.selectionStatus === 'not_run' && report.catalogSelection.actualArtifactBytesVerified === false,
   housing_fit_not_run: report.housingFit.status === 'not_run',
@@ -130,10 +150,35 @@ const invariantChecks = {
 };
 const invariantFailures = Object.entries(invariantChecks).filter(([, passed]) => !passed).map(([name]) => name);
 if (invariantFailures.length) {
-  throw new Error(`ai_robot_demonstrator_invariant_failed: ${invariantFailures.join(', ')}; ${JSON.stringify({ rankDoF: verification?.assemblyCertificate?.rankDoF, flaggedInterferences: flaggedPairs.length, interferencePairs: flaggedPairs.map(pair => `${pair.partA}::${pair.partB}`), motionApiOk: report.motionStudy.apiOk, motionCode: report.motionStudy.code, motionMessage: report.motionStudy.message, collisionFrames: report.motionStudy.collisionFrameCount })}`);
+  throw new Error(`ai_robot_demonstrator_invariant_failed: ${invariantFailures.join(', ')}; ${JSON.stringify({ rankDoF: verification?.assemblyCertificate?.rankDoF, flaggedInterferences: flaggedPairs.length, interferencePairs: flaggedPairs.map(pair => `${pair.partA}::${pair.partB}`), motionAxes: report.motionStudy.axes.map(axis => ({ mateId: axis.mateId, converged: axis.allConverged, frames: axis.frameCount, checked: axis.checkedFrames, collisions: axis.collisionFrameCount, segments: axis.segments })), collisionFrames: report.motionStudy.collisionFrameCount })}`);
 }
 writeLatestArtifactAtomic(path.join(outputDir, 'report.json'), Buffer.from(`${JSON.stringify(report, null, 2)}\n`));
 console.log(JSON.stringify({ output: path.relative(process.cwd(), outputDir), parts: report.product.editableParts, mates: report.product.mates, kernel: report.pipeline.stages.kernel.status, topology: report.pipeline.stages.topology.status, assembly: report.pipeline.stages.assembly_solve.status, releaseReady: report.releaseReady }));
+}
+
+function summarizeMotionSegment(direction: 'toward-min' | 'toward-max', verification: Record<string, unknown>) {
+  const motion = verification.motion as { allConverged?: boolean; firstFailureFrame?: number; frames?: unknown[] } | undefined;
+  const interference = verification.motionInterference as { checkedFrames?: number; collisionFrameCount?: number; firstCollisionFrame?: number; maxPenetrationMm?: number; frames?: Array<{ frame?: number; parameterValue?: number; pairs?: Array<{ partA?: string; partB?: string; penetration?: number }> }> } | undefined;
+  const frameCount = motion?.frames?.length ?? 0;
+  const firstFailureFrame = typeof motion?.firstFailureFrame === 'number' && motion.firstFailureFrame >= 0 ? motion.firstFailureFrame : null;
+  const firstCollisionFrame = typeof interference?.firstCollisionFrame === 'number' && interference.firstCollisionFrame >= 0 ? interference.firstCollisionFrame : null;
+  const collisionPairs = [...new Map((interference?.frames ?? []).flatMap(frame => (frame.pairs ?? []).flatMap(pair => (
+    typeof pair.partA === 'string' && typeof pair.partB === 'string'
+      ? [[`${pair.partA}::${pair.partB}`, { partA: pair.partA, partB: pair.partB, penetrationMm: typeof pair.penetration === 'number' ? pair.penetration : null }]] as const
+      : []
+  )))).values()];
+  return {
+    direction,
+    apiOk: verification.ok === true,
+    allConverged: motion?.allConverged === true,
+    frameCount,
+    checkedFrames: interference?.checkedFrames ?? 0,
+    collisionFrameCount: interference?.collisionFrameCount ?? 0,
+    firstFailureFrame,
+    firstCollisionFrame,
+    maxPenetrationMm: interference?.maxPenetrationMm ?? null,
+    collisionPairs,
+  };
 }
 
 function interferenceCategory(partA: string, partB: string) {

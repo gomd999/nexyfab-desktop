@@ -343,6 +343,34 @@ function fmtAssign(a: Assignment): string {
 
 // ─── single-drive application ────────────────────────────────────────────
 
+/**
+ * Return one side of a mechanism after removing the hinge being driven.
+ * Other hinges stay connected because a single-axis sweep holds every other
+ * joint at its current angle. Gear and rack-pinion mates are motion couplings,
+ * not rigid carriers, and remain handled by transmission propagation.
+ */
+function connectedComponentWithoutMate(
+  state: AssemblyState,
+  startPartId: string,
+  excludedMateId: string,
+): Set<string> {
+  const component = new Set<string>([startPartId]);
+  const queue = [startPartId];
+  const edges = state.mates.filter(mate => !mate.suppressed && mate.id !== excludedMateId
+    && mate.kind !== 'gear' && mate.kind !== 'rack_pinion');
+  while (queue.length) {
+    const current = queue.shift()!;
+    for (const edge of edges) {
+      const next = edge.a.partId === current ? edge.b.partId : edge.b.partId === current ? edge.a.partId : null;
+      if (next && !component.has(next)) {
+        component.add(next);
+        queue.push(next);
+      }
+    }
+  }
+  return component;
+}
+
 function applyOneDrive(
   state: AssemblyState,
   resolve: GeometryResolver,
@@ -381,6 +409,7 @@ function applyOneDrive(
 
   let seedPartId: string;
   let seedAssignment: Assignment;
+  let hingeRigidPartIds: Set<string> | null = null;
 
   if (mate.kind === 'hinge') {
     // ── hinge: ABSOLUTE swing target ─────────────────────────────────────
@@ -414,7 +443,17 @@ function applyOneDrive(
     const targetRad = (drive.angleDeg * Math.PI) / 180;
     // Rotating part a by φ about the axis changes the swing by −φ;
     // rotating part b by φ changes it by +φ.
-    if (!partA.fixed) {
+    const componentA = connectedComponentWithoutMate(state, partA.id, mate.id);
+    const componentB = connectedComponentWithoutMate(state, partB.id, mate.id);
+    if ([...componentA].some(id => componentB.has(id))) {
+      throw new KinematicsError(`drive '${mate.id}': hinge remains connected through an alternate mate path — closed-loop hinge drive requires a mechanism solver`);
+    }
+    const aGrounded = [...componentA].some(id => partById.get(id)?.fixed);
+    const bGrounded = [...componentB].some(id => partById.get(id)?.fixed);
+    if (aGrounded && bGrounded) {
+      throw new KinematicsError(`drive '${mate.id}': both hinge branches contain fixed parts — nothing can move`);
+    }
+    if (bGrounded) {
       seedPartId = partA.id;
       seedAssignment = {
         kind: 'rotation',
@@ -422,7 +461,8 @@ function applyOneDrive(
         axis: axisA,
         viaMateId: mate.id,
       };
-    } else if (!partB.fixed) {
+      hingeRigidPartIds = componentA;
+    } else {
       seedPartId = partB.id;
       seedAssignment = {
         kind: 'rotation',
@@ -430,10 +470,7 @@ function applyOneDrive(
         axis: axisB,
         viaMateId: mate.id,
       };
-    } else {
-      throw new KinematicsError(
-        `drive '${mate.id}': both hinge parts ('${partA.id}', '${partB.id}') are fixed — nothing can move`,
-      );
+      hingeRigidPartIds = componentB;
     }
   } else {
     // ── gear / rack_pinion: INCREMENTAL rotation of the driven side ─────
@@ -460,7 +497,9 @@ function applyOneDrive(
     };
   }
 
-  const assignments = propagateFromSeed(state, resolve, partById, seedPartId, seedAssignment);
+  const assignments = hingeRigidPartIds
+    ? new Map([...hingeRigidPartIds].map(partId => [partId, seedAssignment] as const))
+    : propagateFromSeed(state, resolve, partById, seedPartId, seedAssignment);
 
   // Apply all assignments. Seed first, then insertion order (BFS order).
   const effects: DriveEffect[] = [];

@@ -37,7 +37,8 @@ describe('robot evidence bundle trust boundary', () => {
     const parsed = JSON.parse(new TextDecoder().decode(reportBytes)) as { product: { programArtifact: string } };
     const programBytes = new Uint8Array(readFileSync(path.join(root, parsed.product.programArtifact)));
     const result = await verifyRobotEvidenceBundle(reportBytes, programBytes);
-    expect(result).toMatchObject({ editableParts: 25, mates: 60, rankDoF: 6, allowedDoF: 6, flaggedInterferences: 0, collisionFrames: 0, motionFrames: 13, effectiveReleaseReady: false });
+    expect(result).toMatchObject({ editableParts: 25, mates: 60, rankDoF: 6, allowedDoF: 6, flaggedInterferences: 0, collisionFrames: 0, motionFrames: 156, checkedMotionFrames: 156, motionConverged: true, effectiveReleaseReady: false });
+    expect(result.motionAxes?.map(axis => axis.mateId)).toEqual(['J1', 'J2', 'J3', 'J4', 'J5', 'J6']);
     expect(result.interferenceQueue).toHaveLength(0);
   });
 

@@ -38,7 +38,9 @@ test('complex-product scope evidence stays fail-closed and CAD-independent', () 
   assert.equal(result.internalRobot.rankDoF, 6);
   assert.equal(result.internalRobot.intendedContacts, 24);
   assert.equal(result.internalRobot.preciseInterferences, 0);
-  assert.equal(result.internalRobot.exploratoryMotionFrames, 13);
+  assert.equal(result.internalRobot.exploratoryMotionAxes, 6);
+  assert.equal(result.internalRobot.exploratoryMotionFrames, 156);
+  assert.equal(result.internalRobot.exploratoryCheckedMotionFrames, 156);
   assert.equal(result.internalRobot.exploratoryCollisionFrames, 0);
   assert.equal(result.internalRobot.unresolvedCatalogComponents, 22);
   assert.equal(result.internalRobot.releaseReady, false);

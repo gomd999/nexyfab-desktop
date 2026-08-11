@@ -246,6 +246,28 @@ describe('applyDrives — hinge absolute angle (hand-computed)', () => {
     expect(Math.abs(r2.effects[0]!.amount)).toBeLessThan(1e-9);
   });
 
+  it('rotates the complete downstream branch when the hinge parent is grounded indirectly', () => {
+    const st: AssemblyState = {
+      parts: [
+        part('base', vec3(0, 0, 0), true),
+        part('bearing', vec3(0, 0, 0)),
+        part('child', vec3(0, 0, 0)),
+        part('tool', vec3(2, 0, 0)),
+      ],
+      mates: [
+        { id: 'mount', kind: 'concentric', a: { partId: 'base', refId: 'spin', refKind: 'axis' }, b: { partId: 'bearing', refId: 'spin', refKind: 'axis' } },
+        { id: 'joint', kind: 'hinge', a: { partId: 'bearing', refId: 'spin', refKind: 'axis' }, b: { partId: 'child', refId: 'spin', refKind: 'axis' }, zeroAngleRef: { a: { x: 1, y: 0, z: 0 }, b: { x: 1, y: 0, z: 0 }, axisA: { x: 0, y: 0, z: 1 }, axisB: { x: 0, y: 0, z: 1 } } },
+        { id: 'tool-mount', kind: 'concentric', a: { partId: 'child', refId: 'spin', refKind: 'axis' }, b: { partId: 'tool', refId: 'spin', refKind: 'axis' } },
+      ],
+    };
+    const result = applyDrives(st, spinResolver, [{ mateId: 'joint', angleDeg: 90 }]);
+    const tool = result.state.parts.find(item => item.id === 'tool')!;
+    expect(tool.position.x).toBeCloseTo(0, 9);
+    expect(tool.position.y).toBeCloseTo(2, 9);
+    expect(result.effects.map(effect => effect.partId).sort()).toEqual(['child', 'tool']);
+    expect(result.state.parts.find(item => item.id === 'bearing')!.orientation).toEqual(IDENTITY_QUAT);
+  });
+
   it('target outside limit is refused with the numbers', () => {
     expect(() =>
       applyDrives(hingeState({ limit: { minAngleDeg: 0, maxAngleDeg: 90 } }), spinResolver, [

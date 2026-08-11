@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.complex-product-scope-assessment.v1",
-  "assessedAt": "2026-08-11T03:31:55.595Z",
+  "assessedAt": "2026-08-11T04:20:25.201Z",
   "sources": [
     {
       "path": "docs/evidence/cad-independent/complex-reference-exchange-pilot-260809.json",
@@ -8,7 +8,7 @@
     },
     {
       "path": "docs/evidence/ai-robot6axis-demonstrator-260809/report.json",
-      "sha256": "431542d94a48772087553bd6f0c08d7422e8fa95ca3c0ca11d5c811d31e2bd43"
+      "sha256": "03dd15967bab85efa1684ee5537ba77ea8032f1867b9faa5812c9aff1c5f9123"
     },
     {
       "path": "src/lib/ai/adaptiveComplexProductExecution.ts",
@@ -235,7 +235,9 @@
     "allowedDoF": 6,
     "intendedContacts": 24,
     "preciseInterferences": 0,
-    "exploratoryMotionFrames": 13,
+    "exploratoryMotionFrames": 156,
+    "exploratoryCheckedMotionFrames": 156,
+    "exploratoryMotionAxes": 6,
     "exploratoryCollisionFrames": 0,
     "unresolvedCatalogComponents": 22,
     "releaseReady": false,
@@ -262,14 +264,14 @@
       "encoder",
       "internal_harness",
       "tool_connector",
-      "governed_full_range_motion_release_evidence_required",
+      "signed_governed_motion_release_evidence_required",
       "manufacturing_not_run",
       "step_roundtrip_not_run",
       "expert_review_not_run"
     ],
     "requiredNextEvidence": [
       "traceable_component_catalog_and_housing_fit",
-      "collision_free_full_motion_reverification",
+      "signed_full_motion_reverification_after_catalog_integration",
       "nexyfab_exact_cad_signed_evidence",
       "signed_manufacturing_validation",
       "independent_dual_expert_final_review"

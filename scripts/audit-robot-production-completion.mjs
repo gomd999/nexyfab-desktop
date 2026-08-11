@@ -13,7 +13,7 @@ const relative = value => path.relative(root, value).replaceAll('\\', '/');
 const readJson = relativePath => JSON.parse(fs.readFileSync(path.join(root, relativePath), 'utf8'));
 const sha256File = relativePath => crypto.createHash('sha256').update(fs.readFileSync(path.join(root, relativePath))).digest('hex');
 
-const outputPath = path.resolve(root, valueAfter('--out', `validation-reports/robot-production-completion-audit-v2-${Date.now()}.json`));
+const outputPath = path.resolve(root, valueAfter('--out', `validation-reports/robot-production-completion-audit-v3-${Date.now()}.json`));
 const integrityPath = valueAfter('--integrity', 'validation-reports/closed-beta-integrity-260809-cad-independent-core.json');
 const scopePath = 'docs/evidence/cad-independent/complex-product-scope-assessment.json';
 const conceptReportPath = 'docs/evidence/ai-robot6axis-demonstrator-260809/report.json';
@@ -86,10 +86,17 @@ const conceptDiagnosticVerified = fs.existsSync(path.join(root, conceptArtifactP
   && concept.assembly?.certificate?.rankDoF === 6
   && concept.assembly?.certificate?.dofAccepted === true
   && concept.assembly?.certificate?.intendedContactsDocumented === true
-  && concept.motionStudy?.apiOk === true
   && concept.motionStudy?.allConverged === true
-  && concept.motionStudy?.frameCount === 13
+  && concept.motionStudy?.axisCount === 6
+  && concept.motionStudy?.frameCount === 156
+  && concept.motionStudy?.checkedFrames === 156
   && concept.motionStudy?.collisionFrameCount === 0
+  && Array.isArray(concept.motionStudy?.axes)
+  && concept.motionStudy.axes.length === 6
+  && concept.motionStudy.axes.every((axis, index) => axis.mateId === `J${index + 1}`
+    && axis.frameCount === 26 && axis.checkedFrames === 26
+    && axis.collisionFrameCount === 0 && axis.allConverged === true)
+  && concept.motionStudy?.releaseEvidence === false
   && concept.releaseReady === false
   && concept.policy?.placeholdersAreManufacturingEvidence === false
   && concept.policy?.expertApprovalGranted === false;
@@ -107,7 +114,7 @@ const exactReleaseEvidenceComplete = exactCadEvidencePresent && manufacturingEvi
 const objectiveComplete = internalPipelineVerified && exactReleaseEvidenceComplete;
 
 const report = {
-  schema: 'nexyfab.robot-production-completion-audit.v2',
+  schema: 'nexyfab.robot-production-completion-audit.v3',
   generatedAt: new Date().toISOString(),
   objectiveComplete,
   status: objectiveComplete ? 'complete' : 'blocked_exact_release_evidence',
@@ -133,6 +140,8 @@ const report = {
       documentedContacts: concept.assembly?.releaseContactCount ?? null,
       preciseInterferences: concept.assembly?.flaggedInterferences ?? null,
       exploratoryMotionFrames: concept.motionStudy?.frameCount ?? null,
+      exploratoryCheckedMotionFrames: concept.motionStudy?.checkedFrames ?? null,
+      exploratoryMotionAxes: concept.motionStudy?.axisCount ?? null,
       exploratoryCollisionFrames: concept.motionStudy?.collisionFrameCount ?? null,
       classification: concept.product?.classification ?? null,
       releaseReady: concept.releaseReady === true,
@@ -157,14 +166,14 @@ const report = {
   blockers: objectiveComplete ? [] : [
     ...(concept.product?.unresolvedCatalogComponents > 0 ? ['traceable_robot_component_catalog_required'] : []),
     ...(concept.housingFit?.status !== 'passed' ? ['traceable_housing_fit_evidence_required'] : []),
-    ...(concept.blockers?.includes('governed_full_range_motion_release_evidence_required') ? ['governed_full_range_motion_release_evidence_required'] : []),
+    ...(concept.blockers?.includes('signed_governed_motion_release_evidence_required') ? ['signed_governed_motion_release_evidence_required'] : []),
     ...(!exactCadEvidencePresent ? ['nexyfab_exact_cad_signed_evidence_required'] : []),
     ...(!manufacturingEvidencePresent ? ['signed_manufacturing_validation_required'] : []),
     ...(!finalReviewPresent ? ['independent_final_dual_signoff_required'] : []),
   ],
   nextActions: objectiveComplete ? [] : [
     'Supply the traceable motor, reducer, bearing, brake, encoder, harness, and tool-connector catalog artifacts for the exact revision.',
-    'Validate the selected drive envelopes against traceable housing capacities and run governed full-range six-axis collision checks.',
+    'Validate the selected drive envelopes against traceable housing capacities, integrate them into a new revision, and repeat the signed 156-frame governed motion check.',
     'Run the integrated NexyFab exact-CAD checks and sign the evidence for the exact release target.',
     'Obtain signed manufacturing validation for the exact selected drive occurrences.',
     'Obtain distinct domain and independent reviewer signatures for the exact release target.',

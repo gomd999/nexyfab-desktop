@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.ai-complex-product-demonstrator.v1",
-  "generatedAt": "2026-08-11T03:31:55.595Z",
+  "generatedAt": "2026-08-11T04:20:25.201Z",
   "scoreEligible": false,
   "releaseReady": false,
   "policy": {
@@ -338,128 +338,237 @@
   "motionStudy": {
     "exploratoryOnly": true,
     "releaseEvidence": false,
-    "mateId": "J1",
-    "rangeDeg": [
-      -45,
-      45
-    ],
-    "steps": 12,
-    "apiOk": true,
+    "diagnosticScope": "all_governed_axes_zero_to_each_limit",
+    "axisCount": 6,
+    "stepsPerSegment": 12,
     "allConverged": true,
-    "firstFailureFrame": -1,
-    "frameCount": 13,
-    "frames": [
-      {
-        "index": 0,
-        "parameterValue": -45,
-        "success": true,
-        "iterations": 1,
-        "finalMaxResidual": 0,
-        "unsupportedMateIds": []
-      },
-      {
-        "index": 1,
-        "parameterValue": -37.5,
-        "success": true,
-        "iterations": 1,
-        "finalMaxResidual": 0,
-        "unsupportedMateIds": []
-      },
-      {
-        "index": 2,
-        "parameterValue": -30,
-        "success": true,
-        "iterations": 1,
-        "finalMaxResidual": 0,
-        "unsupportedMateIds": []
-      },
-      {
-        "index": 3,
-        "parameterValue": -22.5,
-        "success": true,
-        "iterations": 1,
-        "finalMaxResidual": 0,
-        "unsupportedMateIds": []
-      },
-      {
-        "index": 4,
-        "parameterValue": -15,
-        "success": true,
-        "iterations": 1,
-        "finalMaxResidual": 0,
-        "unsupportedMateIds": []
-      },
-      {
-        "index": 5,
-        "parameterValue": -7.5,
-        "success": true,
-        "iterations": 1,
-        "finalMaxResidual": 0,
-        "unsupportedMateIds": []
-      },
-      {
-        "index": 6,
-        "parameterValue": 0,
-        "success": true,
-        "iterations": 1,
-        "finalMaxResidual": 0,
-        "unsupportedMateIds": []
-      },
-      {
-        "index": 7,
-        "parameterValue": 7.5,
-        "success": true,
-        "iterations": 1,
-        "finalMaxResidual": 0,
-        "unsupportedMateIds": []
-      },
-      {
-        "index": 8,
-        "parameterValue": 15,
-        "success": true,
-        "iterations": 1,
-        "finalMaxResidual": 0,
-        "unsupportedMateIds": []
-      },
-      {
-        "index": 9,
-        "parameterValue": 22.5,
-        "success": true,
-        "iterations": 1,
-        "finalMaxResidual": 0,
-        "unsupportedMateIds": []
-      },
-      {
-        "index": 10,
-        "parameterValue": 30,
-        "success": true,
-        "iterations": 1,
-        "finalMaxResidual": 0,
-        "unsupportedMateIds": []
-      },
-      {
-        "index": 11,
-        "parameterValue": 37.5,
-        "success": true,
-        "iterations": 1,
-        "finalMaxResidual": 0,
-        "unsupportedMateIds": []
-      },
-      {
-        "index": 12,
-        "parameterValue": 45,
-        "success": true,
-        "iterations": 1,
-        "finalMaxResidual": 0,
-        "unsupportedMateIds": []
-      }
-    ],
-    "checkedFrames": 13,
+    "frameCount": 156,
+    "checkedFrames": 156,
     "collisionFrameCount": 0,
-    "firstCollisionFrame": -1,
-    "maxPenetrationMm": 0,
-    "code": null,
-    "message": null
+    "axes": [
+      {
+        "mateId": "J1",
+        "rangeDeg": [
+          -170,
+          170
+        ],
+        "allConverged": true,
+        "frameCount": 26,
+        "checkedFrames": 26,
+        "collisionFrameCount": 0,
+        "segments": [
+          {
+            "direction": "toward-min",
+            "apiOk": true,
+            "allConverged": true,
+            "frameCount": 13,
+            "checkedFrames": 13,
+            "collisionFrameCount": 0,
+            "firstFailureFrame": null,
+            "firstCollisionFrame": null,
+            "maxPenetrationMm": 0,
+            "collisionPairs": []
+          },
+          {
+            "direction": "toward-max",
+            "apiOk": true,
+            "allConverged": true,
+            "frameCount": 13,
+            "checkedFrames": 13,
+            "collisionFrameCount": 0,
+            "firstFailureFrame": null,
+            "firstCollisionFrame": null,
+            "maxPenetrationMm": 0,
+            "collisionPairs": []
+          }
+        ]
+      },
+      {
+        "mateId": "J2",
+        "rangeDeg": [
+          -120,
+          120
+        ],
+        "allConverged": true,
+        "frameCount": 26,
+        "checkedFrames": 26,
+        "collisionFrameCount": 0,
+        "segments": [
+          {
+            "direction": "toward-min",
+            "apiOk": true,
+            "allConverged": true,
+            "frameCount": 13,
+            "checkedFrames": 13,
+            "collisionFrameCount": 0,
+            "firstFailureFrame": null,
+            "firstCollisionFrame": null,
+            "maxPenetrationMm": 0,
+            "collisionPairs": []
+          },
+          {
+            "direction": "toward-max",
+            "apiOk": true,
+            "allConverged": true,
+            "frameCount": 13,
+            "checkedFrames": 13,
+            "collisionFrameCount": 0,
+            "firstFailureFrame": null,
+            "firstCollisionFrame": null,
+            "maxPenetrationMm": 0,
+            "collisionPairs": []
+          }
+        ]
+      },
+      {
+        "mateId": "J3",
+        "rangeDeg": [
+          -150,
+          150
+        ],
+        "allConverged": true,
+        "frameCount": 26,
+        "checkedFrames": 26,
+        "collisionFrameCount": 0,
+        "segments": [
+          {
+            "direction": "toward-min",
+            "apiOk": true,
+            "allConverged": true,
+            "frameCount": 13,
+            "checkedFrames": 13,
+            "collisionFrameCount": 0,
+            "firstFailureFrame": null,
+            "firstCollisionFrame": null,
+            "maxPenetrationMm": 0,
+            "collisionPairs": []
+          },
+          {
+            "direction": "toward-max",
+            "apiOk": true,
+            "allConverged": true,
+            "frameCount": 13,
+            "checkedFrames": 13,
+            "collisionFrameCount": 0,
+            "firstFailureFrame": null,
+            "firstCollisionFrame": null,
+            "maxPenetrationMm": 0,
+            "collisionPairs": []
+          }
+        ]
+      },
+      {
+        "mateId": "J4",
+        "rangeDeg": [
+          -180,
+          180
+        ],
+        "allConverged": true,
+        "frameCount": 26,
+        "checkedFrames": 26,
+        "collisionFrameCount": 0,
+        "segments": [
+          {
+            "direction": "toward-min",
+            "apiOk": true,
+            "allConverged": true,
+            "frameCount": 13,
+            "checkedFrames": 13,
+            "collisionFrameCount": 0,
+            "firstFailureFrame": null,
+            "firstCollisionFrame": null,
+            "maxPenetrationMm": 0,
+            "collisionPairs": []
+          },
+          {
+            "direction": "toward-max",
+            "apiOk": true,
+            "allConverged": true,
+            "frameCount": 13,
+            "checkedFrames": 13,
+            "collisionFrameCount": 0,
+            "firstFailureFrame": null,
+            "firstCollisionFrame": null,
+            "maxPenetrationMm": 0,
+            "collisionPairs": []
+          }
+        ]
+      },
+      {
+        "mateId": "J5",
+        "rangeDeg": [
+          -120,
+          120
+        ],
+        "allConverged": true,
+        "frameCount": 26,
+        "checkedFrames": 26,
+        "collisionFrameCount": 0,
+        "segments": [
+          {
+            "direction": "toward-min",
+            "apiOk": true,
+            "allConverged": true,
+            "frameCount": 13,
+            "checkedFrames": 13,
+            "collisionFrameCount": 0,
+            "firstFailureFrame": null,
+            "firstCollisionFrame": null,
+            "maxPenetrationMm": 0,
+            "collisionPairs": []
+          },
+          {
+            "direction": "toward-max",
+            "apiOk": true,
+            "allConverged": true,
+            "frameCount": 13,
+            "checkedFrames": 13,
+            "collisionFrameCount": 0,
+            "firstFailureFrame": null,
+            "firstCollisionFrame": null,
+            "maxPenetrationMm": 0,
+            "collisionPairs": []
+          }
+        ]
+      },
+      {
+        "mateId": "J6",
+        "rangeDeg": [
+          -180,
+          180
+        ],
+        "allConverged": true,
+        "frameCount": 26,
+        "checkedFrames": 26,
+        "collisionFrameCount": 0,
+        "segments": [
+          {
+            "direction": "toward-min",
+            "apiOk": true,
+            "allConverged": true,
+            "frameCount": 13,
+            "checkedFrames": 13,
+            "collisionFrameCount": 0,
+            "firstFailureFrame": null,
+            "firstCollisionFrame": null,
+            "maxPenetrationMm": 0,
+            "collisionPairs": []
+          },
+          {
+            "direction": "toward-max",
+            "apiOk": true,
+            "allConverged": true,
+            "frameCount": 13,
+            "checkedFrames": 13,
+            "collisionFrameCount": 0,
+            "firstFailureFrame": null,
+            "firstCollisionFrame": null,
+            "maxPenetrationMm": 0,
+            "collisionPairs": []
+          }
+        ]
+      }
+    ]
   },
   "blockers": [
     "motor_j1",
@@ -484,7 +593,7 @@
     "encoder",
     "internal_harness",
     "tool_connector",
-    "governed_full_range_motion_release_evidence_required",
+    "signed_governed_motion_release_evidence_required",
     "manufacturing_not_run",
     "step_roundtrip_not_run",
     "expert_review_not_run"

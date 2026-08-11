@@ -1,0 +1,75 @@
+{
+  "schema": "nexyfab.robot-production-completion-audit.v3",
+  "generatedAt": "2026-08-11T04:21:19.635Z",
+  "objectiveComplete": false,
+  "status": "blocked_exact_release_evidence",
+  "productBoundary": {
+    "externalCadInstallationRequired": false,
+    "proprietaryCadWorkersRequired": false,
+    "nexyFabIntegratedKernelRequired": true,
+    "releaseExecutionImplemented": false
+  },
+  "internal": {
+    "pipelineVerified": true,
+    "releaseRoutes": {
+      "/api/cad/v1/robot/release/work-packet/route": true,
+      "/api/cad/v1/robot/release/audit/route": true,
+      "/api/cad/v1/robot/release/final-review/route": true
+    },
+    "complexScopeAssessment": {
+      "path": "docs/evidence/cad-independent/complex-product-scope-assessment.json",
+      "sha256": "6f59264e9317bee45123a7f44910e65c38b539f1f4f2dd141e6a3b33b4a2a8be",
+      "broadSelfServiceEligible": false
+    },
+    "conceptDiagnostic": {
+      "verified": true,
+      "path": "docs/evidence/ai-robot6axis-demonstrator-260809/report.json",
+      "sha256": "03dd15967bab85efa1684ee5537ba77ea8032f1867b9faa5812c9aff1c5f9123",
+      "revision": 2,
+      "programSha256": "5e4aea439f245447be3d6295b7be9d57183ccae1adf36b2d0491039b65a9f242",
+      "driveTopology": "coaxial_parent_drive_output_link",
+      "unresolvedCatalogComponents": 22,
+      "rankDoF": 6,
+      "documentedContacts": 24,
+      "preciseInterferences": 0,
+      "exploratoryMotionFrames": 156,
+      "exploratoryCheckedMotionFrames": 156,
+      "exploratoryMotionAxes": 6,
+      "exploratoryCollisionFrames": 0,
+      "classification": "concept_only",
+      "releaseReady": false
+    }
+  },
+  "closedBeta": {
+    "intact": true,
+    "snapshot": "validation-reports/closed-beta-integrity-260809-cad-independent-core.json",
+    "snapshotSha256": "9d63c15deafa2dc94899a8f3ed1a364c4942799d11277474e97ee5eb5e57df89",
+    "protectedTableCount": 17,
+    "protectedRowCount": 13,
+    "fileCount": 15,
+    "fileBytes": 15429420,
+    "databaseSha256": "e678f7957facbf783f42e261ea5cab14208f27d1a31f2d6e3a0af217775ebb11"
+  },
+  "exactReleaseEvidence": {
+    "nexyFabExactCadEvidencePresent": false,
+    "manufacturingEvidencePresent": false,
+    "finalDualSignoffPresent": false,
+    "discoveredEvidenceFiles": []
+  },
+  "blockers": [
+    "traceable_robot_component_catalog_required",
+    "traceable_housing_fit_evidence_required",
+    "signed_governed_motion_release_evidence_required",
+    "nexyfab_exact_cad_signed_evidence_required",
+    "signed_manufacturing_validation_required",
+    "independent_final_dual_signoff_required"
+  ],
+  "nextActions": [
+    "Supply the traceable motor, reducer, bearing, brake, encoder, harness, and tool-connector catalog artifacts for the exact revision.",
+    "Validate the selected drive envelopes against traceable housing capacities, integrate them into a new revision, and repeat the signed 156-frame governed motion check.",
+    "Run the integrated NexyFab exact-CAD checks and sign the evidence for the exact release target.",
+    "Obtain signed manufacturing validation for the exact selected drive occurrences.",
+    "Obtain distinct domain and independent reviewer signatures for the exact release target.",
+    "Re-run this audit; release execution remains a separate explicitly authorized operation."
+  ]
+}
