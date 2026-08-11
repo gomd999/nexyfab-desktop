@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -12,6 +13,11 @@ const REQUIRED_SERVICE_SOURCES = {
 const REQUIRED_COST_SERVICES = ['nexyfab.com', 'nexyfab-openscad-worker', 'nexyfab-fea-worker', 'Postgres-KN2x', 'Redis-IrVt'];
 const DEFAULT_MONTHLY_COST_BUDGET_USD = 50;
 const REQUIRED_COVERAGE_HOURS = 168;
+const DEFAULT_MEMORY_LIMITS_MB = {
+  web: 768,
+  'openscad-worker': 512,
+  'fea-worker': 2048,
+};
 
 export function analyzeSampleWindows(samples, expectedWindowHours = 6) {
   const invalid = [];
@@ -50,6 +56,7 @@ export function evaluateCostCampaign(
   costSnapshots,
   monthlyBudgetDollars = DEFAULT_MONTHLY_COST_BUDGET_USD,
   requiredCostServices = REQUIRED_COST_SERVICES,
+  requiredCoverageHours = REQUIRED_COVERAGE_HOURS,
 ) {
   const invalidRows = costSnapshots.filter(row => !Number.isFinite(Date.parse(row?.capturedAt))
     || typeof row?.scope?.totalDollars !== 'number' || !Number.isFinite(row.scope.totalDollars) || row.scope.totalDollars < 0);
@@ -90,7 +97,7 @@ export function evaluateCostCampaign(
     && Number.isFinite(billingPeriodHours) && billingPeriodHours > 0
     ? deltaDollars / coverageHours * billingPeriodHours
     : null;
-  if (coverageHours < REQUIRED_COVERAGE_HOURS) blockers.push(`cost_coverage_short:${coverageHours.toFixed(1)}h`);
+  if (coverageHours < requiredCoverageHours) blockers.push(`cost_coverage_short:${coverageHours.toFixed(1)}h`);
   if (!billingPeriodStable) blockers.push('cost_billing_period_changed');
   if (!projectStable) blockers.push('cost_project_changed_or_missing');
   if (!scopeComplete) blockers.push('cost_scope_incomplete');
@@ -114,15 +121,54 @@ export function evaluateCostCampaign(
   };
 }
 
+function releaseExclusionReason(sample, service, releaseBinding) {
+  if (!releaseBinding) return null;
+  const serviceBinding = releaseBinding.services?.[service];
+  if (!serviceBinding) return 'service_not_bound';
+  const windowStart = Date.parse(sample?.window?.since);
+  const qualifyingFrom = Date.parse(releaseBinding.qualifyingFrom);
+  if (!Number.isFinite(windowStart) || !Number.isFinite(qualifyingFrom) || windowStart < qualifyingFrom) {
+    return 'window_before_qualifying_from';
+  }
+  const deploymentIds = Array.isArray(sample?.deploymentIds)
+    ? [...new Set(sample.deploymentIds.filter(value => typeof value === 'string' && value))]
+    : [];
+  if (deploymentIds.length !== 1 || deploymentIds[0] !== serviceBinding.deploymentId) {
+    return 'deployment_mismatch';
+  }
+  return null;
+}
+
 export function evaluateSevenDayOperations(samples, options = {}) {
   const blockers = [];
   const services = {};
   const requiredServices = options.requiredServices ?? REQUIRED_SERVICES;
   const requiredServiceSources = options.requiredServiceSources ?? REQUIRED_SERVICE_SOURCES;
+  const requiredCoverageHours = options.requiredCoverageHours ?? REQUIRED_COVERAGE_HOURS;
+  const requiredSampleCount = options.requiredSampleCount ?? 28;
+  const expectedWindowHours = options.expectedWindowHours ?? 6;
+  const http5xxMaxPercent = options.http5xxMaxPercent ?? 1;
+  const memoryLimitsMb = { ...DEFAULT_MEMORY_LIMITS_MB, ...(options.memoryLimitsMb ?? {}) };
+  const requireRuntimeMemoryLimitEvidence = options.requireRuntimeMemoryLimitEvidence === true;
+  const releaseBinding = options.releaseBinding ?? null;
   if (new Set(requiredServices).size !== requiredServices.length) blockers.push('required_services_duplicate');
+  if (releaseBinding) {
+    if (releaseBinding.environment !== (options.environment ?? 'production')) blockers.push('release_binding_environment_mismatch');
+    if (!Number.isFinite(Date.parse(releaseBinding.qualifyingFrom))) blockers.push('release_binding_qualifying_time_invalid');
+    for (const service of requiredServices) {
+      const bound = releaseBinding.services?.[service];
+      if (!bound?.deploymentId || bound.sourceService !== requiredServiceSources[service]) {
+        blockers.push(`release_binding_service_invalid:${service}`);
+      }
+    }
+  }
   for (const service of requiredServices) {
-    const rows = samples.filter(sample => sample.service === service);
-    const windows = analyzeSampleWindows(rows, options.expectedWindowHours ?? 6);
+    const allRows = samples.filter(sample => sample.service === service);
+    const excluded = allRows.map(sample => ({ sample, reason: releaseExclusionReason(sample, service, releaseBinding) }))
+      .filter(item => item.reason);
+    const excludedSet = new Set(excluded.map(item => item.sample));
+    const rows = allRows.filter(sample => !excludedSet.has(sample));
+    const windows = analyzeSampleWindows(rows, expectedWindowHours);
     const invalidMetrics = rows.filter(row => row.schema !== 'nexyfab.railway-operations-sample.v1'
       || row.sourceService !== requiredServiceSources[service]
       || row.environment !== (options.environment ?? 'production')
@@ -134,31 +180,84 @@ export function evaluateSevenDayOperations(samples, options = {}) {
     const totalRequests = rows.reduce((sum, row) => sum + Number(row.http?.total ?? 0), 0);
     const total5xx = rows.reduce((sum, row) => sum + Number(row.http?.['5xx'] ?? 0), 0);
     const errorRatePercent = totalRequests > 0 ? total5xx / totalRequests * 100 : 0;
-    const memoryLimit = service === 'web' ? 768 : service === 'fea-worker' ? 2048 : 512;
-    if (windows.coverageHours < REQUIRED_COVERAGE_HOURS) blockers.push(`coverage_short:${service}:${windows.coverageHours.toFixed(1)}h`);
-    if (rows.length < 28) blockers.push(`sample_count_short:${service}:${rows.length}`);
-    if (windows.uniqueWindows < 28) blockers.push(`unique_window_count_short:${service}:${windows.uniqueWindows}`);
+    const memoryLimit = Number(memoryLimitsMb[service]);
+    const runtimeMemoryLimits = rows.map(row => Number(row.memory?.limit_mb)).filter(Number.isFinite);
+    const minimumRuntimeMemoryLimitMb = runtimeMemoryLimits.length ? Math.min(...runtimeMemoryLimits) : null;
+    if (!Number.isFinite(memoryLimit) || memoryLimit <= 0) blockers.push(`memory_limit_invalid:${service}`);
+    if (requireRuntimeMemoryLimitEvidence && rows.length > 0
+      && (runtimeMemoryLimits.length !== rows.length || minimumRuntimeMemoryLimitMb < memoryLimit)) {
+      blockers.push(`runtime_memory_limit_evidence_failed:${service}`);
+    }
+    if (windows.coverageHours < requiredCoverageHours) blockers.push(`coverage_short:${service}:${windows.coverageHours.toFixed(1)}h`);
+    if (rows.length < requiredSampleCount) blockers.push(`sample_count_short:${service}:${rows.length}`);
+    if (windows.uniqueWindows < requiredSampleCount) blockers.push(`unique_window_count_short:${service}:${windows.uniqueWindows}`);
     if (windows.invalidWindows) blockers.push(`window_invalid:${service}:${windows.invalidWindows}`);
     if (windows.overlaps) blockers.push(`window_overlap:${service}:${windows.overlaps}`);
     if (windows.gaps) blockers.push(`window_gap:${service}:${windows.gaps}`);
     if (windows.durationMismatches) blockers.push(`window_duration_mismatch:${service}:${windows.durationMismatches}`);
     if (invalidMetrics.length) blockers.push(`metrics_invalid:${service}:${invalidMetrics.length}`);
-    if (maxMemoryMb > memoryLimit) blockers.push(`memory_target_failed:${service}:${maxMemoryMb.toFixed(1)}mb`);
+    if (Number.isFinite(memoryLimit) && maxMemoryMb > memoryLimit) blockers.push(`memory_target_failed:${service}:${maxMemoryMb.toFixed(1)}mb`);
     if (service === 'web' && (rows.some(row => !row.http || typeof row.http.total !== 'number' || typeof row.http['5xx'] !== 'number') || totalRequests <= 0)) {
       blockers.push('http_evidence_missing:web');
     }
-    if (service === 'web' && errorRatePercent > 1) blockers.push(`http_5xx_target_failed:${errorRatePercent.toFixed(2)}pct`);
-    services[service] = { samples: rows.length, ...windows, maxMemoryMb, memoryLimitMb: memoryLimit, totalRequests, total5xx, errorRatePercent };
+    if (service === 'web' && errorRatePercent > http5xxMaxPercent) blockers.push(`http_5xx_target_failed:${errorRatePercent.toFixed(2)}pct`);
+    services[service] = {
+      samples: rows.length,
+      observedSamples: allRows.length,
+      excludedSamples: excluded.length,
+      exclusionReasons: [...new Set(excluded.map(item => item.reason))],
+      ...windows,
+      maxMemoryMb,
+      memoryLimitMb: memoryLimit,
+      minimumRuntimeMemoryLimitMb,
+      totalRequests,
+      total5xx,
+      errorRatePercent,
+    };
   }
-  const cost = evaluateCostCampaign(options.costSnapshots ?? [], options.monthlyCostBudgetUsd, options.requiredCostServices ?? REQUIRED_COST_SERVICES);
+  const cost = evaluateCostCampaign(
+    options.costSnapshots ?? [],
+    options.monthlyCostBudgetUsd,
+    options.requiredCostServices ?? REQUIRED_COST_SERVICES,
+    requiredCoverageHours,
+  );
   blockers.push(...cost.blockers);
   return {
-    schema: 'nexyfab.seven-day-operations-receipt.v2',
+    schema: 'nexyfab.seven-day-operations-receipt.v3',
     generatedAt: new Date().toISOString(),
     ok: blockers.length === 0,
     services,
     cost,
+    policy: {
+      requiredCoverageHours,
+      requiredSampleCount,
+      expectedWindowHours,
+      http5xxMaxPercent,
+      memoryLimitsMb,
+      requireRuntimeMemoryLimitEvidence,
+      monthlyCostBudgetUsd: options.monthlyCostBudgetUsd ?? DEFAULT_MONTHLY_COST_BUDGET_USD,
+    },
+    release: releaseBinding ? {
+      buildId: releaseBinding.buildId,
+      qualifyingFrom: releaseBinding.qualifyingFrom,
+      environment: releaseBinding.environment,
+      deployments: Object.fromEntries(requiredServices.map(service => [service, releaseBinding.services?.[service]?.deploymentId ?? null])),
+    } : null,
     blockers,
+  };
+}
+
+function loadJsonEvidence(envName) {
+  const configured = process.env[envName];
+  if (!configured) return { value: null, evidence: null };
+  const absolute = path.resolve(configured);
+  const bytes = fs.readFileSync(absolute);
+  return {
+    value: JSON.parse(bytes.toString('utf8')),
+    evidence: {
+      file: path.relative(process.cwd(), absolute).replaceAll('\\', '/'),
+      sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
+    },
   };
 }
 
@@ -173,12 +272,23 @@ function main() {
     : [];
   const requiredCostServices = String(process.env.RAILWAY_COST_SERVICES ?? REQUIRED_COST_SERVICES.join(','))
     .split(',').map(value => value.trim()).filter(Boolean);
+  const release = loadJsonEvidence('OPERATIONS_RELEASE_BINDING_FILE');
+  const policy = loadJsonEvidence('OPERATIONS_POLICY_FILE');
+  const policyValue = policy.value ?? {};
   const receipt = evaluateSevenDayOperations(samples, {
     costSnapshots,
     environment: process.env.OPERATIONS_ENVIRONMENT ?? 'production',
-    monthlyCostBudgetUsd: Number(process.env.RAILWAY_MONTHLY_COST_BUDGET_USD ?? DEFAULT_MONTHLY_COST_BUDGET_USD),
+    monthlyCostBudgetUsd: Number(process.env.RAILWAY_MONTHLY_COST_BUDGET_USD ?? policyValue.monthlyCostBudgetUsd ?? DEFAULT_MONTHLY_COST_BUDGET_USD),
     requiredCostServices,
+    releaseBinding: release.value,
+    requiredCoverageHours: policyValue.requiredCoverageHours,
+    requiredSampleCount: policyValue.requiredSampleCount,
+    expectedWindowHours: policyValue.expectedWindowHours,
+    http5xxMaxPercent: policyValue.http5xxMaxPercent,
+    memoryLimitsMb: policyValue.memoryLimitsMb,
+    requireRuntimeMemoryLimitEvidence: policyValue.requireRuntimeMemoryLimitEvidence,
   });
+  receipt.evidenceBindings = { release: release.evidence, policy: policy.evidence };
   const output = path.resolve(process.env.SEVEN_DAY_OPERATIONS_OUTPUT ?? 'docs/evidence/release/seven-day-operations-receipt.json');
   fs.mkdirSync(path.dirname(output), { recursive: true });
   fs.writeFileSync(output, `${JSON.stringify(receipt, null, 2)}\n`);

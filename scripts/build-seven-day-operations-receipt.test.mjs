@@ -79,3 +79,40 @@ test('fails when any required service is absent from a cost snapshot', () => {
   assert.equal(result.ok, false);
   assert.ok(result.blockers.includes('cost_scope_incomplete'));
 });
+
+test('excludes metric windows that span a predecessor deployment', () => {
+  const web = samples('web');
+  web[0].deploymentIds = ['web-deployment', 'previous-web-deployment'];
+  const result = evaluateSevenDayOperations(
+    [...web, ...samples('openscad-worker'), ...samples('fea-worker')],
+    {
+      costSnapshots: costSnapshots(),
+      releaseBinding: {
+        environment: 'production',
+        qualifyingFrom: '2026-08-01T00:00:00.000Z',
+        buildId: 'release-build',
+        services: {
+          web: { sourceService: 'nexyfab.com', deploymentId: 'web-deployment' },
+          'openscad-worker': { sourceService: 'nexyfab-openscad-worker', deploymentId: 'openscad-worker-deployment' },
+          'fea-worker': { sourceService: 'nexyfab-fea-worker', deploymentId: 'fea-worker-deployment' },
+        },
+      },
+    },
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.services.web.samples, 27);
+  assert.equal(result.services.web.excludedSamples, 1);
+  assert.deepEqual(result.services.web.exclusionReasons, ['deployment_mismatch']);
+});
+
+test('uses an explicit workload memory policy without weakening the default', () => {
+  const web = samples('web').map(row => ({ ...row, memory: { max_mb: 1100 } }));
+  const inputs = [...web, ...samples('openscad-worker'), ...samples('fea-worker')];
+  assert.equal(evaluateSevenDayOperations(inputs, { costSnapshots: costSnapshots() }).ok, false);
+  const qualified = evaluateSevenDayOperations(inputs, {
+    costSnapshots: costSnapshots(),
+    memoryLimitsMb: { web: 1536, 'openscad-worker': 512, 'fea-worker': 2048 },
+  });
+  assert.equal(qualified.ok, true);
+  assert.equal(qualified.services.web.memoryLimitMb, 1536);
+});

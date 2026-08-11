@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -79,9 +80,14 @@ export function normalizeMetricsSample(alias, metrics, capturedAt = new Date().t
     sourceService: metrics.service,
     environment: metrics.environment,
     window: metrics.window,
-    deploymentIds: (metrics.deployments ?? [])
-      .filter(item => item.status === 'SUCCESS')
-      .map(item => item.id),
+    // Preserve every deployment observed in the requested metric window. A
+    // release-qualified campaign must be able to detect a window that spans a
+    // removed predecessor and the current SUCCESS deployment; filtering here
+    // used to make such mixed windows look release-pure.
+    deploymentIds: [...new Set((metrics.deployments ?? []).map(item => item.id).filter(Boolean))],
+    deploymentStatuses: (metrics.deployments ?? [])
+      .filter(item => item?.id)
+      .map(item => ({ id: item.id, status: item.status ?? 'UNKNOWN' })),
     cpu: metrics.cpu,
     memory: metrics.memory,
     http: metrics.http ?? null,
@@ -166,6 +172,10 @@ function writeJson(file, value) {
   fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+function relativePortable(file) {
+  return path.relative(process.cwd(), file).replaceAll('\\', '/');
+}
+
 function safeStamp(iso) {
   return new Date(iso).toISOString().replace(/[:.]/g, '-');
 }
@@ -180,6 +190,15 @@ function main() {
   const services = parseServiceMap(arg('services') ?? process.env.RAILWAY_OPERATIONS_SERVICES ?? DEFAULT_SERVICES);
   const costServices = String(arg('cost-services') ?? process.env.RAILWAY_COST_SERVICES ?? DEFAULT_COST_SERVICES)
     .split(',').map(value => value.trim()).filter(Boolean);
+  const releaseBindingFile = process.env.OPERATIONS_RELEASE_BINDING_FILE
+    ? path.resolve(process.env.OPERATIONS_RELEASE_BINDING_FILE)
+    : null;
+  const releaseBinding = releaseBindingFile
+    ? JSON.parse(fs.readFileSync(releaseBindingFile, 'utf8'))
+    : null;
+  if (releaseBinding && releaseBinding.environment !== environment) {
+    throw new Error(`Release binding environment mismatch: ${releaseBinding.environment} != ${environment}`);
+  }
   const samplesDir = path.resolve(process.env.OPERATIONS_SAMPLE_DIR ?? 'docs/evidence/operations/samples');
   const costDir = path.resolve(process.env.OPERATIONS_COST_DIR ?? 'docs/evidence/operations/cost');
   const windows = buildWindows(until, windowHours, windowCount);
@@ -199,7 +218,7 @@ function main() {
         });
         const output = path.join(samplesDir, `${service.alias}-${safeStamp(sample.window.until)}.json`);
         writeJson(output, sample);
-        written.push(path.relative(process.cwd(), output));
+        written.push(relativePortable(output));
       } catch (error) {
         failures.push({ service: service.alias, window, error: error instanceof Error ? error.message : String(error) });
       }
@@ -213,7 +232,7 @@ function main() {
     const cost = scopeCostSnapshot(railwayJson(args), costServices);
     const output = path.join(costDir, `railway-cost-${safeStamp(cost.capturedAt)}.json`);
     writeJson(output, cost);
-    written.push(path.relative(process.cwd(), output));
+    written.push(relativePortable(output));
     if (cost.scope.missingServices.length) {
       failures.push({ service: 'cost-scope', error: `Missing Railway services: ${cost.scope.missingServices.join(', ')}` });
     }
@@ -234,6 +253,12 @@ function main() {
     windowHours,
     requiredServices: services,
     costServices,
+    releaseBinding: releaseBinding ? {
+      file: relativePortable(releaseBindingFile),
+      sha256: crypto.createHash('sha256').update(fs.readFileSync(releaseBindingFile)).digest('hex'),
+      buildId: releaseBinding.buildId,
+      qualifyingFrom: releaseBinding.qualifyingFrom,
+    } : null,
     written,
     failures,
     status: failures.length ? 'capture_failed' : 'collecting',

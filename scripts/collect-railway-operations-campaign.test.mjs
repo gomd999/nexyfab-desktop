@@ -33,7 +33,11 @@ test('normalizes metrics and limits cost evidence to an explicit service scope',
     source: 'nexyfab.com', environment: 'production',
     window: { since: '2026-08-01T00:00:00Z', until: '2026-08-01T06:00:00Z' },
   });
-  assert.deepEqual(sample.deploymentIds, ['ok']);
+  assert.deepEqual(sample.deploymentIds, ['ok', 'old']);
+  assert.deepEqual(sample.deploymentStatuses, [
+    { id: 'ok', status: 'SUCCESS' },
+    { id: 'old', status: 'REMOVED' },
+  ]);
   const cost = scopeCostSnapshot({
     project: { id: 'project-id', name: 'nexyfab.com' },
     billingPeriod: { start: '2026-08-01T00:00:00Z', end: '2026-09-01T00:00:00Z' },

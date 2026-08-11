@@ -1,0 +1,25 @@
+{
+  "schema": "nexyfab.commercial-operations-policy.v1",
+  "policyId": "commercial-rc-2026-08",
+  "requiredCoverageHours": 168,
+  "requiredSampleCount": 28,
+  "expectedWindowHours": 6,
+  "http5xxMaxPercent": 1,
+  "monthlyCostBudgetUsd": 50,
+  "memoryLimitsMb": {
+    "web": 1536,
+    "openscad-worker": 512,
+    "fea-worker": 2048
+  },
+  "requireRuntimeMemoryLimitEvidence": true,
+  "rationale": {
+    "web": "The commercial web workload includes the Next.js standalone server and the exact OCCT kernel fallback. The 1536 MB alert budget is above the 1037.4 MB release-candidate peak while retaining 32.5 percent workload headroom; the Railway metric must also prove that the runtime limit is at least this budget.",
+    "openscad-worker": "The isolated OpenSCAD worker remains a bounded command worker; 512 MB preserves the original release target.",
+    "fea-worker": "The isolated Gmsh/CalculiX worker keeps a 2048 MB budget for solver mesh growth."
+  },
+  "nonClaims": [
+    "This policy does not replace the seven-day observation requirement.",
+    "The memory budget is an alert/release threshold, not a claim that the service reserves that amount.",
+    "A dedicated exact-CAD worker remains the preferred scale-out boundary if sustained concurrency exceeds the qualified release workload."
+  ]
+}

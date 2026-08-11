@@ -1,0 +1,77 @@
+{
+  "schema": "nexyfab.railway-cost-snapshot.v1",
+  "capturedAt": "2026-08-11T04:09:08.034Z",
+  "billingPeriod": {
+    "end": "2026-09-06T03:30:25+00:00",
+    "start": "2026-08-06T03:30:25+00:00"
+  },
+  "project": {
+    "deletedAt": null,
+    "id": "eaf82c54-1a51-449a-8e60-f3bd29a089e4",
+    "name": "nexyfab.com"
+  },
+  "scope": {
+    "services": [
+      "nexyfab.com",
+      "Postgres-KN2x",
+      "Redis-IrVt",
+      "nexyfab-openscad-worker",
+      "nexyfab-fea-worker"
+    ],
+    "missingServices": [],
+    "complete": true,
+    "totalDollars": 1.2218265603375338,
+    "breakdown": [
+      {
+        "backupDollars": 0,
+        "cpuDollars": 0.005469332908950618,
+        "egressDollars": 0.03761434325,
+        "id": "eefc9d8c-fe11-45cc-bf68-ba45a10273b3",
+        "memoryDollars": 0.547489119409949,
+        "name": "nexyfab.com",
+        "totalDollars": 0.5985760002556688,
+        "volumeDollars": 0.00800320468676923
+      },
+      {
+        "backupDollars": 0,
+        "cpuDollars": 0.0014964602700617286,
+        "egressDollars": 0.00220295875,
+        "id": "eb794e44-114e-4109-a346-27d783ca9669",
+        "memoryDollars": 0.5605017230946813,
+        "name": "Postgres-KN2x",
+        "totalDollars": 0.575870435796197,
+        "volumeDollars": 0.011669293681453979
+      },
+      {
+        "backupDollars": 0,
+        "cpuDollars": 0.007854858325617284,
+        "egressDollars": 0,
+        "id": "3c5e6bca-b67e-4104-a49c-3a3617400305",
+        "memoryDollars": 0.016471569605056982,
+        "name": "Redis-IrVt",
+        "totalDollars": 0.02653280379622866,
+        "volumeDollars": 0.0022063758655543947
+      },
+      {
+        "backupDollars": 0,
+        "cpuDollars": 0.0009155037500000001,
+        "egressDollars": 9.365e-8,
+        "id": "fa1be66e-5140-486e-b25f-f113da0f03fc",
+        "memoryDollars": 0.019636848409026273,
+        "name": "nexyfab-openscad-worker",
+        "totalDollars": 0.020552445809026276,
+        "volumeDollars": 0
+      },
+      {
+        "backupDollars": 0,
+        "cpuDollars": 0.00002046988425925926,
+        "egressDollars": 2.6950000000000003e-8,
+        "id": "8e707a7b-993b-4f4a-950f-ccf743a85044",
+        "memoryDollars": 0.0002743778461538462,
+        "name": "nexyfab-fea-worker",
+        "totalDollars": 0.0002948746804131054,
+        "volumeDollars": 0
+      }
+    ]
+  }
+}
