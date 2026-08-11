@@ -9,6 +9,12 @@ import { generateRobot6Axis } from '../src/lib/ai/robot/robotGenerator';
 import { ROBOT_6AXIS_DEMONSTRATOR_SPEC } from '../src/lib/ai/robot/robotDemonstrator';
 import { verifyRobotEngineering } from '../src/lib/ai/robot/robotEngineering';
 import { deriveJointSelectionRequirements } from '../src/lib/ai/robot/driveIntegration';
+import {
+  buildRobotCoordinatedMotionTrajectory,
+  ROBOT_COORDINATED_MOTION_FRAMES,
+  ROBOT_COORDINATED_MOTION_STRATEGY,
+} from '../src/lib/ai/robot/robotCoordinatedMotion';
+import type { HingeMate } from '../src/lib/assembly/mate';
 import { writeImmutableArtifactAtomic, writeLatestArtifactAtomic } from '../src/lib/reference/immutableArtifactStore';
 
 async function main() {
@@ -39,6 +45,10 @@ const governedAxes = generated.program.assembly.mates.flatMap(mate => (
     ? [{ mateId: mate.id, rangeDeg: [mate.limit.minAngleDeg, mate.limit.maxAngleDeg] as [number, number] }]
     : []
 )).sort((left, right) => left.mateId.localeCompare(right.mateId));
+const governedHinges = generated.program.assembly.mates
+  .filter((mate): mate is HingeMate => mate.kind === 'hinge' && /^J[1-6]$/.test(mate.id))
+  .sort((left, right) => left.id.localeCompare(right.id));
+const coordinatedTrajectory = buildRobotCoordinatedMotionTrajectory(governedHinges);
 const motionAxes = [] as Array<{
   mateId: string;
   rangeDeg: [number, number];
@@ -72,6 +82,15 @@ if (assemblyInput) {
       segments,
     });
   }
+}
+let coordinatedMotion = summarizeCoordinatedMotion(null, coordinatedTrajectory);
+if (assemblyInput) {
+  const response = await verifyAssemblyPost(new NextRequest('http://localhost/api/cad/v1/assembly/verify', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-forwarded-for': 'ai-robot6axis-demonstrator-coordinated' },
+    body: JSON.stringify({ ...assemblyInput, intendedContacts: generated.intendedContacts, interferenceWhitelist: [], allowedDoF: 6, motionTrajectory: coordinatedTrajectory }),
+  }));
+  coordinatedMotion = summarizeCoordinatedMotion(await response.json() as Record<string, unknown>, coordinatedTrajectory);
 }
 
 const programBytes = Buffer.from(`${JSON.stringify(generated.program, null, 2)}\n`);
@@ -126,6 +145,7 @@ const report = {
     collisionFrameCount: totalCollisionFrames,
     axes: motionAxes,
   },
+  coordinatedMotionStudy: coordinatedMotion,
   blockers: [...generated.pendingCatalogComponents, 'signed_governed_motion_release_evidence_required', 'manufacturing_not_run', 'step_roundtrip_not_run', 'expert_review_not_run'],
 };
 const invariantChecks = {
@@ -143,6 +163,10 @@ const invariantChecks = {
   governed_motion_converged: report.motionStudy.allConverged === true,
   governed_motion_frames_156: report.motionStudy.frameCount === 156 && report.motionStudy.checkedFrames === 156,
   governed_motion_collision_free: report.motionStudy.collisionFrameCount === 0,
+  coordinated_motion_strategy: report.coordinatedMotionStudy.strategy === ROBOT_COORDINATED_MOTION_STRATEGY,
+  coordinated_motion_converged: report.coordinatedMotionStudy.apiOk === true && report.coordinatedMotionStudy.allConverged === true,
+  coordinated_motion_frames_49: report.coordinatedMotionStudy.frameCount === ROBOT_COORDINATED_MOTION_FRAMES && report.coordinatedMotionStudy.checkedFrames === ROBOT_COORDINATED_MOTION_FRAMES,
+  coordinated_motion_collision_free: report.coordinatedMotionStudy.collisionFrameCount === 0,
   catalog_requirements_ready: report.catalogSelection.requirementsReady === true && report.catalogSelection.requirements.length === 6,
   catalog_selection_not_run: report.catalogSelection.selectionStatus === 'not_run' && report.catalogSelection.actualArtifactBytesVerified === false,
   housing_fit_not_run: report.housingFit.status === 'not_run',
@@ -150,7 +174,7 @@ const invariantChecks = {
 };
 const invariantFailures = Object.entries(invariantChecks).filter(([, passed]) => !passed).map(([name]) => name);
 if (invariantFailures.length) {
-  throw new Error(`ai_robot_demonstrator_invariant_failed: ${invariantFailures.join(', ')}; ${JSON.stringify({ rankDoF: verification?.assemblyCertificate?.rankDoF, flaggedInterferences: flaggedPairs.length, interferencePairs: flaggedPairs.map(pair => `${pair.partA}::${pair.partB}`), motionAxes: report.motionStudy.axes.map(axis => ({ mateId: axis.mateId, converged: axis.allConverged, frames: axis.frameCount, checked: axis.checkedFrames, collisions: axis.collisionFrameCount, segments: axis.segments })), collisionFrames: report.motionStudy.collisionFrameCount })}`);
+  throw new Error(`ai_robot_demonstrator_invariant_failed: ${invariantFailures.join(', ')}; ${JSON.stringify({ rankDoF: verification?.assemblyCertificate?.rankDoF, flaggedInterferences: flaggedPairs.length, interferencePairs: flaggedPairs.map(pair => `${pair.partA}::${pair.partB}`), motionAxes: report.motionStudy.axes.map(axis => ({ mateId: axis.mateId, converged: axis.allConverged, frames: axis.frameCount, checked: axis.checkedFrames, collisions: axis.collisionFrameCount, segments: axis.segments })), collisionFrames: report.motionStudy.collisionFrameCount, coordinatedMotion: report.coordinatedMotionStudy })}`);
 }
 writeLatestArtifactAtomic(path.join(outputDir, 'report.json'), Buffer.from(`${JSON.stringify(report, null, 2)}\n`));
 console.log(JSON.stringify({ output: path.relative(process.cwd(), outputDir), parts: report.product.editableParts, mates: report.product.mates, kernel: report.pipeline.stages.kernel.status, topology: report.pipeline.stages.topology.status, assembly: report.pipeline.stages.assembly_solve.status, releaseReady: report.releaseReady }));
@@ -172,6 +196,38 @@ function summarizeMotionSegment(direction: 'toward-min' | 'toward-max', verifica
     apiOk: verification.ok === true,
     allConverged: motion?.allConverged === true,
     frameCount,
+    checkedFrames: interference?.checkedFrames ?? 0,
+    collisionFrameCount: interference?.collisionFrameCount ?? 0,
+    firstFailureFrame,
+    firstCollisionFrame,
+    maxPenetrationMm: interference?.maxPenetrationMm ?? null,
+    collisionPairs,
+  };
+}
+
+function summarizeCoordinatedMotion(
+  verification: Record<string, unknown> | null,
+  trajectory: ReturnType<typeof buildRobotCoordinatedMotionTrajectory>,
+) {
+  const motion = verification?.motion as { allConverged?: boolean; firstFailureFrame?: number; frames?: unknown[] } | undefined;
+  const interference = verification?.motionInterference as { checkedFrames?: number; collisionFrameCount?: number; firstCollisionFrame?: number; maxPenetrationMm?: number; frames?: Array<{ pairs?: Array<{ partA?: string; partB?: string; penetration?: number }> }> } | undefined;
+  const collisionPairs = [...new Map((interference?.frames ?? []).flatMap(frame => (frame.pairs ?? []).flatMap(pair => (
+    typeof pair.partA === 'string' && typeof pair.partB === 'string'
+      ? [[`${pair.partA}::${pair.partB}`, { partA: pair.partA, partB: pair.partB, penetrationMm: typeof pair.penetration === 'number' ? pair.penetration : null }]] as const
+      : []
+  )))).values()];
+  const firstFailureFrame = typeof motion?.firstFailureFrame === 'number' && motion.firstFailureFrame >= 0 ? motion.firstFailureFrame : null;
+  const firstCollisionFrame = typeof interference?.firstCollisionFrame === 'number' && interference.firstCollisionFrame >= 0 ? interference.firstCollisionFrame : null;
+  return {
+    exploratoryOnly: true,
+    releaseEvidence: false,
+    strategy: ROBOT_COORDINATED_MOTION_STRATEGY,
+    mateIds: trajectory.mateIds,
+    keyframesDeg: trajectory.keyframes,
+    stepsPerSegment: trajectory.stepsPerSegment,
+    apiOk: verification?.ok === true,
+    allConverged: motion?.allConverged === true,
+    frameCount: motion?.frames?.length ?? 0,
     checkedFrames: interference?.checkedFrames ?? 0,
     collisionFrameCount: interference?.collisionFrameCount ?? 0,
     firstFailureFrame,

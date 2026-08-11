@@ -146,6 +146,24 @@
       "sha256": "49d6fe978f5ad7c86af5a0713f21c4f088767cea460fdec09fb8d6b4ce6d4698"
     },
     {
+      "path": "src/lib/assembly/motionStudy.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 12416,
+      "sha256": "496f34a639a13e502116b472c4222f5acb9cc6c9eeb4c2d78de70b6c49dd03ea"
+    },
+    {
+      "path": "src/lib/occt/nodeOcctLoader.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 4986,
+      "sha256": "36afbccf8d82713e8b38d586a992dd42a1dfcfe022042df58340aa42acb5df6c"
+    },
+    {
+      "path": "src/app/api/cad/v1/assembly/verify/route.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 17367,
+      "sha256": "dc62e48a751eec23c7edf0136c56852e87b8983ed6e4794b32569013f8fee8c0"
+    },
+    {
       "path": "src/app/api/cad/v1/assembly/release/verify/route.ts",
       "role": "semantic-and-release-policy",
       "bytes": 11720,
@@ -202,8 +220,20 @@
     {
       "path": "src/lib/ai/robot/robotPostIntegrationEvidence.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 8589,
-      "sha256": "679cc9db4372d47ee843db857e5636a377d9c3db524b91238f69d3cef68b36a3"
+      "bytes": 9122,
+      "sha256": "92d2d901d08ef47e1c62674706ef3330470c4d075fccdbc91aa5ae22997be6e2"
+    },
+    {
+      "path": "src/lib/ai/robot/robotCoordinatedMotion.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 1498,
+      "sha256": "3e75e6f72ac009ebe2f54c4d1fd46805fb4d8e1c834ffb7fb2d9d0dd19b9fd29"
+    },
+    {
+      "path": "src/lib/ai/robot/robotEvidenceBundle.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 22450,
+      "sha256": "2dade1e84ccbd5d92b707792511eb50bb4d253b5c3accbad2b11eec25a26e300"
     },
     {
       "path": "src/lib/ai/adaptiveComplexProductExecution.ts",
@@ -244,14 +274,26 @@
     {
       "path": "src/lib/ai/robot/robotReleaseEvidenceAuditV2.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 8677,
-      "sha256": "0ade0a28b697acc304cdc8570f8ae6df8c90d0d220e960cc7ad1121108f224a0"
+      "bytes": 8806,
+      "sha256": "d6b3ba7b59f56c1480fe54199d488573d27ea9f02d74e7709f6dbe9426931c75"
+    },
+    {
+      "path": "src/lib/ai/robot/robotReleaseEvidenceAudit.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 8857,
+      "sha256": "9fe5c558d6589bedba6d07608c93a809f3f7b7818d6fd0f05c29565a274c6880"
     },
     {
       "path": "src/lib/ai/robot/robotReleaseWorkPacketV2.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 5109,
-      "sha256": "cd85ecd99313c11d16220c0ebac38e3a042e480457efacba3b5ce8d5be5d64d6"
+      "bytes": 5238,
+      "sha256": "742187a7d1ca382f147070722d0c6f87ff74b6633d60491fd84e6a8317390a29"
+    },
+    {
+      "path": "src/lib/ai/robot/robotReleaseWorkPacket.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 5358,
+      "sha256": "3702791fd1a33e10f53dd8b9d7d74cfbe99fb5235dc97eb70b979dc58ee2253e"
     },
     {
       "path": "src/lib/ai/robot/robotFinalReleaseReview.ts",
@@ -282,6 +324,12 @@
       "role": "semantic-and-release-policy",
       "bytes": 5893,
       "sha256": "470bbfa4978e2853978651f4b144d809b609d4c0df9b0f49e37ba10b775abb24"
+    },
+    {
+      "path": "src/app/api/cad/v1/robot/reverify/route.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 15966,
+      "sha256": "b19b09836dce8f334ef9dbbbd0853d60b1170d4c859842e83fdc2816b42ab833"
     },
     {
       "path": "src/app/api/cad/v1/generation/state/route.ts",
@@ -346,20 +394,26 @@
     {
       "path": "scripts/build-complex-product-scope-assessment.mjs",
       "role": "semantic-and-release-policy",
-      "bytes": 7244,
-      "sha256": "e023de6d10a8fc57d5fb647685c4566c810020cb0178f977946619117e8758c3"
+      "bytes": 8039,
+      "sha256": "263f6537eca064c7dab1a05472225faf51665c575845607dc7e150d47f301271"
+    },
+    {
+      "path": "scripts/build-ai-robot6axis-demonstrator.ts",
+      "role": "semantic-and-release-policy",
+      "bytes": 18432,
+      "sha256": "a9207c1b2b44a862756ec572636c8dd03c32ba0d0ed6916a165d6f7e31b9ade5"
     },
     {
       "path": "scripts/audit-robot-production-completion.mjs",
       "role": "semantic-and-release-policy",
-      "bytes": 6549,
-      "sha256": "b93961f699022e25d8289ae1b030c0dabb77ac68c444750e27fce51197ed5460"
+      "bytes": 11175,
+      "sha256": "ca3d9eaa39fd15d2b2f2c0feb607205cd3b363774c4948ea9b3687c4212d4cee"
     },
     {
       "path": "docs/evidence/cad-independent/complex-product-scope-assessment.json",
       "role": "semantic-and-release-policy",
-      "bytes": 9217,
-      "sha256": "42697cc984c1b6b990d0e741c4786817aefe5a229ea98d2aaebb397324d30e18"
+      "bytes": 9628,
+      "sha256": "87b082a55a81acbb5f026d4480c060707a51b1e9b6bd4b77655f31804a963221"
     },
     {
       "path": "middleware.ts",
@@ -416,5 +470,5 @@
       "sha256": "50d0f0cd4bacadf24b337c8e36784d834a14cdeee175fc6b1850df12fe017c9f"
     }
   ],
-  "identitySha256": "505e6f4b6b05c7389f49897cdeffedfbb943f2cc887b5f9d6fd0fa444b602611"
+  "identitySha256": "91f08dbf63ed18735aa6e1589f1df90859f970b70d726cb8ffda252c7d9b5a18"
 }

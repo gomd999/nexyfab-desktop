@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.complex-product-scope-assessment.v1",
-  "assessedAt": "2026-08-11T04:20:25.201Z",
+  "assessedAt": "2026-08-11T05:38:48.131Z",
   "sources": [
     {
       "path": "docs/evidence/cad-independent/complex-reference-exchange-pilot-260809.json",
@@ -8,7 +8,7 @@
     },
     {
       "path": "docs/evidence/ai-robot6axis-demonstrator-260809/report.json",
-      "sha256": "03dd15967bab85efa1684ee5537ba77ea8032f1867b9faa5812c9aff1c5f9123"
+      "sha256": "eeca76bf257175bdd84d38b1b1bf4982e5f5412b7a0618ea5446bcdc8ffc7345"
     },
     {
       "path": "src/lib/ai/adaptiveComplexProductExecution.ts",
@@ -239,6 +239,9 @@
     "exploratoryCheckedMotionFrames": 156,
     "exploratoryMotionAxes": 6,
     "exploratoryCollisionFrames": 0,
+    "coordinatedMotionFrames": 49,
+    "coordinatedCheckedMotionFrames": 49,
+    "coordinatedCollisionFrames": 0,
     "unresolvedCatalogComponents": 22,
     "releaseReady": false,
     "blockers": [

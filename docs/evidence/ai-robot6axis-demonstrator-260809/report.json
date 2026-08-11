@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.ai-complex-product-demonstrator.v1",
-  "generatedAt": "2026-08-11T04:20:25.201Z",
+  "generatedAt": "2026-08-11T05:38:48.131Z",
   "scoreEligible": false,
   "releaseReady": false,
   "policy": {
@@ -569,6 +569,71 @@
         ]
       }
     ]
+  },
+  "coordinatedMotionStudy": {
+    "exploratoryOnly": true,
+    "releaseEvidence": false,
+    "strategy": "coordinated-six-axis-keyframes-v1",
+    "mateIds": [
+      "J1",
+      "J2",
+      "J3",
+      "J4",
+      "J5",
+      "J6"
+    ],
+    "keyframesDeg": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        76.5,
+        -42,
+        52.5,
+        -54,
+        30,
+        -36
+      ],
+      [
+        -68,
+        42,
+        -60,
+        54,
+        -36,
+        45
+      ],
+      [
+        42.5,
+        54,
+        -45,
+        72,
+        42,
+        -62.99999999999999
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "stepsPerSegment": 12,
+    "apiOk": true,
+    "allConverged": true,
+    "frameCount": 49,
+    "checkedFrames": 49,
+    "collisionFrameCount": 0,
+    "firstFailureFrame": null,
+    "firstCollisionFrame": null,
+    "maxPenetrationMm": 0,
+    "collisionPairs": []
   },
   "blockers": [
     "motor_j1",

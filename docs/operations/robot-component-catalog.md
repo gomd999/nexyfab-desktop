@@ -17,4 +17,4 @@ The manifest schema is `nexyfab.robot-component-catalog.v1`. Its `artifacts[]` e
 
 The validator rejects malformed component records, missing evidence, byte/hash mismatches, duplicate hashes, estimated production mass, and paths that escape the manifest directory, including through symlinks. It reads evidence files without modifying them and writes an immutable validation report.
 
-A valid catalog is not a product release. Joint requirement selection, traceable housing capacity, exact static interference, governed motion, manufacturing checks, STEP round-trip, native CAD evidence, and dual expert approval must also pass.
+A valid catalog is not a product release. Joint requirement selection, traceable housing capacity, exact static interference, the 156-frame isolated-axis sweep, the deterministic 49-frame coordinated six-axis trajectory, manufacturing checks, STEP round-trip, native CAD evidence, and dual expert approval must also pass.

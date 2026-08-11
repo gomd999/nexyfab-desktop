@@ -13,7 +13,7 @@ const relative = value => path.relative(root, value).replaceAll('\\', '/');
 const readJson = relativePath => JSON.parse(fs.readFileSync(path.join(root, relativePath), 'utf8'));
 const sha256File = relativePath => crypto.createHash('sha256').update(fs.readFileSync(path.join(root, relativePath))).digest('hex');
 
-const outputPath = path.resolve(root, valueAfter('--out', `validation-reports/robot-production-completion-audit-v3-${Date.now()}.json`));
+const outputPath = path.resolve(root, valueAfter('--out', `validation-reports/robot-production-completion-audit-v4-${Date.now()}.json`));
 const integrityPath = valueAfter('--integrity', 'validation-reports/closed-beta-integrity-260809-cad-independent-core.json');
 const scopePath = 'docs/evidence/cad-independent/complex-product-scope-assessment.json';
 const conceptReportPath = 'docs/evidence/ai-robot6axis-demonstrator-260809/report.json';
@@ -97,6 +97,17 @@ const conceptDiagnosticVerified = fs.existsSync(path.join(root, conceptArtifactP
     && axis.frameCount === 26 && axis.checkedFrames === 26
     && axis.collisionFrameCount === 0 && axis.allConverged === true)
   && concept.motionStudy?.releaseEvidence === false
+  && concept.coordinatedMotionStudy?.strategy === 'coordinated-six-axis-keyframes-v1'
+  && concept.coordinatedMotionStudy?.apiOk === true
+  && concept.coordinatedMotionStudy?.allConverged === true
+  && concept.coordinatedMotionStudy?.frameCount === 49
+  && concept.coordinatedMotionStudy?.checkedFrames === 49
+  && concept.coordinatedMotionStudy?.collisionFrameCount === 0
+  && Array.isArray(concept.coordinatedMotionStudy?.mateIds)
+  && concept.coordinatedMotionStudy.mateIds.join(',') === 'J1,J2,J3,J4,J5,J6'
+  && Array.isArray(concept.coordinatedMotionStudy?.keyframesDeg)
+  && concept.coordinatedMotionStudy.keyframesDeg.length === 5
+  && concept.coordinatedMotionStudy?.releaseEvidence === false
   && concept.releaseReady === false
   && concept.policy?.placeholdersAreManufacturingEvidence === false
   && concept.policy?.expertApprovalGranted === false;
@@ -114,7 +125,7 @@ const exactReleaseEvidenceComplete = exactCadEvidencePresent && manufacturingEvi
 const objectiveComplete = internalPipelineVerified && exactReleaseEvidenceComplete;
 
 const report = {
-  schema: 'nexyfab.robot-production-completion-audit.v3',
+  schema: 'nexyfab.robot-production-completion-audit.v4',
   generatedAt: new Date().toISOString(),
   objectiveComplete,
   status: objectiveComplete ? 'complete' : 'blocked_exact_release_evidence',
@@ -143,6 +154,9 @@ const report = {
       exploratoryCheckedMotionFrames: concept.motionStudy?.checkedFrames ?? null,
       exploratoryMotionAxes: concept.motionStudy?.axisCount ?? null,
       exploratoryCollisionFrames: concept.motionStudy?.collisionFrameCount ?? null,
+      coordinatedMotionFrames: concept.coordinatedMotionStudy?.frameCount ?? null,
+      coordinatedCheckedMotionFrames: concept.coordinatedMotionStudy?.checkedFrames ?? null,
+      coordinatedCollisionFrames: concept.coordinatedMotionStudy?.collisionFrameCount ?? null,
       classification: concept.product?.classification ?? null,
       releaseReady: concept.releaseReady === true,
     },
@@ -173,7 +187,7 @@ const report = {
   ],
   nextActions: objectiveComplete ? [] : [
     'Supply the traceable motor, reducer, bearing, brake, encoder, harness, and tool-connector catalog artifacts for the exact revision.',
-    'Validate the selected drive envelopes against traceable housing capacities, integrate them into a new revision, and repeat the signed 156-frame governed motion check.',
+    'Validate the selected drive envelopes against traceable housing capacities, integrate them into a new revision, and repeat the signed 156-frame isolated-axis plus 49-frame coordinated motion checks.',
     'Run the integrated NexyFab exact-CAD checks and sign the evidence for the exact release target.',
     'Obtain signed manufacturing validation for the exact selected drive occurrences.',
     'Obtain distinct domain and independent reviewer signatures for the exact release target.',
