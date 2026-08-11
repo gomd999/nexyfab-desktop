@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertStagingMutationSafety } from '../../e2e/helpers/staging-safety';
+import { assertStagingMutationSafety } from '../lib/staging-mutation-safety';
 
 describe('staging mutation safety', () => {
   it('unconditionally rejects production', () => {
