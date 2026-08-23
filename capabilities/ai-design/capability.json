@@ -1,0 +1,15 @@
+{
+  "schema": "nexyfab.workspace-capability.v1",
+  "id": "ai-design",
+  "owner": "scope/ai-design",
+  "implementationState": "LEGACY_COMPATIBILITY",
+  "legacySourceRoots": [
+    "src/lib/ai",
+    "src/app/api/nexyfab/projects/[id]/architecture-interior-ai-design"
+  ],
+  "sharedContracts": [
+    "packages/artifact-contracts",
+    "packages/cad-contracts",
+    "packages/job-contracts"
+  ]
+}
