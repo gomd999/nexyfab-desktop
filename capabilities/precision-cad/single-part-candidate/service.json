@@ -1,0 +1,17 @@
+{
+  "schema": "nexyfab.deployable-unit.v1",
+  "id": "precision-single-part-candidate",
+  "scope": "precision-cad",
+  "kind": "worker",
+  "targetRuntime": "railway-container",
+  "sourceMode": "compatibility-adapter",
+  "sourceRoot": "capabilities/precision-cad/single-part-candidate",
+  "legacySource": ["src/lib/cad/mechanicalSinglePartCandidate.ts", "scripts/build-mechanical-single-part-candidates.ts"],
+  "implementationState": "PARTIAL",
+  "verificationState": "NOT_RUN",
+  "deployEnabled": false,
+  "build": { "context": ".", "dockerfile": "Dockerfile", "mode": "shared-monorepo-compatibility" },
+  "health": { "mode": "contract", "test": "scripts/build-mechanical-single-part-candidates.test.ts" },
+  "staging": { "required": true, "evidencePath": "docs/evidence/platform-runtime/slice-deployment-readiness.json" },
+  "rollback": { "strategy": "previous-release", "owner": "exact-cad-job-blocked", "requiredBuildBinding": true }
+}

@@ -1,0 +1,38 @@
+{
+  "schema": "nexyfab.slice-deployment.v1",
+  "policy": {
+    "default": "NO_DEPLOY",
+    "automaticPromotion": false,
+    "requireStagingReceipt": true,
+    "requireRollbackReceipt": true
+  },
+  "slices": [
+    {
+      "id": "platform-live-health",
+      "scope": "platform",
+      "deployUnit": "core-api",
+      "sourceRoots": ["apps/core-api/src/health/live.ts", "src/app/api/health/live/route.ts"],
+      "build": { "contextRoot": ".", "dockerfile": "Dockerfile", "mode": "shared-monorepo-compatibility" },
+      "health": { "mode": "http", "path": "/api/health/live", "expectedStatus": 200 },
+      "rollback": { "owner": "legacy-next-origin", "requiredBuildBinding": true }
+    },
+    {
+      "id": "precision-single-part-candidate",
+      "scope": "precision-cad",
+      "deployUnit": "occt-exact",
+      "sourceRoots": ["capabilities/precision-cad/single-part-candidate/index.ts", "scripts/build-mechanical-single-part-candidates.ts"],
+      "build": { "contextRoot": ".", "dockerfile": "Dockerfile", "mode": "shared-monorepo-compatibility" },
+      "health": { "mode": "contract", "test": "scripts/build-mechanical-single-part-candidates.test.ts" },
+      "rollback": { "owner": "exact-cad-job-blocked", "requiredBuildBinding": true }
+    },
+    {
+      "id": "ai-domain-accuracy",
+      "scope": "ai-design",
+      "deployUnit": "ai-design-api",
+      "sourceRoots": ["capabilities/ai-design/domain-accuracy/index.ts", "scripts/report-domain-accuracy.ts"],
+      "build": { "contextRoot": ".", "dockerfile": "Dockerfile", "mode": "shared-monorepo-compatibility" },
+      "health": { "mode": "contract", "test": "scripts/report-domain-accuracy.test.ts" },
+      "rollback": { "owner": "legacy-next-origin", "requiredBuildBinding": true }
+    }
+  ]
+}

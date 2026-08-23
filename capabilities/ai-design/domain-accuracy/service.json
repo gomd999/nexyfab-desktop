@@ -1,0 +1,17 @@
+{
+  "schema": "nexyfab.deployable-unit.v1",
+  "id": "ai-domain-accuracy",
+  "scope": "ai-design",
+  "kind": "application",
+  "targetRuntime": "railway-node",
+  "sourceMode": "compatibility-adapter",
+  "sourceRoot": "capabilities/ai-design/domain-accuracy",
+  "legacySource": ["src/lib/ai/domainAccuracyProgram.ts", "scripts/report-domain-accuracy.ts"],
+  "implementationState": "PARTIAL",
+  "verificationState": "NOT_RUN",
+  "deployEnabled": false,
+  "build": { "context": ".", "dockerfile": "Dockerfile", "mode": "shared-monorepo-compatibility" },
+  "health": { "mode": "contract", "test": "scripts/report-domain-accuracy.test.ts" },
+  "staging": { "required": true, "evidencePath": "docs/evidence/platform-runtime/slice-deployment-readiness.json" },
+  "rollback": { "strategy": "previous-release", "owner": "legacy-next-origin", "requiredBuildBinding": true }
+}

@@ -1,0 +1,41 @@
+{
+  "schema": "nexyfab.slice-deployment-readiness-receipt.v1",
+  "generatedAt": "2026-08-23T12:35:15.128Z",
+  "gitHead": "87547f6f4a66f7327024755ada4c9fca8b5c9d8f",
+  "local": {
+    "ok": true,
+    "issues": [],
+    "slices": [
+      {
+        "id": "platform-live-health",
+        "scope": "platform",
+        "deployUnit": "core-api",
+        "status": "READY_FOR_STAGING",
+        "issues": []
+      },
+      {
+        "id": "precision-single-part-candidate",
+        "scope": "precision-cad",
+        "deployUnit": "occt-exact",
+        "status": "READY_FOR_STAGING",
+        "issues": []
+      },
+      {
+        "id": "ai-domain-accuracy",
+        "scope": "ai-design",
+        "deployUnit": "ai-design-api",
+        "status": "READY_FOR_STAGING",
+        "issues": []
+      }
+    ]
+  },
+  "staging": {
+    "state": "NOT_RUN",
+    "reason": "live Cloudflare/Railway staging evidence is not available in this workspace"
+  },
+  "rollback": {
+    "state": "NOT_RUN",
+    "reason": "rollback target requires a live staging deployment"
+  },
+  "status": "HOLD"
+}

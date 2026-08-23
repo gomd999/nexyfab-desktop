@@ -22,6 +22,8 @@
     "typecheck": "node scripts/typecheck.cjs",
     "platform:architecture:check": "node scripts/platform/validate-platform-architecture.mjs",
     "platform:runtime:gate": "node scripts/platform/evaluate-runtime-placement-readiness.mjs",
+    "platform:slices:readiness": "node scripts/platform/verify-slice-deployment-readiness.mjs --check",
+    "platform:slices:receipt": "node scripts/platform/verify-slice-deployment-readiness.mjs --write",
     "assembly-handoff:readiness:generate": "node scripts/build-assembly-drawing-handoff-readiness.mjs --write",
     "assembly-handoff:readiness:check": "node scripts/build-assembly-drawing-handoff-readiness.mjs --check",
     "mechanical:single-part-candidates:generate": "tsx scripts/build-mechanical-single-part-candidates.ts --write",
