@@ -58,6 +58,12 @@ export function validateRegistry(registry) {
     if (!scope.id || !scope.branch || !scope.worktreeDirectory || !Array.isArray(scope.ownedPaths)) {
       throw new Error(`workspace_scope_invalid:${scope.id ?? 'unknown'}`);
     }
+    if (!Array.isArray(scope.checks) || scope.checks.length === 0) {
+      throw new Error(`workspace_scope_checks_invalid:${scope.id}`);
+    }
+    if (scope.releaseGates !== undefined && !Array.isArray(scope.releaseGates)) {
+      throw new Error(`workspace_scope_release_gates_invalid:${scope.id}`);
+    }
   }
 }
 

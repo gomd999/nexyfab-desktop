@@ -8,9 +8,9 @@ const registry = {
   defaultOwner: 'platform',
   sharedPaths: ['packages/**', 'workspaces/registry.json'],
   scopes: [
-    { id: 'platform', branch: 'scope/platform', worktreeDirectory: 'platform', defaultOwner: true, ownedPaths: ['apps/**'] },
-    { id: 'precision-cad', branch: 'scope/precision-cad', worktreeDirectory: 'precision-cad', ownedPaths: ['src/lib/cad/**'] },
-    { id: 'ai-design', branch: 'scope/ai-design', worktreeDirectory: 'ai-design', ownedPaths: ['src/lib/ai/**'] },
+    { id: 'platform', branch: 'scope/platform', worktreeDirectory: 'platform', defaultOwner: true, ownedPaths: ['apps/**'], checks: ['npm run typecheck'] },
+    { id: 'precision-cad', branch: 'scope/precision-cad', worktreeDirectory: 'precision-cad', ownedPaths: ['src/lib/cad/**'], checks: ['npm run typecheck'] },
+    { id: 'ai-design', branch: 'scope/ai-design', worktreeDirectory: 'ai-design', ownedPaths: ['src/lib/ai/**'], checks: ['npm run typecheck'] },
   ],
 };
 
@@ -38,4 +38,14 @@ test('registry validation rejects duplicate scope ids', () => {
   const invalid = structuredClone(registry);
   invalid.scopes[2].id = 'precision-cad';
   assert.throws(() => validateRegistry(invalid), /scope_id_duplicate/);
+});
+
+test('registry validation separates ordinary checks from optional release gates', () => {
+  const invalidChecks = structuredClone(registry);
+  invalidChecks.scopes[0].checks = [];
+  assert.throws(() => validateRegistry(invalidChecks), /workspace_scope_checks_invalid/);
+
+  const invalidReleaseGates = structuredClone(registry);
+  invalidReleaseGates.scopes[1].releaseGates = 'npm run release';
+  assert.throws(() => validateRegistry(invalidReleaseGates), /workspace_scope_release_gates_invalid/);
 });

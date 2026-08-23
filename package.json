@@ -187,6 +187,7 @@
     "workspace:status": "node scripts/workspaces/status.mjs",
     "workspace:check": "node scripts/workspaces/check.mjs",
     "workspace:handoff": "node scripts/workspaces/handoff.mjs",
+    "workspace:integration-status": "node scripts/workspaces/integration-status.mjs",
     "release:baseline": "node scripts/build-release-baseline.mjs",
     "evidence:ifc-fidelity": "tsx scripts/build-ifc-fidelity-evidence.ts",
     "evidence:ifc-deep-roundtrip": "tsx scripts/build-ifc-deep-roundtrip-evidence.ts",

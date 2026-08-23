@@ -38,6 +38,59 @@ for (const scopeDefinition of registry.scopes) {
   if (descriptor.schema !== 'nexyfab.workspace-scope.v1' || descriptor.id !== scope.id) {
     descriptorIssues.push(`scope_descriptor_invalid:${scope.id}`);
   }
+  if (descriptor.registry !== '../registry.json') descriptorIssues.push(`scope_registry_invalid:${scope.id}`);
+  if (descriptor.integrationMode !== 'contracts-and-handoffs') {
+    descriptorIssues.push(`scope_integration_mode_invalid:${scope.id}`);
+  }
+  if (!['COMPATIBILITY_BOUNDARY', 'LEGACY_COMPATIBILITY'].includes(descriptor.migrationState)) {
+    descriptorIssues.push(`scope_migration_state_invalid:${scope.id}`);
+  }
+  for (const field of ['targetRoots', 'legacySourceRoots']) {
+    if (!Array.isArray(descriptor[field]) || descriptor[field].length === 0) {
+      descriptorIssues.push(`scope_${field}_invalid:${scope.id}`);
+      continue;
+    }
+    for (const sourceRoot of descriptor[field]) {
+      if (!fs.existsSync(path.join(repositoryRoot, sourceRoot))) {
+        descriptorIssues.push(`scope_${field}_missing:${scope.id}:${sourceRoot}`);
+      }
+    }
+  }
+
+  if (scope.id === 'platform') continue;
+  const capabilityPath = path.join(repositoryRoot, 'capabilities', scope.id, 'capability.json');
+  if (!fs.existsSync(capabilityPath)) {
+    descriptorIssues.push(`capability_descriptor_missing:${scope.id}`);
+    continue;
+  }
+  const capability = JSON.parse(fs.readFileSync(capabilityPath, 'utf8'));
+  if (
+    capability.schema !== 'nexyfab.workspace-capability.v1'
+    || capability.id !== scope.id
+    || capability.owner !== scope.branch
+    || capability.implementationState !== descriptor.migrationState
+  ) {
+    descriptorIssues.push(`capability_descriptor_invalid:${scope.id}`);
+  }
+  if (!Array.isArray(capability.legacySourceRoots) || capability.legacySourceRoots.length === 0) {
+    descriptorIssues.push(`capability_legacy_roots_invalid:${scope.id}`);
+  }
+  for (const sourceRoot of capability.legacySourceRoots ?? []) {
+    if (!fs.existsSync(path.join(repositoryRoot, sourceRoot))) {
+      descriptorIssues.push(`capability_legacy_root_missing:${scope.id}:${sourceRoot}`);
+    }
+  }
+  if (!Array.isArray(capability.sharedContracts) || capability.sharedContracts.length === 0) {
+    descriptorIssues.push(`capability_contracts_invalid:${scope.id}`);
+  }
+  for (const contractRoot of capability.sharedContracts ?? []) {
+    if (!resolveOwnership(`${contractRoot}/src/index.ts`, registry).shared) {
+      descriptorIssues.push(`capability_contract_not_shared:${scope.id}:${contractRoot}`);
+    }
+    if (!fs.existsSync(path.join(repositoryRoot, contractRoot, 'src', 'index.ts'))) {
+      descriptorIssues.push(`capability_contract_missing:${scope.id}:${contractRoot}`);
+    }
+  }
 }
 
 const result = {

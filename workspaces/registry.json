@@ -17,6 +17,7 @@
     "config/**",
     "packages/**",
     "scripts/workspaces/**",
+    "workspaces/README.md",
     "workspaces/registry.json",
     "src/lib/db*",
     "src/lib/platform/**",
@@ -85,6 +86,9 @@
       ],
       "checks": [
         "npm run typecheck",
+        "npm run platform:architecture:check"
+      ],
+      "releaseGates": [
         "npm run mechanical:contracts:check",
         "npm run mechanical:scope:check"
       ]
