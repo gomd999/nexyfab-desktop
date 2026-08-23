@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [main, master, develop, integration/nexyfab]
   pull_request:
     branches: [main, master]
 
@@ -95,6 +95,8 @@ jobs:
           NODE_ENV: test
       - name: Milestone gates (M0–M7 + security)
         run: npm run verify
+      - name: Deployable slice contract tests
+        run: npm run test:slices
       - name: Install Rust (Tauri crate tests)
         uses: dtolnay/rust-toolchain@stable
       - name: Install Tauri system deps (Linux)

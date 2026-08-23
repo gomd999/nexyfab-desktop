@@ -1,17 +1,44 @@
 name: Modular platform boundaries
 
 on:
-  pull_request:
+  push:
+    branches:
+      - integration/nexyfab
+      - "scope/**"
     paths:
       - "apps/**"
+      - "capabilities/**"
       - "config/platform/**"
       - "containers/**"
       - "domains/**"
+      - "docs/evidence/platform-runtime/**"
+      - "packages/**"
+      - "scripts/platform/**"
+      - "scripts/workspaces/**"
+      - "src/lib/platform/**"
+      - "src/app/api/**"
+      - "workspaces/**"
+      - "package.json"
+      - "package-lock.json"
+      - "railway.toml"
+      - "wrangler.toml"
+  pull_request:
+    paths:
+      - "apps/**"
+      - "capabilities/**"
+      - "config/platform/**"
+      - "containers/**"
+      - "domains/**"
+      - "docs/evidence/platform-runtime/**"
       - "packages/**"
       - "workers/**"
       - "scripts/platform/**"
+      - "scripts/workspaces/**"
       - "src/lib/platform/**"
       - "src/app/api/**"
+      - "workspaces/**"
+      - "package.json"
+      - "package-lock.json"
       - "railway.toml"
       - "wrangler.toml"
   workflow_dispatch:
@@ -29,8 +56,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - run: npm run platform:architecture:check
+      - run: npm run test:slices
       - run: node --test scripts/platform/validate-platform-architecture.test.mjs
       - run: node --test scripts/platform/evaluate-runtime-placement-readiness.test.mjs
       - run: node scripts/platform/evaluate-runtime-placement-readiness.mjs --allow-hold
