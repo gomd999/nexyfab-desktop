@@ -1,15 +1,24 @@
 {
   "schema": "nexyfab.deployable-unit.v1",
   "id": "core-api",
+  "scope": "platform",
   "kind": "application",
   "targetRuntime": "railway-node",
   "sourceMode": "legacy-route-compatibility",
+  "sourceRoot": "apps/core-api",
   "legacySource": ["src/app/api", "src/lib/db-adapter.ts"],
   "implementationState": "COMPATIBILITY_BOUNDARY",
+  "verificationState": "NOT_RUN",
   "deployEnabled": false,
   "rollbackOwner": "legacy-next-origin",
-  "build": { "context": ".", "dockerfile": "Dockerfile", "mode": "shared-monorepo-compatibility" },
-  "health": { "live": "/api/health/live", "ready": "/api/health/ready", "timeoutSeconds": 30 },
+  "build": { "context": "apps/core-api", "dockerfile": "Dockerfile", "mode": "isolated-candidate" },
+  "health": {
+    "live": "/api/health/live",
+    "ready": "/api/health/ready",
+    "release": "/api/health/release",
+    "timeoutSeconds": 30
+  },
+  "runtimeBindings": ["LEGACY_NEXT_ORIGIN", "NEXYFAB_BUILD_ID"],
   "staging": { "required": true, "evidencePath": "docs/evidence/platform-runtime/slice-deployment-readiness.json" },
   "rollback": { "strategy": "previous-release", "verifyCommand": "npm run rollback:verify", "requiredBuildBinding": true }
 }
