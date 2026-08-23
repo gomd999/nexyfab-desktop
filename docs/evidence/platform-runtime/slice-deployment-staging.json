@@ -1,0 +1,114 @@
+{
+  "schema": "nexyfab.slice-deployment-staging-evidence.v1",
+  "recordedAt": "2026-08-23T13:57:23.1101830Z",
+  "environment": {
+    "provider": "Railway",
+    "project": "nexyfab.com",
+    "name": "staging",
+    "publicOrigin": "https://cad-preview.nexyfab.com"
+  },
+  "sourceBindings": {
+    "nexyfabCommit": "359fb0579a9495a235daf2d5418648545af39b5e",
+    "runtimeRepository": "nexycad-commercial",
+    "runtimeCommit": "c6218eae1f9365f32b151abf26b78241a5afc6be",
+    "runtimeSourceCommitVariable": "BOUND_ON_ALL_SEVEN_SERVICES",
+    "sliceSourceBinding": "RUNTIME_TOPOLOGY_ONLY",
+    "reason": "The Railway preview deployables live in the commercial runtime repository; the NexyFab capability wrapper commits are not directly present in those images."
+  },
+  "directNexyfabStaging": {
+    "service": "nexyfab.com",
+    "currentDeploymentId": "49971020-f1ab-4d5f-b13d-96b2420b5849",
+    "currentImageDigest": "sha256:8085ceb72a5312bf9755a129b59607566531b9a8a6562178f4b63b3cca3abab1",
+    "currentBuildId": "candidate-20260822-006",
+    "targetCommit": "359fb0579a9495a235daf2d5418648545af39b5e",
+    "verificationMode": "deploy-railway-verified --verify-only",
+    "state": "BLOCKED_BY_RELEASE_GATE",
+    "sourceChanged": false,
+    "blockers": [
+      "mechanical_feature_receipt_missing_or_invalid",
+      "mechanical_interoperability_targets_missing",
+      "interoperability_revision_mismatch",
+      "interoperability_source_artifact_mismatch"
+    ]
+  },
+  "localImages": [
+    { "service": "studio-web", "image": "nexycad/studio-web:scope-c6218eae", "digest": "sha256:edbf4d6382b6944ba285adcbe83320d8b1dcb822f201722c54d3f33a7ef82a61", "revisionBound": true },
+    { "service": "core-api", "image": "nexycad/core-api:scope-c6218eae", "digest": "sha256:38cecc62423a9143ab033a983be345513f5f1600664cc2530e92846b894820f1", "revisionBound": true },
+    { "service": "collaboration", "image": "nexycad/collaboration:scope-c6218eae", "digest": "sha256:454c28ffaa6b200d106abfa48cb4baf7e0799324622e5e9f08a8ba42935af3b9", "revisionBound": true },
+    { "service": "source-ingestion", "image": "nexycad/source-ingestion:scope-c6218eae", "digest": "sha256:821e400d35e4be6969807b5682ec8052fd781f2c97ad137b8eb546a952ef84cb", "revisionBound": true },
+    { "service": "job-control", "image": "nexycad/job-control:scope-c6218eae", "digest": "sha256:12b6454bc20f4c4244e0645ba13ca6fd616c91fd0fdec7550b3271a9f7531815", "revisionBound": true },
+    { "service": "exact-cad-kernel", "image": "nexycad/exact-cad-kernel:scope-c6218eae", "digest": "sha256:2685619cc2dd1d3de2fd7d22762e302c9a5239da0dedfb6781d6a24f783e0aac", "revisionBound": true },
+    { "service": "analysis-worker", "image": "nexycad/analysis-worker:scope-c6218eae", "digest": "sha256:612272ca907879dabf76a2c860863ef3b5f90419100edd35c849992c5fc90b5f", "revisionBound": true }
+  ],
+  "scopes": [
+    {
+      "scope": "platform",
+      "state": "PASS",
+      "services": [
+        { "name": "nexycad-source-ingestion-preview", "deploymentId": "30576d20-337d-4394-b338-22eb6d4d6df2", "status": "SUCCESS", "imageDigest": "sha256:c42e5e37892b6c7a398e46a18adc0a7767eca4a641e30483aabcaf82c65280c0", "health": "PASS" },
+        { "name": "nexycad-core-api-preview", "deploymentId": "abcf6365-f42a-4032-9514-cc12c7c655bd", "status": "SUCCESS", "imageDigest": "sha256:a0a528028066b4e19ad8c4b357706e7e12074d26f9f98a177e17c0f3d64182c6", "health": "PASS" },
+        { "name": "nexycad-collaboration-preview", "deploymentId": "c469c1ec-1f31-498e-a21e-eee1d745c540", "status": "SUCCESS", "imageDigest": "sha256:c63924d197b811694346f9e96b2f49ac473a3526e11cf3ff4133a54608da3010", "health": "PASS" },
+        { "name": "nexycad-studio-preview", "deploymentId": "88f4e33f-81f9-4ceb-8bda-818aae6dd2db", "status": "SUCCESS", "imageDigest": "sha256:5fcb01f3a814982aa96c2e7aa8013b750caa5ec1099f7983756341ebb6b61f46", "health": "PASS" }
+      ]
+    },
+    {
+      "scope": "precision-cad",
+      "state": "PASS",
+      "services": [
+        { "name": "nexycad-exact-cad-preview", "deploymentId": "8054423f-1760-41c8-9c3d-585a3695e478", "status": "SUCCESS", "imageDigest": "sha256:16735b40cf44c538573608097bba5888403306b067522a9f22faa181d26ef727", "health": "PASS" },
+        { "name": "nexycad-job-control-preview", "deploymentId": "8f05eac5-0477-4f1d-a4f1-b7f4bff10e9f", "status": "SUCCESS", "imageDigest": "sha256:9eabc09a03f4cbf3e0925f48594dcc73d09efcc8d63f1b59bc5fa2b9b7e13425", "health": "PASS" }
+      ]
+    },
+    {
+      "scope": "ai-design",
+      "state": "PASS_WITH_EXPECTED_READY_HOLD",
+      "services": [
+        { "name": "nexycad-analysis-preview", "deploymentId": "a09eaddb-731a-4e18-a23d-65852c60f10c", "status": "SUCCESS", "imageDigest": "sha256:89b7e0bb022864ff7d547660f4b7e3196e4aeed293d9a67208f0db63877c9da2", "health": "PASS" }
+      ]
+    }
+  ],
+  "publicHealth": [
+    { "url": "https://cad-preview.nexyfab.com/readyz", "status": 200 },
+    { "url": "https://cad-preview.nexyfab.com/healthz", "status": 200 },
+    { "url": "https://cad-preview.nexyfab.com/api/readyz", "status": 200 },
+    { "url": "https://cad-preview.nexyfab.com/api/healthz", "status": 200 }
+  ],
+  "smoke": {
+    "state": "PASS",
+    "documentRevision": 4,
+    "artifactBytes": 15445,
+    "contentSha256": "4e73024706f075b716c835569b922436a2d3cc76552cd458a1c7295c70cd0b46",
+    "coverage": ["member-auth", "document-create", "exact-job", "step-download", "sha256-verification"]
+  },
+  "adjustments": [
+    {
+      "issue": "artifact_kernel_identity_mismatch",
+      "observed": "job-control expected 0.26.0 while exact-cad emitted 0.27.0",
+      "action": "Aligned staging EXACT_KERNEL_IDENTITY to 0.27.0 and redeployed job-control",
+      "verification": "Full Preview smoke PASS"
+    }
+  ],
+  "rollback": {
+    "mechanism": "RAILWAY_DASHBOARD_PREVIOUS_DEPLOYMENT",
+    "execution": "NOT_RUN",
+    "reason": "Railway CLI cannot select an arbitrary previous deployment; native rollback requires the dashboard. Targets were captured before deployment but their cross-service compatibility still requires an executed drill.",
+    "targets": [
+      { "service": "nexycad-source-ingestion-preview", "deploymentId": "4dd3cd41-59d2-4176-9a84-bd073355d954", "imageDigest": "sha256:ca9dbab67173f2b986862da0ca3d8d381a3ce11e37024f16d50ce588afb6bbff" },
+      { "service": "nexycad-exact-cad-preview", "deploymentId": "ba69733f-ae34-4167-9f84-e467cee16072", "imageDigest": "sha256:4f868547ab4c3120f640cde3fca3c8be74e0764b7153f7602a856f3a92849479" },
+      { "service": "nexycad-analysis-preview", "deploymentId": "6a3aec16-8529-4c10-a68b-68d4fa377e92", "imageDigest": "sha256:48410b47652388dc5da7ccd082e54b500b8ac10f02e7ab7cf6305e1eb482ebdf" },
+      { "service": "nexycad-job-control-preview", "deploymentId": "a00a1a86-0689-42d7-89cd-9b53587962bc", "imageDigest": "sha256:da919df4a4b78b8557cc24f5dd5631482012e1aceafcb7c310d664511b6776cf" },
+      { "service": "nexycad-core-api-preview", "deploymentId": "236dd103-fc0b-44d3-b3a1-15fd27f1b861", "imageDigest": "sha256:283562d44a3d3c27a1ff24d0b5791ffd178e7f9a30b5fd5624597f2f1fab270b" },
+      { "service": "nexycad-collaboration-preview", "deploymentId": "162c3d72-ea9c-463f-bdbf-157778b77c9f", "imageDigest": "sha256:3800f5d0578e0138531f6c4391b769e76b0cf6308c3dc958211f771127f238f2" },
+      { "service": "nexycad-studio-preview", "deploymentId": "11ac7973-776d-4dff-8194-ed10dbef7441", "imageDigest": "sha256:cc0894b64af162c6a84d7931990bd71fdaf18b22585529e89fad4fbb8873bd03" }
+    ],
+    "historicalLocalReceipt": "../../nexycad-commercial/evidence/artifacts/phase-9/six-unit-rollback.json"
+  },
+  "holds": [
+    "closed_beta_registration_mode_is_OPEN",
+    "native_staging_rollback_not_executed",
+    "nexyfab_slice_source_not_directly_bound_into_runtime_images",
+    "direct_nexyfab_staging_deploy_blocked_by_verified_release_gate",
+    "analysis_live_model_remains_MODEL_NOT_RUN"
+  ],
+  "status": "STAGING_PASS_WITH_HOLDS"
+}

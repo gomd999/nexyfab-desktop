@@ -1,7 +1,7 @@
 {
   "schema": "nexyfab.slice-deployment-readiness-receipt.v1",
-  "generatedAt": "2026-08-23T12:37:05.956Z",
-  "gitHead": "fe88a6587543c1ff5a07a082410aee7c8a5030d1",
+  "generatedAt": "2026-08-23T14:03:04.924Z",
+  "gitHead": "359fb0579a9495a235daf2d5418648545af39b5e",
   "local": {
     "ok": true,
     "issues": [],
@@ -30,12 +30,51 @@
     ]
   },
   "staging": {
-    "state": "NOT_RUN",
-    "reason": "live Cloudflare/Railway staging evidence is not available in this workspace"
+    "ok": true,
+    "state": "PASS_WITH_HOLDS",
+    "issues": [],
+    "holds": [
+      "closed_beta_registration_mode_is_OPEN",
+      "native_staging_rollback_not_executed",
+      "nexyfab_slice_source_not_directly_bound_into_runtime_images",
+      "direct_nexyfab_staging_deploy_blocked_by_verified_release_gate",
+      "analysis_live_model_remains_MODEL_NOT_RUN"
+    ],
+    "scopes": [
+      {
+        "scope": "platform",
+        "state": "PASS",
+        "services": [
+          "nexycad-source-ingestion-preview",
+          "nexycad-core-api-preview",
+          "nexycad-collaboration-preview",
+          "nexycad-studio-preview"
+        ]
+      },
+      {
+        "scope": "precision-cad",
+        "state": "PASS",
+        "services": [
+          "nexycad-exact-cad-preview",
+          "nexycad-job-control-preview"
+        ]
+      },
+      {
+        "scope": "ai-design",
+        "state": "PASS_WITH_EXPECTED_READY_HOLD",
+        "services": [
+          "nexycad-analysis-preview"
+        ]
+      }
+    ],
+    "evidenceFile": "docs/evidence/platform-runtime/slice-deployment-staging.json"
   },
   "rollback": {
-    "state": "NOT_RUN",
-    "reason": "rollback target requires a live staging deployment"
+    "state": "READY_DASHBOARD_ONLY",
+    "execution": "NOT_RUN",
+    "mechanism": "RAILWAY_DASHBOARD_PREVIOUS_DEPLOYMENT",
+    "targetCount": 7,
+    "reason": "Railway CLI cannot select an arbitrary previous deployment; native rollback requires the dashboard. Targets were captured before deployment but their cross-service compatibility still requires an executed drill."
   },
   "status": "HOLD"
 }
