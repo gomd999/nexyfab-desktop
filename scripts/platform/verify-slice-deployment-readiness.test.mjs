@@ -5,7 +5,7 @@ import localRuntimeEvidence from '../../docs/evidence/platform-runtime/slice-loc
 import stagingEvidence from '../../docs/evidence/platform-runtime/slice-deployment-staging.json' with { type: 'json' };
 import { evaluateLocalRuntimeEvidence, evaluateSliceDeploymentReadiness, evaluateStagingEvidence } from './verify-slice-deployment-readiness.mjs';
 
-const evidenceNow = new Date('2026-08-23T16:20:00.000Z');
+const evidenceNow = new Date('2026-08-23T16:30:00.000Z');
 const contextFingerprints = Object.fromEntries(localRuntimeEvidence.slices.map(slice => [slice.scope, {
   sha256: slice.sourceTreeSha256,
   fileCount: slice.sourceFileCount,

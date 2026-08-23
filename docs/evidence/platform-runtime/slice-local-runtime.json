@@ -1,7 +1,7 @@
 {
   "schema": "nexyfab.slice-local-runtime-evidence.v1",
-  "generatedAt": "2026-08-23T16:17:03.000Z",
-  "integrationHeadAtVerification": "7bbee3a8c750fac49d0aaaf9e81e7cd13c1dc162",
+  "generatedAt": "2026-08-23T16:28:35.000Z",
+  "integrationHeadAtVerification": "f24076d2366fdeaf2d14cab0dd2531adcc55cb27",
   "environment": {
     "provider": "Docker Desktop",
     "engineVersion": "29.3.1",
@@ -35,50 +35,50 @@
     {
       "scope": "precision-cad",
       "unit": "precision-single-part-candidate",
-      "sourceCommit": "c93df014e56b9f73b007d120ff658d61b804dfb8",
-      "sourceTreeSha256": "5f7c0573e5aadc75656c1031041ef070824842c0cc76591b98cfd0acf715019c",
+      "sourceCommit": "66ad3c1dbe43a84a40f9091ea616eda85e93ea75",
+      "sourceTreeSha256": "1fd44c23e7b2b66a20bcd55fd835924067129d2669385eb82cb33719992c3dca",
       "sourceFileCount": 11,
       "status": "PASS_WITH_RELEASE_HOLD",
       "build": {
         "context": "capabilities/precision-cad/single-part-candidate",
         "dockerfile": "capabilities/precision-cad/single-part-candidate/Dockerfile",
-        "buildId": "5f7c0573e5aa",
-        "image": "nexyfab/precision-single-part:5f7c0573e5aa",
-        "imageId": "sha256:4db11a373c99a3e8becfe8e5f4cd094b09892edae26c00afc6d948c54a705d36",
+        "buildId": "1fd44c23e7b2",
+        "image": "nexyfab/precision-single-part:1fd44c23e7b2",
+        "imageId": "sha256:5d1725bf8806b89c869bf9ccfe31efdd764bdf6e059ffa9008e189b7ba76f724",
         "state": "PASS"
       },
       "health": {
         "dockerStatus": "healthy",
         "readinessAssurance": "ISOLATED_BINDING_ONLY",
-        "live": { "path": "/health/live", "statusCode": 200, "state": "ok", "build": "5f7c0573e5aa" },
+        "live": { "path": "/health/live", "statusCode": 200, "state": "ok", "build": "1fd44c23e7b2" },
         "ready": { "path": "/health/ready", "statusCode": 503, "state": "HOLD", "reason": "active_probe_required" },
         "release": { "path": "/health/release", "statusCode": 503, "state": "HOLD" }
       },
-      "tests": { "state": "PASS", "passed": 4 }
+      "tests": { "state": "PASS", "passed": 5 }
     },
     {
       "scope": "ai-design",
       "unit": "ai-domain-accuracy",
-      "sourceCommit": "69221a7090a8716dba0674fb531604ef7bded97e",
-      "sourceTreeSha256": "f1da86a97627ef5c1f8d142b307ec285b4f29d50dac9698d9865bf74ebf700cd",
+      "sourceCommit": "482620ceb3483004e0e9cdcff911063d0d5b8026",
+      "sourceTreeSha256": "ac72fb5c846ff4e01730c06a20b8ad1167243410fd1e1cb1921def80b5357e49",
       "sourceFileCount": 11,
       "status": "PASS_WITH_RELEASE_HOLD",
       "build": {
         "context": "capabilities/ai-design/domain-accuracy",
         "dockerfile": "capabilities/ai-design/domain-accuracy/Dockerfile",
-        "buildId": "f1da86a97627",
-        "image": "nexyfab/ai-domain-accuracy:f1da86a97627",
-        "imageId": "sha256:5c2d7cc54d66bb9c49d49f51aae1c647e7d1d8c73252720a16daac5f206980de",
+        "buildId": "ac72fb5c846f",
+        "image": "nexyfab/ai-domain-accuracy:ac72fb5c846f",
+        "imageId": "sha256:d5ecda58c0218534e57ad65ca64e96192142e0cba08d0d9a326a7f85e215914e",
         "state": "PASS"
       },
       "health": {
         "dockerStatus": "healthy",
         "readinessAssurance": "ISOLATED_BINDING_ONLY",
-        "live": { "path": "/health/live", "statusCode": 200, "state": "ok", "build": "f1da86a97627" },
+        "live": { "path": "/health/live", "statusCode": 200, "state": "ok", "build": "ac72fb5c846f" },
         "ready": { "path": "/health/ready", "statusCode": 503, "state": "HOLD", "reason": "active_probe_required" },
         "release": { "path": "/health/release", "statusCode": 503, "state": "HOLD" }
       },
-      "tests": { "state": "PASS", "passed": 3 }
+      "tests": { "state": "PASS", "passed": 4 }
     }
   ],
   "cleanup": {
