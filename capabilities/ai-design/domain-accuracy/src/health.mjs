@@ -55,6 +55,7 @@ export async function evaluateAiReadiness(env = process.env, fetcher = globalThi
     analysis: isHttpUrl(env.ANALYSIS_URL ?? ''),
     analysisAuthToken: secretBound(env.ANALYSIS_AUTH_TOKEN),
     liveModelDisabled,
+    internalAuthToken: secretBound(env.INTERNAL_AUTH_TOKEN),
   };
   const blockers = Object.entries(bindings)
     .filter(([, bound]) => !bound)
@@ -82,6 +83,7 @@ export async function buildAiHealth(phase, env = process.env, now = new Date(), 
           analysis: isHttpUrl(env.ANALYSIS_URL ?? ''),
           analysisAuthToken: secretBound(env.ANALYSIS_AUTH_TOKEN),
           liveModelDisabled: env.AI_LIVE_ENABLED?.trim().toLowerCase() === 'false',
+          internalAuthToken: secretBound(env.INTERNAL_AUTH_TOKEN),
         },
         dependencies: { analysis: { state: 'NOT_RUN', reason: 'live_probe_skipped' } },
       }
