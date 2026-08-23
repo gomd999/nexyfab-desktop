@@ -5,6 +5,7 @@ import {
   executeScopeChecks,
   notRunScopeChecks,
   parseCheckCommand,
+  resolveCheckInvocation,
 } from './workspace-guardrails.mjs';
 
 test('workspace checks reject shell syntax instead of passing it to a shell', () => {
@@ -14,6 +15,20 @@ test('workspace checks reject shell syntax instead of passing it to a shell', ()
   });
   assert.throws(() => parseCheckCommand('npm run typecheck && echo unsafe'), /command_unsafe/);
   assert.throws(() => parseCheckCommand(''), /command_unsafe/);
+});
+
+test('Windows npm checks execute the current npm CLI through Node without a shell', () => {
+  assert.deepEqual(resolveCheckInvocation(parseCheckCommand('npm run typecheck'), {
+    platform: 'win32',
+    npmExecPath: 'C:/npm/bin/npm-cli.js',
+    nodeExecPath: 'C:/node/node.exe',
+  }), {
+    executable: 'C:/node/node.exe',
+    args: ['C:/npm/bin/npm-cli.js', 'run', 'typecheck'],
+  });
+  assert.throws(() => resolveCheckInvocation(parseCheckCommand('npm run typecheck'), {
+    platform: 'win32', npmExecPath: '', nodeExecPath: 'node.exe',
+  }), /npm_execpath_missing/);
 });
 
 test('scope checks report every command and fail closed', () => {

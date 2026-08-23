@@ -15,12 +15,24 @@ export function parseCheckCommand(command) {
   return { executable: tokens[0], args: tokens.slice(1) };
 }
 
+export function resolveCheckInvocation(parsed, runtime = {}) {
+  const platform = runtime.platform ?? process.platform;
+  const npmExecPath = runtime.npmExecPath ?? process.env.npm_execpath;
+  const nodeExecPath = runtime.nodeExecPath ?? process.execPath;
+  if (platform === 'win32' && ['npm', 'npx'].includes(parsed.executable)) {
+    if (!npmExecPath) throw new Error('workspace_check_npm_execpath_missing');
+    const cliPath = parsed.executable === 'npx'
+      ? npmExecPath.replace(/npm-cli\.js$/i, 'npx-cli.js')
+      : npmExecPath;
+    return { executable: nodeExecPath, args: [cliPath, ...parsed.args] };
+  }
+  return parsed;
+}
+
 export function runCheckCommand(command, options = {}) {
   const parsed = parseCheckCommand(command);
-  const executable = process.platform === 'win32' && ['npm', 'npx'].includes(parsed.executable)
-    ? `${parsed.executable}.cmd`
-    : parsed.executable;
-  return spawnSync(executable, parsed.args, {
+  const invocation = resolveCheckInvocation(parsed);
+  return spawnSync(invocation.executable, invocation.args, {
     cwd: options.cwd,
     encoding: 'utf8',
     windowsHide: true,
