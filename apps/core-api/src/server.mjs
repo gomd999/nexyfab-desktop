@@ -21,8 +21,8 @@ function sendJson(response, statusCode, payload, headOnly = false) {
   response.end(headOnly ? undefined : body);
 }
 
-export function createCoreApiServer(env = process.env, now = () => new Date()) {
-  return http.createServer((request, response) => {
+export function createCoreApiServer(env = process.env, now = () => new Date(), fetcher = globalThis.fetch) {
+  return http.createServer(async (request, response) => {
     const method = request.method ?? 'GET';
     if (method !== 'GET' && method !== 'HEAD') {
       sendJson(response, 405, { error: 'method_not_allowed' }, method === 'HEAD');
@@ -34,7 +34,7 @@ export function createCoreApiServer(env = process.env, now = () => new Date()) {
       sendJson(response, 404, { error: 'not_found' }, method === 'HEAD');
       return;
     }
-    const payload = buildCoreApiHealth(phase, env, now());
+    const payload = await buildCoreApiHealth(phase, env, now(), fetcher);
     sendJson(response, payload.status === 'ok' ? 200 : 503, payload, method === 'HEAD');
   });
 }
