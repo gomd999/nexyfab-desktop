@@ -1,7 +1,7 @@
 # Precision CAD current session
 
-- Status: READY
+- Status: ACTIVE
 - Branch: `scope/precision-cad`
 - Baseline: `baseline/pre-scope-20260823`
-- Current task: Await the first Precision CAD-scoped work item.
-- Next action: Load this file, confirm the branch, and keep changes inside the registered scope.
+- Current task: Establish the Precision CAD capability boundary without moving runtime routes.
+- Next action: Migrate one CAD slice behind a compatibility export and run the registered CAD checks.

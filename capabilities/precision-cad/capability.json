@@ -1,0 +1,17 @@
+{
+  "schema": "nexyfab.workspace-capability.v1",
+  "id": "precision-cad",
+  "owner": "scope/precision-cad",
+  "implementationState": "LEGACY_COMPATIBILITY",
+  "legacySourceRoots": [
+    "src/app/[lang]/shape-generator",
+    "src/lib/cad",
+    "src/lib/precision-cad-agent",
+    "domains"
+  ],
+  "sharedContracts": [
+    "packages/artifact-contracts",
+    "packages/cad-contracts",
+    "packages/job-contracts"
+  ]
+}
