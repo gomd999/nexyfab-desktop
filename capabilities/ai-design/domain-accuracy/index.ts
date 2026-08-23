@@ -3,7 +3,7 @@ export {
   DOMAIN_ACCURACY_DOMAINS,
   DOMAIN_ACCURACY_PROFILES,
   assessDomainAccuracy,
-} from '../../../src/lib/ai/domainAccuracyProgram';
+} from './src/contract.mjs';
 
 export type {
   DomainAccuracyDomain,

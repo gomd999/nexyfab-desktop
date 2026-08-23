@@ -10,8 +10,19 @@
   "implementationState": "PARTIAL",
   "verificationState": "NOT_RUN",
   "deployEnabled": false,
-  "build": { "context": ".", "dockerfile": "Dockerfile", "mode": "shared-monorepo-compatibility" },
-  "health": { "mode": "contract", "test": "scripts/report-domain-accuracy.test.ts" },
+  "build": {
+    "context": "capabilities/ai-design/domain-accuracy",
+    "dockerfile": "Dockerfile",
+    "mode": "isolated-candidate"
+  },
+  "health": {
+    "mode": "http-and-contract",
+    "live": "/health/live",
+    "ready": "/health/ready",
+    "release": "/health/release",
+    "test": "capabilities/ai-design/domain-accuracy/test/server.test.mjs"
+  },
+  "runtimeBindings": ["ANALYSIS_URL", "ANALYSIS_API_REVISION", "NEXYFAB_BUILD_ID"],
   "staging": { "required": true, "evidencePath": "docs/evidence/platform-runtime/slice-deployment-readiness.json" },
   "rollback": { "strategy": "previous-release", "owner": "legacy-next-origin", "requiredBuildBinding": true }
 }
