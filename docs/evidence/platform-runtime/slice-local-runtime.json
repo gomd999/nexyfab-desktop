@@ -1,0 +1,79 @@
+{
+  "schema": "nexyfab.slice-local-runtime-evidence.v1",
+  "generatedAt": "2026-08-23T14:54:00.967Z",
+  "integrationHeadAtVerification": "b2c81d78c4ee2367d98934a51553af59c20aec7d",
+  "environment": {
+    "provider": "Docker Desktop",
+    "engineVersion": "29.3.1",
+    "host": "local"
+  },
+  "slices": [
+    {
+      "scope": "platform",
+      "unit": "core-api",
+      "sourceCommit": "cc7c5f77fe1e93017649ff640a4a14adbb6e4e2e",
+      "status": "PASS_WITH_RELEASE_HOLD",
+      "build": {
+        "context": "apps/core-api",
+        "dockerfile": "apps/core-api/Dockerfile",
+        "buildId": "cc7c5f77",
+        "image": "nexyfab/core-api-slice:cc7c5f77",
+        "imageId": "sha256:36f18f46efe9188ecec416a87da3a5356b7a104c99b1cfe9cc02162abbfa1bce",
+        "state": "PASS"
+      },
+      "health": {
+        "dockerStatus": "healthy",
+        "live": { "path": "/api/health/live", "statusCode": 200 },
+        "ready": { "path": "/api/health/ready", "statusCode": 200 },
+        "release": { "path": "/api/health/release", "statusCode": 503, "state": "HOLD" }
+      },
+      "tests": { "state": "PASS", "passed": 3 }
+    },
+    {
+      "scope": "precision-cad",
+      "unit": "precision-single-part-candidate",
+      "sourceCommit": "301e5f91fc1500b9051bec598121dd5d2c218d78",
+      "status": "PASS_WITH_RELEASE_HOLD",
+      "build": {
+        "context": "capabilities/precision-cad/single-part-candidate",
+        "dockerfile": "capabilities/precision-cad/single-part-candidate/Dockerfile",
+        "buildId": "301e5f91",
+        "image": "nexyfab/precision-single-part:301e5f91",
+        "imageId": "sha256:db0d0827b1c179f110fa5e80140e8db0f552382e6c54dc04aeafff0d2699f1a0",
+        "state": "PASS"
+      },
+      "health": {
+        "dockerStatus": "healthy",
+        "live": { "path": "/health/live", "statusCode": 200 },
+        "ready": { "path": "/health/ready", "statusCode": 200 },
+        "release": { "path": "/health/release", "statusCode": 503, "state": "HOLD" }
+      },
+      "tests": { "state": "PASS", "passed": 5 }
+    },
+    {
+      "scope": "ai-design",
+      "unit": "ai-domain-accuracy",
+      "sourceCommit": "f5e4d96428131ad497a7397fa25e919bb9e01e20",
+      "status": "PASS_WITH_RELEASE_HOLD",
+      "build": {
+        "context": "capabilities/ai-design/domain-accuracy",
+        "dockerfile": "capabilities/ai-design/domain-accuracy/Dockerfile",
+        "buildId": "f5e4d964",
+        "image": "nexyfab/ai-domain-accuracy:f5e4d964",
+        "imageId": "sha256:ccc3b820414a2b3f2ccecdb1f125b7b074bafdf0b6d9c1e8bd7ec1fecf79c075",
+        "state": "PASS"
+      },
+      "health": {
+        "dockerStatus": "healthy",
+        "live": { "path": "/health/live", "statusCode": 200 },
+        "ready": { "path": "/health/ready", "statusCode": 200 },
+        "release": { "path": "/health/release", "statusCode": 503, "state": "HOLD" }
+      },
+      "tests": { "state": "PASS", "passed": 4 }
+    }
+  ],
+  "cleanup": {
+    "temporaryContainersRemaining": 0
+  },
+  "overall": "PASS_WITH_RELEASE_HOLDS"
+}

@@ -8,6 +8,21 @@ The Railway `staging` environment now runs seven independently built and health-
 
 This is a runtime-topology pass, not yet a direct deployment of the three NexyFab capability-wrapper commits. The NexyFab source remains organized by the `platform`, `precision-cad`, and `ai-design` workspaces, while the deployable runtime boundary remains the sibling commercial repository.
 
+## Isolated local slice contexts
+
+The three NexyFab slices now also build from their own folder-only Docker
+contexts. Each image reached Docker `healthy`, returned live and ready HTTP 200,
+and returned release HTTP 503/HOLD as required while promotion is disabled.
+
+| Scope | Folder-only context | Commit-bound image | Local result |
+| --- | --- | --- | --- |
+| Platform | `apps/core-api` | `nexyfab/core-api-slice:cc7c5f77` | healthy; release HOLD |
+| Precision CAD | `capabilities/precision-cad/single-part-candidate` | `nexyfab/precision-single-part:301e5f91` | healthy; release HOLD |
+| AI Design | `capabilities/ai-design/domain-accuracy` | `nexyfab/ai-domain-accuracy:f5e4d964` | healthy; live model disabled; release HOLD |
+
+This local result proves the session/build boundary. It does not replace the
+separate Railway staging topology evidence or authorize production promotion.
+
 | NexyFab scope | Railway staging deployables | Staging result |
 | --- | --- | --- |
 | Platform | `source-ingestion`, `core-api`, `collaboration`, `studio-web` | PASS |
@@ -17,6 +32,7 @@ This is a runtime-topology pass, not yet a direct deployment of the three NexyFa
 ## Evidence
 
 - Machine-readable deployment evidence: `docs/evidence/platform-runtime/slice-deployment-staging.json`
+- Machine-readable isolated local evidence: `docs/evidence/platform-runtime/slice-local-runtime.json`
 - Aggregated readiness receipt: `docs/evidence/platform-runtime/slice-deployment-readiness.json`
 - Runtime source: `nexycad-commercial@c6218eae1f9365f32b151abf26b78241a5afc6be`
 - NexyFab source under evaluation: `359fb0579a9495a235daf2d5418648545af39b5e`

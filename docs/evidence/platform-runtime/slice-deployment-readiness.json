@@ -1,7 +1,7 @@
 {
   "schema": "nexyfab.slice-deployment-readiness-receipt.v1",
-  "generatedAt": "2026-08-23T14:03:04.924Z",
-  "gitHead": "359fb0579a9495a235daf2d5418648545af39b5e",
+  "generatedAt": "2026-08-23T14:56:45.072Z",
+  "gitHead": "b2c81d78c4ee2367d98934a51553af59c20aec7d",
   "local": {
     "ok": true,
     "issues": [],
@@ -10,24 +10,50 @@
         "id": "platform-live-health",
         "scope": "platform",
         "deployUnit": "core-api",
-        "status": "READY_FOR_STAGING",
+        "status": "ISOLATED_CONTEXT_READY",
         "issues": []
       },
       {
         "id": "precision-single-part-candidate",
         "scope": "precision-cad",
-        "deployUnit": "occt-exact",
-        "status": "READY_FOR_STAGING",
+        "deployUnit": "precision-single-part-candidate",
+        "status": "ISOLATED_CONTEXT_READY",
         "issues": []
       },
       {
         "id": "ai-domain-accuracy",
         "scope": "ai-design",
-        "deployUnit": "ai-design-api",
-        "status": "READY_FOR_STAGING",
+        "deployUnit": "ai-domain-accuracy",
+        "status": "ISOLATED_CONTEXT_READY",
         "issues": []
       }
     ]
+  },
+  "localRuntime": {
+    "ok": true,
+    "state": "PASS_WITH_RELEASE_HOLDS",
+    "issues": [],
+    "slices": [
+      {
+        "scope": "platform",
+        "unit": "core-api",
+        "imageId": "sha256:36f18f46efe9188ecec416a87da3a5356b7a104c99b1cfe9cc02162abbfa1bce",
+        "state": "PASS_WITH_RELEASE_HOLD"
+      },
+      {
+        "scope": "precision-cad",
+        "unit": "precision-single-part-candidate",
+        "imageId": "sha256:db0d0827b1c179f110fa5e80140e8db0f552382e6c54dc04aeafff0d2699f1a0",
+        "state": "PASS_WITH_RELEASE_HOLD"
+      },
+      {
+        "scope": "ai-design",
+        "unit": "ai-domain-accuracy",
+        "imageId": "sha256:ccc3b820414a2b3f2ccecdb1f125b7b074bafdf0b6d9c1e8bd7ec1fecf79c075",
+        "state": "PASS_WITH_RELEASE_HOLD"
+      }
+    ],
+    "evidenceFile": "docs/evidence/platform-runtime/slice-local-runtime.json"
   },
   "staging": {
     "ok": true,

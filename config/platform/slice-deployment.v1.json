@@ -11,27 +11,56 @@
       "id": "platform-live-health",
       "scope": "platform",
       "deployUnit": "core-api",
-      "sourceRoots": ["apps/core-api/src/health/live.ts", "src/app/api/health/live/route.ts"],
-      "build": { "contextRoot": ".", "dockerfile": "Dockerfile", "mode": "shared-monorepo-compatibility" },
-      "health": { "mode": "http", "path": "/api/health/live", "expectedStatus": 200 },
+      "sourceRoots": ["apps/core-api/src/server.mjs", "apps/core-api/src/health/runtime.mjs", "src/app/api/health/live/route.ts"],
+      "build": {
+        "contextRoot": "apps/core-api",
+        "dockerfile": "apps/core-api/Dockerfile",
+        "mode": "isolated-candidate"
+      },
+      "health": {
+        "mode": "http",
+        "live": "/api/health/live",
+        "ready": "/api/health/ready",
+        "release": "/api/health/release"
+      },
       "rollback": { "owner": "legacy-next-origin", "requiredBuildBinding": true }
     },
     {
       "id": "precision-single-part-candidate",
       "scope": "precision-cad",
-      "deployUnit": "occt-exact",
-      "sourceRoots": ["capabilities/precision-cad/single-part-candidate/index.ts", "scripts/build-mechanical-single-part-candidates.ts"],
-      "build": { "contextRoot": ".", "dockerfile": "Dockerfile", "mode": "shared-monorepo-compatibility" },
-      "health": { "mode": "contract", "test": "scripts/build-mechanical-single-part-candidates.test.ts" },
+      "deployUnit": "precision-single-part-candidate",
+      "sourceRoots": ["capabilities/precision-cad/single-part-candidate/index.ts", "capabilities/precision-cad/single-part-candidate/src/server.mjs", "scripts/build-mechanical-single-part-candidates.ts"],
+      "build": {
+        "contextRoot": "capabilities/precision-cad/single-part-candidate",
+        "dockerfile": "capabilities/precision-cad/single-part-candidate/Dockerfile",
+        "mode": "isolated-candidate"
+      },
+      "health": {
+        "mode": "http-and-contract",
+        "live": "/health/live",
+        "ready": "/health/ready",
+        "release": "/health/release",
+        "test": "capabilities/precision-cad/single-part-candidate/test/server.test.mjs"
+      },
       "rollback": { "owner": "exact-cad-job-blocked", "requiredBuildBinding": true }
     },
     {
       "id": "ai-domain-accuracy",
       "scope": "ai-design",
-      "deployUnit": "ai-design-api",
-      "sourceRoots": ["capabilities/ai-design/domain-accuracy/index.ts", "scripts/report-domain-accuracy.ts"],
-      "build": { "contextRoot": ".", "dockerfile": "Dockerfile", "mode": "shared-monorepo-compatibility" },
-      "health": { "mode": "contract", "test": "scripts/report-domain-accuracy.test.ts" },
+      "deployUnit": "ai-domain-accuracy",
+      "sourceRoots": ["capabilities/ai-design/domain-accuracy/index.ts", "capabilities/ai-design/domain-accuracy/src/server.mjs", "scripts/report-domain-accuracy.ts"],
+      "build": {
+        "contextRoot": "capabilities/ai-design/domain-accuracy",
+        "dockerfile": "capabilities/ai-design/domain-accuracy/Dockerfile",
+        "mode": "isolated-candidate"
+      },
+      "health": {
+        "mode": "http-and-contract",
+        "live": "/health/live",
+        "ready": "/health/ready",
+        "release": "/health/release",
+        "test": "capabilities/ai-design/domain-accuracy/test/server.test.mjs"
+      },
       "rollback": { "owner": "legacy-next-origin", "requiredBuildBinding": true }
     }
   ]
