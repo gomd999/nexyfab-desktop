@@ -1,5 +1,9 @@
 {
   "schema": "nexyfab.workspace-scope.v1",
   "id": "platform",
-  "registry": "../registry.json"
+  "registry": "../registry.json",
+  "targetRoots": ["apps/studio-web", "apps/core-api"],
+  "legacySourceRoots": ["src/app", "src/components", "src/lib"],
+  "migrationState": "COMPATIBILITY_BOUNDARY",
+  "integrationMode": "contracts-and-handoffs"
 }
