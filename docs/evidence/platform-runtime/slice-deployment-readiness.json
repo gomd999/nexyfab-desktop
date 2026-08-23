@@ -1,7 +1,7 @@
 {
   "schema": "nexyfab.slice-deployment-readiness-receipt.v1",
-  "generatedAt": "2026-08-23T12:35:15.128Z",
-  "gitHead": "87547f6f4a66f7327024755ada4c9fca8b5c9d8f",
+  "generatedAt": "2026-08-23T12:37:05.956Z",
+  "gitHead": "fe88a6587543c1ff5a07a082410aee7c8a5030d1",
   "local": {
     "ok": true,
     "issues": [],
