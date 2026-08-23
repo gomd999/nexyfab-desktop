@@ -9,5 +9,6 @@ accuracy assessment contract without moving model providers or API routes yet.
 - Next extraction: move one design request behind auth/job/artifact contracts
 
 The slice folder is now a complete Docker build context. It exposes `/health/*`
-and `POST /contract/assess`; it never invokes a live model. `AI_LIVE_MODEL_ENABLED`
-must remain disabled for readiness until a separate model-release decision exists.
+and `POST /contract/assess`; it never invokes a live model. `AI_LIVE_ENABLED`
+must be explicitly `false` for readiness until a separate model-release decision
+exists. The Analysis dependency must also report `MODEL_NOT_RUN`.
