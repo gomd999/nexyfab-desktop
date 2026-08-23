@@ -20,6 +20,7 @@
     "workspaces/README.md",
     "workspaces/CLEANUP_POLICY.md",
     "workspaces/PROJECT_AUDIT.md",
+    "workspaces/DEPLOYMENT_BOUNDARIES.md",
     "workspaces/*/EVALUATION.md",
     "workspaces/registry.json",
     "src/lib/db*",
