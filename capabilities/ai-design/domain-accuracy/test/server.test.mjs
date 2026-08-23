@@ -4,6 +4,8 @@ import test from 'node:test';
 import { DOMAIN_ACCURACY_PROFILES } from '../src/contract.mjs';
 import { createAiServer } from '../src/server.mjs';
 
+const INTERNAL_TOKEN = 'ai-design-internal-auth-token-001';
+
 async function withServer(env, callback) {
   const server = createAiServer(env, () => new Date('2026-08-23T00:00:00.000Z'));
   await new Promise((resolve, reject) => {
@@ -57,10 +59,10 @@ function passingEvidence(domain) {
 }
 
 test('assessment is deterministic and fail-closed', async () => {
-  await withServer({}, async baseUrl => {
+  await withServer({ INTERNAL_AUTH_TOKEN: INTERNAL_TOKEN }, async baseUrl => {
     const pass = await fetch(`${baseUrl}/contract/assess`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${INTERNAL_TOKEN}` },
       body: JSON.stringify(passingEvidence('mechanical')),
     });
     assert.equal(pass.status, 200);
@@ -70,12 +72,21 @@ test('assessment is deterministic and fail-closed', async () => {
     holdEvidence.axes = holdEvidence.axes.slice(1);
     const hold = await fetch(`${baseUrl}/contract/assess`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${INTERNAL_TOKEN}` },
       body: JSON.stringify(holdEvidence),
     });
     const payload = await hold.json();
     assert.equal(payload.eligible, false);
     assert.ok(payload.blockers.includes('accuracy:requirements'));
+  });
+});
+
+test('assessment denies missing or invalid internal authentication', async () => {
+  await withServer({}, async baseUrl => {
+    assert.equal((await fetch(`${baseUrl}/contract/assess`, { method: 'POST' })).status, 503);
+  });
+  await withServer({ INTERNAL_AUTH_TOKEN: INTERNAL_TOKEN }, async baseUrl => {
+    assert.equal((await fetch(`${baseUrl}/contract/assess`, { method: 'POST' })).status, 401);
   });
 });
 
@@ -93,6 +104,7 @@ test('ready requires the canonical Analysis binding and safe MODEL_NOT_RUN probe
       ANALYSIS_URL: analysisUrl,
       ANALYSIS_AUTH_TOKEN: 'a'.repeat(32),
       AI_LIVE_ENABLED: 'false',
+      INTERNAL_AUTH_TOKEN: INTERNAL_TOKEN,
     }, async baseUrl => {
       const ready = await fetch(`${baseUrl}/health/ready`);
       const payload = await ready.json();
@@ -110,6 +122,7 @@ test('ready rejects live AI execution and an unsafe Analysis qualification', asy
     ANALYSIS_URL: 'http://analysis.internal',
     ANALYSIS_AUTH_TOKEN: 'a'.repeat(32),
     AI_LIVE_ENABLED: 'true',
+    INTERNAL_AUTH_TOKEN: INTERNAL_TOKEN,
   }, async baseUrl => {
     const payload = await (await fetch(`${baseUrl}/health/ready`)).json();
     assert.ok(payload.blockers.includes('live_model_must_remain_disabled'));
@@ -124,6 +137,7 @@ test('ready rejects live AI execution and an unsafe Analysis qualification', asy
       ANALYSIS_URL: analysisUrl,
       ANALYSIS_AUTH_TOKEN: 'a'.repeat(32),
       AI_LIVE_ENABLED: 'false',
+      INTERNAL_AUTH_TOKEN: INTERNAL_TOKEN,
     }, async baseUrl => {
       const response = await fetch(`${baseUrl}/health/ready`);
       const payload = await response.json();
